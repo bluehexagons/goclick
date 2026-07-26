@@ -48,6 +48,38 @@ func TestIncrementUpdatesStreaks(t *testing.T) {
 	assertCounters(t, counters, 5, 1, 1, 2)
 }
 
+func TestMonthlyStreakUsesMonthBoundary(t *testing.T) {
+	database := openTestStore(t)
+	user := createTestUser(t, database, "month-edge")
+	ctx := context.Background()
+
+	counters, err := database.Increment(ctx, user.ID, time.Date(2026, time.February, 28, 20, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertCounters(t, counters, 1, 1, 1, 1)
+
+	// Subtracting a month directly from March 31 normalizes back into March.
+	// The streak calculation must instead subtract from March's first day.
+	counters, err = database.Increment(ctx, user.ID, time.Date(2026, time.March, 31, 20, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertCounters(t, counters, 2, 1, 2, 1)
+
+	counters, err = database.Increment(ctx, user.ID, time.Date(2026, time.March, 31, 21, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertCounters(t, counters, 3, 1, 2, 1)
+
+	counters, err = database.Increment(ctx, user.ID, time.Date(2026, time.April, 30, 20, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertCounters(t, counters, 4, 1, 3, 1)
+}
+
 func TestSessionStoresDigestAndExpires(t *testing.T) {
 	database := openTestStore(t)
 	user := createTestUser(t, database, "session-user")
@@ -71,6 +103,16 @@ func TestSessionStoresDigestAndExpires(t *testing.T) {
 	}
 	if string(stored) == string(raw) {
 		t.Fatal("raw session token was stored")
+	}
+	if err := database.DeleteExpiredSessions(ctx, now.Add(2*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	var remaining int
+	if err := database.db.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 0 {
+		t.Fatalf("expired session rows = %d, want 0", remaining)
 	}
 }
 

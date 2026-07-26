@@ -134,14 +134,19 @@ signupForm.addEventListener("submit", async (event) => {
   }
 });
 
-document.querySelector("#logout-button").addEventListener("click", async () => {
+const logoutButton = document.querySelector("#logout-button");
+logoutButton.addEventListener("click", async () => {
+  showError("#game-error", "");
+  logoutButton.disabled = true;
   try {
     await api("/api/auth/logout", { method: "DELETE" });
-  } catch (_) {
-    // Clear the local view even if the server is temporarily unavailable.
+    setUser(null);
+    show("home");
+  } catch (error) {
+    showError("#game-error", `Could not sign out: ${error.message}`);
+  } finally {
+    logoutButton.disabled = false;
   }
-  setUser(null);
-  show("home");
 });
 
 clickButton.addEventListener("click", async () => {

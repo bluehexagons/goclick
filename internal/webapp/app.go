@@ -27,8 +27,10 @@ import (
 )
 
 const (
-	sessionCookie = "goclick_session"
-	maxJSONBody   = 8 << 10
+	sessionCookie    = "goclick_session"
+	maxJSONBody      = 8 << 10
+	passwordHashCost = 12
+	clicksPerIP      = 360
 )
 
 var (
@@ -42,12 +44,14 @@ type Config struct {
 	SessionTTL    time.Duration
 	Logger        *slog.Logger
 	Now           func() time.Time
+	passwordCost  int
 }
 
 type App struct {
 	store         *store.Store
 	secureCookies bool
 	sessionTTL    time.Duration
+	passwordCost  int
 	logger        *slog.Logger
 	now           func() time.Time
 	limiter       *limiter
@@ -72,7 +76,10 @@ func New(database *store.Store, config Config) (*App, error) {
 	if config.Now == nil {
 		config.Now = time.Now
 	}
-	dummyHash, err := bcrypt.GenerateFromPassword([]byte("constant dummy password"), bcrypt.DefaultCost)
+	if config.passwordCost == 0 {
+		config.passwordCost = passwordHashCost
+	}
+	dummyHash, err := bcrypt.GenerateFromPassword([]byte("constant dummy password"), config.passwordCost)
 	if err != nil {
 		return nil, fmt.Errorf("prepare password verifier: %w", err)
 	}
@@ -85,6 +92,7 @@ func New(database *store.Store, config Config) (*App, error) {
 		store:         database,
 		secureCookies: config.SecureCookies,
 		sessionTTL:    config.SessionTTL,
+		passwordCost:  config.passwordCost,
 		logger:        config.Logger,
 		now:           config.Now,
 		dummyHash:     dummyHash,
@@ -176,7 +184,7 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(payload.Password), a.passwordCost)
 	if err != nil {
 		a.internalError(w, r, "hash signup password", err)
 		return
@@ -398,6 +406,10 @@ func (a *App) globalLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost &&
 			(r.URL.Path == "/api/clicks" || r.URL.Path == "/entities/increment") {
+			if ok, retry := a.limiter.allow("click-ip:"+clientIP(r), clicksPerIP, time.Minute); !ok {
+				rateLimited(w, retry)
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}

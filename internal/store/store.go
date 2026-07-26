@@ -251,7 +251,7 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 			return Counters{}, fmt.Errorf("parse previous click: %w", err)
 		}
 		counters.DayStreak = updateStreak(counters.DayStreak, dateKey(previous), dateKey(now), dateKey(now.AddDate(0, 0, -1)))
-		counters.MonthStreak = updateStreak(counters.MonthStreak, monthKey(previous), monthKey(now), monthKey(now.AddDate(0, -1, 0)))
+		counters.MonthStreak = updateStreak(counters.MonthStreak, monthKey(previous), monthKey(now), previousMonthKey(now))
 		counters.YearStreak = updateStreak(counters.YearStreak, yearKey(previous), yearKey(now), yearKey(now.AddDate(-1, 0, 0)))
 	}
 	counters.Clicks++
@@ -291,6 +291,12 @@ func updateStreak(count int64, previous, current, immediatelyPrevious string) in
 func dateKey(t time.Time) string  { return t.UTC().Format("2006-01-02") }
 func monthKey(t time.Time) string { return t.UTC().Format("2006-01") }
 func yearKey(t time.Time) string  { return t.UTC().Format("2006") }
+
+func previousMonthKey(t time.Time) string {
+	t = t.UTC()
+	currentMonth := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+	return monthKey(currentMonth.AddDate(0, -1, 0))
+}
 
 func formatTime(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 

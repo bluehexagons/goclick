@@ -2,6 +2,8 @@ package webapp
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -15,6 +17,7 @@ import (
 	"time"
 
 	"github.com/bluehexagons/goclick/internal/store"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestAccountClickAndLogoutFlow(t *testing.T) {
@@ -183,6 +186,105 @@ func TestLoginRateLimitAndSecurityHeaders(t *testing.T) {
 	}
 }
 
+func TestInvalidClickSessionsAreRateLimitedBeforeAuthentication(t *testing.T) {
+	database, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	app, err := New(database, Config{
+		Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Now:          time.Now,
+		passwordCost: bcrypt.MinCost,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{
+		Transport: handlerTransport{handler: app.Handler()},
+		Timeout:   5 * time.Second,
+	}
+	baseURL := "http://goclick.test"
+	cookieValue := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{0x42}, 32))
+
+	request, err := http.NewRequest(http.MethodPost, baseURL+"/api/clicks", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Cookie", sessionCookie+"="+cookieValue)
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("first invalid session status = %d, want 401", response.StatusCode)
+	}
+
+	for range clicksPerIP - 1 {
+		if ok, _ := app.limiter.allow("click-ip:192.0.2.1", clicksPerIP, time.Minute); !ok {
+			t.Fatal("click IP bucket filled earlier than expected")
+		}
+	}
+	response, err = client.Do(request.Clone(context.Background()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("request after full pre-auth bucket status = %d, want 429", response.StatusCode)
+	}
+}
+
+func TestDummyPasswordHashUsesRailsProductionCost(t *testing.T) {
+	database, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	app, err := New(database, Config{
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cost, err := bcrypt.Cost(app.dummyHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cost != 12 {
+		t.Fatalf("dummy bcrypt cost = %d, want Rails production cost 12", cost)
+	}
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{
+		Jar:       jar,
+		Transport: handlerTransport{handler: app.Handler()},
+		Timeout:   5 * time.Second,
+	}
+	response := jsonRequest(t, client, http.MethodPost, "http://goclick.test/api/auth/signup", map[string]any{
+		"username": "cost_test", "password": "password123",
+	}, nil)
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("signup status = %d, body = %s", response.StatusCode, readBody(t, response))
+	}
+	response.Body.Close()
+	user, err := database.UserByIdentifier(context.Background(), "cost_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cost, err = bcrypt.Cost([]byte(user.PasswordHash))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cost != 12 {
+		t.Fatalf("new-user bcrypt cost = %d, want Rails production cost 12", cost)
+	}
+}
+
 func TestFrontendIsEmbedded(t *testing.T) {
 	baseURL, client := testServer(t)
 	response := jsonRequest(t, client, http.MethodGet, baseURL+"/", nil, nil)
@@ -200,8 +302,9 @@ func testServer(t *testing.T) (string, *http.Client) {
 	}
 	t.Cleanup(func() { database.Close() })
 	app, err := New(database, Config{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Now:    time.Now,
+		Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Now:          time.Now,
+		passwordCost: bcrypt.MinCost,
 	})
 	if err != nil {
 		t.Fatal(err)

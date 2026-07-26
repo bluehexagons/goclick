@@ -38,9 +38,10 @@ func main() {
 		logger.Error("create application", "error", err)
 		os.Exit(1)
 	}
-	if err := database.DeleteExpiredSessions(context.Background(), time.Now()); err != nil {
-		logger.Warn("clean expired sessions", "error", err)
-	}
+
+	shutdownSignals, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go reapExpiredSessions(shutdownSignals, database, logger, 24*time.Hour, time.Now)
 
 	server := &http.Server{
 		Addr:              env("GOCLICK_ADDR", ":8080"),
@@ -52,8 +53,6 @@ func main() {
 		MaxHeaderBytes:    16 << 10,
 	}
 
-	shutdownSignals, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	go func() {
 		<-shutdownSignals.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -68,6 +67,38 @@ func main() {
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Error("serve", "error", err)
 		os.Exit(1)
+	}
+}
+
+type expiredSessionStore interface {
+	DeleteExpiredSessions(context.Context, time.Time) error
+}
+
+func reapExpiredSessions(
+	ctx context.Context,
+	database expiredSessionStore,
+	logger *slog.Logger,
+	interval time.Duration,
+	now func() time.Time,
+) {
+	cleanup := func() {
+		cleanupContext, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		if err := database.DeleteExpiredSessions(cleanupContext, now()); err != nil && ctx.Err() == nil {
+			logger.Warn("clean expired sessions", "error", err)
+		}
+	}
+
+	cleanup()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cleanup()
+		}
 	}
 }
 
