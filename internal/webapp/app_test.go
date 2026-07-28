@@ -323,8 +323,21 @@ func TestFrontendIsEmbedded(t *testing.T) {
 	baseURL, client := testServer(t)
 	response := jsonRequest(t, client, http.MethodGet, baseURL+"/", nil, nil)
 	body := readBody(t, response)
-	if response.StatusCode != http.StatusOK || !strings.Contains(body, "One button.") {
+	if response.StatusCode != http.StatusOK ||
+		!strings.Contains(body, "One button.") ||
+		!strings.Contains(body, `id="loading-view"`) ||
+		!strings.Contains(body, `id="retry-game-button"`) {
 		t.Fatalf("frontend status/body = %d %q", response.StatusCode, body)
+	}
+
+	response = jsonRequest(t, client, http.MethodGet, baseURL+"/app.js", nil, nil)
+	cacheControl := response.Header.Get("Cache-Control")
+	script := readBody(t, response)
+	if response.StatusCode != http.StatusOK ||
+		cacheControl != "no-cache" ||
+		!strings.Contains(script, "handleExpiredSession") ||
+		!strings.Contains(script, "maxPendingClicks") {
+		t.Fatalf("frontend script status/cache/body = %d %q %q", response.StatusCode, cacheControl, script)
 	}
 }
 

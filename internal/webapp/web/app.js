@@ -1,6 +1,7 @@
 "use strict";
 
 const views = {
+  loading: document.querySelector("#loading-view"),
   home: document.querySelector("#home-view"),
   auth: document.querySelector("#auth-view"),
   game: document.querySelector("#game-view"),
@@ -8,33 +9,82 @@ const views = {
 const loginForm = document.querySelector("#login-form");
 const signupForm = document.querySelector("#signup-form");
 const clickButton = document.querySelector("#click-button");
+const counterCard = document.querySelector("#counter-card");
+const retryGameButton = document.querySelector("#retry-game-button");
+const retryBootButton = document.querySelector("#retry-boot-button");
+const connection = document.querySelector("#connection");
 let user = null;
+let gameReady = false;
+let pendingClicks = 0;
+let clickBatchFailed = false;
+let clickAnimationTimer = 0;
+let signingOut = false;
+const maxPendingClicks = 6;
 
 function show(view) {
   const authenticated = view === "game";
+  views.loading.hidden = view !== "loading";
   views.home.hidden = view !== "home";
   views.auth.hidden = view !== "login" && view !== "signup";
   views.game.hidden = !authenticated;
   loginForm.hidden = view !== "login";
   signupForm.hidden = view !== "signup";
-  document.querySelector("#guest-nav").hidden = authenticated;
+  document.querySelector("#guest-nav").hidden = authenticated || view === "loading";
   document.querySelector("#user-nav").hidden = !authenticated;
-  if (view === "login") document.querySelector("#login-identifier").focus();
-  if (view === "signup") document.querySelector("#signup-username").focus();
+  if (view === "login") {
+    showError("#login-error", "");
+    resetPasswordVisibility(loginForm);
+    document.querySelector("#login-identifier").focus();
+  }
+  if (view === "signup") {
+    showError("#signup-error", "");
+    resetPasswordVisibility(signupForm);
+    document.querySelector("#signup-username").focus();
+  }
 }
 
-function showError(id, message) {
+function showError(id, message, focus = false) {
   const element = document.querySelector(id);
   element.textContent = message;
   element.hidden = !message;
+  if (message && focus) element.focus();
+}
+
+function setConnection(message, state = "") {
+  document.querySelector("#ping").textContent = message;
+  connection.classList.toggle("is-loading", state === "loading");
+  connection.classList.toggle("is-error", state === "error");
+}
+
+function setSubmitting(form, submitting) {
+  const button = form.querySelector("button[type=submit]");
+  button.disabled = submitting;
+  button.textContent = submitting ? button.dataset.busyLabel : button.dataset.label;
+  form.setAttribute("aria-busy", String(submitting));
+}
+
+function resetPasswordVisibility(container) {
+  container.querySelectorAll("[data-toggle-password]").forEach((button) => {
+    const input = document.querySelector(`#${button.dataset.togglePassword}`);
+    input.type = "password";
+    button.textContent = "Show";
+    button.setAttribute("aria-label", "Show password");
+  });
 }
 
 async function api(url, options = {}) {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: options.body ? { "Content-Type": "application/json" } : {},
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      credentials: "same-origin",
+      headers: options.body ? { "Content-Type": "application/json" } : {},
+      ...options,
+    });
+  } catch (_) {
+    const error = new Error("Can’t reach Go Click. Check your connection and try again.");
+    error.status = 0;
+    throw error;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(Array.isArray(data.errors) ? data.errors.join(". ") : (data.error || "Something went wrong"));
@@ -46,14 +96,17 @@ async function api(url, options = {}) {
 }
 
 function setUser(nextUser) {
+  const identityChanged = user?.id !== nextUser?.id;
   user = nextUser;
-  if (!user) return;
-  document.querySelector("#nav-username").textContent = user.username;
-  document.querySelector("#game-username").textContent = user.username;
+  document.querySelector("#nav-username").textContent = user?.username ?? "";
+  document.querySelector("#game-username").textContent = user?.username ?? "";
+  if (identityChanged) renderCounters({}, true);
 }
 
-function renderCounters(data) {
+function renderCounters(data, allowDecrease = false) {
   const clicks = data.click_count;
+  const displayedClicks = Number(document.querySelector("#click-count").textContent);
+  if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks) return;
   document.querySelector("#click-count").textContent = clicks?.count ?? 0;
   document.querySelector("#day-streak").textContent = data.streak_counter_day?.count ?? 0;
   document.querySelector("#month-streak").textContent = data.streak_counter_month?.count ?? 0;
@@ -65,16 +118,35 @@ function renderCounters(data) {
 
 async function openGame() {
   show("game");
+  showError("#game-error", "");
+  retryGameButton.hidden = true;
+  gameReady = false;
+  clickButton.disabled = true;
+  counterCard.setAttribute("aria-busy", "true");
+  setConnection("Loading…", "loading");
   try {
-    renderCounters(await api("/api/clicks"));
+    renderCounters(await api("/api/clicks"), true);
+    gameReady = true;
+    clickButton.disabled = false;
+    setConnection("Ready");
   } catch (error) {
     if (error.status === 401) {
-      setUser(null);
-      show("login");
+      if (user && !signingOut) handleExpiredSession();
     } else {
-      showError("#game-error", error.message);
+      showError("#game-error", `Couldn’t load your counter. ${error.message}`, true);
+      retryGameButton.hidden = false;
+      setConnection("Not connected", "error");
     }
+  } finally {
+    counterCard.setAttribute("aria-busy", "false");
   }
+}
+
+function handleExpiredSession() {
+  gameReady = false;
+  setUser(null);
+  show("login");
+  showError("#login-error", "Your session expired. Sign in to keep clicking.", true);
 }
 
 document.querySelectorAll("[data-view]").forEach((button) => {
@@ -85,11 +157,21 @@ document.querySelectorAll("[data-view]").forEach((button) => {
   });
 });
 
+document.querySelectorAll("[data-toggle-password]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const input = document.querySelector(`#${button.dataset.togglePassword}`);
+    const showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    button.textContent = showing ? "Show" : "Hide";
+    button.setAttribute("aria-label", `${showing ? "Show" : "Hide"} password`);
+    input.focus();
+  });
+});
+
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   showError("#login-error", "");
-  const button = loginForm.querySelector("button[type=submit]");
-  button.disabled = true;
+  setSubmitting(loginForm, true);
   try {
     const form = new FormData(loginForm);
     const result = await api("/api/auth/login", {
@@ -103,9 +185,9 @@ loginForm.addEventListener("submit", async (event) => {
     setUser(result.user);
     await openGame();
   } catch (error) {
-    showError("#login-error", error.message);
+    showError("#login-error", error.message, true);
   } finally {
-    button.disabled = false;
+    setSubmitting(loginForm, false);
   }
 });
 
@@ -114,11 +196,11 @@ signupForm.addEventListener("submit", async (event) => {
   showError("#signup-error", "");
   const form = new FormData(signupForm);
   if (form.get("password") !== form.get("password_confirmation")) {
-    showError("#signup-error", "Passwords do not match");
+    showError("#signup-error", "Passwords do not match.", true);
+    document.querySelector("#signup-password-confirmation").focus();
     return;
   }
-  const button = signupForm.querySelector("button[type=submit]");
-  button.disabled = true;
+  setSubmitting(signupForm, true);
   try {
     const result = await api("/api/auth/signup", {
       method: "POST",
@@ -128,54 +210,96 @@ signupForm.addEventListener("submit", async (event) => {
     setUser(result.user);
     await openGame();
   } catch (error) {
-    showError("#signup-error", error.message);
+    showError("#signup-error", error.message, true);
   } finally {
-    button.disabled = false;
+    setSubmitting(signupForm, false);
   }
 });
 
 const logoutButton = document.querySelector("#logout-button");
 logoutButton.addEventListener("click", async () => {
   showError("#game-error", "");
+  signingOut = true;
+  gameReady = false;
+  clickButton.disabled = true;
   logoutButton.disabled = true;
   try {
     await api("/api/auth/logout", { method: "DELETE" });
     setUser(null);
     show("home");
   } catch (error) {
-    showError("#game-error", `Could not sign out: ${error.message}`);
+    gameReady = true;
+    clickButton.disabled = pendingClicks >= maxPendingClicks;
+    showError("#game-error", `Could not sign out: ${error.message}`, true);
   } finally {
+    signingOut = false;
     logoutButton.disabled = false;
   }
 });
 
 clickButton.addEventListener("click", async () => {
-  if (clickButton.disabled) return;
-  showError("#game-error", "");
-  clickButton.disabled = true;
+  if (!gameReady || pendingClicks >= maxPendingClicks) return;
+  if (pendingClicks === 0) {
+    showError("#game-error", "");
+    clickBatchFailed = false;
+  }
+  pendingClicks++;
+  clickButton.disabled = pendingClicks >= maxPendingClicks;
   clickButton.classList.remove("clicked");
   void clickButton.offsetWidth;
   clickButton.classList.add("clicked");
+  window.clearTimeout(clickAnimationTimer);
+  clickAnimationTimer = window.setTimeout(() => clickButton.classList.remove("clicked"), 140);
   const started = performance.now();
+  setConnection(pendingClicks === 1 ? "Saving click…" : `Saving ${pendingClicks} clicks…`, "loading");
+  let saved = false;
   try {
     renderCounters(await api("/api/clicks", { method: "POST" }));
-    document.querySelector("#ping").textContent = `${Math.round(performance.now() - started)} ms`;
+    saved = true;
   } catch (error) {
+    if (error.status === 401) {
+      if (user && !signingOut) handleExpiredSession();
+      return;
+    }
+    clickBatchFailed = true;
     showError("#game-error", error.status === 429 && error.retryAfter
       ? `Slow down for ${error.retryAfter} seconds.`
-      : error.message);
+      : `Your click wasn’t saved. ${error.message}`, true);
+    setConnection("Not saved", "error");
   } finally {
-    clickButton.disabled = false;
+    pendingClicks--;
+    clickButton.disabled = !gameReady || pendingClicks >= maxPendingClicks;
+    if (!clickBatchFailed && pendingClicks > 0) {
+      setConnection(pendingClicks === 1 ? "Saving click…" : `Saving ${pendingClicks} clicks…`, "loading");
+    } else if (!clickBatchFailed && saved) {
+      setConnection(`Saved · ${Math.round(performance.now() - started)} ms`);
+    }
   }
 });
 
 async function boot() {
+  show("loading");
+  views.loading.setAttribute("aria-busy", "true");
+  document.querySelector(".loading-spinner").hidden = false;
+  document.querySelector("#loading-message").textContent = "Loading your counter…";
+  retryBootButton.hidden = true;
   try {
     setUser(await api("/api/me"));
     await openGame();
-  } catch (_) {
-    show("home");
+  } catch (error) {
+    if (error.status === 401) {
+      show("home");
+      return;
+    }
+    document.querySelector(".loading-spinner").hidden = true;
+    document.querySelector("#loading-message").textContent = error.message;
+    retryBootButton.hidden = false;
+    views.loading.setAttribute("aria-busy", "false");
+    retryBootButton.focus();
   }
 }
+
+retryGameButton.addEventListener("click", openGame);
+retryBootButton.addEventListener("click", boot);
 
 boot();

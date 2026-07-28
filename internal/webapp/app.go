@@ -499,11 +499,9 @@ func (a *App) frontend(w http.ResponseWriter, r *http.Request) {
 	if contentType := mime.TypeByExtension(path.Ext(requested)); contentType != "" {
 		w.Header().Set("Content-Type", contentType)
 	}
-	if requested == "index.html" {
-		w.Header().Set("Cache-Control", "no-cache")
-	} else {
-		w.Header().Set("Cache-Control", "public, max-age=3600")
-	}
+	// Asset filenames are intentionally stable, so revalidate them on each page
+	// load to avoid pairing new markup with stale JavaScript after a deployment.
+	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
 }
