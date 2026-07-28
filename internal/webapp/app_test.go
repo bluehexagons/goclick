@@ -186,6 +186,18 @@ func TestLoginRateLimitAndSecurityHeaders(t *testing.T) {
 	}
 }
 
+func TestRateLimitRetryAfterRoundsUp(t *testing.T) {
+	response := httptest.NewRecorder()
+	rateLimited(response, 1500*time.Millisecond)
+
+	if response.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want 429", response.Code)
+	}
+	if retryAfter := response.Header().Get("Retry-After"); retryAfter != "2" {
+		t.Fatalf("Retry-After = %q, want 2", retryAfter)
+	}
+}
+
 func TestHSTSMatchesSecureCookieMode(t *testing.T) {
 	for _, test := range []struct {
 		name          string

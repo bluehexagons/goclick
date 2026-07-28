@@ -94,11 +94,10 @@ func Open(path string) (*Store, error) {
 		}
 	}
 
-	dsn := path
-	if path == ":memory:" {
-		dsn = "file:goclick?mode=memory&cache=shared"
-	}
-	db, err := sql.Open("sqlite", dsn)
+	// The store uses one persistent database/sql connection, so SQLite's plain
+	// in-memory DSN is sufficient. A fixed shared-cache URI would make separate
+	// Open(":memory:") calls unexpectedly share users and sessions.
+	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}

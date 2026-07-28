@@ -539,11 +539,14 @@ func clientIP(r *http.Request) string {
 }
 
 func rateLimited(w http.ResponseWriter, retry time.Duration) {
-	seconds := int(retry.Round(time.Second).Seconds())
+	seconds := retry / time.Second
+	if retry%time.Second != 0 {
+		seconds++
+	}
 	if seconds < 1 {
 		seconds = 1
 	}
-	w.Header().Set("Retry-After", strconv.Itoa(seconds))
+	w.Header().Set("Retry-After", strconv.FormatInt(int64(seconds), 10))
 	writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "Too many requests; try again shortly"})
 }
 

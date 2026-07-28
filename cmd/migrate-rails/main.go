@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -31,6 +32,15 @@ func main() {
 		fmt.Fprintln(os.Stderr, "error: source and target databases must be different files")
 		os.Exit(2)
 	}
+	sameFile, err := sameDatabaseFile(sourcePath, targetPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: inspect database paths: %v\n", err)
+		os.Exit(1)
+	}
+	if sameFile {
+		fmt.Fprintln(os.Stderr, "error: source and target databases must be different files")
+		os.Exit(2)
+	}
 
 	database, err := store.Open(*target)
 	if err != nil {
@@ -47,4 +57,26 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("Imported %d users and %d counter sets into %s.\n", result.Users, result.Counters, *target)
+}
+
+func sameDatabaseFile(sourcePath, targetPath string) (bool, error) {
+	sourceInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		return false, fmt.Errorf("source database: %w", err)
+	}
+	if !sourceInfo.Mode().IsRegular() {
+		return false, errors.New("source database is not a regular file")
+	}
+
+	targetInfo, err := os.Stat(targetPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("target database: %w", err)
+	}
+	if !targetInfo.Mode().IsRegular() {
+		return false, errors.New("target database is not a regular file")
+	}
+	return os.SameFile(sourceInfo, targetInfo), nil
 }

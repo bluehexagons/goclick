@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -144,6 +145,24 @@ func TestOpenRestrictsDatabasePermissions(t *testing.T) {
 	}
 	if permissions := info.Mode().Perm(); permissions != 0o600 {
 		t.Fatalf("database permissions = %o, want 600", permissions)
+	}
+}
+
+func TestInMemoryStoresAreIsolated(t *testing.T) {
+	first, err := Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Close()
+	second, err := Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close()
+
+	createTestUser(t, first, "first_store_user")
+	if _, err := second.UserByIdentifier(context.Background(), "first_store_user"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("user lookup in independent store error = %v, want ErrNotFound", err)
 	}
 }
 
