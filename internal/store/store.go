@@ -78,6 +78,20 @@ func Open(path string) (*Store, error) {
 		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 			return nil, fmt.Errorf("create database directory: %w", err)
 		}
+		// SQLite's default creation mode is affected by the process umask and
+		// can leave password and session digests readable by other local users.
+		// Open the file ourselves so both new and existing databases are private.
+		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+		if err != nil {
+			return nil, fmt.Errorf("prepare database file: %w", err)
+		}
+		if err := file.Chmod(0o600); err != nil {
+			file.Close()
+			return nil, fmt.Errorf("secure database file: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return nil, fmt.Errorf("close prepared database file: %w", err)
+		}
 	}
 
 	dsn := path

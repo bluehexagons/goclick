@@ -186,6 +186,40 @@ func TestLoginRateLimitAndSecurityHeaders(t *testing.T) {
 	}
 }
 
+func TestHSTSMatchesSecureCookieMode(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		secureCookies bool
+		wantHSTS      bool
+	}{
+		{name: "HTTPS", secureCookies: true, wantHSTS: true},
+		{name: "plain HTTP", secureCookies: false, wantHSTS: false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			database, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer database.Close()
+			app, err := New(database, Config{
+				SecureCookies: test.secureCookies,
+				Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+				passwordCost:  bcrypt.MinCost,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := httptest.NewRequest(http.MethodGet, "https://goclick.test/up", nil)
+			response := httptest.NewRecorder()
+			app.Handler().ServeHTTP(response, request)
+			hasHSTS := response.Header().Get("Strict-Transport-Security") != ""
+			if hasHSTS != test.wantHSTS {
+				t.Fatalf("HSTS present = %v, want %v", hasHSTS, test.wantHSTS)
+			}
+		})
+	}
+}
+
 func TestInvalidClickSessionsAreRateLimitedBeforeAuthentication(t *testing.T) {
 	database, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {

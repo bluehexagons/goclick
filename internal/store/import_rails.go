@@ -5,8 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"path/filepath"
+
+	"golang.org/x/crypto/bcrypt"
 )
+
+const maxImportedBcryptCost = 14
 
 type ImportResult struct {
 	Users    int
@@ -21,7 +26,11 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	if err != nil {
 		return ImportResult{}, fmt.Errorf("resolve source path: %w", err)
 	}
-	source, err := sql.Open("sqlite", "file:"+absolute+"?mode=ro")
+	sourceURL := &url.URL{Scheme: "file", Path: filepath.ToSlash(absolute)}
+	query := sourceURL.Query()
+	query.Set("mode", "ro")
+	sourceURL.RawQuery = query.Encode()
+	source, err := sql.Open("sqlite", sourceURL.String())
 	if err != nil {
 		return ImportResult{}, fmt.Errorf("open Rails database: %w", err)
 	}
@@ -60,6 +69,16 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 		}
 		if !passwordHash.Valid || passwordHash.String == "" {
 			return ImportResult{}, fmt.Errorf("Rails user %d (%s) has no password digest", id, username)
+		}
+		cost, err := bcrypt.Cost([]byte(passwordHash.String))
+		if err != nil {
+			return ImportResult{}, fmt.Errorf("Rails user %d (%s) has an invalid bcrypt password digest: %w", id, username, err)
+		}
+		if cost < bcrypt.DefaultCost || cost > maxImportedBcryptCost {
+			return ImportResult{}, fmt.Errorf(
+				"Rails user %d (%s) has unsupported bcrypt cost %d (allowed %d-%d)",
+				id, username, cost, bcrypt.DefaultCost, maxImportedBcryptCost,
+			)
 		}
 		createdAt, err = normalizeImportedTime(createdAt)
 		if err != nil {

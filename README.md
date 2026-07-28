@@ -73,14 +73,17 @@ but authentication is cookie-based and old JWTs are not accepted.
 ## Security
 
 - Passwords use bcrypt cost 12 to match Rails production hashes; unknown-user
-  login performs the same-cost dummy bcrypt check.
+  login performs the same-cost dummy bcrypt check. The Rails importer rejects
+  malformed or unreasonable-cost password digests.
 - Session secrets are 256-bit random values and only SHA-256 digests are stored.
+- The SQLite database is restricted to the service account (`0600`).
 - Mutations reject cross-site browser requests, and cookies are HttpOnly and
   `SameSite=Strict`.
 - Login, signup, total requests, and authenticated clicks have independent
   in-memory rate limits. Add proxy-level limits for multi-instance deployments.
 - Strict body/header limits, HTTP timeouts, parameterized SQL, security headers,
-  and transactional counter updates reduce common abuse and consistency risks.
+  HSTS in HTTPS mode, and transactional counter updates reduce common abuse and
+  consistency risks.
 - Expired server-side sessions are reaped at startup and every 24 hours.
 
 ## Test

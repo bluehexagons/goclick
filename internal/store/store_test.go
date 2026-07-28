@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"database/sql"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -116,6 +118,35 @@ func TestSessionStoresDigestAndExpires(t *testing.T) {
 	}
 }
 
+func TestOpenRestrictsDatabasePermissions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "permissions.db")
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	database, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if permissions := info.Mode().Perm(); permissions != 0o600 {
+		t.Fatalf("database permissions = %o, want 600", permissions)
+	}
+}
+
 func TestImportRailsPreservesPasswordsAndCounters(t *testing.T) {
 	sourcePath := filepath.Join(t.TempDir(), "production.sqlite3")
 	source, err := sql.Open("sqlite", sourcePath)
@@ -143,7 +174,7 @@ func TestImportRailsPreservesPasswordsAndCounters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte("old-password"), bcrypt.MinCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte("old-password"), bcrypt.DefaultCost)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,6 +220,55 @@ func TestImportRailsPreservesPasswordsAndCounters(t *testing.T) {
 	// The importer is intentionally safe to rerun during cutover rehearsals.
 	if _, err := target.ImportRails(context.Background(), sourcePath); err != nil {
 		t.Fatalf("second import failed: %v", err)
+	}
+}
+
+func TestImportRailsRejectsUnsafePasswordDigest(t *testing.T) {
+	sourcePath := filepath.Join(t.TempDir(), "production.sqlite3")
+	source, err := sql.Open("sqlite", sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = source.Exec(`
+		CREATE TABLE users (
+			id INTEGER PRIMARY KEY,
+			username TEXT NOT NULL,
+			email TEXT,
+			password_digest TEXT,
+			admin INTEGER NOT NULL DEFAULT 0,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL
+		);
+		CREATE TABLE entities (
+			id INTEGER PRIMARY KEY,
+			user_id INTEGER NOT NULL,
+			kind TEXT,
+			count INTEGER,
+			modified_time datetime,
+			updated_at datetime NOT NULL
+		);`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte("old-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unsafeHash := strings.Replace(string(hash), "$10$", "$31$", 1)
+	if _, err := source.Exec(`
+		INSERT INTO users VALUES
+			(1, 'poisoned_user', NULL, ?, 0, '2026-01-01 00:00:00', '2026-01-01 00:00:00')`,
+		unsafeHash); err != nil {
+		t.Fatal(err)
+	}
+	if err := source.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	target := openTestStore(t)
+	_, err = target.ImportRails(context.Background(), sourcePath)
+	if err == nil || !strings.Contains(err.Error(), "unsupported bcrypt cost 31") {
+		t.Fatalf("unsafe password digest error = %v", err)
 	}
 }
 
