@@ -19,6 +19,7 @@ let pendingClicks = 0;
 let clickBatchFailed = false;
 let clickAnimationTimer = 0;
 let signingOut = false;
+let clickGeneration = 0;
 const maxPendingClicks = 6;
 
 function show(view) {
@@ -100,7 +101,19 @@ function setUser(nextUser) {
   user = nextUser;
   document.querySelector("#nav-username").textContent = user?.username ?? "";
   document.querySelector("#game-username").textContent = user?.username ?? "";
-  if (identityChanged) renderCounters({}, true);
+  if (identityChanged) {
+    resetClickState();
+    renderCounters({}, true);
+  }
+}
+
+function resetClickState() {
+  clickGeneration++;
+  pendingClicks = 0;
+  clickBatchFailed = false;
+  window.clearTimeout(clickAnimationTimer);
+  clickButton.classList.remove("clicked");
+  clickButton.disabled = !gameReady;
 }
 
 function renderCounters(data, allowDecrease = false) {
@@ -117,6 +130,7 @@ function renderCounters(data, allowDecrease = false) {
 }
 
 async function openGame() {
+  const generation = clickGeneration;
   show("game");
   showError("#game-error", "");
   retryGameButton.hidden = true;
@@ -125,11 +139,14 @@ async function openGame() {
   counterCard.setAttribute("aria-busy", "true");
   setConnection("Loading…", "loading");
   try {
-    renderCounters(await api("/api/clicks"), true);
+    const data = await api("/api/clicks");
+    if (generation !== clickGeneration) return;
+    renderCounters(data, true);
     gameReady = true;
     clickButton.disabled = false;
     setConnection("Ready");
   } catch (error) {
+    if (generation !== clickGeneration) return;
     if (error.status === 401) {
       if (user && !signingOut) handleExpiredSession();
     } else {
@@ -138,7 +155,7 @@ async function openGame() {
       setConnection("Not connected", "error");
     }
   } finally {
-    counterCard.setAttribute("aria-busy", "false");
+    if (generation === clickGeneration) counterCard.setAttribute("aria-busy", "false");
   }
 }
 
@@ -251,12 +268,16 @@ clickButton.addEventListener("click", async () => {
   window.clearTimeout(clickAnimationTimer);
   clickAnimationTimer = window.setTimeout(() => clickButton.classList.remove("clicked"), 140);
   const started = performance.now();
+  const generation = clickGeneration;
   setConnection(pendingClicks === 1 ? "Saving click…" : `Saving ${pendingClicks} clicks…`, "loading");
   let saved = false;
   try {
-    renderCounters(await api("/api/clicks", { method: "POST" }));
+    const data = await api("/api/clicks", { method: "POST" });
+    if (generation !== clickGeneration) return;
+    renderCounters(data);
     saved = true;
   } catch (error) {
+    if (generation !== clickGeneration) return;
     if (error.status === 401) {
       if (user && !signingOut) handleExpiredSession();
       return;
@@ -267,6 +288,7 @@ clickButton.addEventListener("click", async () => {
       : `Your click wasn’t saved. ${error.message}`, true);
     setConnection("Not saved", "error");
   } finally {
+    if (generation !== clickGeneration) return;
     pendingClicks--;
     clickButton.disabled = !gameReady || pendingClicks >= maxPendingClicks;
     if (!clickBatchFailed && pendingClicks > 0) {

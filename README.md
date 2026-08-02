@@ -41,15 +41,21 @@ go run ./cmd/migrate-rails \
   -target data/goclick.db
 ```
 
-The import is transactional and can be rerun. It preserves user IDs, usernames,
+The import is transactional and idempotent. It preserves user IDs, usernames,
 optional email addresses, admin flags, timestamps, all four counters, and the
-last click time. Rails `has_secure_password` stores standard bcrypt hashes, so
-the password digests are copied unchanged and existing passwords work
-immediately—there is no first-login reset.
+last click time. Every Rails entity, including custom kinds, is retained in the
+`rails_entities` archive in addition to the normalized gameplay counters.
+Rails `has_secure_password` stores standard bcrypt hashes, so the password
+digests are copied unchanged and existing passwords work immediately—there is
+no first-login reset.
 
 Run the importer against a copy of production first and verify representative
-accounts before the final cutover. Refresh tokens from Rails are intentionally
-not migrated; users receive a new Go Click session when they sign in.
+accounts before the final cutover. An unchanged import can be repeated, but a
+different existing Go Click record is reported as a conflict rather than
+silently overwritten. Refresh tokens from Rails are intentionally not migrated;
+users receive a new Go Click session when they sign in. See
+[`docs/migration.md`](docs/migration.md) for the complete procedure and why the
+Rails admin JSON export is not sufficient.
 
 ## API
 
@@ -68,7 +74,9 @@ Authentication uses a random, hashed server-side session in an `HttpOnly`,
 
 JSON request bodies are limited to 8 KiB. Legacy Rails paths (`/auth/login`,
 `/auth/signup`, `/me`, and `/entities/*`) are retained as transition aliases,
-but authentication is cookie-based and old JWTs are not accepted.
+but authentication is cookie-based and old JWTs are not accepted. The Rails
+`/auth/refresh` and `/admin/*` endpoints are not compatibility aliases; Go Click
+currently exposes the gameplay and account surface only.
 
 ## Security
 

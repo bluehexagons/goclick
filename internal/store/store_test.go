@@ -187,7 +187,9 @@ func TestImportRailsPreservesPasswordsAndCounters(t *testing.T) {
 			user_id INTEGER NOT NULL,
 			kind TEXT,
 			count INTEGER,
+			created_time datetime,
 			modified_time datetime,
+			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL
 		);`)
 	if err != nil {
@@ -200,11 +202,13 @@ func TestImportRailsPreservesPasswordsAndCounters(t *testing.T) {
 	created := "2025-12-12 18:00:00"
 	if _, err := source.Exec(`
 		INSERT INTO users VALUES (42, 'legacy_user', 'legacy@example.com', ?, 1, ?, ?);
-		INSERT INTO entities (user_id, kind, count, modified_time, updated_at) VALUES
-			(42, 'click_count', 1234, '2026-07-25 15:30:00', '2026-07-25 15:30:00'),
-			(42, 'streak_counter_day', 8, '2026-07-25 15:30:00', '2026-07-25 15:30:00'),
-			(42, 'streak_counter_month', 4, '2026-07-25 15:30:00', '2026-07-25 15:30:00'),
-			(42, 'streak_counter_year', 2, '2026-07-25 15:30:00', '2026-07-25 15:30:00')`,
+		INSERT INTO entities (id, user_id, kind, count, created_time, modified_time, created_at, updated_at) VALUES
+			(101, 42, 'click_count', 1234, '2026-07-25 15:30:00', '2026-07-25 15:30:00', '2026-07-25 15:30:00', '2026-07-25 15:30:00'),
+			(102, 42, 'streak_counter_day', 8, '2026-07-25 15:30:00', '2026-07-25 15:30:00', '2026-07-25 15:30:00', '2026-07-25 15:30:00'),
+			(103, 42, 'streak_counter_month', 4, '2026-07-25 15:30:00', '2026-07-25 15:30:00', '2026-07-25 15:30:00', '2026-07-25 15:30:00'),
+			(104, 42, 'streak_counter_year', 2, '2026-07-25 15:30:00', '2026-07-25 15:30:00', '2026-07-25 15:30:00', '2026-07-25 15:30:00'),
+			(105, 42, 'custom_kind', NULL, NULL, NULL, '2026-07-25 15:30:00', '2026-07-25 15:30:00'),
+			(106, 42, NULL, -7, NULL, NULL, '2026-07-25 15:30:00', '2026-07-25 15:30:00')`,
 		string(hash), created, created); err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +221,7 @@ func TestImportRailsPreservesPasswordsAndCounters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Users != 1 || result.Counters != 1 {
+	if result.Users != 1 || result.Counters != 1 || result.Entities != 6 {
 		t.Fatalf("result = %+v", result)
 	}
 	user, err := target.UserByIdentifier(context.Background(), "legacy_user")
@@ -235,10 +239,62 @@ func TestImportRailsPreservesPasswordsAndCounters(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertCounters(t, counters, 1234, 8, 4, 2)
+	var archived int
+	if err := target.db.QueryRow(`SELECT COUNT(*) FROM rails_entities`).Scan(&archived); err != nil {
+		t.Fatal(err)
+	}
+	if archived != 6 {
+		t.Fatalf("archived entities = %d, want 6", archived)
+	}
+	var customKind sql.NullString
+	var customCount sql.NullInt64
+	if err := target.db.QueryRow(`SELECT kind, count FROM rails_entities WHERE id = 105`).Scan(&customKind, &customCount); err != nil {
+		t.Fatal(err)
+	}
+	if !customKind.Valid || customKind.String != "custom_kind" || customCount.Valid {
+		t.Fatalf("archived custom entity = kind %v count %v", customKind, customCount)
+	}
+	var nullKind sql.NullString
+	var nullCount int64
+	if err := target.db.QueryRow(`SELECT kind, count FROM rails_entities WHERE id = 106`).Scan(&nullKind, &nullCount); err != nil {
+		t.Fatal(err)
+	}
+	if nullKind.Valid || nullCount != -7 {
+		t.Fatalf("archived nullable entity = kind %v count %d", nullKind, nullCount)
+	}
 
 	// The importer is intentionally safe to rerun during cutover rehearsals.
 	if _, err := target.ImportRails(context.Background(), sourcePath); err != nil {
 		t.Fatalf("second import failed: %v", err)
+	}
+	if _, err := target.db.Exec(`UPDATE counters SET click_count = 999 WHERE user_id = 42`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := target.ImportRails(context.Background(), sourcePath); err == nil || !strings.Contains(err.Error(), "target counters for user 42 differ") {
+		t.Fatalf("conflicting rerun error = %v", err)
+	}
+
+	source, err = sql.Open("sqlite", sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := source.Exec(`UPDATE entities SET count = -1 WHERE id = 101`); err != nil {
+		source.Close()
+		t.Fatal(err)
+	}
+	if err := source.Close(); err != nil {
+		t.Fatal(err)
+	}
+	negativeTarget := openTestStore(t)
+	if _, err := negativeTarget.ImportRails(context.Background(), sourcePath); err == nil || !strings.Contains(err.Error(), "negative count") {
+		t.Fatalf("negative canonical count error = %v", err)
+	}
+	var users int
+	if err := negativeTarget.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&users); err != nil {
+		t.Fatal(err)
+	}
+	if users != 0 {
+		t.Fatalf("users after failed import = %d, want 0", users)
 	}
 }
 
@@ -263,7 +319,9 @@ func TestImportRailsRejectsUnsafePasswordDigest(t *testing.T) {
 			user_id INTEGER NOT NULL,
 			kind TEXT,
 			count INTEGER,
+			created_time datetime,
 			modified_time datetime,
+			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL
 		);`)
 	if err != nil {

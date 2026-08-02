@@ -56,7 +56,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: import failed: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Imported %d users and %d counter sets into %s.\n", result.Users, result.Counters, *target)
+	fmt.Printf("Imported %d users, %d entities, and %d counter sets into %s.\n", result.Users, result.Entities, result.Counters, *target)
 }
 
 func sameDatabaseFile(sourcePath, targetPath string) (bool, error) {

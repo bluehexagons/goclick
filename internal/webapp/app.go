@@ -321,8 +321,8 @@ func publicUser(user store.User) publicUserResponse {
 }
 
 type entity struct {
-	Count        int64  `json:"count"`
-	ModifiedTime string `json:"modified_time"`
+	Count        int64   `json:"count"`
+	ModifiedTime *string `json:"modified_time"`
 }
 
 type entitiesResponse struct {
@@ -333,10 +333,14 @@ type entitiesResponse struct {
 }
 
 func entityResponse(counters store.Counters) entitiesResponse {
-	if counters.LastClickedAt == nil {
+	if !counters.Exists {
 		return entitiesResponse{}
 	}
-	modified := counters.LastClickedAt.Format(time.RFC3339Nano)
+	var modified *string
+	if counters.LastClickedAt != nil {
+		value := counters.LastClickedAt.Format(time.RFC3339Nano)
+		modified = &value
+	}
 	return entitiesResponse{
 		ClickCount:         &entity{Count: counters.Clicks, ModifiedTime: modified},
 		StreakCounterDay:   &entity{Count: counters.DayStreak, ModifiedTime: modified},

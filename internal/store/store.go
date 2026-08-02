@@ -34,12 +34,15 @@ type User struct {
 }
 
 type Counters struct {
+	Exists        bool
 	Clicks        int64
 	DayStreak     int64
 	MonthStreak   int64
 	YearStreak    int64
 	LastClickedAt *time.Time
 }
+
+const schemaVersion = 2
 
 const schema = `
 PRAGMA foreign_keys = ON;
@@ -60,6 +63,17 @@ CREATE TABLE IF NOT EXISTS counters (
 	year_streak INTEGER NOT NULL DEFAULT 0 CHECK (year_streak >= 0),
 	last_clicked_at TEXT
 );
+CREATE TABLE IF NOT EXISTS rails_entities (
+	id INTEGER PRIMARY KEY,
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	kind TEXT,
+	count INTEGER,
+	created_time TEXT,
+	modified_time TEXT,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rails_entities_user_id ON rails_entities(user_id);
 CREATE TABLE IF NOT EXISTS sessions (
 	token_hash BLOB PRIMARY KEY,
 	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -75,8 +89,14 @@ func Open(path string) (*Store, error) {
 		return nil, errors.New("database path is required")
 	}
 	if path != ":memory:" {
-		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		directory := filepath.Dir(path)
+		if err := os.MkdirAll(directory, 0o700); err != nil {
 			return nil, fmt.Errorf("create database directory: %w", err)
+		}
+		if directory != "." {
+			if err := os.Chmod(directory, 0o700); err != nil {
+				return nil, fmt.Errorf("secure database directory: %w", err)
+			}
 		}
 		// SQLite's default creation mode is affected by the process umask and
 		// can leave password and session digests readable by other local users.
@@ -114,7 +134,37 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("initialize database: %w", err)
 	}
+	var currentVersion int
+	if err := db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&currentVersion); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("read schema version: %w", err)
+	}
+	if currentVersion > schemaVersion {
+		db.Close()
+		return nil, fmt.Errorf("database schema version %d is newer than supported version %d", currentVersion, schemaVersion)
+	}
+	if currentVersion < schemaVersion {
+		if _, err := db.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", schemaVersion)); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("upgrade schema version: %w", err)
+		}
+	}
+	if path != ":memory:" {
+		if err := secureSQLiteFiles(path); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
 	return &Store{db: db}, nil
+}
+
+func secureSQLiteFiles(path string) error {
+	for _, candidate := range []string{path, path + "-wal", path + "-shm", path + "-journal"} {
+		if err := os.Chmod(candidate, 0o600); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("secure SQLite file %s: %w", candidate, err)
+		}
+	}
+	return nil
 }
 
 func (s *Store) Close() error {
@@ -229,6 +279,7 @@ func (s *Store) CurrentCounters(ctx context.Context, userID int64) (Counters, er
 	if err != nil {
 		return Counters{}, fmt.Errorf("read counters: %w", err)
 	}
+	counters.Exists = true
 	if last.Valid {
 		parsed, err := parseTime(last.String)
 		if err != nil {
@@ -253,6 +304,7 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		FROM counters WHERE user_id = ?`, userID).
 		Scan(&counters.Clicks, &counters.DayStreak, &counters.MonthStreak, &counters.YearStreak, &last)
 	if errors.Is(err, sql.ErrNoRows) {
+		counters.Exists = true
 		counters.DayStreak = 1
 		counters.MonthStreak = 1
 		counters.YearStreak = 1
@@ -266,6 +318,12 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		counters.DayStreak = updateStreak(counters.DayStreak, dateKey(previous), dateKey(now), dateKey(now.AddDate(0, 0, -1)))
 		counters.MonthStreak = updateStreak(counters.MonthStreak, monthKey(previous), monthKey(now), previousMonthKey(now))
 		counters.YearStreak = updateStreak(counters.YearStreak, yearKey(previous), yearKey(now), yearKey(now.AddDate(-1, 0, 0)))
+	} else {
+		// Imported or manually repaired rows without a click timestamp have no
+		// period to compare against. Start a fresh streak on the next click.
+		counters.DayStreak = 1
+		counters.MonthStreak = 1
+		counters.YearStreak = 1
 	}
 	counters.Clicks++
 	now = now.UTC()

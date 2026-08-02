@@ -198,6 +198,23 @@ func TestRateLimitRetryAfterRoundsUp(t *testing.T) {
 	}
 }
 
+func TestEntityResponseIncludesCountersWithoutLastClickTime(t *testing.T) {
+	response := entityResponse(store.Counters{
+		Exists:      true,
+		Clicks:      7,
+		DayStreak:   2,
+		MonthStreak: 3,
+		YearStreak:  4,
+	})
+
+	if response.ClickCount == nil || response.ClickCount.Count != 7 || response.ClickCount.ModifiedTime != nil {
+		t.Fatalf("click entity = %+v", response.ClickCount)
+	}
+	if response.StreakCounterDay == nil || response.StreakCounterDay.Count != 2 {
+		t.Fatalf("day streak entity = %+v", response.StreakCounterDay)
+	}
+}
+
 func TestHSTSMatchesSecureCookieMode(t *testing.T) {
 	for _, test := range []struct {
 		name          string
@@ -348,6 +365,7 @@ func TestFrontendIsEmbedded(t *testing.T) {
 	if response.StatusCode != http.StatusOK ||
 		cacheControl != "no-cache" ||
 		!strings.Contains(script, "handleExpiredSession") ||
+		!strings.Contains(script, "clickGeneration") ||
 		!strings.Contains(script, "maxPendingClicks") {
 		t.Fatalf("frontend script status/cache/body = %d %q %q", response.StatusCode, cacheControl, script)
 	}
