@@ -247,10 +247,8 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		invalidCredentials(w)
 		return
 	}
-	if oldCookie, cookieErr := r.Cookie(sessionCookie); cookieErr == nil {
-		if raw, decodeErr := base64.RawURLEncoding.DecodeString(oldCookie.Value); decodeErr == nil {
-			_ = a.store.DeleteSession(r.Context(), raw)
-		}
+	if raw, _, ok := rawSessionToken(r); ok {
+		_ = a.store.DeleteSession(r.Context(), raw)
 	}
 	if err := a.startSession(w, r, user); err != nil {
 		a.internalError(w, r, "start login session", err)
@@ -264,12 +262,10 @@ func invalidCredentials(w http.ResponseWriter) {
 }
 
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
-	if cookie, err := r.Cookie(sessionCookie); err == nil {
-		if raw, decodeErr := base64.RawURLEncoding.DecodeString(cookie.Value); decodeErr == nil {
-			if err := a.store.DeleteSession(r.Context(), raw); err != nil {
-				a.internalError(w, r, "delete logout session", err)
-				return
-			}
+	if raw, _, ok := rawSessionToken(r); ok {
+		if err := a.store.DeleteSession(r.Context(), raw); err != nil {
+			a.internalError(w, r, "delete logout session", err)
+			return
 		}
 	}
 	a.clearSessionCookie(w)
@@ -376,13 +372,12 @@ func (a *App) clearSessionCookie(w http.ResponseWriter) {
 
 func (a *App) requireUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(sessionCookie)
-		if err != nil {
+		raw, present, valid := rawSessionToken(r)
+		if !present {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Authentication required"})
 			return
 		}
-		raw, err := base64.RawURLEncoding.DecodeString(cookie.Value)
-		if err != nil || len(raw) != 32 {
+		if !valid {
 			a.clearSessionCookie(w)
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid session"})
 			return
@@ -399,6 +394,18 @@ func (a *App) requireUser(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r.WithContext(context.WithValue(r.Context(), userContextKey, user)))
 	}
+}
+
+func rawSessionToken(r *http.Request) ([]byte, bool, bool) {
+	cookie, err := r.Cookie(sessionCookie)
+	if err != nil {
+		return nil, false, false
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(cookie.Value)
+	if err != nil || len(raw) != 32 {
+		return nil, true, false
+	}
+	return raw, true, true
 }
 
 func userFromContext(ctx context.Context) store.User {

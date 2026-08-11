@@ -349,6 +349,14 @@ func TestImportRailsRejectsUnsafePasswordDigest(t *testing.T) {
 	}
 }
 
+func TestImportRailsRejectsNonRegularSource(t *testing.T) {
+	target := openTestStore(t)
+	_, err := target.ImportRails(context.Background(), t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "not a regular file") {
+		t.Fatalf("directory source error = %v", err)
+	}
+}
+
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
 	database, err := Open(filepath.Join(t.TempDir(), "test.db"))

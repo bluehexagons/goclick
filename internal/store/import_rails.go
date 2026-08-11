@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -42,9 +43,19 @@ type canonicalCounters struct {
 // Every source entity is retained in rails_entities; counters is the normalized
 // gameplay projection used by the Go API.
 func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResult, error) {
+	if sourcePath == "" {
+		return ImportResult{}, errors.New("Rails database source path is required")
+	}
 	absolute, err := filepath.Abs(sourcePath)
 	if err != nil {
 		return ImportResult{}, fmt.Errorf("resolve source path: %w", err)
+	}
+	info, err := os.Stat(absolute)
+	if err != nil {
+		return ImportResult{}, fmt.Errorf("inspect Rails database: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return ImportResult{}, errors.New("Rails database source is not a regular file")
 	}
 	sourceURL := &url.URL{Scheme: "file", Path: filepath.ToSlash(absolute)}
 	query := sourceURL.Query()

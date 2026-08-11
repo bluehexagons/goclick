@@ -263,7 +263,10 @@ func (s *Store) DeleteSession(ctx context.Context, rawToken []byte) error {
 
 func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at <= ?`, now.Unix())
-	return err
+	if err != nil {
+		return fmt.Errorf("delete expired sessions: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) CurrentCounters(ctx context.Context, userID int64) (Counters, error) {
