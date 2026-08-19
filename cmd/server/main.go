@@ -30,8 +30,14 @@ func main() {
 		logger.Error("parse GOCLICK_SECURE_COOKIES", "error", err)
 		os.Exit(1)
 	}
+	trustProxy, err := strconv.ParseBool(env("GOCLICK_TRUST_PROXY", "false"))
+	if err != nil {
+		logger.Error("parse GOCLICK_TRUST_PROXY", "error", err)
+		os.Exit(1)
+	}
 	app, err := webapp.New(database, webapp.Config{
 		SecureCookies: secureCookies,
+		TrustProxy:    trustProxy,
 		Logger:        logger,
 	})
 	if err != nil {
@@ -62,7 +68,7 @@ func main() {
 		}
 	}()
 
-	logger.Info("Go Click listening", "address", server.Addr, "database", databasePath, "secure_cookies", secureCookies)
+	logger.Info("Go Click listening", "address", server.Addr, "database", databasePath, "secure_cookies", secureCookies, "trust_proxy", trustProxy)
 	err = server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Error("serve", "error", err)

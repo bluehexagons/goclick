@@ -249,6 +249,46 @@ func TestHSTSMatchesSecureCookieMode(t *testing.T) {
 	}
 }
 
+func TestTrustedProxyClientIPRequiresLoopbackPeer(t *testing.T) {
+	app := &App{trustProxy: true}
+
+	request := httptest.NewRequest(http.MethodGet, "http://goclick.test/up", nil)
+	request.RemoteAddr = "127.0.0.1:4321"
+	request.Header.Set("X-Real-IP", "198.51.100.7")
+	if got := app.clientIP(request); got != "198.51.100.7" {
+		t.Fatalf("trusted proxy client IP = %q", got)
+	}
+
+	request.RemoteAddr = "192.0.2.10:4321"
+	if got := app.clientIP(request); got != "192.0.2.10" {
+		t.Fatalf("untrusted peer client IP = %q", got)
+	}
+}
+
+func TestHealthFailsWhenDatabaseIsUnavailable(t *testing.T) {
+	database, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := New(database, Config{
+		Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		passwordCost: bcrypt.MinCost,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "http://goclick.test/up", nil)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("health status = %d, want 503", response.Code)
+	}
+}
+
 func TestInvalidClickSessionsAreRateLimitedBeforeAuthentication(t *testing.T) {
 	database, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {

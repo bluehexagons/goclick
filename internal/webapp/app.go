@@ -41,6 +41,7 @@ var (
 
 type Config struct {
 	SecureCookies bool
+	TrustProxy    bool
 	SessionTTL    time.Duration
 	Logger        *slog.Logger
 	Now           func() time.Time
@@ -50,6 +51,7 @@ type Config struct {
 type App struct {
 	store         *store.Store
 	secureCookies bool
+	trustProxy    bool
 	sessionTTL    time.Duration
 	passwordCost  int
 	logger        *slog.Logger
@@ -91,6 +93,7 @@ func New(database *store.Store, config Config) (*App, error) {
 	app := &App{
 		store:         database,
 		secureCookies: config.SecureCookies,
+		trustProxy:    config.TrustProxy,
 		sessionTTL:    config.SessionTTL,
 		passwordCost:  config.passwordCost,
 		logger:        config.Logger,
@@ -125,7 +128,14 @@ func (a *App) Handler() http.Handler {
 	return a.securityHeaders(a.recoverPanic(a.rejectCrossSite(a.bodyLimit(a.globalLimit(mux)))))
 }
 
-func (a *App) health(w http.ResponseWriter, _ *http.Request) {
+func (a *App) health(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	if err := a.store.Health(ctx); err != nil {
+		a.logger.Warn("health check failed", "error", err)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -143,7 +153,7 @@ type signupPayload struct {
 }
 
 func (a *App) signup(w http.ResponseWriter, r *http.Request) {
-	if ok, retry := a.limiter.allow("signup:"+clientIP(r), 5, time.Minute); !ok {
+	if ok, retry := a.limiter.allow("signup:"+a.clientIP(r), 5, time.Minute); !ok {
 		rateLimited(w, retry)
 		return
 	}
@@ -212,7 +222,7 @@ type loginPayload struct {
 }
 
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
-	ip := clientIP(r)
+	ip := a.clientIP(r)
 	if ok, retry := a.limiter.allow("login-ip:"+ip, 5, 20*time.Second); !ok {
 		rateLimited(w, retry)
 		return
@@ -417,14 +427,14 @@ func (a *App) globalLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost &&
 			(r.URL.Path == "/api/clicks" || r.URL.Path == "/entities/increment") {
-			if ok, retry := a.limiter.allow("click-ip:"+clientIP(r), clicksPerIP, time.Minute); !ok {
+			if ok, retry := a.limiter.allow("click-ip:"+a.clientIP(r), clicksPerIP, time.Minute); !ok {
 				rateLimited(w, retry)
 				return
 			}
 			next.ServeHTTP(w, r)
 			return
 		}
-		if ok, retry := a.limiter.allow("request:"+clientIP(r), 200, 5*time.Minute); !ok {
+		if ok, retry := a.limiter.allow("request:"+a.clientIP(r), 200, 5*time.Minute); !ok {
 			rateLimited(w, retry)
 			return
 		}
@@ -541,12 +551,19 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {
 	return true
 }
 
-func clientIP(r *http.Request) string {
+func (a *App) clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil {
-		return host
+	if err != nil {
+		host = r.RemoteAddr
 	}
-	return r.RemoteAddr
+	peer := net.ParseIP(host)
+	if a.trustProxy && peer != nil && peer.IsLoopback() {
+		forwarded := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP")))
+		if forwarded != nil {
+			return forwarded.String()
+		}
+	}
+	return host
 }
 
 func rateLimited(w http.ResponseWriter, retry time.Duration) {

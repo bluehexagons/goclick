@@ -171,6 +171,17 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
+func (s *Store) Health(ctx context.Context) error {
+	var value int
+	if err := s.db.QueryRowContext(ctx, "SELECT 1").Scan(&value); err != nil {
+		return fmt.Errorf("check database health: %w", err)
+	}
+	if value != 1 {
+		return errors.New("database health check returned an unexpected value")
+	}
+	return nil
+}
+
 func (s *Store) CreateUser(ctx context.Context, username string, email *string, passwordHash string, now time.Time) (User, error) {
 	result, err := s.db.ExecContext(ctx, `
 		INSERT INTO users (username, email, password_hash, created_at, updated_at)

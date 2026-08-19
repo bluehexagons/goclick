@@ -25,10 +25,12 @@ Configuration:
 | `GOCLICK_ADDR` | `:8080` | HTTP listen address |
 | `GOCLICK_DATABASE` | `data/goclick.db` | SQLite database path |
 | `GOCLICK_SECURE_COOKIES` | `false` | Set `true` whenever the public site uses HTTPS |
+| `GOCLICK_TRUST_PROXY` | `false` | Trust `X-Real-IP` only from a loopback reverse proxy |
 
-The server should be behind an HTTPS reverse proxy in production. It deliberately
-uses the TCP peer address—not a spoofable forwarded header—for IP rate limits.
-If a proxy is used, apply an additional client-IP rate limit there.
+The server should be behind an HTTPS reverse proxy in production. With
+`GOCLICK_TRUST_PROXY=true`, it accepts Nginx's `X-Real-IP` only when the TCP
+peer is loopback; forwarded headers from direct clients are ignored. Apply an
+additional client-IP rate limit at the proxy for defense in depth.
 
 ## Import Minimal Clicker
 
@@ -114,9 +116,11 @@ plain-HTTP container testing, override `GOCLICK_SECURE_COOKIES=false`.
 ## Deploy with infra_tools
 
 The repository includes an `infra.json` manifest for infra_tools. It builds the
-static Go binary on the target VM, keeps the SQLite database in infra_tools'
-persistent service data directory, binds the service to loopback, and exposes
-`/up` for deployment health checks.
+server and migration binaries on the target VM, assigns a stable internal port,
+keeps SQLite in infra_tools' persistent service data directory, binds the
+service to loopback, and exposes a database-aware `/up` health check. Before
+each replacement deployment, infra_tools creates an online SQLite backup and
+retains the latest 14 copies.
 
 With the current infra_tools target-build flow, Go is detected from `go.mod`
 and installed automatically when this repository is deployed:
@@ -128,7 +132,8 @@ infra-tools setup server_web app.example.com deploy \
 ```
 
 The Rails migration remains a separate one-time operation. Back up the Rails
-database and import it before switching traffic to the new service.
+database and import it before switching traffic to the new service. The
+target-VM procedure is documented in [`docs/migration.md`](docs/migration.md).
 
 ## License
 
