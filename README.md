@@ -111,6 +111,25 @@ docker run --read-only --tmpfs /tmp -p 8080:8080 -v goclick-data:/data goclick
 The image enables secure cookies, so use HTTPS in front of it. For local
 plain-HTTP container testing, override `GOCLICK_SECURE_COOKIES=false`.
 
+## Deploy with infra_tools
+
+The repository includes an `infra.json` manifest for infra_tools. It builds the
+static Go binary on the target VM, keeps the SQLite database in infra_tools'
+persistent service data directory, binds the service to loopback, and exposes
+`/up` for deployment health checks.
+
+With the current infra_tools target-build flow, Go is detected from `go.mod`
+and installed automatically when this repository is deployed:
+
+```bash
+infra-tools setup server_web app.example.com deploy \
+  --ssl --ssl-email admin@example.com \
+  --deploy app.example.com https://github.com/bluehexagons/goclick.git
+```
+
+The Rails migration remains a separate one-time operation. Back up the Rails
+database and import it before switching traffic to the new service.
+
 ## License
 
 Apache-2.0
