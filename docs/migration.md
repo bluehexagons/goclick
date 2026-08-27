@@ -70,21 +70,24 @@ both the release and service-writable data tree. Then stop Go Click and make the
 migration input readable only by its service account:
 
 ```bash
-sudo systemctl stop app-app_example_com-server.service
-sudo install -d -o root -g root -m 711 /var/lib/goclick-migration
-sudo install -o root -g app-app_example_com-server -m 440 \
-  /path/to/production.sqlite3 \
-  /var/lib/goclick-migration/rails-production.sqlite3
+sudo systemctl stop app-app_example_com-server.service &&
+  sudo install -d -o root -g root -m 711 /var/lib/goclick-migration &&
+  sudo install -o root -g app-app_example_com-server -m 440 \
+    /path/to/production.sqlite3 \
+    /var/lib/goclick-migration/rails-production.sqlite3
 ```
 
 If a Go Click database already exists, preserve it outside the service-writable
 tree before importing:
 
 ```bash
-sudo install -d -o root -g root -m 700 /var/backups/goclick
-sudo install -o root -g root -m 600 \
-  /var/www/.infra_tools_shared/app_example_com/server/data/goclick.db \
-  /var/backups/goclick/goclick.db.pre-import
+sudo install -d -o root -g root -m 700 /var/backups/goclick &&
+  sudo test ! -e /var/backups/goclick/goclick.db.pre-import &&
+  sudo sqlite3 \
+    /var/www/.infra_tools_shared/app_example_com/server/data/goclick.db \
+    ".backup '/var/backups/goclick/goclick.db.pre-import'" &&
+  sudo chown root:root /var/backups/goclick/goclick.db.pre-import &&
+  sudo chmod 600 /var/backups/goclick/goclick.db.pre-import
 ```
 
 Run the checked-in importer binary as the service account. It is transactional
@@ -94,12 +97,14 @@ and can safely be repeated when the source is unchanged:
 sudo -u app-app_example_com-server \
   /var/www/app_example_com/.infra_tools/bin/migrate-rails \
   -source /var/lib/goclick-migration/rails-production.sqlite3 \
-  -target /var/www/.infra_tools_shared/app_example_com/server/data/goclick.db
-sudo rm /var/lib/goclick-migration/rails-production.sqlite3
-sudo systemctl start app-app_example_com-server.service
-curl -fsS https://app.example.com/up
+  -target /var/www/.infra_tools_shared/app_example_com/server/data/goclick.db \
+  && sudo rm /var/lib/goclick-migration/rails-production.sqlite3 \
+  && sudo systemctl start app-app_example_com-server.service \
+  && curl -fsS https://app.example.com/up
 ```
 
 Verify representative migrated accounts and counters before changing public
 traffic. Retain the original source backup and the root-controlled pre-import Go
-Click backup according to the site's recovery policy.
+Click backup according to the site's recovery policy. If the importer fails,
+the command chain deliberately leaves the staged source in place and Go Click
+stopped for inspection; correct the problem before retrying or restarting.

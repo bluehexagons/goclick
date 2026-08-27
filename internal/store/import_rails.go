@@ -44,7 +44,7 @@ type canonicalCounters struct {
 // gameplay projection used by the Go API.
 func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResult, error) {
 	if sourcePath == "" {
-		return ImportResult{}, errors.New("Rails database source path is required")
+		return ImportResult{}, errors.New("rails database source path is required")
 	}
 	absolute, err := filepath.Abs(sourcePath)
 	if err != nil {
@@ -52,10 +52,10 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	}
 	info, err := os.Stat(absolute)
 	if err != nil {
-		return ImportResult{}, fmt.Errorf("inspect Rails database: %w", err)
+		return ImportResult{}, fmt.Errorf("inspect rails database: %w", err)
 	}
 	if !info.Mode().IsRegular() {
-		return ImportResult{}, errors.New("Rails database source is not a regular file")
+		return ImportResult{}, errors.New("rails database source is not a regular file")
 	}
 	sourceURL := &url.URL{Scheme: "file", Path: filepath.ToSlash(absolute)}
 	query := sourceURL.Query()
@@ -63,7 +63,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	sourceURL.RawQuery = query.Encode()
 	source, err := sql.Open("sqlite", sourceURL.String())
 	if err != nil {
-		return ImportResult{}, fmt.Errorf("open Rails database: %w", err)
+		return ImportResult{}, fmt.Errorf("open rails database: %w", err)
 	}
 	defer source.Close()
 	source.SetMaxOpenConns(1)
@@ -73,7 +73,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	// running application that continues to receive writes.
 	sourceTx, err := source.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
-		return ImportResult{}, fmt.Errorf("begin Rails database snapshot: %w", err)
+		return ImportResult{}, fmt.Errorf("begin rails database snapshot: %w", err)
 	}
 	defer sourceTx.Rollback()
 
@@ -96,7 +96,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 		SELECT id, user_id, kind, count, created_time, modified_time, created_at, updated_at
 		FROM entities ORDER BY id`)
 	if err != nil {
-		return ImportResult{}, fmt.Errorf("read Rails entities: %w", err)
+		return ImportResult{}, fmt.Errorf("read rails entities: %w", err)
 	}
 	defer entities.Close()
 
@@ -104,13 +104,13 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	for entities.Next() {
 		entity, err := scanRailsEntity(entities)
 		if err != nil {
-			return ImportResult{}, fmt.Errorf("scan Rails entity: %w", err)
+			return ImportResult{}, fmt.Errorf("scan rails entity: %w", err)
 		}
 		if !userIDs[entity.UserID] {
-			return ImportResult{}, fmt.Errorf("Rails entity %d references missing user %d", entity.ID, entity.UserID)
+			return ImportResult{}, fmt.Errorf("rails entity %d references missing user %d", entity.ID, entity.UserID)
 		}
 		if err := insertRailsEntity(ctx, tx, entity); err != nil {
-			return ImportResult{}, fmt.Errorf("import Rails entity %d: %w", entity.ID, err)
+			return ImportResult{}, fmt.Errorf("import rails entity %d: %w", entity.ID, err)
 		}
 		result.Entities++
 
@@ -120,7 +120,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 		switch *entity.Kind {
 		case "click_count", "streak_counter_day", "streak_counter_month", "streak_counter_year":
 			if entity.Count != nil && *entity.Count < 0 {
-				return ImportResult{}, fmt.Errorf("Rails entity %d (%s) has a negative count", entity.ID, *entity.Kind)
+				return ImportResult{}, fmt.Errorf("rails entity %d (%s) has a negative count", entity.ID, *entity.Kind)
 			}
 			state := canonical[entity.UserID]
 			if state == nil {
@@ -128,7 +128,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 				canonical[entity.UserID] = state
 			}
 			if state.seen[*entity.Kind] {
-				return ImportResult{}, fmt.Errorf("Rails user %d has duplicate %s entities", entity.UserID, *entity.Kind)
+				return ImportResult{}, fmt.Errorf("rails user %d has duplicate %s entities", entity.UserID, *entity.Kind)
 			}
 			state.seen[*entity.Kind] = true
 			count := int64(0)
@@ -153,7 +153,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 		}
 	}
 	if err := entities.Err(); err != nil {
-		return ImportResult{}, fmt.Errorf("iterate Rails entities: %w", err)
+		return ImportResult{}, fmt.Errorf("iterate rails entities: %w", err)
 	}
 
 	userIDsWithCounters := make([]int64, 0, len(canonical))
@@ -169,7 +169,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	}
 
 	if err := tx.Commit(); err != nil {
-		return ImportResult{}, fmt.Errorf("commit Rails import: %w", err)
+		return ImportResult{}, fmt.Errorf("commit rails import: %w", err)
 	}
 	return result, nil
 }
@@ -183,7 +183,7 @@ func importRailsUsers(ctx context.Context, source railsQueryer, tx *sql.Tx) (map
 		SELECT id, username, email, password_digest, admin, created_at, updated_at
 		FROM users ORDER BY id`)
 	if err != nil {
-		return nil, ImportResult{}, fmt.Errorf("read Rails users: %w", err)
+		return nil, ImportResult{}, fmt.Errorf("read rails users: %w", err)
 	}
 	defer rows.Close()
 
@@ -198,40 +198,40 @@ func importRailsUsers(ctx context.Context, source railsQueryer, tx *sql.Tx) (map
 			createdAt, updatedAt string
 		)
 		if err := rows.Scan(&id, &username, &email, &passwordHash, &admin, &createdAt, &updatedAt); err != nil {
-			return nil, ImportResult{}, fmt.Errorf("scan Rails user: %w", err)
+			return nil, ImportResult{}, fmt.Errorf("scan rails user: %w", err)
 		}
 		if !passwordHash.Valid || passwordHash.String == "" {
-			return nil, ImportResult{}, fmt.Errorf("Rails user %d (%s) has no password digest", id, username)
+			return nil, ImportResult{}, fmt.Errorf("rails user %d (%s) has no password digest", id, username)
 		}
 		cost, err := bcrypt.Cost([]byte(passwordHash.String))
 		if err != nil {
-			return nil, ImportResult{}, fmt.Errorf("Rails user %d (%s) has an invalid bcrypt password digest: %w", id, username, err)
+			return nil, ImportResult{}, fmt.Errorf("rails user %d (%s) has an invalid bcrypt password digest: %w", id, username, err)
 		}
 		if cost < bcrypt.DefaultCost || cost > maxImportedBcryptCost {
 			return nil, ImportResult{}, fmt.Errorf(
-				"Rails user %d (%s) has unsupported bcrypt cost %d (allowed %d-%d)",
+				"rails user %d (%s) has unsupported bcrypt cost %d (allowed %d-%d)",
 				id, username, cost, bcrypt.DefaultCost, maxImportedBcryptCost)
 		}
 		createdAt, err = normalizeImportedTime(createdAt)
 		if err != nil {
-			return nil, ImportResult{}, fmt.Errorf("Rails user %d (%s) has invalid created_at: %w", id, username, err)
+			return nil, ImportResult{}, fmt.Errorf("rails user %d (%s) has invalid created_at: %w", id, username, err)
 		}
 		updatedAt, err = normalizeImportedTime(updatedAt)
 		if err != nil {
-			return nil, ImportResult{}, fmt.Errorf("Rails user %d (%s) has invalid updated_at: %w", id, username, err)
+			return nil, ImportResult{}, fmt.Errorf("rails user %d (%s) has invalid updated_at: %w", id, username, err)
 		}
 		var emailValue *string
 		if email.Valid && email.String != "" {
 			emailValue = &email.String
 		}
 		if err := ensureImportedUser(ctx, tx, id, username, emailValue, passwordHash.String, admin, createdAt, updatedAt); err != nil {
-			return nil, ImportResult{}, fmt.Errorf("import Rails user %d (%s): %w", id, username, err)
+			return nil, ImportResult{}, fmt.Errorf("import rails user %d (%s): %w", id, username, err)
 		}
 		userIDs[id] = true
 		result.Users++
 	}
 	if err := rows.Err(); err != nil {
-		return nil, ImportResult{}, fmt.Errorf("iterate Rails users: %w", err)
+		return nil, ImportResult{}, fmt.Errorf("iterate rails users: %w", err)
 	}
 	return userIDs, result, nil
 }
@@ -395,7 +395,7 @@ func insertCounters(ctx context.Context, tx *sql.Tx, userID int64, values *canon
 		INSERT INTO counters (user_id, click_count, day_streak, month_streak, year_streak, last_clicked_at)
 		VALUES (?, ?, ?, ?, ?, ?)`, userID, values.clicks, values.day, values.month, values.year, values.lastClicked)
 	if err != nil {
-		return fmt.Errorf("import Rails counters for user %d: %w", userID, err)
+		return fmt.Errorf("import rails counters for user %d: %w", userID, err)
 	}
 	return nil
 }
@@ -409,7 +409,7 @@ func validateRailsSchema(ctx context.Context, db railsQueryer) error {
 		present := make(map[string]bool)
 		rows, err := db.QueryContext(ctx, `PRAGMA table_info(`+table+`)`)
 		if err != nil {
-			return fmt.Errorf("inspect Rails %s table: %w", table, err)
+			return fmt.Errorf("inspect rails %s table: %w", table, err)
 		}
 		for rows.Next() {
 			var cid, notNull, primaryKey int
@@ -417,13 +417,13 @@ func validateRailsSchema(ctx context.Context, db railsQueryer) error {
 			var defaultValue sql.NullString
 			if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
 				rows.Close()
-				return fmt.Errorf("inspect Rails %s columns: %w", table, err)
+				return fmt.Errorf("inspect rails %s columns: %w", table, err)
 			}
 			present[name] = true
 		}
 		if err := rows.Err(); err != nil {
 			rows.Close()
-			return fmt.Errorf("inspect Rails %s columns: %w", table, err)
+			return fmt.Errorf("inspect rails %s columns: %w", table, err)
 		}
 		rows.Close()
 		for _, column := range columns {
