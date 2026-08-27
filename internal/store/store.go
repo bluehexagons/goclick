@@ -44,6 +44,23 @@ type Counters struct {
 
 const schemaVersion = 2
 
+type schemaTable struct {
+	name    string
+	columns []string
+}
+
+var (
+	coreSchemaTables = []schemaTable{
+		{"users", []string{"id", "username", "email", "password_hash", "admin", "created_at", "updated_at"}},
+		{"counters", []string{"user_id", "click_count", "day_streak", "month_streak", "year_streak", "last_clicked_at"}},
+		{"sessions", []string{"token_hash", "user_id", "expires_at", "created_at"}},
+	}
+	archiveSchemaTable = schemaTable{
+		"rails_entities",
+		[]string{"id", "user_id", "kind", "count", "created_time", "modified_time", "created_at", "updated_at"},
+	}
+)
+
 const schema = `
 PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS users (
@@ -126,6 +143,19 @@ func Open(path string) (*Store, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	currentVersion, err := existingSchemaVersion(ctx, db)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	if currentVersion > schemaVersion {
+		db.Close()
+		return nil, fmt.Errorf("database schema version %d is newer than supported version %d", currentVersion, schemaVersion)
+	}
+	if err := validateExistingSchema(ctx, db, currentVersion); err != nil {
+		db.Close()
+		return nil, err
+	}
 	if _, err := db.ExecContext(ctx, "PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL;"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("configure database: %w", err)
@@ -134,14 +164,9 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("initialize database: %w", err)
 	}
-	var currentVersion int
-	if err := db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&currentVersion); err != nil {
+	if err := validateSchemaTables(ctx, db, append(coreSchemaTables, archiveSchemaTable)); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("read schema version: %w", err)
-	}
-	if currentVersion > schemaVersion {
-		db.Close()
-		return nil, fmt.Errorf("database schema version %d is newer than supported version %d", currentVersion, schemaVersion)
+		return nil, fmt.Errorf("validate initialized database: %w", err)
 	}
 	if currentVersion < schemaVersion {
 		if _, err := db.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", schemaVersion)); err != nil {
@@ -156,6 +181,84 @@ func Open(path string) (*Store, error) {
 		}
 	}
 	return &Store{db: db}, nil
+}
+
+func existingSchemaVersion(ctx context.Context, db *sql.DB) (int, error) {
+	var version int
+	if err := db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
+		return 0, fmt.Errorf("read schema version: %w", err)
+	}
+	return version, nil
+}
+
+func validateExistingSchema(ctx context.Context, db *sql.DB, version int) error {
+	var objectCount int
+	if err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM sqlite_schema
+		WHERE name NOT LIKE 'sqlite_%'`).Scan(&objectCount); err != nil {
+		return fmt.Errorf("inspect database schema: %w", err)
+	}
+	if objectCount == 0 {
+		if version != 0 {
+			return fmt.Errorf("database schema version %d has no Go Click tables", version)
+		}
+		return nil
+	}
+
+	tables := coreSchemaTables
+	if version >= schemaVersion {
+		tables = append(tables, archiveSchemaTable)
+	}
+	if err := validateSchemaTables(ctx, db, tables); err != nil {
+		return fmt.Errorf("database is not a compatible Go Click database: %w", err)
+	}
+	return nil
+}
+
+func validateSchemaTables(ctx context.Context, db *sql.DB, tables []schemaTable) error {
+	for _, table := range tables {
+		var objectType string
+		err := db.QueryRowContext(ctx, `
+			SELECT type FROM sqlite_schema WHERE name = ?`, table.name).Scan(&objectType)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("missing %s table", table.name)
+		}
+		if err != nil {
+			return fmt.Errorf("inspect %s table: %w", table.name, err)
+		}
+		if objectType != "table" {
+			return fmt.Errorf("%s is a %s, not a table", table.name, objectType)
+		}
+
+		present := make(map[string]bool)
+		rows, err := db.QueryContext(ctx, `PRAGMA table_info(`+table.name+`)`)
+		if err != nil {
+			return fmt.Errorf("inspect %s columns: %w", table.name, err)
+		}
+		for rows.Next() {
+			var cid, notNull, primaryKey int
+			var name, columnType string
+			var defaultValue sql.NullString
+			if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
+				rows.Close()
+				return fmt.Errorf("inspect %s columns: %w", table.name, err)
+			}
+			present[name] = true
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return fmt.Errorf("inspect %s columns: %w", table.name, err)
+		}
+		if err := rows.Close(); err != nil {
+			return fmt.Errorf("close %s schema inspection: %w", table.name, err)
+		}
+		for _, column := range table.columns {
+			if !present[column] {
+				return fmt.Errorf("missing %s.%s", table.name, column)
+			}
+		}
+	}
+	return nil
 }
 
 func secureSQLiteFiles(path string) error {

@@ -12,8 +12,9 @@ online backup procedure while it is running. The production database is
 `rails_test/storage/production.sqlite3`; do not use the Rails cache, queue, or
 cable databases.
 
-Back up both source and target databases before importing. The importer opens
-the Rails source read-only and writes the Go target in one transaction.
+Back up both source and target databases before importing. The importer reads
+the Rails source through one consistent read-only snapshot and writes the Go
+target in one transaction.
 
 ## Import
 

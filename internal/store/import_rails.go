@@ -68,7 +68,16 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	defer source.Close()
 	source.SetMaxOpenConns(1)
 
-	if err := validateRailsSchema(ctx, source); err != nil {
+	// Keep schema validation, users, and entities on one read transaction. This
+	// gives a consistent snapshot even if a source database is copied from a
+	// running application that continues to receive writes.
+	sourceTx, err := source.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return ImportResult{}, fmt.Errorf("begin Rails database snapshot: %w", err)
+	}
+	defer sourceTx.Rollback()
+
+	if err := validateRailsSchema(ctx, sourceTx); err != nil {
 		return ImportResult{}, err
 	}
 
@@ -78,12 +87,12 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	}
 	defer tx.Rollback()
 
-	userIDs, result, err := importRailsUsers(ctx, source, tx)
+	userIDs, result, err := importRailsUsers(ctx, sourceTx, tx)
 	if err != nil {
 		return ImportResult{}, err
 	}
 
-	entities, err := source.QueryContext(ctx, `
+	entities, err := sourceTx.QueryContext(ctx, `
 		SELECT id, user_id, kind, count, created_time, modified_time, created_at, updated_at
 		FROM entities ORDER BY id`)
 	if err != nil {
@@ -165,7 +174,11 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	return result, nil
 }
 
-func importRailsUsers(ctx context.Context, source *sql.DB, tx *sql.Tx) (map[int64]bool, ImportResult, error) {
+type railsQueryer interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
+
+func importRailsUsers(ctx context.Context, source railsQueryer, tx *sql.Tx) (map[int64]bool, ImportResult, error) {
 	rows, err := source.QueryContext(ctx, `
 		SELECT id, username, email, password_digest, admin, created_at, updated_at
 		FROM users ORDER BY id`)
@@ -387,7 +400,7 @@ func insertCounters(ctx context.Context, tx *sql.Tx, userID int64, values *canon
 	return nil
 }
 
-func validateRailsSchema(ctx context.Context, db *sql.DB) error {
+func validateRailsSchema(ctx context.Context, db railsQueryer) error {
 	required := map[string][]string{
 		"users":    {"id", "username", "email", "password_digest", "admin", "created_at", "updated_at"},
 		"entities": {"id", "user_id", "kind", "count", "created_time", "modified_time", "created_at", "updated_at"},

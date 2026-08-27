@@ -148,6 +148,139 @@ func TestOpenRestrictsDatabasePermissions(t *testing.T) {
 	}
 }
 
+func TestOpenRejectsForeignDatabaseWithoutModifyingSchema(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "rails.sqlite3")
+	foreign, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := foreign.Exec(`
+		CREATE TABLE users (
+			id INTEGER PRIMARY KEY,
+			username TEXT NOT NULL,
+			email TEXT,
+			password_digest TEXT,
+			admin INTEGER NOT NULL DEFAULT 0,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL
+		);
+		CREATE TABLE entities (
+			id INTEGER PRIMARY KEY,
+			user_id INTEGER NOT NULL,
+			kind TEXT,
+			count INTEGER,
+			created_time datetime,
+			modified_time datetime,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL
+		);`); err != nil {
+		foreign.Close()
+		t.Fatal(err)
+	}
+	if err := foreign.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	database, err := Open(path)
+	if err == nil {
+		database.Close()
+		t.Fatal("Open accepted a foreign database")
+	}
+	if !strings.Contains(err.Error(), "not a compatible Go Click database") {
+		t.Fatalf("Open error = %v", err)
+	}
+	if !strings.Contains(err.Error(), "missing users.password_hash") {
+		t.Fatalf("Open error does not identify Rails users schema: %v", err)
+	}
+
+	foreign, err = sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer foreign.Close()
+	rows, err := foreign.Query(`
+		SELECT name FROM sqlite_schema
+		WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+		ORDER BY name`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
+		tables = append(tables, name)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := rows.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(tables, ",") != "entities,users" {
+		t.Fatalf("tables after rejected Open = %v, want only original tables", tables)
+	}
+	var version int
+	if err := foreign.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if version != 0 {
+		t.Fatalf("schema version after rejected Open = %d, want 0", version)
+	}
+	var journalMode string
+	if err := foreign.QueryRow(`PRAGMA journal_mode`).Scan(&journalMode); err != nil {
+		t.Fatal(err)
+	}
+	if journalMode == "wal" {
+		t.Fatal("rejected Open changed the foreign database to WAL mode")
+	}
+}
+
+func TestOpenUpgradesLegacyUnversionedDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy.db")
+	initial, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := initial.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	legacy, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.Exec(`
+		DROP TABLE rails_entities;
+		PRAGMA user_version = 0;`); err != nil {
+		legacy.Close()
+		t.Fatal(err)
+	}
+	if err := legacy.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	upgraded, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer upgraded.Close()
+	var version int
+	if err := upgraded.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if version != schemaVersion {
+		t.Fatalf("schema version = %d, want %d", version, schemaVersion)
+	}
+	var archiveTable string
+	if err := upgraded.db.QueryRow(`
+		SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'rails_entities'`).Scan(&archiveTable); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestInMemoryStoresAreIsolated(t *testing.T) {
 	first, err := Open(":memory:")
 	if err != nil {

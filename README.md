@@ -87,6 +87,9 @@ currently exposes the gameplay and account surface only.
   malformed or unreasonable-cost password digests.
 - Session secrets are 256-bit random values and only SHA-256 digests are stored.
 - The SQLite database is restricted to the service account (`0600`).
+- Existing database schemas are validated before Go Click enables WAL or
+  applies upgrades, preventing an accidentally selected Rails or unrelated
+  database from being altered.
 - Mutations reject cross-site browser requests, and cookies are HttpOnly and
   `SameSite=Strict`.
 - Login, signup, total requests, and authenticated clicks have independent
