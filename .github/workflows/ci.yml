@@ -20,3 +20,34 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: test -z "$(gofmt -l .)"
+      - name: Smoke-test infra.json build and runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_command="$(python3 -c 'import json; print(json.load(open("infra.json"))["components"][0]["build"])')"
+          bash -euo pipefail -c "$build_command"
+          smoke_dir="$(mktemp -d)"
+          server_pid=""
+          cleanup() {
+            if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi
+            rm -rf "$smoke_dir"
+          }
+          trap cleanup EXIT
+          GOCLICK_ADDR=127.0.0.1:18080 \
+            GOCLICK_DATABASE="$smoke_dir/goclick.db" \
+            GOCLICK_SECURE_COOKIES=true \
+            GOCLICK_TRUST_PROXY=true \
+            ./.infra_tools/bin/goclick >"$smoke_dir/server.log" 2>&1 &
+          server_pid=$!
+          for _ in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18080/up | grep -q '"status":"ok"'; then
+              exit 0
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat "$smoke_dir/server.log"
+              exit 1
+            fi
+            sleep 1
+          done
+          cat "$smoke_dir/server.log"
+          exit 1

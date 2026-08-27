@@ -123,7 +123,8 @@ server and migration binaries on the target VM, assigns a stable internal port,
 keeps SQLite in infra_tools' persistent service data directory, binds the
 service to loopback, and exposes a database-aware `/up` health check. Before
 each replacement deployment, infra_tools creates an online SQLite backup and
-retains the latest 14 copies.
+retains the latest 14 copies in a root-controlled directory that the Go Click
+service cannot modify.
 
 With the current infra_tools target-build flow, Go is detected from `go.mod`
 and installed automatically when this repository is deployed:
@@ -133,6 +134,12 @@ infra-tools setup server_web app.example.com deploy \
   --ssl --ssl-email admin@example.com \
   --deploy app.example.com https://github.com/bluehexagons/goclick.git
 ```
+
+The manifest deliberately enables secure cookies. Complete the test deployment
+with `--ssl` and browse it over HTTPS; login cookies will not be sent back by a
+browser over plain HTTP. For a disposable HTTP-only test, use a separate
+manifest override with `GOCLICK_SECURE_COOKIES=false` rather than changing the
+production manifest.
 
 The Rails migration remains a separate one-time operation. Back up the Rails
 database and import it before switching traffic to the new service. The

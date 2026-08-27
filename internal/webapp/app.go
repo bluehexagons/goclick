@@ -31,6 +31,10 @@ const (
 	maxJSONBody      = 8 << 10
 	passwordHashCost = 12
 	clicksPerIP      = 360
+	// This is a bcrypt hash of a fixed, non-secret dummy password. Unknown
+	// users are rejected regardless of the comparison result, so storing the
+	// hash avoids a cost-12 bcrypt operation on every production startup.
+	productionDummyHash = "$2b$12$GQHDE/67Qc3HR8.tCq1D6.o3tN/3nCuCaxgKzXbo3uMAoAu.jzuiO"
 )
 
 var (
@@ -81,9 +85,13 @@ func New(database *store.Store, config Config) (*App, error) {
 	if config.passwordCost == 0 {
 		config.passwordCost = passwordHashCost
 	}
-	dummyHash, err := bcrypt.GenerateFromPassword([]byte("constant dummy password"), config.passwordCost)
-	if err != nil {
-		return nil, fmt.Errorf("prepare password verifier: %w", err)
+	dummyHash := []byte(productionDummyHash)
+	if config.passwordCost != passwordHashCost {
+		var err error
+		dummyHash, err = bcrypt.GenerateFromPassword([]byte("constant dummy password"), config.passwordCost)
+		if err != nil {
+			return nil, fmt.Errorf("prepare password verifier: %w", err)
+		}
 	}
 	static, err := fs.Sub(webFiles, "web")
 	if err != nil {

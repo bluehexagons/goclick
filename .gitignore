@@ -1,6 +1,7 @@
 /data/*
 !/data/.keep
 /goclick
+/.infra_tools/
 *.db
 *.db-shm
 *.db-wal

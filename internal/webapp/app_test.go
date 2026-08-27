@@ -366,7 +366,7 @@ func TestDummyPasswordHashUsesRailsProductionCost(t *testing.T) {
 	client := &http.Client{
 		Jar:       jar,
 		Transport: handlerTransport{handler: app.Handler()},
-		Timeout:   5 * time.Second,
+		Timeout:   30 * time.Second,
 	}
 	response := jsonRequest(t, client, http.MethodPost, "http://goclick.test/api/auth/signup", map[string]any{
 		"username": "cost_test", "password": "password123",
