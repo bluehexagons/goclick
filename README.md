@@ -10,7 +10,7 @@ dependencies: a pure-Go SQLite driver and Go's bcrypt implementation.
 
 ## Run it
 
-Go 1.25 or newer is required.
+Go 1.27 or newer is required.
 
 ```bash
 go run ./cmd/server
