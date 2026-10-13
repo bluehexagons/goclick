@@ -1,7 +1,7 @@
 /data/*
 !/data/.keep
 /goclick
-/.infra_tools/
+/.basaltwater/
 *.db
 *.db-shm
 *.db-wal

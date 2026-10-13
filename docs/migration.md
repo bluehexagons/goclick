@@ -51,18 +51,18 @@ passwords and checking click and streak totals. The Rails admin JSON endpoint
 can still be used for a human-readable report, but not as the source for this
 password-preserving migration.
 
-## Import on an infra_tools target
+## Import on a Basaltwater target
 
 Rehearse against a fresh test target or explicitly restore a known pre-import
 backup first; idempotency makes an unchanged import repeatable, but it is not a
-reset mechanism for Go-side changes. Deploy once so infra_tools creates the
+reset mechanism for Go-side changes. Deploy once so Basaltwater creates the
 service account, release, and persistent data directory. For a deployment named
 `app.example.com`, the default paths are:
 
 ```text
 service: app-app_example_com-server.service
 release: /var/www/app_example_com
-data:    /var/www/.infra_tools_shared/app_example_com/server/data
+data:    /var/www/.basaltwater_shared/app_example_com/server/data
 ```
 
 Copy the Rails primary database to a root-controlled staging directory outside
@@ -84,7 +84,7 @@ tree before importing:
 sudo install -d -o root -g root -m 700 /var/backups/goclick &&
   sudo test ! -e /var/backups/goclick/goclick.db.pre-import &&
   sudo sqlite3 \
-    /var/www/.infra_tools_shared/app_example_com/server/data/goclick.db \
+    /var/www/.basaltwater_shared/app_example_com/server/data/goclick.db \
     ".backup '/var/backups/goclick/goclick.db.pre-import'" &&
   sudo chown root:root /var/backups/goclick/goclick.db.pre-import &&
   sudo chmod 600 /var/backups/goclick/goclick.db.pre-import
@@ -95,9 +95,9 @@ and can safely be repeated when the source is unchanged:
 
 ```bash
 sudo -u app-app_example_com-server \
-  /var/www/app_example_com/.infra_tools/bin/migrate-rails \
+  /var/www/app_example_com/.basaltwater/bin/migrate-rails \
   -source /var/lib/goclick-migration/rails-production.sqlite3 \
-  -target /var/www/.infra_tools_shared/app_example_com/server/data/goclick.db \
+  -target /var/www/.basaltwater_shared/app_example_com/server/data/goclick.db \
   && sudo rm /var/lib/goclick-migration/rails-production.sqlite3 \
   && sudo systemctl start app-app_example_com-server.service \
   && curl -fsS https://app.example.com/up
@@ -108,3 +108,15 @@ traffic. Retain the original source backup and the root-controlled pre-import Go
 Click backup according to the site's recovery policy. If the importer fails,
 the command chain deliberately leaves the staged source in place and Go Click
 stopped for inspection; correct the problem before retrying or restarting.
+
+For `clicker.bluehexagons.com`, replace `app_example_com` in these paths and
+unit names with `clicker_bluehexagons_com`. Do not guess the Linux account name:
+Basaltwater hashes service identities longer than 31 characters. Read the actual
+account with:
+
+```bash
+systemctl show app-clicker_bluehexagons_com-server.service -p User --value
+```
+
+Use that account for the staging file's group and the importer's `sudo -u`
+argument. The full unit name and persistent directory are not shortened.

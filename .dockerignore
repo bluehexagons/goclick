@@ -1,6 +1,6 @@
 .git
 .github
-data
+.basaltwater
 *.db
 *.sqlite3
 goclick

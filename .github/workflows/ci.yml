@@ -20,11 +20,11 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: test -z "$(gofmt -l .)"
-      - name: Smoke-test infra.json build and runtime contract
+      - name: Smoke-test basaltwater.json build and runtime contract
         shell: bash
         run: |
           set -euo pipefail
-          build_command="$(python3 -c 'import json; print(json.load(open("infra.json"))["components"][0]["build"])')"
+          build_command="$(python3 -c 'import json; print(json.load(open("basaltwater.json"))["components"][0]["build"])')"
           bash -euo pipefail -c "$build_command"
           smoke_dir="$(mktemp -d)"
           server_pid=""
@@ -37,7 +37,7 @@ jobs:
             GOCLICK_DATABASE="$smoke_dir/goclick.db" \
             GOCLICK_SECURE_COOKIES=true \
             GOCLICK_TRUST_PROXY=true \
-            ./.infra_tools/bin/goclick >"$smoke_dir/server.log" 2>&1 &
+            ./.basaltwater/bin/goclick >"$smoke_dir/server.log" 2>&1 &
           server_pid=$!
           for _ in {1..30}; do
             if curl --fail --silent http://127.0.0.1:18080/up | grep -q '"status":"ok"'; then
