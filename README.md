@@ -89,8 +89,9 @@ currently exposes the gameplay and account surface only.
 - The SQLite database is restricted to the service account (`0600`).
 - Existing database schemas are validated before Go Click enables WAL or
   applies upgrades, preventing an accidentally selected Rails or unrelated
-  database from being altered.
-- Mutations reject cross-site browser requests, and cookies are HttpOnly and
+  database from being altered. Schema changes and their version marker commit
+  together, and foreign keys remain enabled after a connection is replaced.
+- Mutations use Go's standard cross-origin protection, and cookies are HttpOnly and
   `SameSite=Strict`.
 - Login, signup, total requests, and authenticated clicks have independent
   in-memory rate limits. Add proxy-level limits for multi-instance deployments.
@@ -98,6 +99,23 @@ currently exposes the gameplay and account surface only.
   HSTS in HTTPS mode, and transactional counter updates reduce common abuse and
   consistency risks.
 - Expired server-side sessions are reaped at startup and every 24 hours.
+- Signing in replaces the current session transactionally; a failed replacement
+  preserves the previous session. Shutdown waits for active requests to drain.
+
+Use a dedicated, service-owned database directory in production. New directories
+are created with mode `0700`; existing directory permissions are left intact.
+
+## Administration and recovery
+
+The database already preserves Rails admin flags, but admin panels and admin
+API endpoints are upcoming work. [`docs/administration.md`](docs/administration.md)
+describes the authorization, audit, user-data, and recovery requirements for
+that implementation.
+
+See [`docs/backups.md`](docs/backups.md) for full SQLite backups, data checks,
+restore rehearsal, and session revocation during recovery. Deployment backups
+are useful rollback points; also schedule backups for gameplay changes between
+deployments.
 
 ## Test
 
@@ -105,7 +123,13 @@ currently exposes the gameplay and account surface only.
 go test -race ./...
 go vet ./...
 test -z "$(gofmt -l .)"
+go mod verify
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
+
+CI runs these checks and a deployment smoke test. Dependabot checks Go modules,
+GitHub Actions, and container images weekly. Keep `modernc.org/libc` at the
+version required by the SQLite driver's `go.mod` when updating that driver.
 
 ## Container
 
