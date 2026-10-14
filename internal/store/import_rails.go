@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,9 +17,27 @@ import (
 const maxImportedBcryptCost = 14
 
 type ImportResult struct {
-	Users    int
-	Counters int
-	Entities int
+	Users    int `json:"users"`
+	Counters int `json:"counters"`
+	Entities int `json:"entities"`
+}
+
+type ImportAudit struct {
+	Actor User
+	Now   time.Time
+}
+
+func recordImportAudit(ctx context.Context, tx *sql.Tx, format string, result ImportResult, audit []ImportAudit) error {
+	actor, now := User{Username: "operator"}, time.Now()
+	if len(audit) > 0 {
+		actor, now = audit[0].Actor, audit[0].Now
+	}
+	var actorID any
+	if actor.ID > 0 {
+		actorID = actor.ID
+	}
+	_, err := tx.ExecContext(ctx, `INSERT INTO admin_audit(actor_id,actor_username,action,result,details,occurred_at) VALUES (?,?,'rails_import','success',?,?)`, actorID, actor.Username, fmt.Sprintf("%s: %d users, %d entities, %d counter sets", format, result.Users, result.Entities, result.Counters), formatTime(now))
+	return err
 }
 
 type railsEntity struct {
@@ -38,11 +57,37 @@ type canonicalCounters struct {
 	seen                     map[string]bool
 }
 
+type archiveIdentity struct {
+	userID int64
+	source string
+}
+
+func archiveIdentities(ctx context.Context, tx *sql.Tx) (map[int64]archiveIdentity, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT id,user_id,source FROM (`+entityArchiveQuery+`)`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	identities := make(map[int64]archiveIdentity)
+	for rows.Next() {
+		var id int64
+		var identity archiveIdentity
+		if err := rows.Scan(&id, &identity.userID, &identity.source); err != nil {
+			return nil, err
+		}
+		if _, exists := identities[id]; exists {
+			return nil, fmt.Errorf("target has conflicting archived entity ID %d", id)
+		}
+		identities[id] = identity
+	}
+	return identities, rows.Err()
+}
+
 // ImportRails copies the Minimal Clicker primary SQLite database. Password
 // digests are copied verbatim because Rails and Go use the same bcrypt format.
 // Every source entity is retained in rails_entities; counters is the normalized
 // gameplay projection used by the Go API.
-func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResult, error) {
+func (s *Store) ImportRails(ctx context.Context, sourcePath string, audit ...ImportAudit) (ImportResult, error) {
 	if sourcePath == "" {
 		return ImportResult{}, errors.New("rails database source path is required")
 	}
@@ -91,6 +136,10 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	if err != nil {
 		return ImportResult{}, err
 	}
+	archivedIDs, err := archiveIdentities(ctx, tx)
+	if err != nil {
+		return ImportResult{}, err
+	}
 
 	entities, err := sourceTx.QueryContext(ctx, `
 		SELECT id, user_id, kind, count, created_time, modified_time, created_at, updated_at
@@ -101,6 +150,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	defer entities.Close()
 
 	canonical := make(map[int64]*canonicalCounters)
+	entityIDs := make(map[int64]bool)
 	for entities.Next() {
 		entity, err := scanRailsEntity(entities)
 		if err != nil {
@@ -108,6 +158,13 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 		}
 		if !userIDs[entity.UserID] {
 			return ImportResult{}, fmt.Errorf("rails entity %d references missing user %d", entity.ID, entity.UserID)
+		}
+		if entity.ID <= 0 || entityIDs[entity.ID] {
+			return ImportResult{}, fmt.Errorf("invalid or duplicate rails entity ID %d", entity.ID)
+		}
+		entityIDs[entity.ID] = true
+		if archivedIDs[entity.ID].source == "json" {
+			return ImportResult{}, fmt.Errorf("entity ID %d already belongs to a partial JSON archive; use a fresh target for a full SQLite migration", entity.ID)
 		}
 		if err := insertRailsEntity(ctx, tx, entity); err != nil {
 			return ImportResult{}, fmt.Errorf("import rails entity %d: %w", entity.ID, err)
@@ -155,6 +212,18 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	if err := entities.Err(); err != nil {
 		return ImportResult{}, fmt.Errorf("iterate rails entities: %w", err)
 	}
+	for userID := range userIDs {
+		if canonical[userID] != nil {
+			continue
+		}
+		var existing int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM counters WHERE user_id=?`, userID).Scan(&existing); err != nil {
+			return ImportResult{}, err
+		}
+		if existing != 0 {
+			return ImportResult{}, fmt.Errorf("target counter set for user %d differs from the empty source; refusing to overwrite existing data", userID)
+		}
+	}
 
 	userIDsWithCounters := make([]int64, 0, len(canonical))
 	for userID := range canonical {
@@ -168,6 +237,9 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 		result.Counters++
 	}
 
+	if err := recordImportAudit(ctx, tx, "sqlite", result, audit); err != nil {
+		return ImportResult{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return ImportResult{}, fmt.Errorf("commit rails import: %w", err)
 	}
@@ -200,12 +272,18 @@ func importRailsUsers(ctx context.Context, source railsQueryer, tx *sql.Tx) (map
 		if err := rows.Scan(&id, &username, &email, &passwordHash, &admin, &createdAt, &updatedAt); err != nil {
 			return nil, ImportResult{}, fmt.Errorf("scan rails user: %w", err)
 		}
+		if id <= 0 || username == "" || userIDs[id] {
+			return nil, ImportResult{}, errors.New("rails database has invalid or duplicate user records")
+		}
 		if !passwordHash.Valid || passwordHash.String == "" {
 			return nil, ImportResult{}, fmt.Errorf("rails user %d (%s) has no password digest", id, username)
 		}
 		cost, err := bcrypt.Cost([]byte(passwordHash.String))
 		if err != nil {
 			return nil, ImportResult{}, fmt.Errorf("rails user %d (%s) has an invalid bcrypt password digest: %w", id, username, err)
+		}
+		if !backupHashPattern.MatchString(passwordHash.String) {
+			return nil, ImportResult{}, fmt.Errorf("rails user %d (%s) has an invalid bcrypt password digest", id, username)
 		}
 		if cost < bcrypt.DefaultCost || cost > maxImportedBcryptCost {
 			return nil, ImportResult{}, fmt.Errorf(

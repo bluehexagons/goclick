@@ -2,7 +2,7 @@
 const $ = (selector) => document.querySelector(selector);
 const number = (value) => new Intl.NumberFormat().format(value ?? 0);
 const date = (value) => value ? new Date(value).toLocaleString() : "—";
-const actionName = { signup: "Created account", sign_in: "Signed in", click: "Saved a click", admin_granted: "Admin access granted", admin_revoked: "Admin access revoked", backup_export: "Backup exported", backup_restore: "Backup restored" };
+const actionName = { signup: "Created account", sign_in: "Signed in", click: "Saved a click", admin_granted: "Admin access granted", admin_revoked: "Admin access revoked", backup_export: "Backup exported", backup_restore: "Backup restored", rails_import: "Rails players imported", password_set: "Password set by operator" };
 let tab = "overview";
 let playersPage = 1, activityPage = 1, auditPage = 1, detailActivityPage = 1, detailEntityPage = 1;
 let selectedPlayer = null, detailGeneration = 0, restoring = false;
@@ -82,7 +82,7 @@ async function detailActivity(generation) {
 async function detailEntities(generation) {
   const data = await request(`/api/admin/players/${selectedPlayer}/entities?page=${detailEntityPage}`); if (generation !== detailGeneration) return;
   const body = $("#detail-entities"); body.replaceChildren(); if (!data.items.length) emptyRow(body, 4, "No archived Rails entities for this player.");
-  for (const entity of data.items) { const row = node("tr"); cell(row, entity.kind ?? "(null kind)", `Entity #${entity.id}`); cell(row, entity.count == null ? "null" : number(entity.count)); cell(row, date(entity.created_time), `Record: ${date(entity.created_at)}`); cell(row, date(entity.modified_time), `Record: ${date(entity.updated_at)}`); body.append(row); }
+  for (const entity of data.items) { const row = node("tr"); cell(row, entity.kind ?? "(null kind)", `Entity #${entity.id} · ${entity.source === "json" ? "JSON" : "SQLite"}`); cell(row, entity.count == null ? "null" : number(entity.count)); cell(row, date(entity.created_time), `Record: ${date(entity.created_at)}`); cell(row, date(entity.modified_time), `Record: ${date(entity.updated_at)}`); body.append(row); }
   pager("#detail-entities-pager", detailEntityPage, data.total, async (page) => { detailEntityPage = page; await detailEntities(generation); });
 }
 async function openPlayer(id) {
@@ -97,20 +97,30 @@ async function openPlayer(id) {
 }
 function busy(form, state, label) { const button = form.querySelector("button[type=submit]"); button.disabled = state; button.textContent = label; form.setAttribute("aria-busy", String(state)); }
 $("#export-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const form = event.currentTarget; busy(form, true, "Preparing backup…"); notice("#export-status", "Creating a consistent snapshot…");
+  event.preventDefault(); if (restoring) return; const form = event.currentTarget; busy(form, true, "Preparing backup…"); notice("#export-status", "Creating a consistent snapshot…");
   const password = $("#export-password").value; $("#export-password").value = "";
   try { const blob = await request("/api/admin/backups/export", jsonOptions({ password }), true); const url = URL.createObjectURL(blob); const link = node("a"); link.href = url; link.download = `goclick-${new Date().toISOString().replace(/[:.]/g, "-")}.db`; document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60000); notice("#export-status", "Backup ready. Keep this file in a private recovery location."); await loadAudit(); }
   catch (error) { notice("#export-status", error.message, true); }
   finally { busy(form, false, "Download backup"); }
 });
 $("#restore-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const form = event.currentTarget; const file = $("#restore-file").files[0];
+  event.preventDefault(); if (restoring) return; const form = event.currentTarget; const file = $("#restore-file").files[0];
   if (!file || file.size > 128 * 1024 * 1024) { notice("#restore-status", "Choose a SQLite backup no larger than 128 MiB.", true); return; }
   const data = new FormData(); data.append("password", $("#restore-password").value); data.append("confirmation", $("#restore-confirmation").value); data.append("backup", file); $("#restore-password").value = "";
   restoring = true; busy(form, true, "Restoring…"); notice("#restore-status", "Uploading and validating the backup. Leave this page open until recovery completes.");
   try { const result = await request("/api/admin/backups/restore", { method: "POST", body: data }); $("#dashboard-body").hidden = true; $("#restore-success").hidden = false; $("#restore-summary").textContent = `${number(result.users)} accounts and ${number(result.entities)} archived entities restored. Pre-restore snapshot: ${result.recovery_backup}.`; $("#refresh").hidden = true; }
   catch (error) { notice("#restore-status", `${error.message} If the connection was interrupted, sign in again and check the audit history before retrying.`, true); }
   finally { restoring = false; busy(form, false, "Restore database"); }
+});
+$("#import-form").addEventListener("submit", async (event) => {
+  event.preventDefault(); if (restoring) return;
+  const form = event.currentTarget, file = $("#import-file").files[0];
+  if (!file || file.size > 128 * 1024 * 1024) { notice("#import-status", "Choose a Rails database up to 128 MiB, or JSON up to 16 MiB.", true); return; }
+  const data = new FormData(); data.append("password", $("#import-password").value); data.append("confirmation", $("#import-confirmation").value); data.append("backup", file); $("#import-password").value = "";
+  restoring = true; busy(form, true, "Importing…"); notice("#import-status", "Saving a recovery snapshot and checking the import…");
+  try { const result = await request("/api/admin/import/rails", { method: "POST", body: data }); notice("#import-status", `${number(result.users)} players and ${number(result.entities)} entities imported. Recovery snapshot: ${result.recovery_backup}.${result.new_passwords_required ? " New accounts need an operator-set password before signing in." : " Existing passwords were preserved."}`); await loadAudit(); }
+  catch (error) { notice("#import-status", `${error.message} If the connection was interrupted, check the audit history before retrying.`, true); }
+  finally { restoring = false; busy(form, false, "Import Rails players"); }
 });
 for (const button of document.querySelectorAll("[data-tab]")) button.addEventListener("click", () => selectTab(button.dataset.tab));
 $("#view-activity").addEventListener("click", () => selectTab("activity"));
@@ -119,4 +129,4 @@ $("#player-search").addEventListener("submit", (event) => { event.preventDefault
 $("#activity-filter").addEventListener("submit", (event) => { event.preventDefault(); activityPage = 1; loadActivity().catch(report); });
 $("#close-detail").addEventListener("click", () => $("#player-dialog").close());
 $("#player-dialog").addEventListener("close", () => detailGeneration++);
-(async () => { try { const user = await request("/api/me"); if (!user.admin) { denyAccess(); return; } $("#admin-name").textContent = user.username; await refresh(); } catch (error) { report(error); } })();
+(async () => { try { const user = await request("/api/me"); if (!user.admin) { denyAccess(); return; } $("#admin-name").textContent = user.username; for (const input of document.querySelectorAll("[data-admin-username]")) input.value = user.username; await refresh(); } catch (error) { report(error); } })();

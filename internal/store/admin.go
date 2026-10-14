@@ -19,7 +19,8 @@ func allSchemaTables() []schemaTable {
 	tables := append([]schemaTable{}, coreSchemaTables...)
 	return append(tables, archiveSchemaTable,
 		schemaTable{"player_activity", []string{"id", "user_id", "action", "occurred_at", "click_count"}},
-		schemaTable{"admin_audit", []string{"id", "actor_id", "actor_username", "action", "target_user_id", "result", "details", "occurred_at"}})
+		schemaTable{"admin_audit", []string{"id", "actor_id", "actor_username", "action", "target_user_id", "result", "details", "occurred_at"}},
+		schemaTable{"rails_json_users", []string{"user_id", "payload"}})
 }
 
 // SetAdmin is an operator-only operation. Revoking sessions requires a fresh
@@ -230,30 +231,34 @@ type ArchivedEntity struct {
 	Count        *int64  `json:"count"`
 	CreatedTime  *string `json:"created_time"`
 	ModifiedTime *string `json:"modified_time"`
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	CreatedAt    *string `json:"created_at"`
+	UpdatedAt    *string `json:"updated_at"`
+	Source       string  `json:"source"`
 }
+
+const entityArchiveQuery = `SELECT id,user_id,kind,count,created_time,modified_time,created_at,updated_at,'sqlite' AS source FROM rails_entities
+UNION ALL SELECT json_extract(e.value,'$.id'),j.user_id,json_extract(e.value,'$.kind'),json_extract(e.value,'$.count'),json_extract(e.value,'$.created_time'),json_extract(e.value,'$.modified_time'),NULL,NULL,'json' FROM rails_json_users j,json_each(j.payload,'$.entities') e`
 
 func (s *Store) ArchivedEntities(ctx context.Context, id int64, limit, offset int) ([]ArchivedEntity, int64, error) {
 	if limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, fmt.Errorf("invalid archive query")
 	}
 	var total int64
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM rails_entities WHERE user_id=?`, id).Scan(&total); err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM (`+entityArchiveQuery+`) WHERE user_id=?`, id).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT id,user_id,kind,count,created_time,modified_time,created_at,updated_at FROM rails_entities WHERE user_id=? ORDER BY id LIMIT ? OFFSET ?`, id, limit, offset)
+	rows, err := s.db.QueryContext(ctx, `SELECT * FROM (`+entityArchiveQuery+`) WHERE user_id=? ORDER BY id LIMIT ? OFFSET ?`, id, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
 	items := make([]ArchivedEntity, 0)
 	for rows.Next() {
-		e, err := scanRailsEntity(rows)
-		if err != nil {
+		var e ArchivedEntity
+		if err := rows.Scan(&e.ID, &e.UserID, &e.Kind, &e.Count, &e.CreatedTime, &e.ModifiedTime, &e.CreatedAt, &e.UpdatedAt, &e.Source); err != nil {
 			return nil, 0, err
 		}
-		items = append(items, ArchivedEntity(e))
+		items = append(items, e)
 	}
 	return items, total, rows.Err()
 }

@@ -99,7 +99,7 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if version != 2 && version != schemaVersion {
+	if version < 2 || version > schemaVersion {
 		return 0, fmt.Errorf("unsupported schema version %d", version)
 	}
 	// Compare every executable schema object with a database built by this
@@ -123,6 +123,9 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 				delete(expected, key)
 			}
 		}
+	}
+	if version < 4 {
+		delete(expected, "rails_json_users")
 	}
 	if len(expected) != len(actual) {
 		return 0, errors.New("unexpected schema objects")
@@ -175,6 +178,9 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 			`SELECT COUNT(*) FROM player_activity WHERE typeof(user_id)!='integer' OR typeof(action)!='text' OR typeof(occurred_at)!='text' OR typeof(click_count) NOT IN ('integer','null')`,
 			`SELECT COUNT(*) FROM admin_audit WHERE typeof(actor_id) NOT IN ('integer','null') OR typeof(target_user_id) NOT IN ('integer','null') OR typeof(actor_username)!='text' OR typeof(action)!='text' OR typeof(result)!='text' OR typeof(details)!='text' OR typeof(occurred_at)!='text'`)
 	}
+	if version >= 4 {
+		checks = append(checks, `SELECT COUNT(*) FROM rails_json_users WHERE typeof(user_id)!='integer' OR typeof(payload)!='text' OR NOT json_valid(payload)`)
+	}
 	for _, query := range checks {
 		if err := db.QueryRowContext(ctx, query).Scan(&invalid); err != nil {
 			return 0, err
@@ -220,6 +226,36 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 	entities.Close()
 	if rowErr != nil {
 		return 0, rowErr
+	}
+	if version >= 4 {
+		rows, err := db.QueryContext(ctx, `SELECT user_id,payload FROM rails_json_users`)
+		if err != nil {
+			return 0, err
+		}
+		for rows.Next() {
+			var id int64
+			var payload string
+			if err := rows.Scan(&id, &payload); err != nil {
+				rows.Close()
+				return 0, err
+			}
+			if err := validateJSONArchive(id, []byte(payload)); err != nil {
+				rows.Close()
+				return 0, fmt.Errorf("invalid JSON archive: %w", err)
+			}
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return 0, err
+		}
+		var duplicates int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM (SELECT id FROM (`+entityArchiveQuery+`) GROUP BY id HAVING COUNT(*)>1)`).Scan(&duplicates); err != nil {
+			return 0, err
+		}
+		if duplicates != 0 {
+			return 0, errors.New("conflicting archived entity IDs")
+		}
 	}
 	timestamps, err := db.QueryContext(ctx, `SELECT last_clicked_at FROM counters WHERE last_clicked_at IS NOT NULL`)
 	if err != nil {
@@ -350,10 +386,15 @@ func (s *Store) Restore(ctx context.Context, path, recoveryDirectory string, act
 			return result, err
 		}
 	}
+	if version >= 4 {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO main.rails_json_users SELECT user_id,payload FROM restore_source.rails_json_users`); err != nil {
+			return result, err
+		}
+	}
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&result.Users); err != nil {
 		return result, err
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM rails_entities`).Scan(&result.Entities); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM (`+entityArchiveQuery+`)`).Scan(&result.Entities); err != nil {
 		return result, err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO admin_audit(actor_id,actor_username,action,result,details,occurred_at) VALUES (?,?,'backup_restore','success',?,?)`, actor.ID, actor.Username, result.RecoveryBackup, formatTime(now)); err != nil {

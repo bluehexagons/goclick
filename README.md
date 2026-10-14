@@ -57,8 +57,8 @@ accounts before the final cutover. An unchanged import can be repeated, but a
 different existing Go Click record is reported as a conflict rather than
 silently overwritten. Refresh tokens from Rails are intentionally not migrated;
 users receive a new Go Click session when they sign in. See
-[`docs/migration.md`](docs/migration.md) for the complete procedure and why the
-Rails admin JSON export is not sufficient.
+[`docs/migration.md`](docs/migration.md) for the complete procedure, including
+the progress-only JSON import and its password setup procedure.
 
 ## API
 

@@ -37,6 +37,7 @@ sqlite3 -bail -readonly "$backup" '
   SELECT COUNT(*) AS users FROM users;
   SELECT COUNT(*) AS counters FROM counters;
   SELECT COUNT(*) AS archived_entities FROM rails_entities;
+  SELECT COUNT(*) AS json_imported_users FROM rails_json_users;
 '
 printf 'Verified backup: %s\n' "$backup"
 ```
@@ -44,7 +45,7 @@ printf 'Verified backup: %s\n' "$backup"
 The checks require `integrity_check` to return exactly `ok` and
 `foreign_key_check` to return no rows. [Integrity checks do not check foreign
 keys](https://www.sqlite.org/pragma.html#pragma_integrity_check), so both matter.
-The current schema version is 3. Row counts and integrity checks do not prove
+The current schema version is 4. Row counts and integrity checks do not prove
 every application's value is correct; inspect representative accounts as well.
 On any failure, keep the error and distinguish the failed snapshot from verified
 backups. Do not apply retention deletion until the new snapshot is verified.
@@ -84,7 +85,7 @@ table/column checks alone do not establish that an untrusted upload is safe.
 2. Make and verify a fresh pre-restore backup with the procedure above, and
    retain its path independently from the chosen recovery snapshot.
 3. Set `backup` to the chosen recovery file and stage a private copy beside the
-   live database. The following block assumes a version-3 Go Click snapshot:
+   live database. The following block assumes a version-4 Go Click snapshot:
 
 ```bash
 test -f "$backup"
@@ -93,7 +94,7 @@ cp -- "$backup" "$restore"
 chmod 600 "$restore"
 test "$(sqlite3 -bail -readonly "$restore" 'PRAGMA integrity_check;')" = ok
 test -z "$(sqlite3 -bail -readonly "$restore" 'PRAGMA foreign_key_check;')"
-test "$(sqlite3 -bail -readonly "$restore" 'PRAGMA user_version;')" = 3
+test "$(sqlite3 -bail -readonly "$restore" 'PRAGMA user_version;')" = 4
 sqlite3 -bail "$restore" 'PRAGMA journal_mode=DELETE; DELETE FROM sessions;'
 ```
 
@@ -130,7 +131,7 @@ The admin panel also supports restore without replacing the live database file.
 It pauses this server's HTTP requests, validates the staged upload, saves a
 pre-restore snapshot, and copies known data columns into the trusted schema in
 one transaction. Existing audit history is retained, and all sessions are
-revoked. A failed transaction leaves live data intact. Version-2 and version-3
+revoked. A failed transaction leaves live data intact. Version-2, version-3, and version-4
 snapshots are supported; the snapshot must contain an administrator. Other
 service instances and importers must be stopped before panel recovery.
 See [administration](administration.md) for password verification, upload limits,

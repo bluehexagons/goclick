@@ -141,6 +141,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("GET /api/admin/audit", a.requireAdmin(a.adminAudit))
 	mux.HandleFunc("POST /api/admin/backups/export", a.requireAdmin(a.adminExport))
 	mux.HandleFunc("POST /api/admin/backups/restore", a.requireAdmin(a.adminRestore))
+	mux.HandleFunc("POST /api/admin/import/rails", a.requireAdmin(a.adminImport))
 
 	// Compatibility aliases make the transition from the Rails API less abrupt.
 	mux.HandleFunc("POST /auth/signup", a.signup)
@@ -153,7 +154,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("GET /", a.frontend)
 	handler := a.securityHeaders(a.recoverPanic(a.rejectCrossSite(a.bodyLimit(a.globalLimit(mux)))))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.URL.Path == "/api/admin/backups/restore" {
+		if r.Method == http.MethodPost && (r.URL.Path == "/api/admin/backups/restore" || r.URL.Path == "/api/admin/import/rails") {
 			a.requestGate.Lock()
 			defer a.requestGate.Unlock()
 		} else {
@@ -487,7 +488,7 @@ func (a *App) bodyLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
-			if r.Method == http.MethodPost && r.URL.Path == "/api/admin/backups/restore" {
+			if r.Method == http.MethodPost && (r.URL.Path == "/api/admin/backups/restore" || r.URL.Path == "/api/admin/import/rails") {
 				if r.ContentLength > maxRestoreBody {
 					writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "Backup upload exceeds 128 MiB"})
 					return

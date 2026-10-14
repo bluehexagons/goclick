@@ -3,12 +3,14 @@ package webapp
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,6 +19,141 @@ import (
 	"github.com/bluehexagons/goclick/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
+
+func TestAdminRailsJSONImportAndAccess(t *testing.T) {
+	app, db, client, _ := adminTestApp(t)
+	data, err := os.ReadFile("../store/testdata/rails-admin-export.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := multipartDatabase(t, client, "/api/admin/import/rails", data, "wrong", "IMPORT")
+	if response.StatusCode != 403 {
+		t.Fatalf("wrong password: %d", response.StatusCode)
+	}
+	response.Body.Close()
+	if _, err := db.UserByID(context.Background(), 42); err != store.ErrNotFound {
+		t.Fatal("unauthorized import changed data")
+	}
+	response = multipartDatabase(t, client, "/api/admin/import/rails", data, "password123", "IMPORT")
+	var result struct {
+		Format    string `json:"format"`
+		Users     int    `json:"users"`
+		Passwords bool   `json:"new_passwords_required"`
+		Recovery  string `json:"recovery_backup"`
+	}
+	if response.StatusCode != 200 {
+		t.Fatalf("import: %d %s", response.StatusCode, readBody(t, response))
+	}
+	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if result.Format != "json" || result.Users != 2 || !result.Passwords {
+		t.Fatalf("JSON import response: %+v", result)
+	}
+	if _, err := os.Stat(filepath.Join(app.backupDir, result.Recovery)); err != nil {
+		t.Fatal("missing safety snapshot", err)
+	}
+	response = jsonRequest(t, client, "GET", "http://goclick.test/api/admin/players/42/entities", nil, nil)
+	body := readBody(t, response)
+	if response.StatusCode != 200 || !strings.Contains(body, `"created_at":null`) || !strings.Contains(body, "special_achievement") || strings.Contains(body, "password_hash") {
+		t.Fatalf("JSON archive response: %d %s", response.StatusCode, body)
+	}
+	guest := &http.Client{Transport: handlerTransport{handler: app.Handler()}}
+	response = jsonRequest(t, guest, "POST", "http://goclick.test/api/auth/login", map[string]string{"username": "old_admin", "password": "password123"}, nil)
+	if response.StatusCode != 401 {
+		t.Fatal("imported account has a known password")
+	}
+	response.Body.Close()
+	if err := db.SetPassword(context.Background(), 42, "new-long-password", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	response = jsonRequest(t, guest, "POST", "http://goclick.test/api/auth/login", map[string]string{"username": "old_admin", "password": "new-long-password"}, nil)
+	if response.StatusCode != 200 {
+		t.Fatalf("operator-set password failed: %d %s", response.StatusCode, readBody(t, response))
+	}
+	response.Body.Close()
+	response = multipartDatabase(t, client, "/api/admin/import/rails", data, "password123", "IMPORT")
+	if response.StatusCode != 422 {
+		t.Fatal("target account mutation was silently ignored")
+	}
+	response.Body.Close()
+	audit, _, err := db.Audit(context.Background(), 100, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	success, failed := false, false
+	for _, event := range audit {
+		if event.Action == "rails_import" && event.ActorUsername == "test_admin" {
+			success = success || event.Result == "success"
+			failed = failed || event.Result == "failed"
+		}
+	}
+	if !success || !failed {
+		t.Fatal("missing import audit history")
+	}
+}
+
+func TestAdminRailsSQLiteImportPreservesPasswords(t *testing.T) {
+	_, db, client, _ := adminTestApp(t)
+	path := filepath.Join(t.TempDir(), "rails.sqlite3")
+	source, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte("rails-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := source.Exec(`CREATE TABLE users (id INTEGER PRIMARY KEY,username TEXT,email TEXT,password_digest TEXT,admin INTEGER,created_at TEXT,updated_at TEXT);
+CREATE TABLE entities(id INTEGER PRIMARY KEY,user_id INTEGER,kind TEXT,count INTEGER,created_time TEXT,modified_time TEXT,created_at TEXT,updated_at TEXT);
+INSERT INTO entities VALUES (201,84,'click_count',333,NULL,'2026-09-01T10:00:00Z','2025-01-01T00:00:00Z','2026-09-01T10:00:00Z');`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := source.Exec(`INSERT INTO users VALUES (84,'sqlite_player',NULL,?,0,'2025-01-01T00:00:00Z','2026-09-01T10:00:00Z')`, string(hash)); err != nil {
+		t.Fatal(err)
+	}
+	source.Close()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := multipartDatabase(t, client, "/api/admin/import/rails", data, "password123", "IMPORT")
+	if response.StatusCode != 200 {
+		t.Fatalf("SQLite import: %d %s", response.StatusCode, readBody(t, response))
+	}
+	response.Body.Close()
+	u, err := db.UserByID(context.Background(), 84)
+	if err != nil || u.PasswordHash != string(hash) {
+		t.Fatal("password digest changed")
+	}
+	c, err := db.CurrentCounters(context.Background(), 84)
+	if err != nil || c.Clicks != 333 {
+		t.Fatal("SQLite progress was not imported")
+	}
+}
+
+func TestAdminLegacyImportUploadValidation(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		data         []byte
+		confirmation string
+		status       int
+	}{
+		{"confirmation", []byte("{}"), "RESTORE", 400},
+		{"invalid JSON", []byte("not a database"), "IMPORT", 422},
+		{"JSON limit", bytes.Repeat([]byte(" "), store.MaxRailsJSONBytes+1), "IMPORT", 413},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, _, client, _ := adminTestApp(t)
+			response := multipartDatabase(t, client, "/api/admin/import/rails", test.data, "password123", test.confirmation)
+			if response.StatusCode != test.status {
+				t.Fatalf("status %d body %s", response.StatusCode, readBody(t, response))
+			}
+			response.Body.Close()
+		})
+	}
+}
 
 func adminTestApp(t *testing.T) (*App, *store.Store, *http.Client, int64) {
 	t.Helper()
@@ -70,7 +207,7 @@ func TestAdminEndpointsRequireServerSideAuthorization(t *testing.T) {
 	}
 	response.Body.Close()
 	for _, endpoint := range []struct{ method, path string }{
-		{"GET", "/admin"}, {"GET", "/admin.html"}, {"GET", "/api/admin/overview"}, {"GET", "/api/admin/players"}, {"GET", "/api/admin/players/1"}, {"GET", "/api/admin/players/1/entities"}, {"GET", "/api/admin/activity"}, {"GET", "/api/admin/audit"}, {"POST", "/api/admin/backups/export"}, {"POST", "/api/admin/backups/restore"},
+		{"GET", "/admin"}, {"GET", "/admin.html"}, {"GET", "/api/admin/overview"}, {"GET", "/api/admin/players"}, {"GET", "/api/admin/players/1"}, {"GET", "/api/admin/players/1/entities"}, {"GET", "/api/admin/activity"}, {"GET", "/api/admin/audit"}, {"POST", "/api/admin/backups/export"}, {"POST", "/api/admin/backups/restore"}, {"POST", "/api/admin/import/rails"},
 	} {
 		for _, test := range []struct {
 			client *http.Client
@@ -133,6 +270,10 @@ func TestAdminPlayerStatsResponsesAndFilters(t *testing.T) {
 }
 
 func multipartRestore(t *testing.T, client *http.Client, backup []byte, password, confirmation string) *http.Response {
+	return multipartDatabase(t, client, "/api/admin/backups/restore", backup, password, confirmation)
+}
+
+func multipartDatabase(t *testing.T, client *http.Client, endpoint string, backup []byte, password, confirmation string) *http.Response {
 	t.Helper()
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -146,7 +287,7 @@ func multipartRestore(t *testing.T, client *http.Client, backup []byte, password
 		t.Fatal(err)
 	}
 	writer.Close()
-	r, err := http.NewRequest("POST", "http://goclick.test/api/admin/backups/restore", &body)
+	r, err := http.NewRequest("POST", "http://goclick.test"+endpoint, &body)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -38,6 +38,61 @@ The import preserves:
 Refresh tokens are not imported. Rails stores only token digests, which cannot
 be used to recreate sessions; users must sign in to Go Click after cutover.
 
+## Import the admin JSON download
+
+If the primary database is unavailable, export from the Rails admin panel with
+**Fetch User Entities** enabled. Downloads without entities are rejected so they
+cannot silently lose progress. Keep the download private.
+
+```bash
+go run ./cmd/migrate-rails \
+  -format json -source /private/rails-users.json -target data/goclick.db
+```
+
+JSON preserves user IDs, usernames, email, admin flags, user timestamps, and
+click/streak progress. Every nested entity is retained in `rails_json_users`
+as part of its original user object, including custom kinds, nullable fields,
+and the distinction between missing and null fields. `counters` remains the
+normalized gameplay projection. The admin archive displays both source formats.
+The JSON export does not contain entity `created_at`/`updated_at` or password
+hashes; the importer does not invent them or label it a complete Rails backup.
+Entity ownership comes from its containing user. Token digests are not imported.
+JSON uploads/files are limited to 16 MiB.
+
+New JSON accounts receive an unguessable discarded random password and require
+an operator-set password. Existing accounts are accepted only when their IDs,
+username, email, role, and timestamps match exactly; their passwords are retained.
+Verify the recipient's identity before delivering a new password through your
+normal private account-recovery process. From a Bash host shell, read a password
+without putting it in command arguments or history:
+
+```bash
+read -r -s -p 'New password: ' imported_password
+printf '\n'
+printf '%s\n' "$imported_password" | go run ./cmd/admin \
+  -database data/goclick.db -user-id 42 -password-stdin
+unset imported_password
+```
+
+Passwords must be 8–72 bytes. The command accepts `-username` instead of
+`-user-id`, reads exactly one line from stdin, revokes sessions, records an audit
+event, and leaves the admin role unchanged. Run a separate grant command if
+needed. Use the built `goclick-admin` binary in production; for containers use
+`docker exec -i` so stdin reaches it. Set at least one administrator's password
+before hosting a JSON-migrated database.
+
+Reimporting an unchanged source into an unchanged target is safe. Go-side
+password, role, account timestamp, or counter changes can make the source
+conflict; use the safety snapshot and an explicit migration rehearsal rather
+than overwriting those changes. A partial JSON archive and full SQLite archive
+cannot silently claim the same entity IDs. If you later obtain the primary
+SQLite database, rehearse that full migration against a fresh target.
+
+Both formats can also be uploaded under **Backups & recovery → Bring players
+over from Rails**. The panel saves a pre-import snapshot and refuses conflicts.
+Use a fresh target for the initial cutover: a bootstrap Go Click admin can
+already occupy a Rails user ID.
+
 ## Safety and verification
 
 The importer validates the required Rails tables and columns, rejects invalid

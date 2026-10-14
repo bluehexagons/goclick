@@ -46,7 +46,8 @@ in the past 24 hours, recent click events, active sessions, and daily clicks for
 the past seven UTC days. The player list supports username/email search,
 pagination, and sorting by last click, clicks, or username. A player detail
 panel shows account timestamps, email, current counters, streaks, last recorded
-sign-in, recorded activity, and paginated archived Rails entities.
+sign-in, recorded activity, and paginated archived Rails entities from either
+import format. JSON archive rows identify their source and show omitted row timestamps as unavailable.
 
 Signup, sign-in, and click activity is recorded transactionally with the related
 operation. Activity history starts with this release; earlier clicks are still
@@ -63,7 +64,7 @@ The file includes password hashes, session digests, users, counters, archive
 rows, player activity, and audit history. Store it privately; it is a recovery
 artifact, not a report to share publicly.
 
-**Restore a backup** accepts a full version-2 or version-3 Go Click SQLite
+**Restore a backup** accepts a full version-2, version-3, or version-4 Go Click SQLite
 snapshot, up to 128 MiB. Enter the current administrator's password and type
 `RESTORE` to confirm. Password attempts are rate limited. JSON endpoints retain
 their 8 KiB body limit; restore uses a separately bounded multipart upload.
@@ -110,11 +111,34 @@ All endpoints below require admin authentication. Read endpoints accept
 | GET | `/api/admin/activity` | Paginated events; optional `user_id` |
 | GET | `/api/admin/audit` | Paginated administrative history |
 | POST | `/api/admin/backups/export` | SQLite download; JSON `{ "password": "..." }` |
+| POST | `/api/admin/import/rails` | Multipart `password`, `confirmation=IMPORT`, `backup`; Rails SQLite or JSON |
 | POST | `/api/admin/backups/restore` | Multipart `password`, `confirmation=RESTORE`, `backup` |
 
 Mutations keep the server's cross-origin protection and security headers.
 Downloads and admin pages use `Cache-Control: no-store`. Audit history records
 operator grants/revocations, successful exports/restores, failed password
-verification, and failed restore attempts. It contains no credentials or
+verification, and failed restore/import attempts, imports, and operator password setup. It contains no credentials or
 uploaded contents. The process log also records successful recovery and its
 snapshot filename, providing a record outside the restored player data.
+
+## Import legacy players
+
+The recovery panel accepts a primary Rails SQLite database (128 MiB maximum)
+or the old admin JSON download (16 MiB maximum) with **Fetch User Entities**
+enabled. Enter your current password and type `IMPORT`. The server detects the
+format, saves a private pre-import snapshot, then merges in one transaction.
+Conflicts abort the entire import; current players are never overwritten or
+renumbered. Import uploads use the same bounded multipart and password checks
+as restore. Successful imports and their audit event commit together.
+
+Original Rails IDs commonly collide with a newly created Go Click admin. For a
+first migration, use the host importer against a fresh target, then grant access
+or set a password as described in [migration.md](migration.md). The panel is for
+imports that can merge without conflicts. It does not force replacement.
+
+SQLite preserves existing passwords. JSON only carries progress and the fields
+present in the download. Newly imported JSON accounts cannot sign in until an
+operator sets a new password with `cmd/admin -password-stdin`; an exact matching
+existing account keeps its current password. Host password changes revoke
+sessions, are audited, and leave the admin role unchanged. There is no public
+account-claim endpoint.

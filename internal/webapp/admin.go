@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -247,6 +248,18 @@ func (a *App) adminExport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) adminRestore(w http.ResponseWriter, r *http.Request) {
+	a.adminDatabaseUpload(w, r, false)
+}
+
+func (a *App) adminImport(w http.ResponseWriter, r *http.Request) {
+	a.adminDatabaseUpload(w, r, true)
+}
+
+func (a *App) adminDatabaseUpload(w http.ResponseWriter, r *http.Request, importing bool) {
+	confirmationWord, action := "RESTORE", "backup_restore"
+	if importing {
+		confirmationWord, action = "IMPORT", "rails_import"
+	}
 	if !a.allowAdminPassword(w, r) {
 		return
 	}
@@ -254,18 +267,18 @@ func (a *App) adminRestore(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	reader, err := r.MultipartReader()
 	if err != nil {
-		writeJSON(w, 415, map[string]string{"error": "Restore requires a multipart backup upload"})
+		writeJSON(w, 415, map[string]string{"error": "Database recovery requires a multipart file upload"})
 		return
 	}
-	directory, err := os.MkdirTemp("", "goclick-restore-")
+	directory, err := os.MkdirTemp("", "goclick-upload-")
 	if err != nil {
-		a.internalError(w, r, "stage restore upload", err)
+		a.internalError(w, r, "stage database upload", err)
 		return
 	}
 	defer os.RemoveAll(directory)
 	file, err := os.CreateTemp(directory, "upload-*.db")
 	if err != nil {
-		a.internalError(w, r, "create restore upload", err)
+		a.internalError(w, r, "create database upload", err)
 		return
 	}
 	defer file.Close()
@@ -324,18 +337,22 @@ func (a *App) adminRestore(w http.ResponseWriter, r *http.Request) {
 		a.uploadError(w, err)
 		return
 	}
-	if !seen["backup"] || confirmation != "RESTORE" {
-		writeJSON(w, 400, map[string]string{"error": "Choose a backup and type RESTORE to confirm"})
+	if !seen["backup"] || confirmation != confirmationWord {
+		writeJSON(w, 400, map[string]string{"error": "Choose a database and type " + confirmationWord + " to confirm"})
 		return
 	}
-	if !a.checkAdminPassword(w, r, password, "backup_restore") {
+	if !a.checkAdminPassword(w, r, password, action) {
 		return
 	}
 	if err := file.Close(); err != nil {
-		a.internalError(w, r, "close restore upload", err)
+		a.internalError(w, r, "close database upload", err)
 		return
 	}
 	actor := userFromContext(r.Context())
+	if importing {
+		a.importUpload(w, r, file.Name(), actor)
+		return
+	}
 	result, err := a.store.Restore(r.Context(), file.Name(), a.backupDir, actor, a.now())
 	if err != nil {
 		if auditErr := a.store.RecordAdminAudit(r.Context(), actor, "backup_restore", "failed", "Restore did not commit", a.now()); auditErr != nil {
@@ -351,6 +368,53 @@ func (a *App) adminRestore(w http.ResponseWriter, r *http.Request) {
 	a.logger.Info("backup restored", "actor_id", actor.ID, "recovery_backup", result.RecoveryBackup, "users", result.Users, "entities", result.Entities)
 	a.clearSessionCookie(w)
 	writeJSON(w, 200, result)
+}
+
+func (a *App) importUpload(w http.ResponseWriter, r *http.Request, path string, actor store.User) {
+	file, err := os.Open(path)
+	if err != nil {
+		a.internalError(w, r, "inspect legacy upload", err)
+		return
+	}
+	header := make([]byte, 16)
+	_, _ = io.ReadFull(file, header)
+	file.Close()
+	format := "json"
+	if string(header) == "SQLite format 3\x00" {
+		format = "sqlite"
+	}
+	if format == "json" {
+		info, err := os.Stat(path)
+		if err != nil {
+			a.internalError(w, r, "inspect JSON upload", err)
+			return
+		}
+		if info.Size() > store.MaxRailsJSONBytes {
+			writeJSON(w, 413, map[string]string{"error": "Rails JSON export exceeds 16 MiB"})
+			return
+		}
+	}
+	recovery, err := a.store.Backup(r.Context(), a.backupDir, "pre-import-"+a.now().UTC().Format("20060102T150405Z"))
+	if err != nil {
+		a.internalError(w, r, "save pre-import snapshot", err)
+		return
+	}
+	var result store.ImportResult
+	audit := store.ImportAudit{Actor: actor, Now: a.now()}
+	if format == "sqlite" {
+		result, err = a.store.ImportRails(r.Context(), path, audit)
+	} else {
+		result, err = a.store.ImportRailsJSON(r.Context(), path, audit)
+	}
+	if err != nil {
+		if auditErr := a.store.RecordAdminAudit(r.Context(), actor, "rails_import", "failed", "Import did not commit", a.now()); auditErr != nil {
+			a.logger.Error("audit failed import", "error", auditErr)
+		}
+		writeJSON(w, 422, map[string]string{"error": err.Error()})
+		return
+	}
+	a.logger.Info("Rails import completed", "actor_id", actor.ID, "format", format, "users", result.Users)
+	writeJSON(w, 200, map[string]any{"users": result.Users, "entities": result.Entities, "counters": result.Counters, "format": format, "recovery_backup": filepath.Base(recovery), "new_passwords_required": format == "json"})
 }
 
 func (a *App) uploadError(w http.ResponseWriter, err error) {

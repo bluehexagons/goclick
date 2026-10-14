@@ -43,7 +43,7 @@ type Counters struct {
 	LastClickedAt *time.Time
 }
 
-const schemaVersion = 3
+const schemaVersion = 4
 
 const AdminSessionTTL = 8 * time.Hour
 
@@ -93,6 +93,10 @@ CREATE TABLE IF NOT EXISTS rails_entities (
 	updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS rails_entities_user_id ON rails_entities(user_id);
+CREATE TABLE IF NOT EXISTS rails_json_users (
+	user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	payload TEXT NOT NULL CHECK (json_valid(payload))
+);
 CREATE TABLE IF NOT EXISTS sessions (
 	token_hash BLOB PRIMARY KEY,
 	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -260,6 +264,9 @@ func validateExistingSchema(ctx context.Context, db *sql.DB, version int) error 
 	}
 	if version >= 3 {
 		tables = allSchemaTables()
+		if version < 4 {
+			tables = tables[:len(tables)-1]
+		}
 	}
 	if err := validateSchemaTables(ctx, db, tables); err != nil {
 		return fmt.Errorf("database is not a compatible Go Click database: %w", err)

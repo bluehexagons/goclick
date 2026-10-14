@@ -230,6 +230,7 @@ func TestRestoreRejectsUntrustedAndInvalidBackups(t *testing.T) {
 		{"bad timestamp", `UPDATE counters SET last_clicked_at='invalid'`},
 		{"invalid counter type", `UPDATE counters SET click_count='not a number'`},
 		{"orphan", `PRAGMA foreign_keys=OFF; INSERT INTO counters(user_id) VALUES(999)`},
+		{"bad JSON archive", `INSERT INTO rails_json_users VALUES (1,'{"id":1,"entities":"invalid"}')`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			db, user := adminFixture(t)
@@ -271,7 +272,7 @@ func TestVersionTwoBackupCanBeRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(`DROP TABLE player_activity; DROP TABLE admin_audit; PRAGMA user_version=2`); err != nil {
+	if _, err := raw.Exec(`DROP TABLE player_activity; DROP TABLE admin_audit; DROP TABLE rails_json_users; PRAGMA user_version=2`); err != nil {
 		t.Fatal(err)
 	}
 	raw.Close()
@@ -280,5 +281,29 @@ func TestVersionTwoBackupCanBeRestored(t *testing.T) {
 	}
 	if _, err := db.Increment(ctx, user.ID, time.Now()); err != nil {
 		t.Fatal("v2 restore lost current schema", err)
+	}
+}
+
+func TestVersionThreeBackupCanBeRestored(t *testing.T) {
+	db, user := adminFixture(t)
+	ctx := context.Background()
+	snapshot, err := db.Backup(ctx, t.TempDir(), "v3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := sql.Open("sqlite", snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec(`DROP TABLE rails_json_users; PRAGMA user_version=3`); err != nil {
+		t.Fatal(err)
+	}
+	raw.Close()
+	if _, err := db.Restore(ctx, snapshot, t.TempDir(), user, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	var version int
+	if err := db.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != schemaVersion {
+		t.Fatal("restore downgraded the live schema")
 	}
 }

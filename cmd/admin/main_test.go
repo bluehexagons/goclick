@@ -10,7 +10,45 @@ import (
 	"time"
 
 	"github.com/bluehexagons/goclick/internal/store"
+	"golang.org/x/crypto/bcrypt"
 )
+
+func TestOperatorPasswordCommandDoesNotGrantAccessOrExposeSecrets(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "test.db")
+	db, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := db.CreateUser(context.Background(), "imported_player", nil, "locked hash", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	args := []string{"-database", path, "-username", u.Username, "-password-stdin"}
+	var out, errOut bytes.Buffer
+	password := "new-long-password"
+	if status := runWithInput(args, strings.NewReader(password+"\n"), &out, &errOut); status != 0 {
+		t.Fatalf("password command %d: %s", status, errOut.String())
+	}
+	if strings.Contains(out.String()+errOut.String(), password) {
+		t.Fatal("command printed the password")
+	}
+	db, err = store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	u, err = db.UserByID(context.Background(), u.ID)
+	if err != nil || u.Admin || bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)) != nil {
+		t.Fatal("password command changed role or failed")
+	}
+	if status := runWithInput(args, strings.NewReader("new-password\nsecond-password\n"), &out, &errOut); status != 2 {
+		t.Fatal("accepted multiple password lines")
+	}
+	if status := runWithInput(append(args, "-revoke"), strings.NewReader(password), &out, &errOut); status != 2 {
+		t.Fatal("accepted combined role/password mutation")
+	}
+}
 
 func TestBootstrapAdminCommand(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "goclick.db")

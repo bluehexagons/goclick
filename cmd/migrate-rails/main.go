@@ -14,8 +14,13 @@ import (
 
 func main() {
 	source := flag.String("source", "", "path to the Minimal Clicker Rails SQLite database")
+	format := flag.String("format", "sqlite", "source format: sqlite (preserves passwords) or json (requires new passwords)")
 	target := flag.String("target", "data/goclick.db", "path to the Go Click SQLite database")
 	flag.Parse()
+	if *format != "sqlite" && *format != "json" {
+		fmt.Fprintln(os.Stderr, "error: -format must be sqlite or json")
+		os.Exit(2)
+	}
 
 	if *source == "" {
 		fmt.Fprintln(os.Stderr, "error: -source is required")
@@ -51,12 +56,20 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	result, err := database.ImportRails(ctx, *source)
+	var result store.ImportResult
+	if *format == "json" {
+		result, err = database.ImportRailsJSON(ctx, *source)
+	} else {
+		result, err = database.ImportRails(ctx, *source)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: import failed: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("Imported %d users, %d entities, and %d counter sets into %s.\n", result.Users, result.Entities, result.Counters, *target)
+	if *format == "json" {
+		fmt.Println("New accounts require an operator-set password: use cmd/admin -password-stdin. Existing matching accounts keep their passwords.")
+	}
 }
 
 func sameDatabaseFile(sourcePath, targetPath string) (bool, error) {
