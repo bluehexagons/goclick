@@ -7,6 +7,7 @@ const tactileButtons = new Map();
 for (const button of document.querySelectorAll("[data-tactile-button]")) {
   const stage = button.closest(".button-stage");
   const rig = stage.querySelector(".button-rig");
+  const renderer = createButtonRenderer(stage, button);
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const keys = ["x", "y", "rx", "ry", "press"];
   const current = { x: 0, y: 0, rx: 0, ry: 0, press: 0 };
@@ -21,6 +22,7 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
     rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
     rig.style.setProperty("--press", clamp(current.press, 0, 1).toFixed(3));
+    renderer.draw(current);
   }
   function tick(time) {
     const dt = lastFrame ? clamp((time - lastFrame) / (1000 / 60), .25, 2) : 1;
@@ -44,14 +46,12 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     const rect = stage.getBoundingClientRect();
     const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
     const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
-    target.rx = -y * 11; target.ry = x * 15;
-    target.x = x * 5; target.y = y * 4;
+    target.rx = -y * 16; target.ry = x * 22;
+    target.x = x * 3; target.y = y * 3;
     if (pointer !== null && origin) {
       target.x += clamp((event.clientX - origin.x) * .18, -12, 12);
       target.y += clamp((event.clientY - origin.y) * .18, -10, 10);
     }
-    rig.style.setProperty("--light-x", `${50 + x * 32}%`);
-    rig.style.setProperty("--light-y", `${38 + y * 28}%`);
     animate();
   }
   function release(cancelled = false) {
@@ -66,7 +66,6 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     window.clearTimeout(pulseTimer);
     release(cancelled);
     for (const key of keys) target[key] = 0;
-    rig.style.removeProperty("--light-x"); rig.style.removeProperty("--light-y");
     animate();
   }
   stage.addEventListener("pointermove", (event) => {
