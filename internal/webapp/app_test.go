@@ -391,7 +391,7 @@ func TestFrontendIsEmbedded(t *testing.T) {
 	response := jsonRequest(t, client, http.MethodGet, baseURL+"/", nil, nil)
 	body := readBody(t, response)
 	if response.StatusCode != http.StatusOK ||
-		!strings.Contains(body, "One button.") ||
+		!strings.Contains(body, "Login to Click.") ||
 		!strings.Contains(body, `id="loading-view"`) ||
 		!strings.Contains(body, `id="retry-game-button"`) {
 		t.Fatalf("frontend status/body = %d %q", response.StatusCode, body)

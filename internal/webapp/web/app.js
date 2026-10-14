@@ -17,7 +17,6 @@ let user = null;
 let gameReady = false;
 let pendingClicks = 0;
 let clickBatchFailed = false;
-let clickAnimationTimer = 0;
 let signingOut = false;
 let clickGeneration = 0;
 const maxPendingClicks = 6;
@@ -112,8 +111,7 @@ function resetClickState() {
   clickGeneration++;
   pendingClicks = 0;
   clickBatchFailed = false;
-  window.clearTimeout(clickAnimationTimer);
-  clickButton.classList.remove("clicked");
+  tactileButtons.get(clickButton).reset();
   clickButton.disabled = !gameReady;
 }
 
@@ -127,10 +125,12 @@ function renderCounters(data, allowDecrease = false) {
   document.querySelector("#year-streak").textContent = data.streak_counter_year?.count ?? 0;
   document.querySelector("#last-click").textContent = clicks?.modified_time
     ? `Last click ${new Date(clicks.modified_time).toLocaleString()}`
-    : "No clicks yet. You know what to do.";
+    : "No clicks yet.";
 }
 
 async function openGame() {
+  const greetings = ["Welcome back!", "Hi again!", "Thanks for coming by."];
+  document.querySelector("#game-greeting").textContent = greetings[Math.floor(Math.random() ** 2 * greetings.length)];
   const generation = clickGeneration;
   show("game");
   showError("#game-error", "");
@@ -263,11 +263,6 @@ clickButton.addEventListener("click", async () => {
   }
   pendingClicks++;
   clickButton.disabled = pendingClicks >= maxPendingClicks;
-  clickButton.classList.remove("clicked");
-  void clickButton.offsetWidth;
-  clickButton.classList.add("clicked");
-  window.clearTimeout(clickAnimationTimer);
-  clickAnimationTimer = window.setTimeout(() => clickButton.classList.remove("clicked"), 140);
   const started = performance.now();
   const generation = clickGeneration;
   setConnection(pendingClicks === 1 ? "Saving click…" : `Saving ${pendingClicks} clicks…`, "loading");

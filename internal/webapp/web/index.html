@@ -3,10 +3,11 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="A tiny game about clicking one very important button.">
+    <meta name="description" content="Go Click. A small clicker game.">
     <title>Go Click</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/app.css">
+    <script src="/button.js" defer></script>
     <script src="/app.js" defer></script>
   </head>
   <body>
@@ -34,26 +35,27 @@
           <button id="retry-boot-button" class="button button-quiet" type="button" hidden>Try again</button>
         </section>
 
-        <section id="home-view" class="hero" hidden>
-          <p class="eyebrow">Minimal Clicker, rewritten</p>
-          <h1>One button.<br><span>Still irresistible.</span></h1>
-          <p class="hero-copy">Sign in, press the button, keep your streak alive. That’s the whole game—and that’s the point.</p>
-          <div class="hero-actions">
-            <button class="button button-large" type="button" data-view="signup">Start clicking</button>
-            <button class="button button-large button-quiet" type="button" data-view="login">I have an account</button>
+        <section id="home-view" class="home" hidden>
+          <h1>Go Click.</h1>
+          <p class="home-greeting">Login to Click.</p>
+          <div class="button-stage">
+            <div class="button-socket" aria-hidden="true"></div>
+            <div class="button-rig">
+              <div class="button-base" aria-hidden="true"></div>
+              <button id="guest-click-button" class="click-button" type="button" data-tactile-button data-view="login" aria-label="Click to log in">
+                <span class="button-sheen" aria-hidden="true"></span>
+                <span class="button-label">Click!</span>
+              </button>
+            </div>
           </div>
-          <div class="preview" aria-hidden="true">
-            <span class="preview-ring ring-one"></span>
-            <span class="preview-ring ring-two"></span>
-            <span class="preview-button">CLICK</span>
-          </div>
+          <p class="home-signup">New here? <button class="text-link" type="button" data-view="signup">Sign up</button></p>
         </section>
 
         <section id="auth-view" class="auth-layout" hidden>
           <button class="back-button" type="button" data-view="home">← Back</button>
           <div class="card auth-card">
             <form id="login-form" name="login" action="/api/auth/login" method="post">
-              <p class="eyebrow">Welcome back</p>
+              <p class="auth-greeting">Welcome back!</p>
               <h1>Sign in</h1>
               <p class="muted">Your old Minimal Clicker login works here.</p>
               <div id="login-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
@@ -69,9 +71,7 @@
             </form>
 
             <form id="signup-form" name="signup" action="/api/auth/signup" method="post" hidden>
-              <p class="eyebrow">A fresh counter</p>
               <h1>Create account</h1>
-              <p class="muted">No feeds, no upgrades, no nonsense.</p>
               <div id="signup-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
               <label for="signup-username">Username</label>
               <input id="signup-username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="32" pattern="[A-Za-z0-9_\-]+" aria-describedby="username-hint" required>
@@ -90,7 +90,7 @@
                 <button class="password-toggle" type="button" data-toggle-password="signup-password-confirmation" aria-label="Show password">Show</button>
               </div>
               <button class="button button-block" type="submit" data-label="Create account" data-busy-label="Creating account…">Create account</button>
-              <p class="form-switch">Already clicking? <button type="button" data-view="login">Sign in</button></p>
+              <p class="form-switch">Have an account? <button type="button" data-view="login">Sign in</button></p>
             </form>
           </div>
         </section>
@@ -98,8 +98,8 @@
         <section id="game-view" class="game" hidden>
           <div class="game-heading">
             <div>
-              <p class="eyebrow">Your counter</p>
-              <h1>Hello, <span id="game-username"></span>.</h1>
+              <h1>Go Click.</h1>
+              <p class="game-greeting"><span id="game-greeting">Hi again!</span> Hello, <span id="game-username"></span>.</p>
             </div>
             <div id="connection" class="connection" role="status" aria-live="polite">
               <span class="connection-dot" aria-hidden="true"></span>
@@ -110,17 +110,20 @@
           <div id="game-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
           <button id="retry-game-button" class="button button-quiet retry-game" type="button" hidden>Reload counter</button>
           <div id="counter-card" class="counter-card">
-            <p class="counter-label">All-time clicks</p>
+            <p class="counter-label">Clicks</p>
             <p id="click-count" class="counter-value" aria-live="polite">0</p>
-            <div class="click-zone">
-              <span class="pulse pulse-one" aria-hidden="true"></span>
-              <span class="pulse pulse-two" aria-hidden="true"></span>
-              <button id="click-button" class="click-button" type="button">
-                <span>CLICK</span>
-                <small>+1</small>
-              </button>
+            <div class="button-stage">
+              <div class="button-socket" aria-hidden="true"></div>
+              <div class="button-rig">
+                <div class="button-base" aria-hidden="true"></div>
+                <button id="click-button" class="click-button" type="button" data-tactile-button aria-label="Click to increment score" aria-describedby="button-hint">
+                  <span class="button-sheen" aria-hidden="true"></span>
+                  <span class="button-label">Click!</span>
+                </button>
+              </div>
             </div>
-            <p id="last-click" class="last-click">No clicks yet. You know what to do.</p>
+            <p id="button-hint" class="button-hint">Give it a little push.</p>
+            <p id="last-click" class="last-click">No clicks yet.</p>
           </div>
 
           <div class="streak-grid" aria-label="Click streaks">
@@ -142,7 +145,7 @@
 
       <footer>
         <span>Go Click</span>
-        <span>A deliberately small game.</span>
+        <span>Minimal Clicker</span>
         <a href="https://github.com/bluehexagons/goclick" rel="noopener noreferrer">Source</a>
       </footer>
     </div>
