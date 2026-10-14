@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -160,7 +160,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string) (ImportResul
 	for userID := range canonical {
 		userIDsWithCounters = append(userIDsWithCounters, userID)
 	}
-	sort.Slice(userIDsWithCounters, func(i, j int) bool { return userIDsWithCounters[i] < userIDsWithCounters[j] })
+	slices.Sort(userIDsWithCounters)
 	for _, userID := range userIDsWithCounters {
 		if err := insertCounters(ctx, tx, userID, canonical[userID]); err != nil {
 			return ImportResult{}, err

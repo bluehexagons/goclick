@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -47,7 +48,16 @@ func main() {
 
 	shutdownSignals, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	go reapExpiredSessions(shutdownSignals, database, logger, 24*time.Hour, time.Now)
+	reaperContext, stopReaper := context.WithCancel(shutdownSignals)
+	reaperDone := make(chan struct{})
+	go func() {
+		defer close(reaperDone)
+		reapExpiredSessions(reaperContext, database, logger, 24*time.Hour, time.Now)
+	}()
+	defer func() {
+		stopReaper()
+		<-reaperDone
+	}()
 
 	server := &http.Server{
 		Addr:              env("GOCLICK_ADDR", ":8080"),
@@ -59,21 +69,47 @@ func main() {
 		MaxHeaderBytes:    16 << 10,
 	}
 
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		logger.Error("listen", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("Go Click listening", "address", listener.Addr().String(), "database", databasePath, "secure_cookies", secureCookies, "trust_proxy", trustProxy)
+	if err := serve(shutdownSignals, server, listener, logger); err != nil {
+		logger.Error("serve", "error", err)
+		os.Exit(1)
+	}
+}
+
+// Serve returns as soon as Shutdown closes the listener. Wait for Shutdown to
+// finish draining handlers before main closes the store and exits.
+func serve(ctx context.Context, server *http.Server, listener net.Listener, logger *slog.Logger) error {
+	shutdownDone := make(chan struct{})
+	serveDone := make(chan struct{})
 	go func() {
-		<-shutdownSignals.Done()
+		defer close(shutdownDone)
+		select {
+		case <-ctx.Done():
+		case <-serveDone:
+			return
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := server.Shutdown(ctx); err != nil {
 			logger.Error("graceful shutdown", "error", err)
+			if err := server.Close(); err != nil {
+				logger.Error("close server", "error", err)
+			}
 		}
 	}()
 
-	logger.Info("Go Click listening", "address", server.Addr, "database", databasePath, "secure_cookies", secureCookies, "trust_proxy", trustProxy)
-	err = server.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Error("serve", "error", err)
-		os.Exit(1)
+	err := server.Serve(listener)
+	close(serveDone)
+	<-shutdownDone
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
 	}
+	return err
 }
 
 type expiredSessionStore interface {

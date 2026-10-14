@@ -6,12 +6,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
-	_ "modernc.org/sqlite"
+	"modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
 
 var (
@@ -62,7 +63,6 @@ var (
 )
 
 const schema = `
-PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS users (
 	id INTEGER PRIMARY KEY,
 	username TEXT NOT NULL UNIQUE,
@@ -110,17 +110,21 @@ func Open(path string) (*Store, error) {
 		if err := os.MkdirAll(directory, 0o700); err != nil {
 			return nil, fmt.Errorf("create database directory: %w", err)
 		}
-		if directory != "." {
-			if err := os.Chmod(directory, 0o700); err != nil {
-				return nil, fmt.Errorf("secure database directory: %w", err)
-			}
-		}
 		// SQLite's default creation mode is affected by the process umask and
 		// can leave password and session digests readable by other local users.
 		// Open the file ourselves so both new and existing databases are private.
 		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
 		if err != nil {
 			return nil, fmt.Errorf("prepare database file: %w", err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			file.Close()
+			return nil, fmt.Errorf("inspect database file: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			file.Close()
+			return nil, fmt.Errorf("database must be a regular file: %s", path)
 		}
 		if err := file.Chmod(0o600); err != nil {
 			file.Close()
@@ -131,10 +135,21 @@ func Open(path string) (*Store, error) {
 		}
 	}
 
-	// The store uses one persistent database/sql connection, so SQLite's plain
-	// in-memory DSN is sufficient. A fixed shared-cache URI would make separate
-	// Open(":memory:") calls unexpectedly share users and sessions.
-	db, err := sql.Open("sqlite", path)
+	// Configure every connection, including replacements after cancellation or
+	// driver errors. Exec-only PRAGMAs would disappear when sql.DB reconnects.
+	// Encode disk paths as literal filenames, never caller-supplied SQLite URIs.
+	dsn := ":memory:"
+	if path != ":memory:" {
+		absolute, err := filepath.Abs(path)
+		if err != nil {
+			return nil, fmt.Errorf("resolve database path: %w", err)
+		}
+		dsn = (&url.URL{Scheme: "file", Path: filepath.ToSlash(absolute)}).String()
+	}
+	settings := url.Values{}
+	settings.Add("_pragma", "foreign_keys(1)")
+	settings.Add("_pragma", "busy_timeout(5000)")
+	db, err := sql.Open("sqlite", dsn+"?"+settings.Encode())
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
@@ -156,23 +171,13 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	if _, err := db.ExecContext(ctx, "PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL;"); err != nil {
+	if _, err := db.ExecContext(ctx, "PRAGMA journal_mode = WAL"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("configure database: %w", err)
 	}
-	if _, err := db.ExecContext(ctx, schema); err != nil {
+	if err := initializeSchema(ctx, db, currentVersion); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("initialize database: %w", err)
-	}
-	if err := validateSchemaTables(ctx, db, append(coreSchemaTables, archiveSchemaTable)); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("validate initialized database: %w", err)
-	}
-	if currentVersion < schemaVersion {
-		if _, err := db.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", schemaVersion)); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("upgrade schema version: %w", err)
-		}
+		return nil, err
 	}
 	if path != ":memory:" {
 		if err := secureSQLiteFiles(path); err != nil {
@@ -181,6 +186,29 @@ func Open(path string) (*Store, error) {
 		}
 	}
 	return &Store{db: db}, nil
+}
+
+func initializeSchema(ctx context.Context, db *sql.DB, currentVersion int) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin schema upgrade: %w", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, schema); err != nil {
+		return fmt.Errorf("initialize database: %w", err)
+	}
+	if err := validateSchemaTables(ctx, tx, append(coreSchemaTables, archiveSchemaTable)); err != nil {
+		return fmt.Errorf("validate initialized database: %w", err)
+	}
+	if currentVersion < schemaVersion {
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", schemaVersion)); err != nil {
+			return fmt.Errorf("upgrade schema version: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit schema upgrade: %w", err)
+	}
+	return nil
 }
 
 func existingSchemaVersion(ctx context.Context, db *sql.DB) (int, error) {
@@ -215,7 +243,12 @@ func validateExistingSchema(ctx context.Context, db *sql.DB, version int) error 
 	return nil
 }
 
-func validateSchemaTables(ctx context.Context, db *sql.DB, tables []schemaTable) error {
+type schemaQueryer interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+func validateSchemaTables(ctx context.Context, db schemaQueryer, tables []schemaTable) error {
 	for _, table := range tables {
 		var objectType string
 		err := db.QueryRowContext(ctx, `
@@ -349,12 +382,32 @@ func scanUser(row rowScanner) (User, error) {
 }
 
 func (s *Store) CreateSession(ctx context.Context, rawToken []byte, userID int64, expiresAt, now time.Time) error {
+	return s.ReplaceSession(ctx, rawToken, nil, userID, expiresAt, now)
+}
+
+// ReplaceSession creates a session and revokes the previous token atomically.
+// If creating the replacement fails, the previous session remains usable.
+func (s *Store) ReplaceSession(ctx context.Context, rawToken, previousToken []byte, userID int64, expiresAt, now time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin session replacement: %w", err)
+	}
+	defer tx.Rollback()
 	hash := sha256.Sum256(rawToken)
-	_, err := s.db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO sessions (token_hash, user_id, expires_at, created_at)
 		VALUES (?, ?, ?, ?)`, hash[:], userID, expiresAt.Unix(), now.Unix())
 	if err != nil {
 		return fmt.Errorf("create session: %w", err)
+	}
+	if len(previousToken) > 0 {
+		previousHash := sha256.Sum256(previousToken)
+		if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, previousHash[:]); err != nil {
+			return fmt.Errorf("revoke previous session: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit session replacement: %w", err)
 	}
 	return nil
 }
@@ -408,6 +461,7 @@ func (s *Store) CurrentCounters(ctx context.Context, userID int64) (Counters, er
 }
 
 func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Counters, error) {
+	now = now.UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return Counters{}, fmt.Errorf("begin click: %w", err)
@@ -443,7 +497,6 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		counters.YearStreak = 1
 	}
 	counters.Clicks++
-	now = now.UTC()
 	counters.LastClickedAt = &now
 
 	_, err = tx.ExecContext(ctx, `
@@ -498,5 +551,7 @@ func parseTime(value string) (time.Time, error) {
 }
 
 func isUniqueViolation(err error) bool {
-	return err != nil && strings.Contains(strings.ToLower(err.Error()), "unique constraint")
+	var sqliteErr *sqlite.Error
+	return errors.As(err, &sqliteErr) &&
+		(sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE || sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT_PRIMARYKEY)
 }

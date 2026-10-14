@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const maxLimiterEntries = 50_000
+
 type limitEntry struct {
 	count int
 	reset time.Time
@@ -14,6 +16,7 @@ type limiter struct {
 	mu      sync.Mutex
 	entries map[string]limitEntry
 	now     func() time.Time
+	pruneAt time.Time
 }
 
 func newLimiter(now func() time.Time) *limiter {
@@ -24,11 +27,19 @@ func (l *limiter) allow(key string, maximum int, window time.Duration) (bool, ti
 	now := l.now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if !now.Before(l.pruneAt) {
+		l.prune(now)
+		l.pruneAt = now.Add(time.Minute)
+	}
 
 	entry, exists := l.entries[key]
 	if !exists || !now.Before(entry.reset) {
+		// Never clear active limits to make room for attacker-controlled keys.
+		// Existing clients retain their budgets; new keys wait for cleanup.
+		if !exists && len(l.entries) >= maxLimiterEntries {
+			return false, l.pruneAt.Sub(now)
+		}
 		l.entries[key] = limitEntry{count: 1, reset: now.Add(window)}
-		l.prune(now)
 		return true, 0
 	}
 	if entry.count >= maximum {
@@ -40,16 +51,9 @@ func (l *limiter) allow(key string, maximum int, window time.Duration) (bool, ti
 }
 
 func (l *limiter) prune(now time.Time) {
-	if len(l.entries) < 10_000 {
-		return
-	}
 	for key, entry := range l.entries {
 		if !now.Before(entry.reset) {
 			delete(l.entries, key)
 		}
-	}
-	// Keep attacker-controlled keys from growing memory without bound.
-	if len(l.entries) > 50_000 {
-		clear(l.entries)
 	}
 }

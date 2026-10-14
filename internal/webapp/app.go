@@ -1,6 +1,7 @@
 package webapp
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"embed"
@@ -15,7 +16,6 @@ import (
 	"net"
 	"net/http"
 	"net/mail"
-	"net/url"
 	"path"
 	"regexp"
 	"strconv"
@@ -265,9 +265,6 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		invalidCredentials(w)
 		return
 	}
-	if raw, _, ok := rawSessionToken(r); ok {
-		_ = a.store.DeleteSession(r.Context(), raw)
-	}
 	if err := a.startSession(w, r, user); err != nil {
 		a.internalError(w, r, "start login session", err)
 		return
@@ -370,7 +367,11 @@ func (a *App) startSession(w http.ResponseWriter, r *http.Request, user store.Us
 	}
 	now := a.now()
 	expires := now.Add(a.sessionTTL)
-	if err := a.store.CreateSession(r.Context(), raw, user.ID, expires, now); err != nil {
+	previous, _, valid := rawSessionToken(r)
+	if !valid {
+		previous = nil
+	}
+	if err := a.store.ReplaceSession(r.Context(), raw, previous, user.ID, expires, now); err != nil {
 		return err
 	}
 	http.SetCookie(w, &http.Cookie{
@@ -465,28 +466,11 @@ func (a *App) bodyLimit(next http.Handler) http.Handler {
 }
 
 func (a *App) rejectCrossSite(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
-			next.ServeHTTP(w, r)
-			return
-		}
-		if strings.EqualFold(r.Header.Get("Sec-Fetch-Site"), "cross-site") {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Cross-site request rejected"})
-			return
-		}
-		if origin := r.Header.Get("Origin"); origin != "" {
-			parsed, err := url.Parse(origin)
-			if err != nil || !sameHost(parsed.Host, r.Host) {
-				writeJSON(w, http.StatusForbidden, map[string]string{"error": "Origin does not match request host"})
-				return
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func sameHost(first, second string) bool {
-	return strings.EqualFold(strings.TrimSuffix(first, "."), strings.TrimSuffix(second, "."))
+	protection := http.NewCrossOriginProtection()
+	protection.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "Cross-site request rejected"})
+	}))
+	return protection.Handler(next)
 }
 
 func (a *App) securityHeaders(next http.Handler) http.Handler {
@@ -536,20 +520,30 @@ func (a *App) frontend(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {
-	if mediaType := strings.ToLower(strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0])); mediaType != "application/json" {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
 		writeJSON(w, http.StatusUnsupportedMediaType, map[string]string{"error": "Content-Type must be application/json"})
 		return false
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBody)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		var maxErr *http.MaxBytesError
-		if errors.As(err, &maxErr) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "Request body is too large"})
 		} else {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Request body must be valid JSON"})
 		}
+		return false
+	}
+	body = bytes.TrimSpace(body)
+	if len(body) == 0 || body[0] != '{' {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Request body must contain one JSON object"})
+		return false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Request body must be valid JSON"})
 		return false
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {

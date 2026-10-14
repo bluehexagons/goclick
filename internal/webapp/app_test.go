@@ -134,9 +134,7 @@ func TestConcurrentClicksAreNotLost(t *testing.T) {
 	var wait sync.WaitGroup
 	errors := make(chan string, clicks)
 	for range clicks {
-		wait.Add(1)
-		go func() {
-			defer wait.Done()
+		wait.Go(func() {
 			response := jsonRequestNoFatal(client, http.MethodPost, baseURL+"/api/clicks")
 			if response.err != nil {
 				errors <- response.err.Error()
@@ -146,7 +144,7 @@ func TestConcurrentClicksAreNotLost(t *testing.T) {
 			if response.response.StatusCode != http.StatusOK {
 				errors <- response.response.Status
 			}
-		}()
+		})
 	}
 	wait.Wait()
 	close(errors)
