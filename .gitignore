@@ -3,7 +3,11 @@
 /goclick
 /.basaltwater/
 *.db
-*.db-shm
-*.db-wal
+*.db-*
 *.sqlite3
+*.sqlite3-*
+*.sqlite
+*.sqlite-*
 .env
+.env.*
+/backups/

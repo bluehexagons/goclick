@@ -10,7 +10,7 @@ dependencies: a pure-Go SQLite driver and Go's bcrypt implementation.
 
 ## Run it
 
-Go 1.27 or newer is required.
+Go 1.27.2 or newer is required.
 
 ```bash
 go run ./cmd/server
@@ -104,6 +104,7 @@ currently exposes the gameplay and account surface only.
 ```bash
 go test -race ./...
 go vet ./...
+test -z "$(gofmt -l .)"
 ```
 
 ## Container

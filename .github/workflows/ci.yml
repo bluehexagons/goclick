@@ -20,6 +20,9 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: test -z "$(gofmt -l .)"
+      - run: go mod verify
+      - name: Check reachable Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - name: Smoke-test basaltwater.json build and runtime contract
         shell: bash
         run: |
