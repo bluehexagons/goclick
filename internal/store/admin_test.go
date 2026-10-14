@@ -225,6 +225,7 @@ func TestRestoreRejectsUntrustedAndInvalidBackups(t *testing.T) {
 		{"view", `CREATE VIEW uploaded AS SELECT * FROM users`},
 		{"extra table", `CREATE TABLE uploaded(value TEXT)`},
 		{"future schema", `PRAGMA user_version=999`},
+		{"Go Click schema zero", `PRAGMA user_version=0`},
 		{"no administrator", `UPDATE users SET admin=0`},
 		{"bad credentials", `UPDATE users SET password_hash='malformed'`},
 		{"bad timestamp", `UPDATE counters SET last_clicked_at='invalid'`},

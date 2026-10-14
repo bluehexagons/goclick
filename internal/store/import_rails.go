@@ -76,7 +76,7 @@ func archiveIdentities(ctx context.Context, tx *sql.Tx) (map[int64]archiveIdenti
 			return nil, err
 		}
 		if _, exists := identities[id]; exists {
-			return nil, fmt.Errorf("target has conflicting archived entity ID %d", id)
+			return nil, fmt.Errorf("%w: target has conflicting archived entity ID %d", ErrConflict, id)
 		}
 		identities[id] = identity
 	}
@@ -164,7 +164,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string, audit ...Imp
 		}
 		entityIDs[entity.ID] = true
 		if archivedIDs[entity.ID].source == "json" {
-			return ImportResult{}, fmt.Errorf("entity ID %d already belongs to a partial JSON archive; use a fresh target for a full SQLite migration", entity.ID)
+			return ImportResult{}, fmt.Errorf("%w: entity ID %d already belongs to a partial JSON archive; use a fresh target for a full SQLite migration", ErrConflict, entity.ID)
 		}
 		if err := insertRailsEntity(ctx, tx, entity); err != nil {
 			return ImportResult{}, fmt.Errorf("import rails entity %d: %w", entity.ID, err)
@@ -221,7 +221,7 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string, audit ...Imp
 			return ImportResult{}, err
 		}
 		if existing != 0 {
-			return ImportResult{}, fmt.Errorf("target counter set for user %d differs from the empty source; refusing to overwrite existing data", userID)
+			return ImportResult{}, fmt.Errorf("%w: target counter set for user %d differs from the empty source; refusing to overwrite existing data", ErrConflict, userID)
 		}
 	}
 
@@ -332,7 +332,7 @@ func ensureImportedUser(
 		if sameImportedUser(existing, id, username, email, passwordHash, admin, createdAt, updatedAt) {
 			return nil
 		}
-		return fmt.Errorf("target user ID %d differs; refusing to overwrite existing data", id)
+		return fmt.Errorf("%w: target user ID %d differs; refusing to overwrite existing data", ErrConflict, id)
 	}
 	if !errors.Is(err, ErrNotFound) {
 		return err
@@ -344,7 +344,7 @@ func ensureImportedUser(
 		WHERE username = ? OR (? IS NOT NULL AND email = ?)
 		LIMIT 1`, username, email, email).Scan(&conflictingID)
 	if err == nil {
-		return fmt.Errorf("target user %d already uses username or email", conflictingID)
+		return fmt.Errorf("%w: target user %d already uses username or email", ErrConflict, conflictingID)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("check target user uniqueness: %w", err)
@@ -422,7 +422,7 @@ func insertRailsEntity(ctx context.Context, tx *sql.Tx, entity railsEntity) erro
 		if sameRailsEntity(existing, entity) {
 			return nil
 		}
-		return fmt.Errorf("target entity ID %d differs; refusing to overwrite existing data", entity.ID)
+		return fmt.Errorf("%w: target entity ID %d differs; refusing to overwrite existing data", ErrConflict, entity.ID)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return err
@@ -464,7 +464,7 @@ func insertCounters(ctx context.Context, tx *sql.Tx, userID int64, values *canon
 				(values.lastClicked != nil && lastClicked.Valid && *values.lastClicked == lastClicked.String)) {
 			return nil
 		}
-		return fmt.Errorf("target counters for user %d differ; refusing to overwrite existing data", userID)
+		return fmt.Errorf("%w: target counters for user %d differ; refusing to overwrite existing data", ErrConflict, userID)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("check target counters for user %d: %w", userID, err)

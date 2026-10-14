@@ -88,10 +88,34 @@ than overwriting those changes. A partial JSON archive and full SQLite archive
 cannot silently claim the same entity IDs. If you later obtain the primary
 SQLite database, rehearse that full migration against a fresh target.
 
-Both formats can also be uploaded under **Backups & recovery → Bring players
-over from Rails**. The panel saves a pre-import snapshot and refuses conflicts.
-Use a fresh target for the initial cutover: a bootstrap Go Click admin can
-already occupy a Rails user ID.
+## Migrate from the admin panel
+
+For the initial cutover, open **Backups & recovery → Restore or migrate a
+database**. Upload the Rails primary SQLite snapshot, enter your current Go
+Click administrator password, and type `RESTORE`. This explicitly replaces
+current players, including a bootstrap account whose ID collides with Rails.
+The server validates and converts the source in isolation, saves a private
+pre-restore snapshot, and replaces live data in one transaction. It preserves
+Rails IDs, passwords, roles, timestamps, and every entity row without copying
+Rails schema objects or sessions. The source file remains untouched.
+
+Everyone is signed out after replacement. Sign in with an administrator from
+the Rails database using their existing password. The source must contain an
+administrator; if it does not, import into an isolated fresh Go Click database,
+grant access there with `cmd/admin`, and upload a backup of that database.
+
+The same replacement form accepts the Rails JSON export with **Fetch User
+Entities** enabled. Because JSON omits passwords, choose a username already in
+the export and enter and confirm a new password. That account receives
+administrator access for the migrated database. Other imported accounts still
+need operator-set passwords. This explicit access setup changes the selected
+account's password, role if needed, and update timestamp; the original exported
+user object remains preserved in the JSON archive.
+
+Use **Merge Rails players into current data** with `IMPORT` only when retaining
+current accounts. It saves a pre-import snapshot and refuses all conflicting
+users, counters, or archived entities. A conflict returns HTTP 409 and a link
+to the replacement form; merging never silently overwrites or renumbers users.
 
 ## Safety and verification
 

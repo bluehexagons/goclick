@@ -74,7 +74,7 @@ func TestAdminRailsJSONImportAndAccess(t *testing.T) {
 	}
 	response.Body.Close()
 	response = multipartDatabase(t, client, "/api/admin/import/rails", data, "password123", "IMPORT")
-	if response.StatusCode != 422 {
+	if response.StatusCode != 409 {
 		t.Fatal("target account mutation was silently ignored")
 	}
 	response.Body.Close()
@@ -274,11 +274,18 @@ func multipartRestore(t *testing.T, client *http.Client, backup []byte, password
 }
 
 func multipartDatabase(t *testing.T, client *http.Client, endpoint string, backup []byte, password, confirmation string) *http.Response {
+	return multipartDatabaseWithAccess(t, client, endpoint, backup, password, confirmation, nil)
+}
+
+func multipartDatabaseWithAccess(t *testing.T, client *http.Client, endpoint string, backup []byte, password, confirmation string, access map[string]string) *http.Response {
 	t.Helper()
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	writer.WriteField("password", password)
 	writer.WriteField("confirmation", confirmation)
+	for name, value := range access {
+		writer.WriteField(name, value)
+	}
 	part, err := writer.CreateFormFile("backup", "backup.db")
 	if err != nil {
 		t.Fatal(err)

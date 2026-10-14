@@ -12,14 +12,17 @@ function denyAccess() { $("#dashboard-body").hidden = true; $("#access-error").h
 async function request(url, options = {}, binary = false) {
   let response;
   try { response = await fetch(url, { credentials: "same-origin", ...options }); }
-  catch (_) { throw new Error("Can’t reach Go Click. Check your connection and try again."); }
+  catch (_) { const error = new Error("Can’t reach Go Click. Check your connection and try again."); error.uncertain = true; throw error; }
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     if (response.status === 401 || (response.status === 403 && data.error === "Administrator access required")) denyAccess();
     const retry = response.headers.get("Retry-After");
-    throw new Error(response.status === 429 && retry ? `Try again in ${retry} seconds.` : (data.error || "Request failed. Try again."));
+    const error = new Error(response.status === 429 && retry ? `Try again in ${retry} seconds.` : (data.error || "Request failed. Try again."));
+    error.uncertain = response.status >= 500; error.code = data.code;
+    throw error;
   }
-  return binary ? response.blob() : response.json();
+  try { return binary ? await response.blob() : await response.json(); }
+  catch (_) { const error = new Error("Couldn’t read the server’s response."); error.uncertain = true; throw error; }
 }
 function jsonOptions(body) { return { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }; }
 function playerButton(player) { const button = node("button", "text-button", player.username); button.type = "button"; button.addEventListener("click", () => openPlayer(player.id)); return button; }
@@ -96,6 +99,17 @@ async function openPlayer(id) {
   } catch (error) { if (generation === detailGeneration) notice("#detail-error", error.message, true); }
 }
 function busy(form, state, label) { const button = form.querySelector("button[type=submit]"); button.disabled = state; button.textContent = label; form.setAttribute("aria-busy", String(state)); }
+let restoreFileGeneration = 0;
+$("#restore-file").addEventListener("change", async () => {
+  const generation = ++restoreFileGeneration, file = $("#restore-file").files[0];
+  let json = false;
+  try {
+    if (file) { const header = await file.slice(0, 16).text(); json = header !== "SQLite format 3\0" && (file.type === "application/json" || /\.json$/i.test(file.name) || header.trimStart().startsWith("{")); }
+  } catch (_) { notice("#restore-status", "Can’t read the selected file. Choose it again.", true); }
+  if (generation !== restoreFileGeneration) return;
+  $("#restore-json-access").hidden = !json;
+  for (const input of $("#restore-json-access").querySelectorAll("input")) { input.disabled = !json; input.required = json; if (!json) input.value = ""; }
+});
 $("#export-form").addEventListener("submit", async (event) => {
   event.preventDefault(); if (restoring) return; const form = event.currentTarget; busy(form, true, "Preparing backup…"); notice("#export-status", "Creating a consistent snapshot…");
   const password = $("#export-password").value; $("#export-password").value = "";
@@ -105,12 +119,15 @@ $("#export-form").addEventListener("submit", async (event) => {
 });
 $("#restore-form").addEventListener("submit", async (event) => {
   event.preventDefault(); if (restoring) return; const form = event.currentTarget; const file = $("#restore-file").files[0];
-  if (!file || file.size > 128 * 1024 * 1024) { notice("#restore-status", "Choose a SQLite backup no larger than 128 MiB.", true); return; }
+  const json = !$("#restore-json-access").hidden;
+  if (!file || file.size > (json ? 16 : 128) * 1024 * 1024) { notice("#restore-status", "Choose a SQLite database up to 128 MiB, or Rails JSON up to 16 MiB.", true); return; }
+  if (!$("#restore-json-access").hidden && $("#restore-admin-password").value !== $("#restore-admin-password-confirmation").value) { notice("#restore-status", "The new administrator passwords do not match.", true); return; }
   const data = new FormData(); data.append("password", $("#restore-password").value); data.append("confirmation", $("#restore-confirmation").value); data.append("backup", file); $("#restore-password").value = "";
-  restoring = true; busy(form, true, "Restoring…"); notice("#restore-status", "Uploading and validating the backup. Leave this page open until recovery completes.");
-  try { const result = await request("/api/admin/backups/restore", { method: "POST", body: data }); $("#dashboard-body").hidden = true; $("#restore-success").hidden = false; $("#restore-summary").textContent = `${number(result.users)} accounts and ${number(result.entities)} archived entities restored. Pre-restore snapshot: ${result.recovery_backup}.`; $("#refresh").hidden = true; }
-  catch (error) { notice("#restore-status", `${error.message} If the connection was interrupted, sign in again and check the audit history before retrying.`, true); }
-  finally { restoring = false; busy(form, false, "Restore database"); }
+  if (!$("#restore-json-access").hidden) { for (const input of $("#restore-json-access").querySelectorAll("input")) { data.append(input.name, input.value); if (input.type === "password") input.value = ""; } }
+  restoring = true; busy(form, true, "Restoring…"); notice("#restore-status", "Validating the uploaded data and saving a recovery snapshot. Leave this page open until replacement completes.");
+  try { const result = await request("/api/admin/backups/restore", { method: "POST", body: data }); $("#dashboard-body").hidden = true; $("#restore-success").hidden = false; $("#restore-result-title").textContent = result.source_format === "goclick" ? "Database restored" : "Rails players migrated"; $("#restore-summary").textContent = `${number(result.users)} accounts and ${number(result.entities)} archived entities restored. Recovery snapshot: ${result.recovery_backup}.${result.admin_username ? ` Sign in as ${result.admin_username} with the new password you set. Other JSON-imported accounts need an operator-set password.` : ""}`; $("#refresh").hidden = true; }
+  catch (error) { notice("#restore-status", error.message + (error.uncertain ? " Sign in again and check the audit history before retrying; the connection may have failed after replacement." : ""), true); }
+  finally { restoring = false; busy(form, false, "Restore or migrate database"); }
 });
 $("#import-form").addEventListener("submit", async (event) => {
   event.preventDefault(); if (restoring) return;
@@ -118,8 +135,9 @@ $("#import-form").addEventListener("submit", async (event) => {
   if (!file || file.size > 128 * 1024 * 1024) { notice("#import-status", "Choose a Rails database up to 128 MiB, or JSON up to 16 MiB.", true); return; }
   const data = new FormData(); data.append("password", $("#import-password").value); data.append("confirmation", $("#import-confirmation").value); data.append("backup", file); $("#import-password").value = "";
   restoring = true; busy(form, true, "Importing…"); notice("#import-status", "Saving a recovery snapshot and checking the import…");
+  $("#import-replacement-link").hidden = true;
   try { const result = await request("/api/admin/import/rails", { method: "POST", body: data }); notice("#import-status", `${number(result.users)} players and ${number(result.entities)} entities imported. Recovery snapshot: ${result.recovery_backup}.${result.new_passwords_required ? " New accounts need an operator-set password before signing in." : " Existing passwords were preserved."}`); await loadAudit(); }
-  catch (error) { notice("#import-status", `${error.message} If the connection was interrupted, check the audit history before retrying.`, true); }
+  catch (error) { notice("#import-status", error.message + (error.uncertain ? " Check the audit history before retrying; the connection may have failed after the import." : ""), true); $("#import-replacement-link").hidden = error.code !== "import_conflict"; }
   finally { restoring = false; busy(form, false, "Import Rails players"); }
 });
 for (const button of document.querySelectorAll("[data-tab]")) button.addEventListener("click", () => selectTab(button.dataset.tab));

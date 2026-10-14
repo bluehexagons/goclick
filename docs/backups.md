@@ -134,6 +134,10 @@ one transaction. Existing audit history is retained, and all sessions are
 revoked. A failed transaction leaves live data intact. Version-2, version-3, and version-4
 snapshots are supported; the snapshot must contain an administrator. Other
 service instances and importers must be stopped before panel recovery.
+For an initial migration, the panel can also convert a Rails primary SQLite
+snapshot or admin JSON export before replacement. SQLite preserves old
+passwords; JSON requires explicit administrator password setup. See
+[migration](migration.md#migrate-from-the-admin-panel) for that procedure.
 See [administration](administration.md) for password verification, upload limits,
 and recovery-snapshot locations. The stopped-service procedure above remains
 available when no administrator can sign in.

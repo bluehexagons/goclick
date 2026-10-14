@@ -126,6 +126,11 @@ activity, and the Rails entity archive. It also exports full SQLite backups and
 restores validated snapshots after password verification and explicit
 confirmation. Restore first saves a recovery snapshot, replaces known data in
 one transaction, and revokes all sessions. Administrative operations are audited.
+For an initial Rails cutover, **Restore or migrate a database** converts the
+primary SQLite snapshot while preserving old passwords and IDs, even when a
+bootstrap Go Click account has a conflicting ID. JSON replacement requires a
+new password for a selected imported administrator. Merge imports continue to
+refuse conflicts; see [`docs/migration.md`](docs/migration.md).
 
 Activity history starts with this release; migrated all-time counters remain
 intact. [`docs/administration.md`](docs/administration.md) covers bootstrap

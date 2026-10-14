@@ -64,17 +64,34 @@ The file includes password hashes, session digests, users, counters, archive
 rows, player activity, and audit history. Store it privately; it is a recovery
 artifact, not a report to share publicly.
 
-**Restore a backup** accepts a full version-2, version-3, or version-4 Go Click SQLite
-snapshot, up to 128 MiB. Enter the current administrator's password and type
+**Restore or migrate a database** accepts a full version-2, version-3, or version-4
+Go Click SQLite snapshot or a Rails primary SQLite database, up to 128 MiB. It
+also accepts the Rails admin JSON export with entities, up to 16 MiB. Enter the
+current administrator's password and type
 `RESTORE` to confirm. Password attempts are rate limited. JSON endpoints retain
 their 8 KiB body limit; restore uses a separately bounded multipart upload.
 
 The server checks supported schema objects, integrity, foreign keys, field
 types, password-hash format/cost, and timestamps before changing live data.
-Extra tables, triggers, views, or incompatible schemas are rejected. The
+For Go Click backups, extra tables, triggers, views, or incompatible schemas
+are rejected. The
 snapshot must contain at least one administrator; to recover an older snapshot
 without an admin, grant a role on an isolated copy with the operator command
 before uploading it. Original recovery files should remain untouched.
+
+Rails databases normally have SQLite `user_version=0`; this does not make them
+Go Click backups. The server recognizes the Rails credential schema and imports
+data into an isolated fresh Go Click database using the migration validator.
+Only a validated snapshot of that trusted schema reaches the live restore
+transaction. Original Rails tables, triggers, and refresh-token digests are
+never copied. Rails SQLite preserves passwords and roles, and must contain an
+administrator. Go Click backups still require a supported schema version.
+
+For JSON replacement, the form requires a username from the export, a new
+8–72-byte password, and its confirmation. The selected imported account receives
+that password and administrator access; other imported accounts require
+operator-set passwords. JSON cannot recover old passwords. See
+[migration.md](migration.md) for the access plan and archive limitations.
 
 Before replacement, the server saves a private `pre-restore-*.db` snapshot to
 `GOCLICK_BACKUP_DIR`, defaulting to `backups` beside the database. Configure a
@@ -112,7 +129,7 @@ All endpoints below require admin authentication. Read endpoints accept
 | GET | `/api/admin/audit` | Paginated administrative history |
 | POST | `/api/admin/backups/export` | SQLite download; JSON `{ "password": "..." }` |
 | POST | `/api/admin/import/rails` | Multipart `password`, `confirmation=IMPORT`, `backup`; Rails SQLite or JSON |
-| POST | `/api/admin/backups/restore` | Multipart `password`, `confirmation=RESTORE`, `backup` |
+| POST | `/api/admin/backups/restore` | Multipart `password`, `confirmation=RESTORE`, `backup`; JSON additionally requires `admin_username`, `admin_password`, `admin_password_confirmation` |
 
 Mutations keep the server's cross-origin protection and security headers.
 Downloads and admin pages use `Cache-Control: no-store`. Audit history records
@@ -132,9 +149,10 @@ renumbered. Import uploads use the same bounded multipart and password checks
 as restore. Successful imports and their audit event commit together.
 
 Original Rails IDs commonly collide with a newly created Go Click admin. For a
-first migration, use the host importer against a fresh target, then grant access
-or set a password as described in [migration.md](migration.md). The panel is for
-imports that can merge without conflicts. It does not force replacement.
+first migration that replaces current players, use **Restore or migrate a
+database** and confirm `RESTORE`. Merge conflicts return HTTP 409 with a link
+to this separate replacement option. The host importer against a fresh target
+remains available as described in [migration.md](migration.md).
 
 SQLite preserves existing passwords. JSON only carries progress and the fields
 present in the download. Newly imported JSON accounts cannot sign in until an

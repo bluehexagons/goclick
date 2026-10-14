@@ -284,6 +284,8 @@ func (a *App) adminDatabaseUpload(w http.ResponseWriter, r *http.Request, import
 	defer file.Close()
 	seen := make(map[string]bool)
 	password, confirmation := "", ""
+	var restoreOptions store.RestoreOptions
+	adminPasswordConfirmation := ""
 	for {
 		part, err := reader.NextPart()
 		if errors.Is(err, io.EOF) {
@@ -294,7 +296,8 @@ func (a *App) adminDatabaseUpload(w http.ResponseWriter, r *http.Request, import
 			return
 		}
 		name := part.FormName()
-		if seen[name] || (name != "backup" && name != "password" && name != "confirmation") {
+		jsonAccessField := !importing && (name == "admin_username" || name == "admin_password" || name == "admin_password_confirmation")
+		if seen[name] || (name != "backup" && name != "password" && name != "confirmation" && !jsonAccessField) {
 			part.Close()
 			writeJSON(w, 400, map[string]string{"error": "Unexpected or repeated upload field"})
 			return
@@ -324,10 +327,17 @@ func (a *App) adminDatabaseUpload(w http.ResponseWriter, r *http.Request, import
 				writeJSON(w, 400, map[string]string{"error": "Upload field is too long"})
 				return
 			}
-			if name == "password" {
+			switch name {
+			case "password":
 				password = string(value)
-			} else {
+			case "confirmation":
 				confirmation = string(value)
+			case "admin_username":
+				restoreOptions.JSONAdminUsername = strings.TrimSpace(string(value))
+			case "admin_password":
+				restoreOptions.JSONAdminPassword = string(value)
+			case "admin_password_confirmation":
+				adminPasswordConfirmation = string(value)
 			}
 		}
 		part.Close()
@@ -344,6 +354,10 @@ func (a *App) adminDatabaseUpload(w http.ResponseWriter, r *http.Request, import
 	if !a.checkAdminPassword(w, r, password, action) {
 		return
 	}
+	if restoreOptions.JSONAdminPassword != adminPasswordConfirmation {
+		writeJSON(w, 400, map[string]string{"error": "The new administrator passwords do not match"})
+		return
+	}
 	if err := file.Close(); err != nil {
 		a.internalError(w, r, "close database upload", err)
 		return
@@ -353,7 +367,7 @@ func (a *App) adminDatabaseUpload(w http.ResponseWriter, r *http.Request, import
 		a.importUpload(w, r, file.Name(), actor)
 		return
 	}
-	result, err := a.store.Restore(r.Context(), file.Name(), a.backupDir, actor, a.now())
+	result, err := a.store.Restore(r.Context(), file.Name(), a.backupDir, actor, a.now(), restoreOptions)
 	if err != nil {
 		if auditErr := a.store.RecordAdminAudit(r.Context(), actor, "backup_restore", "failed", "Restore did not commit", a.now()); auditErr != nil {
 			a.logger.Error("audit failed restore", "error", auditErr)
@@ -365,7 +379,7 @@ func (a *App) adminDatabaseUpload(w http.ResponseWriter, r *http.Request, import
 		a.internalError(w, r, "restore backup", err)
 		return
 	}
-	a.logger.Info("backup restored", "actor_id", actor.ID, "recovery_backup", result.RecoveryBackup, "users", result.Users, "entities", result.Entities)
+	a.logger.Info("database restored", "actor_id", actor.ID, "source_format", result.SourceFormat, "recovery_backup", result.RecoveryBackup, "users", result.Users, "entities", result.Entities)
 	a.clearSessionCookie(w)
 	writeJSON(w, 200, result)
 }
@@ -409,6 +423,10 @@ func (a *App) importUpload(w http.ResponseWriter, r *http.Request, path string, 
 	if err != nil {
 		if auditErr := a.store.RecordAdminAudit(r.Context(), actor, "rails_import", "failed", "Import did not commit", a.now()); auditErr != nil {
 			a.logger.Error("audit failed import", "error", auditErr)
+		}
+		if errors.Is(err, store.ErrConflict) {
+			writeJSON(w, 409, map[string]string{"error": err.Error() + ". For an initial migration that replaces current accounts, use Restore or migrate a database and confirm RESTORE. A recovery snapshot is saved first.", "code": "import_conflict"})
+			return
 		}
 		writeJSON(w, 422, map[string]string{"error": err.Error()})
 		return

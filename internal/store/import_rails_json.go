@@ -270,7 +270,7 @@ func (s *Store) ImportRailsJSON(ctx context.Context, path string, audit ...Impor
 		var archived string
 		err = tx.QueryRowContext(ctx, `SELECT payload FROM rails_json_users WHERE user_id=?`, user.ID).Scan(&archived)
 		if err == nil && archived != payload {
-			return ImportResult{}, fmt.Errorf("JSON archive for user %d differs; refusing to overwrite", user.ID)
+			return ImportResult{}, fmt.Errorf("%w: JSON archive for user %d differs; refusing to overwrite", ErrConflict, user.ID)
 		}
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return ImportResult{}, err
@@ -306,7 +306,7 @@ func (s *Store) ImportRailsJSON(ctx context.Context, path string, audit ...Impor
 			_ = json.Unmarshal(row, &e)
 			identity, occupied := archivedIDs[e.ID]
 			if occupied && (identity.source != "json" || identity.userID != user.ID) {
-				return ImportResult{}, fmt.Errorf("entity ID %d is already archived; refusing to overwrite", e.ID)
+				return ImportResult{}, fmt.Errorf("%w: entity ID %d is already archived; refusing to overwrite", ErrConflict, e.ID)
 			}
 		}
 		if archived == "" {
@@ -325,7 +325,7 @@ func (s *Store) ImportRailsJSON(ctx context.Context, path string, audit ...Impor
 				return ImportResult{}, err
 			}
 			if count != 0 {
-				return ImportResult{}, fmt.Errorf("user %d already has a different counter set", user.ID)
+				return ImportResult{}, fmt.Errorf("%w: user %d already has a different counter set", ErrConflict, user.ID)
 			}
 		}
 		result.Users++
