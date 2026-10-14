@@ -5,6 +5,7 @@
 // perspective so its accessible hit surface follows the rendered face.
 function createButtonRenderer(stage, button) {
   const canvas = stage.querySelector(".button-scene");
+  const rig = stage.querySelector(".button-rig");
   let gl;
   try { gl = canvas.getContext("webgl", { alpha: true, antialias: true, premultipliedAlpha: true }); }
   catch (_) { return { draw() {} }; }
@@ -19,13 +20,14 @@ function createButtonRenderer(stage, button) {
     uniform vec3 translation;
     uniform vec2 viewport;
     uniform float scale;
+    uniform float recession;
     varying vec3 worldPosition;
     varying vec3 worldNormal;
     varying vec2 texCoord;
     varying float frontFace;
     void main() {
-      worldPosition = rotation * (vec3(position.xy * scale, position.z + translation.z))
-        + vec3(translation.xy, 0.);
+      worldPosition = rotation * vec3(position.xy * scale, position.z - recession)
+        + translation;
       worldNormal = rotation * normalize(vec3(normal.xy / scale, normal.z));
       texCoord = uv;
       frontFace = face;
@@ -143,7 +145,7 @@ function createButtonRenderer(stage, button) {
       const location = gl.getAttribLocation(program, name);
       gl.enableVertexAttribArray(location); gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset * 4);
     }
-    uniforms = Object.fromEntries(["rotation", "translation", "viewport", "scale", "shadow", "shadowCenter", "shadowSize", "shadowBlur", "lettering"].map(name => [name, gl.getUniformLocation(program, name)]));
+    uniforms = Object.fromEntries(["rotation", "translation", "viewport", "scale", "recession", "shadow", "shadowCenter", "shadowSize", "shadowBlur", "lettering"].map(name => [name, gl.getUniformLocation(program, name)]));
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -160,8 +162,11 @@ function createButtonRenderer(stage, button) {
   function draw(next = state) {
     state = { ...next };
     if (lost) return;
-    const width = stage.clientWidth, height = stage.clientHeight;
-    if (!width || !height) return;
+    if (!stage.clientWidth || !stage.clientHeight) return;
+    const bounds = stage.getBoundingClientRect();
+    const gutter = Math.max(0, Math.min(40, bounds.left, document.documentElement.clientWidth - bounds.right));
+    stage.style.setProperty("--canvas-gutter", `${gutter.toFixed(3)}px`);
+    const width = canvas.clientWidth, height = canvas.clientHeight;
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
     const pixelWidth = Math.round(width * pixelRatio), pixelHeight = Math.round(height * pixelRatio);
     if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
@@ -169,25 +174,39 @@ function createButtonRenderer(stage, button) {
     const scale = button.offsetWidth / 260, press = Math.max(0, Math.min(1, state.press));
     const rx = state.rx * Math.PI / 180, ry = state.ry * Math.PI / 180;
     const cx = Math.cos(rx), sx = Math.sin(rx), cy = Math.cos(ry), sy = Math.sin(ry);
+    const recession = press * 12;
+    // Keep the entire solid above the background, including its rear corners
+    // at maximum tilt and full press. Bound the rotated box, not just its center.
+    const lowest = -Math.abs(cx * sy) * 130 * scale - Math.abs(sx) * 72 * scale
+      + Math.min(cx * cy * (-16 - recession), cx * cy * (18 - recession));
+    const lift = Math.max(0, -34 - lowest); // Eight pixels above the z=-42 plane.
+    rig.style.setProperty("--lift", `${lift.toFixed(3)}px`);
     gl.uniform2f(uniforms.viewport, width, height);
     // One soft shadow on the background plane. It approaches the solid as
     // the button is pushed away from the viewer.
-    const clearance = 42 - press * 12;
+    const centerX = state.x - sy * recession, centerY = state.y + sx * cy * recession;
+    const centerZ = lift - cx * cy * recession, clearance = 42 + centerZ;
+    const projection = clearance / (500 - centerZ);
     gl.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
     gl.uniform3f(uniforms.translation, 0, 0, 0); gl.uniform1f(uniforms.scale, 1); gl.uniform1f(uniforms.shadow, 1);
-    gl.uniform2f(uniforms.shadowCenter, state.x + clearance * .56, state.y + clearance * .7);
+    gl.uniform1f(uniforms.recession, 0);
+    gl.uniform2f(uniforms.shadowCenter, centerX + (centerX + 280) * projection, centerY + (centerY + 350) * projection);
     gl.uniform2f(uniforms.shadowSize, 126 * scale * (1 - Math.abs(sy) * .15), 70 * scale * (1 - Math.abs(sx) * .15));
     gl.uniform1f(uniforms.shadowBlur, 8 + clearance * .18);
     gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.drawArrays(gl.TRIANGLES, solidCount, 6); gl.disable(gl.BLEND);
+    // A translucent shadow is a background pass, never an occluding surface.
+    gl.depthMask(false); gl.drawArrays(gl.TRIANGLES, solidCount, 6); gl.depthMask(true);
+    gl.disable(gl.BLEND);
     gl.uniformMatrix3fv(uniforms.rotation, false, [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy]);
-    gl.uniform3f(uniforms.translation, state.x, state.y, -press * 12);
+    gl.uniform3f(uniforms.translation, state.x, state.y, lift);
+    gl.uniform1f(uniforms.recession, recession);
     gl.uniform1f(uniforms.scale, scale); gl.uniform1f(uniforms.shadow, 0);
     gl.drawArrays(gl.TRIANGLES, 0, solidCount);
     stage.classList.add("is-rendered");
   }
   canvas.addEventListener("webglcontextlost", (event) => {
     event.preventDefault(); lost = true; stage.classList.remove("is-rendered");
+    rig.style.removeProperty("--lift");
   });
   canvas.addEventListener("webglcontextrestored", () => {
     lost = !initialize();
