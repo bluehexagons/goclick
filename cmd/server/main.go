@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -40,6 +41,7 @@ func main() {
 		SecureCookies: secureCookies,
 		TrustProxy:    trustProxy,
 		Logger:        logger,
+		BackupDir:     env("GOCLICK_BACKUP_DIR", filepath.Join(filepath.Dir(databasePath), "backups")),
 	})
 	if err != nil {
 		logger.Error("create application", "error", err)

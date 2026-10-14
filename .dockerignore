@@ -1,6 +1,17 @@
 .git
 .github
 .basaltwater
+data/*
+!data/.keep
+**/*.db
+**/*.db-*
+**/*.sqlite3
+**/*.sqlite3-*
+**/*.sqlite
+**/*.sqlite-*
+**/.env
+**/.env.*
+**/backups
 *.db
 *.db-*
 *.sqlite3

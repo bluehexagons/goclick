@@ -1,96 +1,120 @@
-# Admin implementation prerequisites
+# Administration
 
-Go Click stores `users.admin`, preserves it during Rails import, and returns it
-in the current user's public profile. Signup cannot set it. There are currently
-no admin routes, role-management commands, or admin panels. This document scopes
-the next implementation; it does not describe features available today.
+Sign in with an administrator account and open `/admin`, or follow **Admin**
+from the game's account navigation. Every panel and API request authenticates
+the session and checks the current database role. Guests receive 401; players
+receive 403. Signup cannot grant admin access. Admin sessions expire after at
+most eight hours, and sensitive backup operations require the current password.
 
-## Authorization and account lifecycle
+## Grant access from the host
 
-Use one server-side admin guard for every admin API route, including reads,
-downloads, job status, and any transition aliases. Run authentication first:
-unauthenticated requests receive 401, authenticated non-admins receive 403.
-The existing session lookup reads the user and current admin flag from SQLite
-on every request. Preserve that behavior so demotion takes effect on subsequent
-requests. UI visibility is only a convenience; it grants no authority.
+Create the account through normal signup first. Run the operator command as
+an account that owns the existing database:
 
-Bootstrap the first administrator through an explicit operator command targeting
-an existing user ID. Never make the first signup an administrator or accept an
-admin flag in public account payloads. Role changes, password changes, account
-disablement, and session revocation need dedicated store transactions. Serialize
-role changes so two requests cannot independently remove the last administrator.
-Revoke that user's sessions when sensitive account properties change. Use a
-shorter admin session lifetime and require recent authentication before role
-changes, destructive user actions, and restore operations.
+```bash
+go run ./cmd/admin -database data/goclick.db -username YOUR_USERNAME
+```
 
-Keep admin routes under the existing same-origin request protection, secure
-cookies, body limits, and security headers. Do not add CSRF bypasses for admin
-forms or uploads. Backup uploads need a separate explicit size limit and streaming
-validation rather than raising the 8 KiB limit for ordinary JSON endpoints.
+Sign in again after granting access. The command also accepts an exact user ID:
 
-## User inspection and changes
+```bash
+go run ./cmd/admin -database data/goclick.db -user-id 42
+```
 
-Start with paginated user listings and a read-only detail page. Use explicit
-response fields: ID, username, optional email, admin status, timestamps, current
-counters, archived entities, and session metadata where needed. Never include
-password hashes, token digests, or raw session tokens in the panel, ordinary
-JSON exports, or logs. Parameterize filters and allowlist sortable columns.
+Use `-revoke` to remove access. The command refuses to remove the last admin.
+Role changes are transactional, audited, and revoke the affected user's sessions.
+Running a grant for an account already holding that role is a no-op. The tool
+refuses to create a new database at a mistyped path.
 
-Display current `counters` separately from `rails_entities`. The archive is a
-lossless migration record, including custom kinds and nullable fields; current
-gameplay changes do not update it. A repair must not silently replace the
-archive with a projection of current counters.
+Basaltwater builds `.basaltwater/bin/goclick-admin` alongside the server. Read
+its actual service account and database path as described in [migration.md](migration.md),
+then run that binary as the service account with `-database` and `-username`.
+The container includes `/app/goclick-admin`:
 
-Add deliberate, audited workflows for counter repair, session revocation, and
-account disablement before permanent deletion. A disabled-account field requires
-a versioned database migration and authentication checks. Report conflicting
-edits rather than overwriting a newer change made by another administrator.
+```bash
+docker exec CONTAINER /app/goclick-admin -database /data/goclick.db -username YOUR_USERNAME
+```
 
-## Audit and recovery
+Role changes are deliberately operator-controlled in this release. The panel
+provides player inspection and recovery; it does not expose account deletion,
+password editing, or role changes over HTTP.
 
-Record the actor, target, action, UTC timestamp, result, and request/job ID for
-privileged operations. Successful data mutations and their audit event should
-commit in one transaction. Record failed attempts separately without logging
-credentials or uploaded contents. Protect audit retention from ordinary panel
-actions; preserve an external recovery record because restoring a database can
-also roll back its internal audit history.
+## Player statistics and activity
 
-A full SQLite backup contains password hashes and session digests, so its access
-and retention rules differ from a user-data report. Store recovery copies outside
-the public asset tree and, in production, outside the service-writable data tree.
-Keep deployment backups separate from panel-created snapshots and scheduled
-backups. An application compromise must not be able to delete every recovery
-copy.
+The overview shows players, administrators, all-time clicks, players who clicked
+in the past 24 hours, recent click events, active sessions, and daily clicks for
+the past seven UTC days. The player list supports username/email search,
+pagination, and sorting by last click, clicks, or username. A player detail
+panel shows account timestamps, email, current counters, streaks, last recorded
+sign-in, recorded activity, and paginated archived Rails entities.
 
-Implement backup/restore as bounded jobs with explicit status and failure states.
-Use SQLite's backup API or `VACUUM INTO` for a consistent snapshot. Validate
-uploaded databases in private staging, including integrity, foreign keys,
-supported schema, and application-level values. Existing startup schema validation
-checks table/column compatibility; it is not a validator for arbitrary uploaded
-SQLite schemas, triggers, or data.
+Signup, sign-in, and click activity is recorded transactionally with the related
+operation. Activity history starts with this release; earlier clicks are still
+included in all-time counters, but are not reconstructed as individual events.
+Current counters and the lossless `rails_entities` migration archive are distinct.
+Custom entity kinds, nullable fields, IDs, and timestamps remain preserved.
+Ordinary admin JSON responses never include password hashes or session digests.
 
-Restore must coordinate maintenance mode, stop all writers, preserve a fresh
-recovery snapshot, replace the database and stale sidecars safely, reopen the
-store, and revoke restored sessions before accepting traffic. The restored
-database's admin flags become authoritative. Restoring a file while the live
-store still holds its connection is unsafe. Keep an operator recovery path for
-a restore that fails or removes the initiating administrator's access.
+## Export and restore
 
-## Acceptance coverage
+**Export database** downloads a consistent SQLite snapshot made with
+[SQLite's `VACUUM INTO`](https://www.sqlite.org/lang_vacuum.html).
+The file includes password hashes, session digests, users, counters, archive
+rows, player activity, and audit history. Store it privately; it is a recovery
+artifact, not a report to share publicly.
 
-Before exposing an admin panel, verify:
+**Restore a backup** accepts a full version-2 or version-3 Go Click SQLite
+snapshot, up to 128 MiB. Enter the current administrator's password and type
+`RESTORE` to confirm. Password attempts are rate limited. JSON endpoints retain
+their 8 KiB body limit; restore uses a separately bounded multipart upload.
 
-- Every admin endpoint rejects guests and non-admins, including downloads and
-  direct requests to routes hidden by the UI.
-- Admin demotion, account disablement, and session revocation invalidate access;
-  public signup cannot promote an account.
-- Concurrent role edits preserve the last administrator and detect stale writes.
-- Public and admin JSON responses omit password hashes and token material.
-- Counter edits preserve the entity archive, and failed edits roll back both
-  data changes and successful-operation audit events.
-- Cross-origin mutations fail, ordinary JSON limits remain in force, and upload
-  limits handle chunked requests.
-- Backups taken during writes restore all users, counters, and archived entities.
-  Invalid, incompatible, or interrupted restores leave a usable recovery copy.
-- Recovery revokes old sessions and verifies representative passwords, admin
-  access, user data, and health before traffic resumes.
+The server checks supported schema objects, integrity, foreign keys, field
+types, password-hash format/cost, and timestamps before changing live data.
+Extra tables, triggers, views, or incompatible schemas are rejected. The
+snapshot must contain at least one administrator; to recover an older snapshot
+without an admin, grant a role on an isolated copy with the operator command
+before uploading it. Original recovery files should remain untouched.
+
+Before replacement, the server saves a private `pre-restore-*.db` snapshot to
+`GOCLICK_BACKUP_DIR`, defaulting to `backups` beside the database. Configure a
+writable service-owned directory. The successful restore response shows the
+snapshot basename. Recovery files are not served as public assets and are not
+automatically deleted. Operators must monitor space and manage their retention.
+These service-owned snapshots supplement Basaltwater's independent protected
+deployment backups; retain scheduled/off-host recovery copies too.
+
+During restore this server quiesces HTTP requests through authentication and
+execution, then restores known data columns in one SQLite transaction. It
+keeps the trusted live schema and open connection rather than overwriting the
+live file. Current audit history is retained and snapshot audit history is
+merged. All sessions are revoked. A failed transaction rolls back data changes;
+the pre-restore snapshot remains available for operator recovery.
+
+Run one Go Click service instance during recovery, and stop other instances or
+importers before restoring. Restored admin flags become authoritative: the
+initiating admin may no longer exist or hold that role. After success, sign in
+with an administrator from the snapshot and verify player data. If access is
+lost, use the host operator command or [the offline recovery runbook](backups.md).
+
+## Admin API
+
+All endpoints below require admin authentication. Read endpoints accept
+`page` (starting at 1) and `limit` (1–100, default 25) where paginated.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/api/admin/overview` | Aggregate counters, active players/sessions, daily clicks |
+| GET | `/api/admin/players` | Player list; `q` search and `sort=recent\|clicks\|username` |
+| GET | `/api/admin/players/{id}` | Player account/counter details |
+| GET | `/api/admin/players/{id}/entities` | Paginated lossless Rails entity archive |
+| GET | `/api/admin/activity` | Paginated events; optional `user_id` |
+| GET | `/api/admin/audit` | Paginated administrative history |
+| POST | `/api/admin/backups/export` | SQLite download; JSON `{ "password": "..." }` |
+| POST | `/api/admin/backups/restore` | Multipart `password`, `confirmation=RESTORE`, `backup` |
+
+Mutations keep the server's cross-origin protection and security headers.
+Downloads and admin pages use `Cache-Control: no-store`. Audit history records
+operator grants/revocations, successful exports/restores, failed password
+verification, and failed restore attempts. It contains no credentials or
+uploaded contents. The process log also records successful recovery and its
+snapshot filename, providing a record outside the restored player data.

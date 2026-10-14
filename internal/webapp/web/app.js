@@ -101,6 +101,7 @@ function setUser(nextUser) {
   user = nextUser;
   document.querySelector("#nav-username").textContent = user?.username ?? "";
   document.querySelector("#game-username").textContent = user?.username ?? "";
+  document.querySelector("#admin-link").hidden = !user?.admin;
   if (identityChanged) {
     resetClickState();
     renderCounters({}, true);

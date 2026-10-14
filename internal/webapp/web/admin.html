@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration · Go Click</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <div class="shell admin-shell">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Go Click home"><span class="brand-mark" aria-hidden="true">G</span><span>Go Click <small>ADMIN</small></span></a>
+      <nav class="nav-actions" aria-label="Account"><span id="admin-name" class="nav-username"></span><a class="button button-quiet" href="/">Back to game</a></nav>
+    </header>
+    <main>
+      <div class="admin-heading"><div><p class="eyebrow">Behind the clicks</p><h1>Administration</h1><p class="muted">Players, activity, and a way back when you need it.</p></div><button id="refresh" class="button button-quiet" type="button">Refresh data</button></div>
+      <div id="admin-error" class="notice notice-error" role="alert" hidden></div>
+      <div id="access-error" class="card access-error" hidden><h2>Sign in with an admin account</h2><p>Your session expired or no longer has administrator access.</p><a class="button" href="/">Sign in</a></div>
+      <section id="restore-success" class="card access-error" role="status" hidden><p class="eyebrow">Recovery complete</p><h2>Backup restored</h2><p id="restore-summary"></p><p>All sessions have been revoked. Sign in with an administrator account from the restored backup.</p><a class="button" href="/">Sign in again</a></section>
+      <div id="dashboard-body">
+        <nav class="admin-tabs" aria-label="Administration sections">
+          <button type="button" data-tab="overview" aria-current="page">Overview</button>
+          <button type="button" data-tab="players">Players</button>
+          <button type="button" data-tab="activity">Activity</button>
+          <button type="button" data-tab="backups">Backups &amp; recovery</button>
+        </nav>
+        <section id="overview-panel" class="admin-panel" aria-labelledby="overview-title">
+          <h2 id="overview-title" class="visually-hidden">Overview</h2>
+          <div class="metrics" aria-live="polite">
+            <article class="metric"><span>Total players</span><strong id="metric-players">—</strong><small id="metric-admins">Loading administrators…</small></article>
+            <article class="metric"><span>All-time clicks</span><strong id="metric-clicks">—</strong><small>Includes migrated totals</small></article>
+            <article class="metric"><span>Active players</span><strong id="metric-active">—</strong><small>Clicked in the last 24 hours</small></article>
+            <article class="metric"><span>Clicks in 24 hours</span><strong id="metric-today">—</strong><small id="metric-sessions">Loading sessions…</small></article>
+          </div>
+          <div class="overview-grid">
+            <article class="card admin-card"><div class="section-heading"><h2>Clicks this week</h2><span class="muted">UTC</span></div><div id="daily-chart" class="daily-chart" aria-label="Daily clicks over the last seven days"></div><p class="field-hint">Activity is recorded from the admin feature’s installation onward.</p></article>
+            <article class="card admin-card"><div class="section-heading"><h2>Latest activity</h2><button class="text-button" id="view-activity" type="button">View all →</button></div><div id="recent-activity" class="activity-feed"><p class="muted">Loading activity…</p></div></article>
+          </div>
+        </section>
+        <section id="players-panel" class="admin-panel" aria-labelledby="players-title" hidden>
+          <div class="section-heading"><div><h2 id="players-title">All players</h2><p class="muted">Inspect counters, account details, and recorded activity.</p></div></div>
+          <form id="player-search" class="filters"><label class="search-field">Search players<input id="search" type="search" placeholder="Username or email" maxlength="128"></label><label>Sort by<select id="sort"><option value="recent">Latest click</option><option value="clicks">Most clicks</option><option value="username">Username</option></select></label><button class="button" type="submit">Search</button></form>
+          <div class="card table-wrap"><table><caption class="visually-hidden">Players and their counters</caption><thead><tr><th>Player</th><th>Clicks</th><th>Day / month / year</th><th>Last click</th><th>Joined</th></tr></thead><tbody id="players-rows"></tbody></table></div>
+          <div id="players-pager" class="pager"></div>
+        </section>
+        <section id="activity-panel" class="admin-panel" aria-labelledby="activity-title" hidden>
+          <h2 id="activity-title">Player activity</h2><p class="muted">Signups, sign-ins, and saved clicks. Historical clicks before activity recording are included in player totals.</p>
+          <form id="activity-filter" class="filters"><label>Player ID (optional)<input id="activity-user" type="number" min="1" step="1" placeholder="All players"></label><button class="button" type="submit">Filter activity</button></form>
+          <div class="card table-wrap"><table><caption class="visually-hidden">Recorded player activity</caption><thead><tr><th>Player</th><th>Activity</th><th>Click total</th><th>When</th></tr></thead><tbody id="activity-rows"></tbody></table></div><div id="activity-pager" class="pager"></div>
+        </section>
+        <section id="backups-panel" class="admin-panel" aria-labelledby="backups-title" hidden>
+          <h2 id="backups-title">Backups &amp; recovery</h2><p class="muted">Full SQLite snapshots preserve accounts, passwords, counters, and the complete migration archive. Keep downloaded backups private.</p>
+          <div class="backup-grid">
+            <article class="card admin-card"><p class="eyebrow">Save a recovery point</p><h3>Export database</h3><p class="muted">Download a consistent snapshot, including player activity and audit history.</p><form id="export-form"><label for="export-password">Your current password</label><input id="export-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required><button class="button button-block" type="submit">Download backup</button></form><p id="export-status" class="notice" role="status" hidden></p></article>
+            <article class="card admin-card restore-card"><p class="eyebrow">Replace current data</p><h3>Restore a backup</h3><p class="muted">Restore accounts and gameplay from a Go Click snapshot. Current requests pause during recovery. Everyone is signed out afterward, and the backup’s admin accounts become authoritative.</p><p class="field-hint">A pre-restore snapshot is saved on the server before any data is replaced. Maximum upload: 128 MiB.</p><form id="restore-form"><label for="restore-file">SQLite backup</label><input id="restore-file" name="backup" type="file" accept=".db,.sqlite,.sqlite3,application/octet-stream" required><label for="restore-password">Your current password</label><input id="restore-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required><label for="restore-confirmation">Type RESTORE to confirm replacement</label><input id="restore-confirmation" name="confirmation" type="text" pattern="RESTORE" autocomplete="off" spellcheck="false" required><button class="button button-danger button-block" type="submit">Restore database</button></form><p id="restore-status" class="notice" role="status" hidden></p></article>
+          </div>
+          <div class="section-heading audit-heading"><h3>Administrative activity</h3><span class="muted">Role changes, exports, and restores</span></div><div class="card table-wrap"><table><caption class="visually-hidden">Administrative audit history</caption><thead><tr><th>Actor</th><th>Action</th><th>Result</th><th>When</th></tr></thead><tbody id="audit-rows"></tbody></table></div><div id="audit-pager" class="pager"></div>
+        </section>
+      </div>
+    </main>
+    <footer><span>Go Click</span><span>Administration</span><span id="updated-at" class="updated-at" role="status">Loading data…</span></footer>
+  </div>
+  <dialog id="player-dialog" class="player-dialog">
+    <div class="section-heading"><div><p class="eyebrow">Player details</p><h2 id="detail-title">Loading…</h2></div><button id="close-detail" class="button button-quiet" type="button">Close</button></div>
+    <div id="detail-error" class="notice notice-error" role="alert" hidden></div>
+    <div id="detail-content"><dl id="detail-profile" class="detail-profile"></dl><h3>Recorded activity</h3><div class="table-wrap"><table><thead><tr><th>Activity</th><th>Click total</th><th>When</th></tr></thead><tbody id="detail-activity"></tbody></table></div><div id="detail-activity-pager" class="pager"></div><h3>Rails entity archive</h3><p class="field-hint">Original migration records, preserved separately from current gameplay.</p><div class="table-wrap"><table><thead><tr><th>ID / kind</th><th>Count</th><th>Created</th><th>Modified</th></tr></thead><tbody id="detail-entities"></tbody></table></div><div id="detail-entities-pager" class="pager"></div></div>
+  </dialog>
+  <noscript><p class="noscript-notice">Enable JavaScript to use the admin panel.</p></noscript>
+</body>
+</html>

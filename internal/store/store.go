@@ -43,7 +43,9 @@ type Counters struct {
 	LastClickedAt *time.Time
 }
 
-const schemaVersion = 2
+const schemaVersion = 3
+
+const AdminSessionTTL = 8 * time.Hour
 
 type schemaTable struct {
 	name    string
@@ -99,6 +101,25 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS sessions_expires_at ON sessions(expires_at);
+CREATE TABLE IF NOT EXISTS player_activity (
+	id INTEGER PRIMARY KEY,
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	action TEXT NOT NULL CHECK (action IN ('signup', 'sign_in', 'click')),
+	occurred_at TEXT NOT NULL,
+	click_count INTEGER
+);
+CREATE INDEX IF NOT EXISTS player_activity_user_time ON player_activity(user_id, id DESC);
+CREATE INDEX IF NOT EXISTS player_activity_time ON player_activity(occurred_at);
+CREATE TABLE IF NOT EXISTS admin_audit (
+	id INTEGER PRIMARY KEY,
+	actor_id INTEGER,
+	actor_username TEXT NOT NULL,
+	action TEXT NOT NULL,
+	target_user_id INTEGER,
+	result TEXT NOT NULL,
+	details TEXT NOT NULL,
+	occurred_at TEXT NOT NULL
+);
 `
 
 func Open(path string) (*Store, error) {
@@ -197,7 +218,7 @@ func initializeSchema(ctx context.Context, db *sql.DB, currentVersion int) error
 	if _, err := tx.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("initialize database: %w", err)
 	}
-	if err := validateSchemaTables(ctx, tx, append(coreSchemaTables, archiveSchemaTable)); err != nil {
+	if err := validateSchemaTables(ctx, tx, allSchemaTables()); err != nil {
 		return fmt.Errorf("validate initialized database: %w", err)
 	}
 	if currentVersion < schemaVersion {
@@ -234,8 +255,11 @@ func validateExistingSchema(ctx context.Context, db *sql.DB, version int) error 
 	}
 
 	tables := coreSchemaTables
-	if version >= schemaVersion {
+	if version >= 2 {
 		tables = append(tables, archiveSchemaTable)
+	}
+	if version >= 3 {
+		tables = allSchemaTables()
 	}
 	if err := validateSchemaTables(ctx, db, tables); err != nil {
 		return fmt.Errorf("database is not a compatible Go Click database: %w", err)
@@ -319,7 +343,12 @@ func (s *Store) Health(ctx context.Context) error {
 }
 
 func (s *Store) CreateUser(ctx context.Context, username string, email *string, passwordHash string, now time.Time) (User, error) {
-	result, err := s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return User{}, err
+	}
+	defer tx.Rollback()
+	result, err := tx.ExecContext(ctx, `
 		INSERT INTO users (username, email, password_hash, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?)`,
 		username, email, passwordHash, formatTime(now), formatTime(now))
@@ -332,6 +361,12 @@ func (s *Store) CreateUser(ctx context.Context, username string, email *string, 
 	id, err := result.LastInsertId()
 	if err != nil {
 		return User{}, fmt.Errorf("read new user id: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO player_activity(user_id,action,occurred_at) VALUES (?, 'signup', ?)`, id, formatTime(now)); err != nil {
+		return User{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return User{}, err
 	}
 	return s.UserByID(ctx, id)
 }
@@ -406,6 +441,9 @@ func (s *Store) ReplaceSession(ctx context.Context, rawToken, previousToken []by
 			return fmt.Errorf("revoke previous session: %w", err)
 		}
 	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO player_activity(user_id,action,occurred_at) VALUES (?, 'sign_in', ?)`, userID, formatTime(now)); err != nil {
+		return fmt.Errorf("record sign in: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit session replacement: %w", err)
 	}
@@ -417,7 +455,8 @@ func (s *Store) UserBySession(ctx context.Context, rawToken []byte, now time.Tim
 	return scanUser(s.db.QueryRowContext(ctx, `
 		SELECT u.id, u.username, u.email, u.password_hash, u.admin, u.created_at, u.updated_at
 		FROM sessions s JOIN users u ON u.id = s.user_id
-		WHERE s.token_hash = ? AND s.expires_at > ?`, hash[:], now.Unix()))
+		WHERE s.token_hash = ? AND s.expires_at > ?
+		AND (u.admin = 0 OR s.created_at > ?)`, hash[:], now.Unix(), now.Add(-AdminSessionTTL).Unix()))
 }
 
 func (s *Store) DeleteSession(ctx context.Context, rawToken []byte) error {
@@ -497,6 +536,7 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		counters.YearStreak = 1
 	}
 	counters.Clicks++
+	counters.Exists = true
 	counters.LastClickedAt = &now
 
 	_, err = tx.ExecContext(ctx, `
@@ -511,6 +551,9 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		userID, counters.Clicks, counters.DayStreak, counters.MonthStreak, counters.YearStreak, formatTime(now))
 	if err != nil {
 		return Counters{}, fmt.Errorf("save click: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO player_activity(user_id,action,occurred_at,click_count) VALUES (?, 'click', ?, ?)`, userID, formatTime(now), counters.Clicks); err != nil {
+		return Counters{}, fmt.Errorf("record click activity: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return Counters{}, fmt.Errorf("commit click: %w", err)

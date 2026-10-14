@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bluehexagons/goclick/internal/store"
@@ -49,6 +50,7 @@ type Config struct {
 	SessionTTL    time.Duration
 	Logger        *slog.Logger
 	Now           func() time.Time
+	BackupDir     string
 	passwordCost  int
 }
 
@@ -63,6 +65,8 @@ type App struct {
 	limiter       *limiter
 	dummyHash     []byte
 	static        fs.FS
+	backupDir     string
+	requestGate   sync.RWMutex
 }
 
 type contextKey int
@@ -81,6 +85,9 @@ func New(database *store.Store, config Config) (*App, error) {
 	}
 	if config.Now == nil {
 		config.Now = time.Now
+	}
+	if config.BackupDir == "" {
+		config.BackupDir = "data/backups"
 	}
 	if config.passwordCost == 0 {
 		config.passwordCost = passwordHashCost
@@ -108,6 +115,7 @@ func New(database *store.Store, config Config) (*App, error) {
 		now:           config.Now,
 		dummyHash:     dummyHash,
 		static:        static,
+		backupDir:     config.BackupDir,
 	}
 	app.limiter = newLimiter(config.Now)
 	return app, nil
@@ -123,6 +131,16 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("GET /api/me", a.requireUser(a.me))
 	mux.HandleFunc("GET /api/clicks", a.requireUser(a.current))
 	mux.HandleFunc("POST /api/clicks", a.requireUser(a.increment))
+	mux.HandleFunc("GET /admin", a.requireAdmin(a.adminPage))
+	mux.HandleFunc("GET /admin.html", a.requireAdmin(a.adminPage))
+	mux.HandleFunc("GET /api/admin/overview", a.requireAdmin(a.adminOverview))
+	mux.HandleFunc("GET /api/admin/players", a.requireAdmin(a.adminPlayers))
+	mux.HandleFunc("GET /api/admin/players/{id}", a.requireAdmin(a.adminPlayer))
+	mux.HandleFunc("GET /api/admin/players/{id}/entities", a.requireAdmin(a.adminEntities))
+	mux.HandleFunc("GET /api/admin/activity", a.requireAdmin(a.adminActivity))
+	mux.HandleFunc("GET /api/admin/audit", a.requireAdmin(a.adminAudit))
+	mux.HandleFunc("POST /api/admin/backups/export", a.requireAdmin(a.adminExport))
+	mux.HandleFunc("POST /api/admin/backups/restore", a.requireAdmin(a.adminRestore))
 
 	// Compatibility aliases make the transition from the Rails API less abrupt.
 	mux.HandleFunc("POST /auth/signup", a.signup)
@@ -133,7 +151,17 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("POST /entities/increment", a.requireUser(a.increment))
 
 	mux.HandleFunc("GET /", a.frontend)
-	return a.securityHeaders(a.recoverPanic(a.rejectCrossSite(a.bodyLimit(a.globalLimit(mux)))))
+	handler := a.securityHeaders(a.recoverPanic(a.rejectCrossSite(a.bodyLimit(a.globalLimit(mux)))))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/admin/backups/restore" {
+			a.requestGate.Lock()
+			defer a.requestGate.Unlock()
+		} else {
+			a.requestGate.RLock()
+			defer a.requestGate.RUnlock()
+		}
+		handler.ServeHTTP(w, r)
+	})
 }
 
 func (a *App) health(w http.ResponseWriter, r *http.Request) {
@@ -366,7 +394,11 @@ func (a *App) startSession(w http.ResponseWriter, r *http.Request, user store.Us
 		return fmt.Errorf("generate session token: %w", err)
 	}
 	now := a.now()
-	expires := now.Add(a.sessionTTL)
+	ttl := a.sessionTTL
+	if user.Admin && ttl > store.AdminSessionTTL {
+		ttl = store.AdminSessionTTL
+	}
+	expires := now.Add(ttl)
 	previous, _, valid := rawSessionToken(r)
 	if !valid {
 		previous = nil
@@ -376,7 +408,7 @@ func (a *App) startSession(w http.ResponseWriter, r *http.Request, user store.Us
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookie, Value: base64.RawURLEncoding.EncodeToString(raw),
-		Path: "/", Expires: expires, MaxAge: int(a.sessionTTL.Seconds()),
+		Path: "/", Expires: expires, MaxAge: int(ttl.Seconds()),
 		HttpOnly: true, Secure: a.secureCookies, SameSite: http.SameSiteStrictMode,
 	})
 	return nil
@@ -455,6 +487,15 @@ func (a *App) bodyLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+			if r.Method == http.MethodPost && r.URL.Path == "/api/admin/backups/restore" {
+				if r.ContentLength > maxRestoreBody {
+					writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "Backup upload exceeds 128 MiB"})
+					return
+				}
+				r.Body = http.MaxBytesReader(w, r.Body, maxRestoreBody)
+				next.ServeHTTP(w, r)
+				return
+			}
 			if r.ContentLength > maxJSONBody {
 				writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "Request body is too large"})
 				return

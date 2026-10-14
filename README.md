@@ -26,6 +26,7 @@ Configuration:
 | `GOCLICK_DATABASE` | `data/goclick.db` | SQLite database path |
 | `GOCLICK_SECURE_COOKIES` | `false` | Set `true` whenever the public site uses HTTPS |
 | `GOCLICK_TRUST_PROXY` | `false` | Trust `X-Real-IP` only from a loopback reverse proxy |
+| `GOCLICK_BACKUP_DIR` | `backups` beside the database | Private directory for automatic pre-restore recovery snapshots |
 
 The server should be behind an HTTPS reverse proxy in production. With
 `GOCLICK_TRUST_PROXY=true`, it accepts Nginx's `X-Real-IP` only when the TCP
@@ -78,7 +79,7 @@ JSON request bodies are limited to 8 KiB. Legacy Rails paths (`/auth/login`,
 `/auth/signup`, `/me`, and `/entities/*`) are retained as transition aliases,
 but authentication is cookie-based and old JWTs are not accepted. The Rails
 `/auth/refresh` and `/admin/*` endpoints are not compatibility aliases; Go Click
-currently exposes the gameplay and account surface only.
+has its own admin API described below.
 
 ## Security
 
@@ -107,10 +108,28 @@ are created with mode `0700`; existing directory permissions are left intact.
 
 ## Administration and recovery
 
-The database already preserves Rails admin flags, but admin panels and admin
-API endpoints are upcoming work. [`docs/administration.md`](docs/administration.md)
-describes the authorization, audit, user-data, and recovery requirements for
-that implementation.
+Create an account through the normal signup page, then grant it admin access
+from the host as the database's owning account:
+
+```bash
+go run ./cmd/admin -database data/goclick.db -username YOUR_USERNAME
+```
+
+Sign in again and follow **Admin** in the account navigation, or open `/admin`.
+The operator command also accepts `-user-id` and supports `-revoke`; it refuses
+to revoke the last administrator. Role changes revoke that user's sessions.
+Admin sessions last at most eight hours.
+
+The panel shows aggregate player/click statistics, seven-day click activity,
+searchable player listings, counters and streaks, account details, recorded
+activity, and the Rails entity archive. It also exports full SQLite backups and
+restores validated snapshots after password verification and explicit
+confirmation. Restore first saves a recovery snapshot, replaces known data in
+one transaction, and revokes all sessions. Administrative operations are audited.
+
+Activity history starts with this release; migrated all-time counters remain
+intact. [`docs/administration.md`](docs/administration.md) covers bootstrap
+commands, the admin API, and production recovery details.
 
 See [`docs/backups.md`](docs/backups.md) for full SQLite backups, data checks,
 restore rehearsal, and session revocation during recovery. Deployment backups
@@ -144,7 +163,7 @@ plain-HTTP container testing, override `GOCLICK_SECURE_COOKIES=false`.
 ## Deploy with Basaltwater
 
 The repository includes a `basaltwater.json` manifest for Basaltwater. It builds the
-server and migration binaries on the target VM, assigns a stable internal port,
+server, migration, and admin operator binaries on the target VM, assigns a stable internal port,
 keeps SQLite in Basaltwater's persistent service data directory, binds the
 service to loopback, and exposes a database-aware `/up` health check. Before
 each replacement deployment, Basaltwater verifies the old service is stopped,
