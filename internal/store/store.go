@@ -372,10 +372,16 @@ func (s *Store) CreateUser(ctx context.Context, username string, email *string, 
 	if _, err := tx.ExecContext(ctx, `INSERT INTO player_activity(user_id,action,occurred_at) VALUES (?, 'signup', ?)`, id, formatTime(now)); err != nil {
 		return User{}, err
 	}
+	// Return the account as created inside this transaction. A post-commit read
+	// could pick up an operator password reset that signup has not verified.
+	user, err := scanUser(tx.QueryRowContext(ctx, `SELECT id,username,email,password_hash,admin,created_at,updated_at FROM users WHERE id=?`, id))
+	if err != nil {
+		return User{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return User{}, err
 	}
-	return s.UserByID(ctx, id)
+	return user, nil
 }
 
 func (s *Store) UserByIdentifier(ctx context.Context, identifier string) (User, error) {
