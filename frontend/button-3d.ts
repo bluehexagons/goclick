@@ -374,7 +374,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     gl.depthMask(true);
     gl.disable(gl.BLEND);
     gl.uniformMatrix3fv(uniforms.rotation, false, scene.rotation);
-    gl.uniform3f(uniforms.translation, state.x, state.y, scene.lift);
+    gl.uniform3f(uniforms.translation, scene.x, scene.y, scene.lift);
     gl.uniform1f(uniforms.recession, scene.recession);
     gl.uniform1f(uniforms.scale, scene.scale);
     gl.uniform1f(uniforms.shadow, 0);
@@ -385,7 +385,6 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     event.preventDefault();
     lost = true;
     stage.classList.remove("is-rendered");
-    rig.style.removeProperty("--lift");
   });
   canvas.addEventListener("webglcontextrestored", () => {
     lost = !initialize();
@@ -408,7 +407,6 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       } catch {
         lost = true;
         stage.classList.remove("is-rendered");
-        rig.style.removeProperty("--lift");
       }
     };
     image.src = source;

@@ -52,3 +52,28 @@ test("rendering clips only at the viewport and preserves the stage's camera orig
     );
   }
 });
+
+test("perspective never amplifies screen translation, even for large tilted pressed buttons", () => {
+  for (const width of [260, 420, 620])
+    for (const pose of [
+      idle,
+      { ...idle, rx: -16, ry: 22, press: 1, pop: -0.045 },
+      { ...idle, rx: 16, ry: -22, press: 0, pop: 0.1 },
+    ])
+      for (const [x, y] of [
+        [0, 0],
+        [20, -10],
+        [-400, 230],
+        [700, 120],
+      ]) {
+        const scene = project({ ...pose, x, y }, width, stage, viewport);
+        const front = 18 - scene.recession;
+        const depth = scene.lift + scene.cx * scene.cy * front;
+        const factor = 850 / (850 - depth);
+        const screenX = (scene.x + scene.sy * front) * factor;
+        const screenY = (scene.y - scene.sx * scene.cy * front) * factor;
+        assert.ok(Math.abs(screenX - x) < 1e-9);
+        assert.ok(Math.abs(screenY - y) < 1e-9);
+        containsShadow(scene, stage, viewport);
+      }
+});

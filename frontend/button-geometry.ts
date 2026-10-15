@@ -1,14 +1,9 @@
 import type { ButtonState } from "./types.js";
 
-// Match the native button's 850px perspective. Keep the drawing surface as small
-// as practical, but fit the whole projected solid and soft shadow rather than
-// treating the layout stage as a wall.
-export function projectButtonScene(
-  state: ButtonState,
-  buttonWidth: number,
-  stage: Pick<DOMRect, "left" | "top" | "width" | "height">,
-  viewport: { width: number; height: number },
-) {
+// State translation is in screen pixels. Cancel perspective's magnification and
+// the face center's tilt offset so a pixel of drag remains a pixel on screen.
+// The native hit surface and WebGL solid must use this same world transform.
+export function projectButtonPose(state: ButtonState, buttonWidth: number) {
   const scale = (buttonWidth / 260) * (1 + Math.max(-0.065, Math.min(0.1, state.pop || 0)));
   const press = Math.max(-0.22, Math.min(1, state.press));
   const rx = (state.rx * Math.PI) / 180,
@@ -23,8 +18,34 @@ export function projectButtonScene(
     Math.abs(sx) * 72 * scale +
     Math.min(cx * cy * (-16 - recession), cx * cy * (18 - recession));
   const lift = Math.max(0, -34 - lowest);
-  const centerX = state.x - sy * recession,
-    centerY = state.y + sx * cy * recession;
+  const front = 18 - recession;
+  const distance = 850 - (lift + cx * cy * front);
+  return {
+    scale,
+    recession,
+    lift,
+    cx,
+    sx,
+    cy,
+    sy,
+    x: (state.x * distance) / 850 - sy * front,
+    y: (state.y * distance) / 850 + sx * cy * front,
+    rotation: [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy],
+  };
+}
+
+// Match the native button's 850px perspective. Fit the full projected solid and
+// soft shadow; the layout stage is not a painting or dragging boundary.
+export function projectButtonScene(
+  state: ButtonState,
+  buttonWidth: number,
+  stage: Pick<DOMRect, "left" | "top" | "width" | "height">,
+  viewport: { width: number; height: number },
+) {
+  const pose = projectButtonPose(state, buttonWidth);
+  const { scale, recession, lift, cx, sx, cy, sy } = pose;
+  const centerX = pose.x - sy * recession,
+    centerY = pose.y + sx * cy * recession;
   const centerZ = lift - cx * cy * recession,
     clearance = 42 + centerZ;
   const projection = clearance / (500 - centerZ);
@@ -45,8 +66,8 @@ export function projectButtonScene(
     for (const y of [-72 * scale, 72 * scale]) {
       for (const z of [-16 - recession, 18 - recession]) {
         const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
-        const px = (cy * x + sy * z + state.x) * factor;
-        const py = (sx * sy * x + cx * y - sx * cy * z + state.y) * factor;
+        const px = (cy * x + sy * z + pose.x) * factor;
+        const py = (sx * sy * x + cx * y - sx * cy * z + pose.y) * factor;
         left = Math.min(left, px);
         right = Math.max(right, px);
         top = Math.min(top, py);
@@ -72,13 +93,10 @@ export function projectButtonScene(
     height,
   };
   return {
-    scale,
-    recession,
-    lift,
+    ...pose,
     shadow,
     frame,
     originX: originX - frame.left - frame.width / 2,
     originY: originY - frame.top - frame.height / 2,
-    rotation: [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy],
   };
 }

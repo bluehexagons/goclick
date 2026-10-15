@@ -139,6 +139,19 @@ function harness(reducedMotion = true) {
     stage,
     rig,
     controller,
+    // Project the native hit surface's face center back to screen pixels.
+    // Raw CSS translation alone is magnified by the 850px perspective.
+    position: () => {
+      const value = (name) => parseFloat(rig.props.get(name)) || 0;
+      const rx = (value("--tilt-x") * Math.PI) / 180,
+        ry = (value("--tilt-y") * Math.PI) / 180;
+      const front = 18 - value("--press") * 24;
+      const factor = 850 / (850 - value("--lift") - Math.cos(rx) * Math.cos(ry) * front);
+      return {
+        x: (value("--shift-x") + Math.sin(ry) * front) * factor,
+        y: (value("--shift-y") - Math.sin(rx) * Math.cos(ry) * front) * factor,
+      };
+    },
     frame: (time) => {
       const next = frameCallback;
       frameCallback = null;
@@ -262,11 +275,11 @@ test("dragging follows the pointer beyond the old stage cap and returns after re
   h.pointer("pointerdown", 1, { pointerType: "mouse", clientX: 230, clientY: 172 });
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 310, clientY: 172 });
   for (let i = 1; i <= 90; i++) h.frame(i * 17);
-  const pull = parseFloat(h.rig.props.get("--shift-x"));
+  const pull = h.position().x;
   assert.ok(pull > 70 && pull < 85, `Expected a substantial pull, got ${pull}`);
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 1000, clientY: 172 });
   for (let i = 91; i <= 180; i++) h.frame(i * 17);
-  assert.ok(parseFloat(h.rig.props.get("--shift-x")) > 700);
+  assert.ok(h.position().x > 700);
   // Release outside the button and stage cancels scoring and returns to origin.
   h.pointer("pointerup", 1, { pointerType: "mouse", clientX: 1000, clientY: 172 });
   for (let i = 181; i <= 270; i++) h.frame(i * 17);
@@ -279,8 +292,8 @@ test("narrow stages do not constrain the gesture and cancellation returns to the
   h.pointer("pointerdown", 1);
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "touch", clientX: 1000, clientY: 1000 });
   for (let i = 1; i <= 90; i++) h.frame(i * 17);
-  assert.ok(parseFloat(h.rig.props.get("--shift-x")) > 700);
-  assert.ok(parseFloat(h.rig.props.get("--shift-y")) > 700);
+  assert.ok(h.position().x > 700);
+  assert.ok(h.position().y > 700);
   h.pointer("pointercancel", 1);
   for (let i = 91; i <= 180; i++) h.frame(i * 17);
   assert.equal(h.rig.props.get("--shift-x"), "0.000px");
@@ -387,11 +400,11 @@ test("a deliberate fresh drag coasts on release while tiny movements and stale d
     });
     h.frame(16);
     h.frame(32);
-    const before = parseFloat(h.rig.props.get("--shift-x"));
+    const before = h.position().x;
     h.setTime(32 + wait);
     h.pointer("pointerup", 1, { clientX: 170 + distance });
     h.frame(48 + wait);
-    return { before, after: parseFloat(h.rig.props.get("--shift-x")), clicks: h.clicks.length };
+    return { before, after: h.position().x, clicks: h.clicks.length };
   };
   const deliberate = run(80, 0),
     jitter = run(6, 0),
@@ -413,11 +426,63 @@ test("release momentum remains smooth outside a narrow stage without snapping to
   h.setTime(138);
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "touch", clientX: 355, clientY: 150 });
   h.setTime(140);
-  const before = parseFloat(h.rig.props.get("--shift-x"));
+  const before = h.position().x;
   h.pointer("pointerup", 1, { clientX: 355 });
   h.frame(156);
-  const after = parseFloat(h.rig.props.get("--shift-x"));
+  const after = h.position().x;
   assert.ok(before > 100);
   assert.ok(Math.abs(after - before) < 20, `Release snapped from ${before} to ${after}`);
   assert.equal(h.clicks.length, 1);
+});
+
+test("held mouse and touch drags trail their screen destination without overshooting or crossing it on reversal", () => {
+  for (const pointerType of ["mouse", "touch"])
+    for (const interval of [8, 16, 33]) {
+      const h = harness(false);
+      h.pointer("pointerdown", 1, { pointerType, clientX: 230, clientY: 172 });
+      h.stage.fire("pointermove", { pointerId: 1, pointerType, clientX: 430, clientY: 292 });
+      let last = { x: 0, y: 0 };
+      for (let i = 1; i <= 60; i++) {
+        h.frame(i * interval);
+        const position = h.position();
+        assert.ok(
+          position.x >= last.x - 0.003 && position.x <= 200.003,
+          `Forward x: ${position.x}`,
+        );
+        assert.ok(
+          position.y >= last.y - 0.003 && position.y <= 120.003,
+          `Forward y: ${position.y}`,
+        );
+        if (i === 1) assert.ok(position.x > 0 && position.x < 150);
+        last = position;
+      }
+      assert.ok(Math.abs(last.x - 200) < 0.003 && Math.abs(last.y - 120) < 0.003);
+      h.stage.fire("pointermove", { pointerId: 1, pointerType, clientX: 270, clientY: 202 });
+      for (let i = 61; i <= 120; i++) {
+        h.frame(i * interval);
+        const position = h.position();
+        assert.ok(position.x <= last.x + 0.003 && position.x >= 39.997, `Reverse x: ${position.x}`);
+        assert.ok(position.y <= last.y + 0.003 && position.y >= 29.997, `Reverse y: ${position.y}`);
+        last = position;
+      }
+      assert.ok(Math.abs(last.x - 40) < 0.003 && Math.abs(last.y - 30) < 0.003);
+    }
+});
+
+test("grabbing an offset button keeps its position, without adding hover movement to a short drag", () => {
+  const h = harness(false);
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 320, clientY: 200 });
+  for (let i = 1; i <= 90; i++) h.frame(i * 16);
+  const before = h.position();
+  h.pointer("pointerdown", 1, { pointerType: "mouse", clientX: 320, clientY: 200 });
+  for (let i = 91; i <= 120; i++) h.frame(i * 16);
+  assert.ok(Math.abs(h.position().x - before.x) < 0.003);
+  assert.ok(Math.abs(h.position().y - before.y) < 0.003);
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 340, clientY: 210 });
+  for (let i = 121; i <= 180; i++) {
+    h.frame(i * 16);
+    assert.ok(h.position().x - before.x <= 20.003);
+    assert.ok(h.position().y - before.y <= 10.003);
+  }
+  assert.ok(Math.abs(h.position().x - before.x - 20) < 0.003);
 });

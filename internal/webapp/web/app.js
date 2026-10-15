@@ -294,7 +294,7 @@
   })();
 
   // frontend/button-geometry.ts
-  function projectButtonScene(state, buttonWidth, stage, viewport) {
+  function projectButtonPose(state, buttonWidth) {
     const scale = buttonWidth / 260 * (1 + Math.max(-0.065, Math.min(0.1, state.pop || 0)));
     const press = Math.max(-0.22, Math.min(1, state.press));
     const rx = state.rx * Math.PI / 180, ry = state.ry * Math.PI / 180;
@@ -302,7 +302,25 @@
     const recession = press * 24;
     const lowest = -Math.abs(cx * sy) * 130 * scale - Math.abs(sx) * 72 * scale + Math.min(cx * cy * (-16 - recession), cx * cy * (18 - recession));
     const lift = Math.max(0, -34 - lowest);
-    const centerX = state.x - sy * recession, centerY = state.y + sx * cy * recession;
+    const front = 18 - recession;
+    const distance = 850 - (lift + cx * cy * front);
+    return {
+      scale,
+      recession,
+      lift,
+      cx,
+      sx,
+      cy,
+      sy,
+      x: state.x * distance / 850 - sy * front,
+      y: state.y * distance / 850 + sx * cy * front,
+      rotation: [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy]
+    };
+  }
+  function projectButtonScene(state, buttonWidth, stage, viewport) {
+    const pose = projectButtonPose(state, buttonWidth);
+    const { scale, recession, lift, cx, sx, cy, sy } = pose;
+    const centerX = pose.x - sy * recession, centerY = pose.y + sx * cy * recession;
     const centerZ = lift - cx * cy * recession, clearance = 42 + centerZ;
     const projection = clearance / (500 - centerZ);
     const shadow = {
@@ -321,8 +339,8 @@
       for (const y of [-72 * scale, 72 * scale]) {
         for (const z of [-16 - recession, 18 - recession]) {
           const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
-          const px = (cy * x + sy * z + state.x) * factor;
-          const py = (sx * sy * x + cx * y - sx * cy * z + state.y) * factor;
+          const px = (cy * x + sy * z + pose.x) * factor;
+          const py = (sx * sy * x + cx * y - sx * cy * z + pose.y) * factor;
           left = Math.min(left, px);
           right = Math.max(right, px);
           top = Math.min(top, py);
@@ -344,14 +362,11 @@
       height
     };
     return {
-      scale,
-      recession,
-      lift,
+      ...pose,
       shadow,
       frame,
       originX: originX - frame.left - frame.width / 2,
-      originY: originY - frame.top - frame.height / 2,
-      rotation: [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy]
+      originY: originY - frame.top - frame.height / 2
     };
   }
 
@@ -707,7 +722,7 @@
       gl.depthMask(true);
       gl.disable(gl.BLEND);
       gl.uniformMatrix3fv(uniforms.rotation, false, scene.rotation);
-      gl.uniform3f(uniforms.translation, state.x, state.y, scene.lift);
+      gl.uniform3f(uniforms.translation, scene.x, scene.y, scene.lift);
       gl.uniform1f(uniforms.recession, scene.recession);
       gl.uniform1f(uniforms.scale, scene.scale);
       gl.uniform1f(uniforms.shadow, 0);
@@ -718,7 +733,6 @@
       event.preventDefault();
       lost = true;
       stage.classList.remove("is-rendered");
-      rig.style.removeProperty("--lift");
     });
     canvas.addEventListener("webglcontextrestored", () => {
       lost = !initialize();
@@ -739,7 +753,6 @@
         } catch {
           lost = true;
           stage.classList.remove("is-rendered");
-          rig.style.removeProperty("--lift");
         }
       };
       image.src = source;
@@ -754,8 +767,10 @@
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let paint2 = function() {
-      rig.style.setProperty("--shift-x", `${current.x.toFixed(3)}px`);
-      rig.style.setProperty("--shift-y", `${current.y.toFixed(3)}px`);
+      const pose = projectButtonPose(current, button.offsetWidth);
+      rig.style.setProperty("--shift-x", `${pose.x.toFixed(3)}px`);
+      rig.style.setProperty("--shift-y", `${pose.y.toFixed(3)}px`);
+      rig.style.setProperty("--lift", `${pose.lift.toFixed(3)}px`);
       rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
       rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
       rig.style.setProperty("--press", String(current.press));
@@ -784,8 +799,14 @@
         const coasting = time < coastUntil && (key === "x" || key === "y");
         const from = key === "x" ? coastFromX : coastFromY;
         const springTarget = coasting ? target[key] + (from - target[key]) * Math.max(0, (coastUntil - time) / 80) : target[key];
-        velocity[key] = (velocity[key] + (springTarget - current[key]) * (coasting ? 0.045 : 0.16) * dt) * Math.pow(coasting ? 0.88 : 0.64, dt);
-        current[key] += velocity[key] * dt;
+        if (pointers.size && (key === "x" || key === "y")) {
+          const movement = (target[key] - current[key]) * (1 - Math.exp(-0.4 * dt));
+          current[key] += movement;
+          velocity[key] = movement / dt;
+        } else {
+          velocity[key] = (velocity[key] + (springTarget - current[key]) * (coasting ? 0.045 : 0.16) * dt) * Math.pow(coasting ? 0.88 : 0.64, dt);
+          current[key] += velocity[key] * dt;
+        }
         if (Math.abs(target[key] - current[key]) > 2e-3 || Math.abs(velocity[key]) > 2e-3)
           moving = true;
         else {
@@ -853,8 +874,8 @@
       target.y = y * 4;
       if (pointers.size) {
         const points = [...pointers.values()];
-        target.x += points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length * 0.95;
-        target.y += points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length * 0.95;
+        target.x = dragFromX + points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length;
+        target.y = dragFromY + points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length;
       }
       animate2();
     }, release2 = function(cancelled = false) {
@@ -1011,6 +1032,7 @@
     let renderer = null;
     let setupFrame = 0, frame = 0, lastFrame = 0;
     const pointers = /* @__PURE__ */ new Map();
+    let dragFromX = 0, dragFromY = 0;
     let coastUntil = 0;
     let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
@@ -1051,7 +1073,12 @@
         vy: 0,
         movedAt: performance.now()
       });
-      if (pointers.size === 1) begin2();
+      if (pointers.size === 1) {
+        dragFromX = current.x;
+        dragFromY = current.y;
+        velocity.x = velocity.y = 0;
+        begin2();
+      }
       button.setPointerCapture(event.pointerId);
       aimPointers2();
     });

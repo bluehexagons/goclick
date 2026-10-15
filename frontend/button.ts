@@ -1,4 +1,5 @@
 import { motionPreference } from "./preferences.js";
+import { projectButtonPose } from "./button-geometry.js";
 import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
 import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
@@ -48,6 +49,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       movedAt: number;
     }
   >();
+  let dragFromX = 0,
+    dragFromY = 0;
   let coastUntil = 0;
   let coastFromX = 0,
     coastFromY = 0;
@@ -64,8 +67,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
   function paint() {
-    rig.style.setProperty("--shift-x", `${current.x.toFixed(3)}px`);
-    rig.style.setProperty("--shift-y", `${current.y.toFixed(3)}px`);
+    const pose = projectButtonPose(current, button.offsetWidth);
+    rig.style.setProperty("--shift-x", `${pose.x.toFixed(3)}px`);
+    rig.style.setProperty("--shift-y", `${pose.y.toFixed(3)}px`);
+    rig.style.setProperty("--lift", `${pose.lift.toFixed(3)}px`);
     rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
     rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
     rig.style.setProperty("--press", String(current.press));
@@ -97,10 +102,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       const springTarget = coasting
         ? target[key] + (from - target[key]) * Math.max(0, (coastUntil - time) / 80)
         : target[key];
-      velocity[key] =
-        (velocity[key] + (springTarget - current[key]) * (coasting ? 0.045 : 0.16) * dt) *
-        Math.pow(coasting ? 0.88 : 0.64, dt);
-      current[key] += velocity[key] * dt;
+      if (pointers.size && (key === "x" || key === "y")) {
+        // Follow with a short, frame-rate-independent lag. While held, never
+        // carry velocity through the pointer's destination or on a reversal.
+        const movement = (target[key] - current[key]) * (1 - Math.exp(-0.4 * dt));
+        current[key] += movement;
+        velocity[key] = movement / dt;
+      } else {
+        velocity[key] =
+          (velocity[key] + (springTarget - current[key]) * (coasting ? 0.045 : 0.16) * dt) *
+          Math.pow(coasting ? 0.88 : 0.64, dt);
+        current[key] += velocity[key] * dt;
+      }
       if (Math.abs(target[key] - current[key]) > 0.002 || Math.abs(velocity[key]) > 0.002)
         moving = true;
       else {
@@ -174,10 +187,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       const points = [...pointers.values()];
       // Track the gesture across the screen; the layout stage is not a drag
       // boundary. Pointer capture keeps movement arriving outside that stage.
-      target.x +=
-        (points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length) * 0.95;
-      target.y +=
-        (points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length) * 0.95;
+      target.x =
+        dragFromX + points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length;
+      target.y =
+        dragFromY + points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length;
     }
     animate();
   }
@@ -350,7 +363,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       vy: 0,
       movedAt: performance.now(),
     });
-    if (pointers.size === 1) begin();
+    if (pointers.size === 1) {
+      dragFromX = current.x;
+      dragFromY = current.y;
+      velocity.x = velocity.y = 0;
+      begin();
+    }
     button.setPointerCapture(event.pointerId);
     aimPointers();
   });
