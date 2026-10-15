@@ -71,13 +71,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     rig.style.setProperty("--press", String(current.press));
     rig.style.setProperty("--copper", current.copper.toFixed(3));
     rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -0.065, 0.1)).toFixed(3));
-    rig.style.setProperty(
-      "--response-wash",
-      `rgba(${current.responseColor.map((value) => Math.round(value * 255)).join(",")},${(current.response * 0.5).toFixed(3)})`,
-    );
     stage.style.setProperty(
       "--spark-color",
       `rgb(${current.responseColor.map((value) => Math.round(value * 255)).join(" ")})`,
+    );
+    const glow = Math.min(
+      1.4,
+      current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8,
+    );
+    rig.style.setProperty("--glow-intensity", glow.toFixed(3));
+    rig.style.setProperty(
+      "--glow-color",
+      `rgb(${[0.22, 0.72, 0.46].map((value, i) => Math.round((value * (1 - current.response) + current.responseColor[i]! * current.response) * 255)).join(" ")})`,
     );
     renderer?.draw(current);
   }

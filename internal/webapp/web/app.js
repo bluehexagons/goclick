@@ -334,7 +334,7 @@
     }`;
     const fragmentSource = `
     precision mediump float;
-    uniform sampler2D lettering;
+    uniform sampler2D surfaceAtlas;
     uniform float shadow;
     uniform vec2 shadowCenter;
     uniform vec2 shadowSize;
@@ -361,37 +361,35 @@
       vec3 view = normalize(vec3(0., 0., 850.) - worldPosition);
       float diffuse = max(dot(n, light), 0.);
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
-      // The SVG supplies deliberately placed deposits; distance to the rim is
-      // used only for ping feedback, with equal widths on every side.
-      vec2 p = (texCoord - .5) * vec2(260., 144.);
-      vec2 q = abs(p) - vec2(102., 44.);
-      float distance = 28. - length(max(q, 0.)) - min(max(q.x, q.y), 0.);
-      float rim = 1. - smoothstep(3., 12., distance);
-      vec4 deposit = texture2D(lettering, vec2(texCoord.x, texCoord.y * .5));
-      float oxide = copper * deposit.a * frontFace;
+      // A full-surface albedo and a separate authored emission mask share one
+      // atlas with the lettering. Both are independent of the press material.
+      vec4 material = texture2D(surfaceAtlas, vec2(texCoord.x, texCoord.y / 3.));
+      float luminous = texture2D(surfaceAtlas, vec2(texCoord.x, (texCoord.y + 1.) / 3.)).a;
       vec3 copperMetal = vec3(.78, .36, .20);
       vec3 patina = vec3(.12, .26, .18);
       vec3 surface = mix(vec3(1., .77, .25), copperMetal, copper);
+      surface *= .65 + .7 * material.r;
       vec3 gold = surface * (.52 + .70 * diffuse);
-      // A polished reflection band follows the surface normal as it tilts.
       vec3 reflected = reflect(-view, n);
       float band = exp(-pow((reflected.y + reflected.x * .45 + .05) * 24., 2.));
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
-      gold = mix(gold, deposit.rgb * (.8 + .2 * diffuse), oxide);
-      gold += mix(vec3(1., .88, .55), vec3(1., .67, .43), copper) * flash * .38 * frontFace;
-      // A response travels over the actual face, independently of press/release.
-      float sweep = exp(-pow((texCoord.x - responseProgress) * 5., 2.));
-      gold = mix(gold, responseColor, response * (.06 + .42 * rim + .12 * sweep) * frontFace);
-      vec2 textCoord = vec2(texCoord.x, (texCoord.y + 1.) * .5);
-      vec4 text = texture2D(lettering, textCoord);
+      // Etched channels glow locally; the metal receives no blanket color wash.
+      float pulse = .8 + .2 * exp(-pow((texCoord.x - responseProgress) * 5., 2.));
+      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse);
+      vec3 lightColor = mix(vec3(.22, .72, .46), responseColor, response);
+      float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
+      gold = mix(gold, lightColor * 1.3, lit);
+      gold += lightColor * luminous * energy * .2 * frontFace;
+      vec2 textCoord = vec2(texCoord.x, (texCoord.y + 2.) / 3.);
+      vec4 text = texture2D(surfaceAtlas, textCoord);
       // The lettering is chemically darkened metal with a fine recessed edge,
       // so its reflections move with the face instead of looking like flat ink.
       vec3 inscription = mix(surface * .32, vec3(.055, .19, .12), copper);
       inscription *= .72 + .28 * diffuse;
       inscription += mix(vec3(.28, .19, .065), patina * .38, copper) * (specular * .38 + band * .24);
-      float above = texture2D(lettering, textCoord - vec2(1. / 780., 1. / 864.)).a;
-      float below = texture2D(lettering, textCoord + vec2(1. / 780., 1. / 864.)).a;
+      float above = texture2D(surfaceAtlas, textCoord - vec2(1. / 780., 1. / 1296.)).a;
+      float below = texture2D(surfaceAtlas, textCoord + vec2(1. / 780., 1. / 1296.)).a;
       float engraving = below - above;
       gold = mix(gold, inscription, text.a * frontFace);
       gold += vec3(1., .84, .49) * max(engraving, 0.) * .25 * frontFace;
@@ -419,7 +417,7 @@
       "shadowCenter",
       "shadowSize",
       "shadowBlur",
-      "lettering",
+      "surfaceAtlas",
       "copper",
       "flash",
       "response",
@@ -496,22 +494,26 @@
     }
     const label = document.createElement("canvas");
     label.width = 780;
-    label.height = 864;
+    label.height = 1296;
     const context = label.getContext("2d");
     if (!context) return { draw() {
     } };
     const labelContext = context;
-    function paintAtlas(image2) {
-      labelContext.clearRect(0, 0, 780, 864);
-      if (image2) labelContext.drawImage(image2, 0, 0, 780, 432);
+    const layers = [null, null];
+    function paintAtlas() {
+      labelContext.clearRect(0, 0, 780, 1296);
+      labelContext.fillStyle = "#808080";
+      labelContext.fillRect(0, 0, 780, 432);
+      if (layers[0]) labelContext.drawImage(layers[0], 0, 0, 780, 432);
+      if (layers[1]) labelContext.drawImage(layers[1], 0, 432, 780, 432);
       labelContext.font = "700 114px system-ui, sans-serif";
       labelContext.textAlign = "center";
       labelContext.textBaseline = "middle";
       labelContext.fillStyle = "#fff";
-      labelContext.fillText(required(".button-label", button).textContent, 390, 654);
+      labelContext.fillText(required(".button-label", button).textContent, 390, 1086);
     }
     paintAtlas();
-    let letteringTexture = null;
+    let atlasTexture = null;
     function initialize() {
       let vertex2 = null, fragment = null, buffer = null, texture = null;
       try {
@@ -551,13 +553,13 @@
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.uniform1i(uniforms.lettering, 0);
+        gl.uniform1i(uniforms.surfaceAtlas, 0);
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.CULL_FACE);
         gl.frontFace(gl.CW);
         gl.clearColor(0, 0, 0, 0);
         if (gl.getError() !== gl.NO_ERROR) throw new Error("Button graphics setup failed");
-        letteringTexture = texture;
+        atlasTexture = texture;
         return true;
       } catch {
         if (program) gl.deleteProgram(program);
@@ -670,22 +672,26 @@
       lost = !initialize();
       if (!lost) draw(state);
     });
-    const image = new Image();
-    image.onload = () => {
-      try {
-        paintAtlas(image);
-        if (lost || !letteringTexture) return;
-        gl.bindTexture(gl.TEXTURE_2D, letteringTexture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
-        if (gl.getError() !== gl.NO_ERROR) throw new Error("Patina texture upload failed");
-        draw();
-      } catch {
-        lost = true;
-        stage.classList.remove("is-rendered");
-        rig.style.removeProperty("--lift");
-      }
-    };
-    image.src = "/button-patina.svg";
+    const sources = ["/button-material.svg", "/button-glow.svg"];
+    for (const [index, source] of sources.entries()) {
+      const image = new Image();
+      image.onload = () => {
+        try {
+          layers[index] = image;
+          paintAtlas();
+          if (lost || !atlasTexture) return;
+          gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
+          if (gl.getError() !== gl.NO_ERROR) throw new Error("Material texture upload failed");
+          draw();
+        } catch {
+          lost = true;
+          stage.classList.remove("is-rendered");
+          rig.style.removeProperty("--lift");
+        }
+      };
+      image.src = source;
+    }
     const renderer = { draw };
     draw();
     return renderer;
@@ -702,13 +708,18 @@
       rig.style.setProperty("--press", String(current.press));
       rig.style.setProperty("--copper", current.copper.toFixed(3));
       rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -0.065, 0.1)).toFixed(3));
-      rig.style.setProperty(
-        "--response-wash",
-        `rgba(${current.responseColor.map((value) => Math.round(value * 255)).join(",")},${(current.response * 0.5).toFixed(3)})`
-      );
       stage.style.setProperty(
         "--spark-color",
         `rgb(${current.responseColor.map((value) => Math.round(value * 255)).join(" ")})`
+      );
+      const glow = Math.min(
+        1.4,
+        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8
+      );
+      rig.style.setProperty("--glow-intensity", glow.toFixed(3));
+      rig.style.setProperty(
+        "--glow-color",
+        `rgb(${[0.22, 0.72, 0.46].map((value, i) => Math.round((value * (1 - current.response) + current.responseColor[i] * current.response) * 255)).join(" ")})`
       );
       renderer?.draw(current);
     }, tick2 = function(time) {

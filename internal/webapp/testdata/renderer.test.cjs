@@ -68,6 +68,7 @@ function renderer(failure) {
         getContext: () => ({
           fillText() {},
           clearRect() {},
+          fillRect() {},
           drawImage(image) {
             paintedImages.push(image);
           },
@@ -145,18 +146,18 @@ test("context loss restores the native button, and failed GPU recovery remains u
   assert.equal(h.draws(), 4);
 });
 
-test("the designed patina loads after the first usable frame into the existing atlas", () => {
+test("the full-surface material loads after the first usable frame into the existing atlas", () => {
   const h = renderer();
   assert.equal(h.classes.has("is-rendered"), true);
   assert.equal(h.draws(), 2);
-  assert.equal(h.images[0].src, "/button-patina.svg");
+  assert.equal(h.images[0].src, "/button-material.svg");
   h.images[0].onload();
   assert.equal(h.paintedImages[0], h.images[0]);
   assert.equal(h.uploads(), 2);
   assert.equal(h.draws(), 4);
 });
 
-test("patina loading during context loss waits for restoration to upload", () => {
+test("material loading during context loss waits for restoration to upload", () => {
   const h = renderer();
   h.events.get("webglcontextlost")({ preventDefault() {} });
   h.images[0].onload();
@@ -172,4 +173,19 @@ test("a failed asynchronous texture upload restores the CSS button", () => {
   h.fail("exception");
   assert.doesNotThrow(() => h.images[0].onload());
   assert.equal(h.classes.has("is-rendered"), false);
+});
+
+test("material and glow assets can arrive in either order without losing a layer", () => {
+  for (const order of [
+    [0, 1],
+    [1, 0],
+  ]) {
+    const h = renderer();
+    assert.equal(h.images[1].src, "/button-glow.svg");
+    h.images[order[0]].onload();
+    h.images[order[1]].onload();
+    assert.deepEqual(h.paintedImages.slice(-2), h.images);
+    assert.equal(h.uploads(), 3);
+    assert.equal(h.classes.has("is-rendered"), true);
+  }
 });

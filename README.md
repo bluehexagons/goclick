@@ -253,13 +253,17 @@ The companion `interaction.browser.cjs` exports `checkInteraction(page, baseURL)
 for selection, native drag prevention, gameplay dragging, and clipboard/manual
 sharing. It writes only its own test stats and never reads the clipboard.
 
-The button's patina is an editable SVG at
-[`internal/webapp/web/button-patina.svg`](internal/webapp/web/button-patina.svg).
-Open it in Inkscape to adjust the labeled deposit, verdigris, and trace layers;
-keep the transparent 260 × 144 viewBox and the 780 × 432 export size. The 3D
-renderer loads it into the same texture atlas as the lettering, and the CSS
-fallback uses the SVG directly. No PNG export or frontend dependency is needed.
-Image loading never delays input; an unavailable image leaves clean copper.
+The button material uses two editable Inkscape SVGs:
+[`button-material.svg`](internal/webapp/web/button-material.svg) covers the whole
+solid with neutral metal grain, worked facets, and engraved channels;
+[`button-glow.svg`](internal/webapp/web/button-glow.svg) marks only the regions
+that emit light. Both use a 260 × 144 viewBox and a 780 × 432 image size.
+Keep the material grayscale (#808080 is neutral) and the glow mask white on
+transparent. Match the channel coordinates between files. The game supplies
+gold/copper colors and press/ping illumination, so future material variants can
+replace the artwork without changing gameplay. Keep the lettering area legible.
+The 3D renderer packs both images and lettering into one atlas; the CSS fallback
+uses the same SVGs. Neither image blocks input, and no PNG export is required.
 
 The game's Share button copies confirmed clicks and UTC streaks as plain text.
 Offline summaries are labeled separately. Clipboard access failures open a

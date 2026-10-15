@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="780" height="432" viewBox="0 0 260 144" version="1.1">
+  <title>Button — emissive channel mask</title>
+  <desc>Only these regions emit light. White alpha controls intensity; the game
+    supplies press and ping colors. Coordinates match button-material.svg.</desc>
+  <defs>
+    <filter id="soft-light" x="0" y="0" width="260" height="144" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.1"/>
+    </filter>
+    <path id="channels" d="M30 27H54L65 38H77M230 31V45L218 57V72 M28 105H49L61 93H74M177 117H195L208 104H229"/>
+  </defs>
+  <g id="channel-bloom" inkscape:groupmode="layer" inkscape:label="01 · Local channel bloom"
+     fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+     opacity="0.45" filter="url(#soft-light)">
+    <use href="#channels"/>
+  </g>
+  <g id="channel-cores" inkscape:groupmode="layer" inkscape:label="02 · Luminous inlays"
+     fill="none" stroke="#fff" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#channels"/>
+  </g>
+  <g id="endpoints" inkscape:groupmode="layer" inkscape:label="03 · Indicator points" fill="#fff">
+    <circle cx="77" cy="38" r="1.2"/><circle cx="218" cy="72" r="1.2"/>
+    <circle cx="74" cy="93" r="1.2"/><circle cx="177" cy="117" r="1.2"/>
+  </g>
+</svg>

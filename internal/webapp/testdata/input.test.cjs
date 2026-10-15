@@ -228,16 +228,17 @@ test("press-down compresses immediately before any animation frame or saved clic
   assert.equal(h.clicks.length, 0);
 });
 
-test("response sweeps finish without releasing another held pointer", () => {
+test("response glows finish without releasing another held pointer", () => {
   const h = harness(false);
   h.pointer("pointerdown", 1);
   h.controller.respond("slow", 700);
   assert.equal(h.stage.dataset.response, "slow");
-  assert.match(h.rig.props.get("--response-wash"), /163,138,255/);
+  assert.equal(h.rig.props.get("--glow-color"), "rgb(163 138 255)");
   assert.equal(h.stage.classes.has("is-pressed"), true);
   assert.equal(h.button.hasPointerCapture(1), true);
   h.frame(1000);
-  assert.match(h.rig.props.get("--response-wash"), /,0\.000\)/);
+  assert.equal(h.rig.props.get("--glow-color"), "rgb(56 184 117)");
+  assert.ok(parseFloat(h.rig.props.get("--glow-intensity")) < 0.6);
   assert.equal(h.stage.classes.has("is-pressed"), true);
   assert.equal(h.clicks.length, 0);
 });
@@ -246,10 +247,11 @@ test("reduced motion acknowledges with static color and reset clears stale respo
   const h = harness();
   h.controller.respond("error");
   assert.equal(h.hasFrame(), false);
-  assert.match(h.rig.props.get("--response-wash"), /255,125,120,0\.110/);
+  assert.equal(h.rig.props.get("--glow-intensity"), "0.176");
+  assert.equal(h.rig.props.get("--glow-color"), "rgb(100 171 118)");
   h.controller.reset();
   assert.equal(h.stage.dataset.response, undefined);
-  assert.match(h.rig.props.get("--response-wash"), /,0\.000\)/);
+  assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
 });
 
 test("drag travel grows with the stage, stays bounded, and returns on mouse release", () => {

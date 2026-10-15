@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="780" height="432" viewBox="0 0 260 144" version="1.1">
+  <title>Worked metal button — full surface</title>
+  <desc>Neutral gray is unmodified metal. Lighter and darker regions alter the
+    gold and copper finish across the face, bevel, and sides. Matching etched
+    channels are illuminated by button-glow.svg.</desc>
+  <defs>
+    <filter id="grain" x="0" y="0" width="260" height="144" filterUnits="userSpaceOnUse"
+            color-interpolation-filters="sRGB" inkscape:label="Fine directional metal grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.72 0.26" numOctaves="3" seed="34"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.6" intercept="0.2"/>
+        <feFuncG type="linear" slope="0.6" intercept="0.2"/>
+        <feFuncB type="linear" slope="0.6" intercept="0.2"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+  <g id="metal-grain" inkscape:groupmode="layer" inkscape:label="01 · Continuous metal grain">
+    <rect width="260" height="144" fill="#808080"/>
+    <rect width="260" height="144" filter="url(#grain)"/>
+  </g>
+  <g id="facets" inkscape:groupmode="layer" inkscape:label="02 · Worked surface facets">
+    <path id="facet-0-0-0" d="M0.0 0.0L23.93 0.0L9.86 8.54L0.0 20.66Z" fill="#646464" opacity="0.09"/>
+    <path id="facet-0-0-1" d="M23.93 0.0L20.18 18.77L0.0 20.66L9.86 8.54Z" fill="#bcbcbc" opacity="0.19"/>
+    <path id="facet-0-1-0" d="M23.93 0.0L48.13 0.0L35.62 10.81L20.18 18.77Z" fill="#646464" opacity="0.2"/>
+    <path id="facet-0-1-1" d="M48.13 0.0L48.38 22.78L20.18 18.77L35.62 10.81Z" fill="#9a9a9a" opacity="0.2"/>
+    <path id="facet-0-2-0" d="M48.13 0.0L74.34 0.0L60.68 10.45L48.38 22.78Z" fill="#484848" opacity="0.19"/>
+    <path id="facet-0-2-1" d="M74.34 0.0L73.44 17.26L48.38 22.78L60.68 10.45Z" fill="#646464" opacity="0.1"/>
+    <path id="facet-0-3-0" d="M74.34 0.0L98.53 0.0L83.89 10.82L73.44 17.26Z" fill="#9a9a9a" opacity="0.19"/>
+    <path id="facet-0-3-1" d="M98.53 0.0L90.16 18.61L73.44 17.26L83.89 10.82Z" fill="#bcbcbc" opacity="0.12"/>
+    <path id="facet-0-4-0" d="M98.53 0.0L122.0 0.0L109.86 11.88L90.16 18.61Z" fill="#646464" opacity="0.14"/>
+    <path id="facet-0-4-1" d="M122.0 0.0L118.7 23.28L90.16 18.61L109.86 11.88Z" fill="#484848" opacity="0.13"/>
+    <path id="facet-0-5-0" d="M122.0 0.0L140.47 0.0L129.16 11.67L118.7 23.28Z" fill="#484848" opacity="0.21"/>
+    <path id="facet-0-5-1" d="M140.47 0.0L144.82 24.04L118.7 23.28L129.16 11.67Z" fill="#484848" opacity="0.1"/>
+    <path id="facet-0-6-0" d="M140.47 0.0L169.94 0.0L155.74 12.57L144.82 24.04Z" fill="#bcbcbc" opacity="0.18"/>
+    <path id="facet-0-6-1" d="M169.94 0.0L166.34 21.66L144.82 24.04L155.74 12.57Z" fill="#bcbcbc" opacity="0.12"/>
+    <path id="facet-0-7-0" d="M169.94 0.0L188.33 0.0L177.04 9.46L166.34 21.66Z" fill="#9a9a9a" opacity="0.14"/>
+    <path id="facet-0-7-1" d="M188.33 0.0L187.01 19.08L166.34 21.66L177.04 9.46Z" fill="#646464" opacity="0.19"/>
+    <path id="facet-0-8-0" d="M188.33 0.0L210.79 0.0L199.35 9.19L187.01 19.08Z" fill="#646464" opacity="0.12"/>
+    <path id="facet-0-8-1" d="M210.79 0.0L209.79 20.85L187.01 19.08L199.35 9.19Z" fill="#9a9a9a" opacity="0.14"/>
+    <path id="facet-0-9-0" d="M210.79 0.0L232.31 0.0L220.99 8.72L209.79 20.85Z" fill="#484848" opacity="0.12"/>
+    <path id="facet-0-9-1" d="M232.31 0.0L237.44 21.16L209.79 20.85L220.99 8.72Z" fill="#9a9a9a" opacity="0.15"/>
+    <path id="facet-0-10-0" d="M232.31 0.0L260.0 0.0L246.96 10.92L237.44 21.16Z" fill="#484848" opacity="0.16"/>
+    <path id="facet-0-10-1" d="M260.0 0.0L260.0 19.71L237.44 21.16L246.96 10.92Z" fill="#484848" opacity="0.19"/>
+    <path id="facet-1-0-0" d="M0.0 20.66L20.18 18.77L8.83 29.44L0.0 40.53Z" fill="#646464" opacity="0.11"/>
+    <path id="facet-1-0-1" d="M20.18 18.77L21.12 43.66L0.0 40.53L8.83 29.44Z" fill="#9a9a9a" opacity="0.17"/>
+    <path id="facet-1-1-0" d="M20.18 18.77L48.38 22.78L34.79 32.56L21.12 43.66Z" fill="#9a9a9a" opacity="0.14"/>
+    <path id="facet-1-1-1" d="M48.38 22.78L48.08 43.13L21.12 43.66L34.79 32.56Z" fill="#9a9a9a" opacity="0.15"/>
+    <path id="facet-1-2-0" d="M48.38 22.78L73.44 17.26L60.65 29.74L48.08 43.13Z" fill="#bcbcbc" opacity="0.19"/>
+    <path id="facet-1-2-1" d="M73.44 17.26L74.03 39.39L48.08 43.13L60.65 29.74Z" fill="#646464" opacity="0.19"/>
+    <path id="facet-1-3-0" d="M73.44 17.26L90.16 18.61L82.57 29.88L74.03 39.39Z" fill="#bcbcbc" opacity="0.21"/>
+    <path id="facet-1-3-1" d="M90.16 18.61L90.72 39.41L74.03 39.39L82.57 29.88Z" fill="#484848" opacity="0.18"/>
+    <path id="facet-1-4-0" d="M90.16 18.61L118.7 23.28L105.92 32.5L90.72 39.41Z" fill="#bcbcbc" opacity="0.14"/>
+    <path id="facet-1-4-1" d="M118.7 23.28L122.25 43.48L90.72 39.41L105.92 32.5Z" fill="#9a9a9a" opacity="0.09"/>
+    <path id="facet-1-5-0" d="M118.7 23.28L144.82 24.04L132.92 34.07L122.25 43.48Z" fill="#9a9a9a" opacity="0.13"/>
+    <path id="facet-1-5-1" d="M144.82 24.04L140.87 43.36L122.25 43.48L132.92 34.07Z" fill="#9a9a9a" opacity="0.1"/>
+    <path id="facet-1-6-0" d="M144.82 24.04L166.34 21.66L153.86 35.2L140.87 43.36Z" fill="#484848" opacity="0.17"/>
+    <path id="facet-1-6-1" d="M166.34 21.66L163.87 44.07L140.87 43.36L153.86 35.2Z" fill="#484848" opacity="0.14"/>
+    <path id="facet-1-7-0" d="M166.34 21.66L187.01 19.08L174.14 31.16L163.87 44.07Z" fill="#9a9a9a" opacity="0.1"/>
+    <path id="facet-1-7-1" d="M187.01 19.08L184.99 43.07L163.87 44.07L174.14 31.16Z" fill="#646464" opacity="0.21"/>
+    <path id="facet-1-8-0" d="M187.01 19.08L209.79 20.85L202.41 32.27L184.99 43.07Z" fill="#bcbcbc" opacity="0.11"/>
+    <path id="facet-1-8-1" d="M209.79 20.85L217.53 40.5L184.99 43.07L202.41 32.27Z" fill="#9a9a9a" opacity="0.11"/>
+    <path id="facet-1-9-0" d="M209.79 20.85L237.44 21.16L225.35 31.64L217.53 40.5Z" fill="#bcbcbc" opacity="0.14"/>
+    <path id="facet-1-9-1" d="M237.44 21.16L235.98 38.19L217.53 40.5L225.35 31.64Z" fill="#646464" opacity="0.18"/>
+    <path id="facet-1-10-0" d="M237.44 21.16L260.0 19.71L250.77 27.66L235.98 38.19Z" fill="#484848" opacity="0.19"/>
+    <path id="facet-1-10-1" d="M260.0 19.71L260.0 39.34L235.98 38.19L250.77 27.66Z" fill="#bcbcbc" opacity="0.16"/>
+    <path id="facet-2-0-0" d="M0.0 40.53L21.12 43.66L10.22 51.76L0.0 59.59Z" fill="#646464" opacity="0.21"/>
+    <path id="facet-2-0-1" d="M21.12 43.66L21.6 58.26L0.0 59.59L10.22 51.76Z" fill="#646464" opacity="0.19"/>
+    <path id="facet-2-1-0" d="M21.12 43.66L48.08 43.13L35.27 49.36L21.6 58.26Z" fill="#646464" opacity="0.18"/>
+    <path id="facet-2-1-1" d="M48.08 43.13L45.27 58.55L21.6 58.26L35.27 49.36Z" fill="#9a9a9a" opacity="0.18"/>
+    <path id="facet-2-2-0" d="M48.08 43.13L74.03 39.39L62.08 51.29L45.27 58.55Z" fill="#bcbcbc" opacity="0.1"/>
+    <path id="facet-2-2-1" d="M74.03 39.39L71.16 60.97L45.27 58.55L62.08 51.29Z" fill="#9a9a9a" opacity="0.15"/>
+    <path id="facet-2-3-0" d="M74.03 39.39L90.72 39.41L81.97 50.98L71.16 60.97Z" fill="#484848" opacity="0.21"/>
+    <path id="facet-2-3-1" d="M90.72 39.41L91.82 65.26L71.16 60.97L81.97 50.98Z" fill="#484848" opacity="0.11"/>
+    <path id="facet-2-4-0" d="M90.72 39.41L122.25 43.48L102.56 54.06L91.82 65.26Z" fill="#bcbcbc" opacity="0.22"/>
+    <path id="facet-2-4-1" d="M122.25 43.48L116.28 61.97L91.82 65.26L102.56 54.06Z" fill="#484848" opacity="0.2"/>
+    <path id="facet-2-5-0" d="M122.25 43.48L140.87 43.36L132.36 54.26L116.28 61.97Z" fill="#484848" opacity="0.19"/>
+    <path id="facet-2-5-1" d="M140.87 43.36L145.77 63.78L116.28 61.97L132.36 54.26Z" fill="#646464" opacity="0.18"/>
+    <path id="facet-2-6-0" d="M140.87 43.36L163.87 44.07L152.89 51.45L145.77 63.78Z" fill="#9a9a9a" opacity="0.1"/>
+    <path id="facet-2-6-1" d="M163.87 44.07L170.11 62.59L145.77 63.78L152.89 51.45Z" fill="#646464" opacity="0.13"/>
+    <path id="facet-2-7-0" d="M163.87 44.07L184.99 43.07L177.2 53.01L170.11 62.59Z" fill="#484848" opacity="0.1"/>
+    <path id="facet-2-7-1" d="M184.99 43.07L192.8 58.24L170.11 62.59L177.2 53.01Z" fill="#9a9a9a" opacity="0.15"/>
+    <path id="facet-2-8-0" d="M184.99 43.07L217.53 40.5L201.71 51.16L192.8 58.24Z" fill="#bcbcbc" opacity="0.14"/>
+    <path id="facet-2-8-1" d="M217.53 40.5L215.07 60.4L192.8 58.24L201.71 51.16Z" fill="#646464" opacity="0.19"/>
+    <path id="facet-2-9-0" d="M217.53 40.5L235.98 38.19L225.88 49.57L215.07 60.4Z" fill="#bcbcbc" opacity="0.13"/>
+    <path id="facet-2-9-1" d="M235.98 38.19L234.57 63.87L215.07 60.4L225.88 49.57Z" fill="#9a9a9a" opacity="0.21"/>
+    <path id="facet-2-10-0" d="M235.98 38.19L260.0 39.34L246.49 52.55L234.57 63.87Z" fill="#646464" opacity="0.16"/>
+    <path id="facet-2-10-1" d="M260.0 39.34L260.0 63.65L234.57 63.87L246.49 52.55Z" fill="#9a9a9a" opacity="0.18"/>
+    <path id="facet-3-0-0" d="M0.0 59.59L21.6 58.26L12.53 71.75L0.0 81.02Z" fill="#646464" opacity="0.12"/>
+    <path id="facet-3-0-1" d="M21.6 58.26L22.27 80.51L0.0 81.02L12.53 71.75Z" fill="#484848" opacity="0.11"/>
+    <path id="facet-3-1-0" d="M21.6 58.26L45.27 58.55L37.64 70.88L22.27 80.51Z" fill="#484848" opacity="0.17"/>
+    <path id="facet-3-1-1" d="M45.27 58.55L51.61 83.2L22.27 80.51L37.64 70.88Z" fill="#484848" opacity="0.13"/>
+    <path id="facet-3-2-0" d="M45.27 58.55L71.16 60.97L57.02 71.62L51.61 83.2Z" fill="#646464" opacity="0.09"/>
+    <path id="facet-3-2-1" d="M71.16 60.97L68.51 82.54L51.61 83.2L57.02 71.62Z" fill="#646464" opacity="0.18"/>
+    <path id="facet-3-3-0" d="M71.16 60.97L91.82 65.26L80.34 72.88L68.51 82.54Z" fill="#9a9a9a" opacity="0.13"/>
+    <path id="facet-3-3-1" d="M91.82 65.26L90.12 80.44L68.51 82.54L80.34 72.88Z" fill="#9a9a9a" opacity="0.13"/>
+    <path id="facet-3-4-0" d="M91.82 65.26L116.28 61.97L105.91 74.63L90.12 80.44Z" fill="#646464" opacity="0.16"/>
+    <path id="facet-3-4-1" d="M116.28 61.97L118.2 86.07L90.12 80.44L105.91 74.63Z" fill="#484848" opacity="0.1"/>
+    <path id="facet-3-5-0" d="M116.28 61.97L145.77 63.78L133.63 73.51L118.2 86.07Z" fill="#646464" opacity="0.16"/>
+    <path id="facet-3-5-1" d="M145.77 63.78L145.4 82.67L118.2 86.07L133.63 73.51Z" fill="#9a9a9a" opacity="0.21"/>
+    <path id="facet-3-6-0" d="M145.77 63.78L170.11 62.59L159.95 73.47L145.4 82.67Z" fill="#9a9a9a" opacity="0.11"/>
+    <path id="facet-3-6-1" d="M170.11 62.59L168.09 80.3L145.4 82.67L159.95 73.47Z" fill="#bcbcbc" opacity="0.19"/>
+    <path id="facet-3-7-0" d="M170.11 62.59L192.8 58.24L182.14 73.38L168.09 80.3Z" fill="#484848" opacity="0.2"/>
+    <path id="facet-3-7-1" d="M192.8 58.24L191.03 86.26L168.09 80.3L182.14 73.38Z" fill="#484848" opacity="0.22"/>
+    <path id="facet-3-8-0" d="M192.8 58.24L215.07 60.4L202.63 72.72L191.03 86.26Z" fill="#646464" opacity="0.18"/>
+    <path id="facet-3-8-1" d="M215.07 60.4L209.27 85.75L191.03 86.26L202.63 72.72Z" fill="#484848" opacity="0.17"/>
+    <path id="facet-3-9-0" d="M215.07 60.4L234.57 63.87L227.0 71.04L209.27 85.75Z" fill="#9a9a9a" opacity="0.17"/>
+    <path id="facet-3-9-1" d="M234.57 63.87L241.22 81.23L209.27 85.75L227.0 71.04Z" fill="#bcbcbc" opacity="0.22"/>
+    <path id="facet-3-10-0" d="M234.57 63.87L260.0 63.65L247.51 75.3L241.22 81.23Z" fill="#9a9a9a" opacity="0.18"/>
+    <path id="facet-3-10-1" d="M260.0 63.65L260.0 84.8L241.22 81.23L247.51 75.3Z" fill="#646464" opacity="0.15"/>
+    <path id="facet-4-0-0" d="M0.0 81.02L22.27 80.51L9.46 92.7L0.0 106.77Z" fill="#bcbcbc" opacity="0.14"/>
+    <path id="facet-4-0-1" d="M22.27 80.51L20.11 102.58L0.0 106.77L9.46 92.7Z" fill="#9a9a9a" opacity="0.12"/>
+    <path id="facet-4-1-0" d="M22.27 80.51L51.61 83.2L33.27 92.86L20.11 102.58Z" fill="#bcbcbc" opacity="0.1"/>
+    <path id="facet-4-1-1" d="M51.61 83.2L48.21 105.21L20.11 102.58L33.27 92.86Z" fill="#646464" opacity="0.19"/>
+    <path id="facet-4-2-0" d="M51.61 83.2L68.51 82.54L60.38 94.42L48.21 105.21Z" fill="#9a9a9a" opacity="0.17"/>
+    <path id="facet-4-2-1" d="M68.51 82.54L68.57 104.87L48.21 105.21L60.38 94.42Z" fill="#646464" opacity="0.17"/>
+    <path id="facet-4-3-0" d="M68.51 82.54L90.12 80.44L81.17 93.71L68.57 104.87Z" fill="#484848" opacity="0.14"/>
+    <path id="facet-4-3-1" d="M90.12 80.44L96.59 105.72L68.57 104.87L81.17 93.71Z" fill="#9a9a9a" opacity="0.18"/>
+    <path id="facet-4-4-0" d="M90.12 80.44L118.2 86.07L104.32 92.71L96.59 105.72Z" fill="#484848" opacity="0.22"/>
+    <path id="facet-4-4-1" d="M118.2 86.07L120.53 105.74L96.59 105.72L104.32 92.71Z" fill="#484848" opacity="0.15"/>
+    <path id="facet-4-5-0" d="M118.2 86.07L145.4 82.67L134.69 92.46L120.53 105.74Z" fill="#bcbcbc" opacity="0.15"/>
+    <path id="facet-4-5-1" d="M145.4 82.67L142.86 103.2L120.53 105.74L134.69 92.46Z" fill="#bcbcbc" opacity="0.21"/>
+    <path id="facet-4-6-0" d="M145.4 82.67L168.09 80.3L154.41 93.15L142.86 103.2Z" fill="#bcbcbc" opacity="0.18"/>
+    <path id="facet-4-6-1" d="M168.09 80.3L165.07 102.11L142.86 103.2L154.41 93.15Z" fill="#9a9a9a" opacity="0.14"/>
+    <path id="facet-4-7-0" d="M168.09 80.3L191.03 86.26L180.98 94.61L165.07 102.11Z" fill="#484848" opacity="0.16"/>
+    <path id="facet-4-7-1" d="M191.03 86.26L188.72 102.8L165.07 102.11L180.98 94.61Z" fill="#484848" opacity="0.18"/>
+    <path id="facet-4-8-0" d="M191.03 86.26L209.27 85.75L203.09 94.0L188.72 102.8Z" fill="#484848" opacity="0.14"/>
+    <path id="facet-4-8-1" d="M209.27 85.75L211.65 100.02L188.72 102.8L203.09 94.0Z" fill="#484848" opacity="0.22"/>
+    <path id="facet-4-9-0" d="M209.27 85.75L241.22 81.23L223.95 95.04L211.65 100.02Z" fill="#9a9a9a" opacity="0.13"/>
+    <path id="facet-4-9-1" d="M241.22 81.23L235.34 106.42L211.65 100.02L223.95 95.04Z" fill="#646464" opacity="0.2"/>
+    <path id="facet-4-10-0" d="M241.22 81.23L260.0 84.8L248.5 94.1L235.34 106.42Z" fill="#9a9a9a" opacity="0.17"/>
+    <path id="facet-4-10-1" d="M260.0 84.8L260.0 101.31L235.34 106.42L248.5 94.1Z" fill="#646464" opacity="0.19"/>
+    <path id="facet-5-0-0" d="M0.0 106.77L20.11 102.58L9.87 115.08L0.0 127.29Z" fill="#9a9a9a" opacity="0.15"/>
+    <path id="facet-5-0-1" d="M20.11 102.58L26.96 123.06L0.0 127.29L9.87 115.08Z" fill="#bcbcbc" opacity="0.21"/>
+    <path id="facet-5-1-0" d="M20.11 102.58L48.21 105.21L35.31 112.96L26.96 123.06Z" fill="#bcbcbc" opacity="0.11"/>
+    <path id="facet-5-1-1" d="M48.21 105.21L44.45 126.46L26.96 123.06L35.31 112.96Z" fill="#bcbcbc" opacity="0.09"/>
+    <path id="facet-5-2-0" d="M48.21 105.21L68.57 104.87L57.06 115.49L44.45 126.46Z" fill="#9a9a9a" opacity="0.21"/>
+    <path id="facet-5-2-1" d="M68.57 104.87L75.46 121.91L44.45 126.46L57.06 115.49Z" fill="#9a9a9a" opacity="0.13"/>
+    <path id="facet-5-3-0" d="M68.57 104.87L96.59 105.72L85.06 114.43L75.46 121.91Z" fill="#484848" opacity="0.2"/>
+    <path id="facet-5-3-1" d="M96.59 105.72L96.23 125.46L75.46 121.91L85.06 114.43Z" fill="#9a9a9a" opacity="0.14"/>
+    <path id="facet-5-4-0" d="M96.59 105.72L120.53 105.74L110.58 112.41L96.23 125.46Z" fill="#646464" opacity="0.22"/>
+    <path id="facet-5-4-1" d="M120.53 105.74L119.39 120.39L96.23 125.46L110.58 112.41Z" fill="#484848" opacity="0.12"/>
+    <path id="facet-5-5-0" d="M120.53 105.74L142.86 103.2L132.42 113.22L119.39 120.39Z" fill="#484848" opacity="0.2"/>
+    <path id="facet-5-5-1" d="M142.86 103.2L139.18 125.2L119.39 120.39L132.42 113.22Z" fill="#484848" opacity="0.19"/>
+    <path id="facet-5-6-0" d="M142.86 103.2L165.07 102.11L154.47 114.37L139.18 125.2Z" fill="#484848" opacity="0.21"/>
+    <path id="facet-5-6-1" d="M165.07 102.11L166.8 124.8L139.18 125.2L154.47 114.37Z" fill="#bcbcbc" opacity="0.11"/>
+    <path id="facet-5-7-0" d="M165.07 102.11L188.72 102.8L178.07 113.27L166.8 124.8Z" fill="#bcbcbc" opacity="0.14"/>
+    <path id="facet-5-7-1" d="M188.72 102.8L186.9 126.47L166.8 124.8L178.07 113.27Z" fill="#646464" opacity="0.14"/>
+    <path id="facet-5-8-0" d="M188.72 102.8L211.65 100.02L201.99 111.96L186.9 126.47Z" fill="#646464" opacity="0.19"/>
+    <path id="facet-5-8-1" d="M211.65 100.02L215.49 123.31L186.9 126.47L201.99 111.96Z" fill="#484848" opacity="0.2"/>
+    <path id="facet-5-9-0" d="M211.65 100.02L235.34 106.42L224.19 113.03L215.49 123.31Z" fill="#484848" opacity="0.21"/>
+    <path id="facet-5-9-1" d="M235.34 106.42L239.91 121.84L215.49 123.31L224.19 113.03Z" fill="#bcbcbc" opacity="0.2"/>
+    <path id="facet-5-10-0" d="M235.34 106.42L260.0 101.31L248.01 112.93L239.91 121.84Z" fill="#bcbcbc" opacity="0.18"/>
+    <path id="facet-5-10-1" d="M260.0 101.31L260.0 123.69L239.91 121.84L248.01 112.93Z" fill="#bcbcbc" opacity="0.17"/>
+    <path id="facet-6-0-0" d="M0.0 127.29L26.96 123.06L10.48 134.92L0.0 144.0Z" fill="#bcbcbc" opacity="0.16"/>
+    <path id="facet-6-0-1" d="M26.96 123.06L23.84 144.0L0.0 144.0L10.48 134.92Z" fill="#484848" opacity="0.2"/>
+    <path id="facet-6-1-0" d="M26.96 123.06L44.45 126.46L34.98 133.44L23.84 144.0Z" fill="#9a9a9a" opacity="0.15"/>
+    <path id="facet-6-1-1" d="M44.45 126.46L51.96 144.0L23.84 144.0L34.98 133.44Z" fill="#9a9a9a" opacity="0.11"/>
+    <path id="facet-6-2-0" d="M44.45 126.46L75.46 121.91L62.01 134.4L51.96 144.0Z" fill="#bcbcbc" opacity="0.17"/>
+    <path id="facet-6-2-1" d="M75.46 121.91L75.28 144.0L51.96 144.0L62.01 134.4Z" fill="#9a9a9a" opacity="0.2"/>
+    <path id="facet-6-3-0" d="M75.46 121.91L96.23 125.46L83.88 135.76L75.28 144.0Z" fill="#484848" opacity="0.18"/>
+    <path id="facet-6-3-1" d="M96.23 125.46L92.96 144.0L75.28 144.0L83.88 135.76Z" fill="#bcbcbc" opacity="0.15"/>
+    <path id="facet-6-4-0" d="M96.23 125.46L119.39 120.39L105.88 134.02L92.96 144.0Z" fill="#646464" opacity="0.18"/>
+    <path id="facet-6-4-1" d="M119.39 120.39L120.99 144.0L92.96 144.0L105.88 134.02Z" fill="#bcbcbc" opacity="0.2"/>
+    <path id="facet-6-5-0" d="M119.39 120.39L139.18 125.2L130.15 133.17L120.99 144.0Z" fill="#484848" opacity="0.18"/>
+    <path id="facet-6-5-1" d="M139.18 125.2L139.79 144.0L120.99 144.0L130.15 133.17Z" fill="#646464" opacity="0.11"/>
+    <path id="facet-6-6-0" d="M139.18 125.2L166.8 124.8L155.95 133.78L139.79 144.0Z" fill="#484848" opacity="0.21"/>
+    <path id="facet-6-6-1" d="M166.8 124.8L169.29 144.0L139.79 144.0L155.95 133.78Z" fill="#484848" opacity="0.16"/>
+    <path id="facet-6-7-0" d="M166.8 124.8L186.9 126.47L176.5 134.42L169.29 144.0Z" fill="#646464" opacity="0.2"/>
+    <path id="facet-6-7-1" d="M186.9 126.47L193.01 144.0L169.29 144.0L176.5 134.42Z" fill="#9a9a9a" opacity="0.15"/>
+    <path id="facet-6-8-0" d="M186.9 126.47L215.49 123.31L200.54 133.27L193.01 144.0Z" fill="#bcbcbc" opacity="0.09"/>
+    <path id="facet-6-8-1" d="M215.49 123.31L214.54 144.0L193.01 144.0L200.54 133.27Z" fill="#484848" opacity="0.12"/>
+    <path id="facet-6-9-0" d="M215.49 123.31L239.91 121.84L225.42 131.84L214.54 144.0Z" fill="#484848" opacity="0.14"/>
+    <path id="facet-6-9-1" d="M239.91 121.84L231.72 144.0L214.54 144.0L225.42 131.84Z" fill="#9a9a9a" opacity="0.11"/>
+    <path id="facet-6-10-0" d="M239.91 121.84L260.0 123.69L248.84 131.89L231.72 144.0Z" fill="#9a9a9a" opacity="0.21"/>
+    <path id="facet-6-10-1" d="M260.0 123.69L260.0 144.0L231.72 144.0L248.84 131.89Z" fill="#646464" opacity="0.11"/>
+  </g>
+  <g id="tool-marks" inkscape:groupmode="layer" inkscape:label="03 · Fine tooling marks"
+     fill="none" stroke="#dbdbdb" stroke-width="0.3" opacity="0.18" stroke-linecap="round">
+    <path d="M24 36L45 32M51 122L68 119M192 23L211 20M207 98L228 94
+      M102 28L115 26M157 114L172 111M30 80L41 78M223 62L236 59"/>
+  </g>
+  <g id="inlays" inkscape:groupmode="layer" inkscape:label="04 · Etched light channels"
+     fill="none" stroke="#363636" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" opacity="0.65">
+    <path d="M30 27H54L65 38H77M230 31V45L218 57V72
+      M28 105H49L61 93H74M177 117H195L208 104H229"/>
+    <path d="M30 27H54L65 38H77M230 31V45L218 57V72
+      M28 105H49L61 93H74M177 117H195L208 104H229"
+      stroke="#bdbdbd" stroke-width="0.3" transform="translate(0 1)"/>
+  </g>
+</svg>
