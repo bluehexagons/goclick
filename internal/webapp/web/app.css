@@ -604,14 +604,19 @@ input:focus {
   -webkit-tap-highlight-color: transparent;
 }
 .button-stage:not(.is-rendered) .click-button {
-  box-shadow: inset 0 0 26px var(--response-wash, transparent);
-}
-.button-stage:not(.is-rendered) .click-button.is-pressed {
-  background: linear-gradient(120deg, #bc633b 4%, #f8c09a 28%, #e99b6d 34%, #c57245 64%, #efb78c);
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, #ffe094, #bc633b calc(var(--copper, 0) * 100%)) 4%,
+    color-mix(in srgb, #ffdc7c, #f8c09a calc(var(--copper, 0) * 100%)) 28%,
+    color-mix(in srgb, #ffd367, #e99b6d calc(var(--copper, 0) * 100%)) 34%,
+    color-mix(in srgb, #ffc83d, #c57245 calc(var(--copper, 0) * 100%)) 64%,
+    color-mix(in srgb, #ffca44, #efb78c calc(var(--copper, 0) * 100%))
+  );
   box-shadow:
-    inset 0 0 18px #6edc9a88,
-    inset 0 2px 4px #fff1dcbb,
-    0 0 20px #66c78a30;
+    inset 0 0 26px var(--response-wash, transparent),
+    inset 0 0 18px rgb(110 220 154 / calc(var(--copper, 0) * 0.53)),
+    inset 0 2px 4px rgb(255 241 220 / calc(var(--copper, 0) * 0.73)),
+    0 0 20px rgb(102 199 138 / calc(var(--copper, 0) * 0.19));
 }
 .button-label {
   display: block;
@@ -619,6 +624,10 @@ input:focus {
   font-weight: 700;
   letter-spacing: -0.035em;
   pointer-events: none;
+  color: color-mix(in srgb, #684d1f, #20664a calc(var(--copper, 0) * 100%));
+  text-shadow:
+    0 -1px 0 #432d0d66,
+    0 1px 0 #fff0b477;
 }
 .button-stage.is-rendered .click-button {
   background: transparent;

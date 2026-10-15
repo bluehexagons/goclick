@@ -31,6 +31,7 @@ export interface ButtonState {
   rx: number;
   ry: number;
   press: number;
+  copper: number;
   pop: number;
   flash: number;
   response: number;

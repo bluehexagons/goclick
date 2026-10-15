@@ -49,7 +49,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     uniform vec2 shadowCenter;
     uniform vec2 shadowSize;
     uniform float shadowBlur;
-    uniform float press;
+    uniform float copper;
     uniform float flash;
     uniform float response;
     uniform float responseProgress;
@@ -73,23 +73,33 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
       float edge = max(abs(texCoord.x - .5), abs(texCoord.y - .5)) * 2.;
       float rim = smoothstep(.72, .98, edge);
-      vec3 copper = vec3(.78, .36, .20);
+      vec3 copperMetal = vec3(.78, .36, .20);
       vec3 patina = vec3(.24, .65, .42);
-      vec3 surface = mix(vec3(1., .77, .25), copper, press);
+      vec3 surface = mix(vec3(1., .77, .25), copperMetal, copper);
       vec3 gold = surface * (.52 + .70 * diffuse);
       // A polished reflection band follows the surface normal as it tilts.
       vec3 reflected = reflect(-view, n);
       float band = exp(-pow((reflected.y + reflected.x * .45 + .05) * 24., 2.));
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
-      gold += vec3(1., .92, .79) * (specular * .38 + press * (band * .38 + glint * .7));
-      gold = mix(gold, patina, press * rim * .82 * frontFace);
-      gold += patina * press * rim * .18;
-      gold += mix(vec3(1., .88, .55), vec3(1., .67, .43), press) * flash * .38 * frontFace;
+      gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
+      gold = mix(gold, patina, copper * rim * .82 * frontFace);
+      gold += patina * copper * rim * .18;
+      gold += mix(vec3(1., .88, .55), vec3(1., .67, .43), copper) * flash * .38 * frontFace;
       // A response travels over the actual face, independently of press/release.
       float sweep = exp(-pow((texCoord.x - responseProgress) * 5., 2.));
       gold = mix(gold, responseColor, response * (.12 + .48 * rim + .30 * sweep) * frontFace);
       vec4 text = texture2D(lettering, texCoord);
-      gold = mix(gold, text.rgb * (.78 + .22 * diffuse), text.a * frontFace);
+      // The lettering is chemically darkened metal with a fine recessed edge,
+      // so its reflections move with the face instead of looking like flat ink.
+      vec3 inscription = mix(surface * .32, vec3(.055, .27, .16), copper);
+      inscription *= .72 + .28 * diffuse;
+      inscription += mix(vec3(.28, .19, .065), patina * .38, copper) * (specular * .38 + band * .24);
+      float above = texture2D(lettering, texCoord - vec2(1. / 780., 1. / 432.)).a;
+      float below = texture2D(lettering, texCoord + vec2(1. / 780., 1. / 432.)).a;
+      float engraving = below - above;
+      gold = mix(gold, inscription, text.a * frontFace);
+      gold += vec3(1., .84, .49) * max(engraving, 0.) * .25 * frontFace;
+      gold -= vec3(.14, .10, .04) * max(-engraving, 0.) * frontFace;
       gl_FragColor = vec4(gold, 1.);
     }`;
 
@@ -115,7 +125,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     "shadowSize",
     "shadowBlur",
     "lettering",
-    "press",
+    "copper",
     "flash",
     "response",
     "responseProgress",
@@ -205,7 +215,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
   context.font = "700 114px system-ui, sans-serif";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillStyle = "#432d0d";
+  context.fillStyle = "#fff";
   context.fillText(required(".button-label", button).textContent, 390, 222);
   function initialize() {
     let vertex: WebGLShader | null = null,
@@ -276,6 +286,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     rx: 0,
     ry: 0,
     press: 0,
+    copper: 0,
     pop: 0,
     flash: 0,
     response: 0,
@@ -323,7 +334,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     const lift = Math.max(0, -34 - lowest); // Eight pixels above the z=-42 plane.
     rig.style.setProperty("--lift", `${lift.toFixed(3)}px`);
     gl.uniform2f(uniforms.viewport, width, height);
-    gl.uniform1f(uniforms.press, Math.max(0, press));
+    gl.uniform1f(uniforms.copper, Math.max(0, Math.min(1, state.copper)));
     gl.uniform1f(uniforms.flash, state.flash || 0);
     gl.uniform1f(uniforms.response, state.response || 0);
     gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);

@@ -45,6 +45,9 @@ function harness(reducedMotion = true) {
       this.children.push(child);
     }
     setAttribute() {}
+    animate() {
+      return { finished: new Promise(() => {}) };
+    }
     getBoundingClientRect() {
       return { left: 100, top: 100, right: 360, bottom: 244, width: 260, height: 144 };
     }
@@ -85,7 +88,8 @@ function harness(reducedMotion = true) {
       },
     }),
   });
-  let frameCallback = null;
+  let frameCallback = null,
+    now = 0;
   const runtime = frontend(
     {
       document,
@@ -98,7 +102,7 @@ function harness(reducedMotion = true) {
       ResizeObserver: class {
         observe() {}
       },
-      performance: { now: () => 0 },
+      performance: { now: () => now },
       requestAnimationFrame(callback) {
         frameCallback = callback;
         return 1;
@@ -127,6 +131,9 @@ function harness(reducedMotion = true) {
       const next = frameCallback;
       frameCallback = null;
       next?.(time);
+    },
+    setTime: (time) => {
+      now = time;
     },
     hasFrame: () => !!frameCallback,
     clicks,
@@ -203,7 +210,7 @@ test("losing focus cancels every captured pointer without ghost clicks", () => {
 test("press-down compresses immediately before any animation frame or saved click", () => {
   const h = harness(false);
   h.pointer("pointerdown", 1);
-  assert.equal(h.rig.props.get("--press"), "1.000");
+  assert.equal(h.rig.props.get("--press"), "1");
   assert.equal(h.rig.props.get("--button-pop"), "0.955");
   assert.equal(h.stage.classes.has("is-pressed"), true);
   assert.equal(h.clicks.length, 0);
@@ -263,4 +270,70 @@ test("narrow stages limit dragging and cancellation returns to the origin", () =
   assert.equal(h.rig.props.get("--shift-x"), "0.000px");
   assert.equal(h.rig.props.get("--shift-y"), "0.000px");
   assert.equal(h.clicks.length, 0);
+});
+
+test("a tap between frames releases depth immediately and fades copper within 70 ms", () => {
+  const h = harness(false);
+  h.pointer("pointerdown", 1);
+  h.setTime(8);
+  h.pointer("pointerup", 1);
+  assert.equal(h.rig.props.get("--press"), "0");
+  assert.equal(h.stage.classes.has("is-pressed"), false);
+  assert.equal(h.rig.props.get("--copper"), "0.720");
+  assert.equal(h.clicks.length, 1);
+  h.frame(43);
+  assert.ok(parseFloat(h.rig.props.get("--copper")) < 0.2);
+  h.frame(78);
+  assert.equal(h.rig.props.get("--copper"), "0.000");
+  assert.equal(h.rig.props.get("--press"), "0");
+});
+
+test("a new press immediately replaces the previous tap's return to gold", () => {
+  const h = harness(false);
+  h.pointer("pointerdown", 1);
+  h.pointer("pointerup", 1);
+  h.frame(30);
+  h.setTime(35);
+  h.pointer("pointerdown", 2);
+  assert.equal(h.rig.props.get("--press"), "1");
+  assert.equal(h.rig.props.get("--copper"), "1.000");
+  h.frame(90);
+  assert.equal(h.rig.props.get("--copper"), "1.000");
+  assert.equal(h.clicks.length, 1);
+  h.setTime(95);
+  h.pointer("pointerup", 2);
+  assert.equal(h.clicks.length, 2);
+  assert.equal(h.rig.props.get("--press"), "0");
+});
+
+test("held keys release depth immediately with a slightly longer material fade", () => {
+  const h = harness(false);
+  h.button.fire("keydown", { key: "Enter" });
+  h.setTime(500);
+  h.button.fire("keyup", { key: "Enter" });
+  assert.equal(h.rig.props.get("--press"), "0");
+  assert.equal(h.clicks.length, 1);
+  h.frame(570);
+  assert.ok(parseFloat(h.rig.props.get("--copper")) > 0);
+  h.frame(610);
+  assert.equal(h.rig.props.get("--copper"), "0.000");
+});
+
+test("cancelled, reduced-motion, and simulated activations never impose a hold", () => {
+  const cancelled = harness(false);
+  cancelled.pointer("pointerdown", 1);
+  cancelled.pointer("pointercancel", 1);
+  assert.equal(cancelled.rig.props.get("--press"), "0");
+  assert.equal(cancelled.rig.props.get("--copper"), "0.000");
+  assert.equal(cancelled.clicks.length, 0);
+  const reduced = harness();
+  reduced.pointer("pointerdown", 1);
+  reduced.pointer("pointerup", 1);
+  assert.equal(reduced.rig.props.get("--copper"), "0.000");
+  assert.equal(reduced.rig.props.get("--press"), "0");
+  const simulated = harness(false);
+  simulated.button.click();
+  assert.equal(simulated.rig.props.get("--press"), "0");
+  assert.equal(simulated.stage.classes.has("is-pressed"), false);
+  assert.equal(simulated.clicks.length, 1);
 });

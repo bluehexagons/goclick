@@ -3,8 +3,8 @@ import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
 import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
 
-// A press is immediate; its return is a spring. Holds never auto-score, and a
-// cancelled/outside release never activates the native button.
+// Press and release depth are immediate; dragging and rebound use springs.
+// Holds never auto-score; cancelled/outside releases never activate the button.
 const tactileButtons = new Map<HTMLButtonElement, ButtonController>();
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile-button]")) {
   const maybeStage = button.closest<HTMLElement>(".button-stage");
@@ -16,13 +16,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   effects.setAttribute("aria-hidden", "true");
   stage.append(effects);
   const reducedMotion = motionPreference;
-  const keys = ["x", "y", "rx", "ry", "press", "pop"] as const;
+  const keys = ["x", "y", "rx", "ry", "pop"] as const;
   const current: ButtonState = {
     x: 0,
     y: 0,
     rx: 0,
     ry: 0,
     press: 0,
+    copper: 0,
     pop: 0,
     flash: 0,
     response: 0,
@@ -38,7 +39,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const pointers = new Map<number, { x: number; y: number; startX: number; startY: number }>();
   let activeKey: string | null = null;
   let activatingRelease = false;
-  let pulseTimer = 0,
+  let pressedAt = 0,
+    releasedAt: number | null = null,
+    releaseCopper = 0,
+    releaseDuration = 70,
     holdTimer = 0,
     phase: "idle" | "pressed" | "held" = "idle";
   let responseStarted: number | null = null;
@@ -50,7 +54,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     rig.style.setProperty("--shift-y", `${current.y.toFixed(3)}px`);
     rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
     rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
-    rig.style.setProperty("--press", clamp(current.press, -0.22, 1).toFixed(3));
+    rig.style.setProperty("--press", String(current.press));
+    rig.style.setProperty("--copper", current.copper.toFixed(3));
     rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -0.065, 0.1)).toFixed(3));
     rig.style.setProperty(
       "--response-wash",
@@ -63,10 +68,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     lastFrame = time;
     let moving = false;
     for (const key of keys) {
-      const press = key === "press";
       velocity[key] =
-        (velocity[key] + (target[key] - current[key]) * (press ? 0.4 : 0.16) * dt) *
-        Math.pow(press ? 0.6 : 0.64, dt);
+        (velocity[key] + (target[key] - current[key]) * 0.16 * dt) * Math.pow(0.64, dt);
       current[key] += velocity[key] * dt;
       if (Math.abs(target[key] - current[key]) > 0.002 || Math.abs(velocity[key]) > 0.002)
         moving = true;
@@ -74,6 +77,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         current[key] = target[key];
         velocity[key] = 0;
       }
+    }
+    if (releasedAt !== null) {
+      const progress = clamp((time - releasedAt) / releaseDuration, 0, 1);
+      current.copper = releaseCopper * Math.pow(1 - progress, 2);
+      if (progress < 1) moving = true;
+      else releasedAt = null;
     }
     current.flash *= Math.pow(0.68, dt);
     if (current.flash > 0.005) moving = true;
@@ -91,7 +100,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function animate() {
     if (reducedMotion.matches) {
       for (const key of keys) {
-        current[key] = key === "press" ? target.press : 0;
+        current[key] = 0;
         velocity[key] = 0;
       }
       current.flash = 0;
@@ -109,12 +118,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
   }
   function begin() {
-    window.clearTimeout(pulseTimer);
     window.clearTimeout(holdTimer);
     clearResponse();
-    // Snap on the input event itself. Only the release waits for the spring.
-    target.press = current.press = 1;
-    velocity.press = 0;
+    pressedAt = performance.now();
+    releasedAt = null;
+    current.press = current.copper = 1;
     target.pop = current.pop = reducedMotion.matches ? 0 : -0.045;
     velocity.pop = 0;
     current.flash = reducedMotion.matches ? 0 : 0.3;
@@ -152,11 +160,19 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function release(cancelled = false) {
     activeKey = null;
     window.clearTimeout(holdTimer);
-    window.clearTimeout(pulseTimer);
-    target.press = 0;
-    target.pop = 0;
-    velocity.press = cancelled || phase === "idle" ? 0 : -0.3;
+    const wasPressed = phase !== "idle";
+    const quick = performance.now() - pressedAt < 90;
+    current.press = 0;
+    target.pop = current.pop = velocity.pop = 0;
+    // Even a tap between frames gets a brief copper trace, without holding the
+    // button down. A new press replaces this fade synchronously.
+    releaseDuration = quick ? 70 : 110;
+    releaseCopper = wasPressed && !cancelled && !reducedMotion.matches ? (quick ? 0.72 : 1) : 0;
+    current.copper = releaseCopper;
+    releasedAt = releaseCopper ? performance.now() : null;
+    current.flash = 0;
     setPhase("idle");
+    paint();
     animate();
   }
   function reset(cancelled = true) {
@@ -165,6 +181,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     pointers.clear();
     for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
     release(cancelled);
+    releasedAt = null;
+    current.copper = 0;
     for (const key of keys) target[key] = 0;
     animate();
   }
@@ -196,9 +214,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   }
   function burst() {
     if (reducedMotion.matches) return;
-    current.flash = 1;
-    current.pop = Math.max(current.pop, 0.045);
-    velocity.pop = 0.035;
+    const quick = releaseDuration === 70;
+    current.flash = quick ? 0.25 : 0.45;
+    current.pop = Math.max(current.pop, quick ? 0.018 : 0.035);
+    velocity.pop = quick ? 0.012 : 0.02;
     paint();
     animate();
     // Keep rapid clicks bounded, and keep particles inside the stage so they
@@ -353,7 +372,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (button.disabled) return;
     if (event.detail === 0 && !activatingRelease) {
       begin();
-      pulseTimer = window.setTimeout(() => release(), 80);
+      release();
     }
     burst();
   });

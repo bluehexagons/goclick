@@ -333,7 +333,7 @@
     uniform vec2 shadowCenter;
     uniform vec2 shadowSize;
     uniform float shadowBlur;
-    uniform float press;
+    uniform float copper;
     uniform float flash;
     uniform float response;
     uniform float responseProgress;
@@ -357,23 +357,33 @@
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
       float edge = max(abs(texCoord.x - .5), abs(texCoord.y - .5)) * 2.;
       float rim = smoothstep(.72, .98, edge);
-      vec3 copper = vec3(.78, .36, .20);
+      vec3 copperMetal = vec3(.78, .36, .20);
       vec3 patina = vec3(.24, .65, .42);
-      vec3 surface = mix(vec3(1., .77, .25), copper, press);
+      vec3 surface = mix(vec3(1., .77, .25), copperMetal, copper);
       vec3 gold = surface * (.52 + .70 * diffuse);
       // A polished reflection band follows the surface normal as it tilts.
       vec3 reflected = reflect(-view, n);
       float band = exp(-pow((reflected.y + reflected.x * .45 + .05) * 24., 2.));
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
-      gold += vec3(1., .92, .79) * (specular * .38 + press * (band * .38 + glint * .7));
-      gold = mix(gold, patina, press * rim * .82 * frontFace);
-      gold += patina * press * rim * .18;
-      gold += mix(vec3(1., .88, .55), vec3(1., .67, .43), press) * flash * .38 * frontFace;
+      gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
+      gold = mix(gold, patina, copper * rim * .82 * frontFace);
+      gold += patina * copper * rim * .18;
+      gold += mix(vec3(1., .88, .55), vec3(1., .67, .43), copper) * flash * .38 * frontFace;
       // A response travels over the actual face, independently of press/release.
       float sweep = exp(-pow((texCoord.x - responseProgress) * 5., 2.));
       gold = mix(gold, responseColor, response * (.12 + .48 * rim + .30 * sweep) * frontFace);
       vec4 text = texture2D(lettering, texCoord);
-      gold = mix(gold, text.rgb * (.78 + .22 * diffuse), text.a * frontFace);
+      // The lettering is chemically darkened metal with a fine recessed edge,
+      // so its reflections move with the face instead of looking like flat ink.
+      vec3 inscription = mix(surface * .32, vec3(.055, .27, .16), copper);
+      inscription *= .72 + .28 * diffuse;
+      inscription += mix(vec3(.28, .19, .065), patina * .38, copper) * (specular * .38 + band * .24);
+      float above = texture2D(lettering, texCoord - vec2(1. / 780., 1. / 432.)).a;
+      float below = texture2D(lettering, texCoord + vec2(1. / 780., 1. / 432.)).a;
+      float engraving = below - above;
+      gold = mix(gold, inscription, text.a * frontFace);
+      gold += vec3(1., .84, .49) * max(engraving, 0.) * .25 * frontFace;
+      gold -= vec3(.14, .10, .04) * max(-engraving, 0.) * frontFace;
       gl_FragColor = vec4(gold, 1.);
     }`;
     function shader(type, source) {
@@ -398,7 +408,7 @@
       "shadowSize",
       "shadowBlur",
       "lettering",
-      "press",
+      "copper",
       "flash",
       "response",
       "responseProgress",
@@ -481,7 +491,7 @@
     context.font = "700 114px system-ui, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillStyle = "#432d0d";
+    context.fillStyle = "#fff";
     context.fillText(required(".button-label", button).textContent, 390, 222);
     function initialize() {
       let vertex2 = null, fragment = null, buffer = null, texture = null;
@@ -547,6 +557,7 @@
       rx: 0,
       ry: 0,
       press: 0,
+      copper: 0,
       pop: 0,
       flash: 0,
       response: 0,
@@ -581,7 +592,7 @@
       const lift = Math.max(0, -34 - lowest);
       rig.style.setProperty("--lift", `${lift.toFixed(3)}px`);
       gl.uniform2f(uniforms.viewport, width, height);
-      gl.uniform1f(uniforms.press, Math.max(0, press));
+      gl.uniform1f(uniforms.copper, Math.max(0, Math.min(1, state.copper)));
       gl.uniform1f(uniforms.flash, state.flash || 0);
       gl.uniform1f(uniforms.response, state.response || 0);
       gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
@@ -652,7 +663,8 @@
       rig.style.setProperty("--shift-y", `${current.y.toFixed(3)}px`);
       rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
       rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
-      rig.style.setProperty("--press", clamp(current.press, -0.22, 1).toFixed(3));
+      rig.style.setProperty("--press", String(current.press));
+      rig.style.setProperty("--copper", current.copper.toFixed(3));
       rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -0.065, 0.1)).toFixed(3));
       rig.style.setProperty(
         "--response-wash",
@@ -664,8 +676,7 @@
       lastFrame = time;
       let moving = false;
       for (const key of keys) {
-        const press = key === "press";
-        velocity[key] = (velocity[key] + (target[key] - current[key]) * (press ? 0.4 : 0.16) * dt) * Math.pow(press ? 0.6 : 0.64, dt);
+        velocity[key] = (velocity[key] + (target[key] - current[key]) * 0.16 * dt) * Math.pow(0.64, dt);
         current[key] += velocity[key] * dt;
         if (Math.abs(target[key] - current[key]) > 2e-3 || Math.abs(velocity[key]) > 2e-3)
           moving = true;
@@ -673,6 +684,12 @@
           current[key] = target[key];
           velocity[key] = 0;
         }
+      }
+      if (releasedAt !== null) {
+        const progress = clamp((time - releasedAt) / releaseDuration, 0, 1);
+        current.copper = releaseCopper * Math.pow(1 - progress, 2);
+        if (progress < 1) moving = true;
+        else releasedAt = null;
       }
       current.flash *= Math.pow(0.68, dt);
       if (current.flash > 5e-3) moving = true;
@@ -689,7 +706,7 @@
     }, animate2 = function() {
       if (reducedMotion.matches) {
         for (const key of keys) {
-          current[key] = key === "press" ? target.press : 0;
+          current[key] = 0;
           velocity[key] = 0;
         }
         current.flash = 0;
@@ -705,11 +722,11 @@
       stage.classList.toggle("is-held", phase === "held");
       button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
     }, begin2 = function() {
-      window.clearTimeout(pulseTimer);
       window.clearTimeout(holdTimer);
       clearResponse2();
-      target.press = current.press = 1;
-      velocity.press = 0;
+      pressedAt = performance.now();
+      releasedAt = null;
+      current.press = current.copper = 1;
       target.pop = current.pop = reducedMotion.matches ? 0 : -0.045;
       velocity.pop = 0;
       current.flash = reducedMotion.matches ? 0 : 0.3;
@@ -744,11 +761,17 @@
     }, release2 = function(cancelled = false) {
       activeKey = null;
       window.clearTimeout(holdTimer);
-      window.clearTimeout(pulseTimer);
-      target.press = 0;
-      target.pop = 0;
-      velocity.press = cancelled || phase === "idle" ? 0 : -0.3;
+      const wasPressed = phase !== "idle";
+      const quick = performance.now() - pressedAt < 90;
+      current.press = 0;
+      target.pop = current.pop = velocity.pop = 0;
+      releaseDuration = quick ? 70 : 110;
+      releaseCopper = wasPressed && !cancelled && !reducedMotion.matches ? quick ? 0.72 : 1 : 0;
+      current.copper = releaseCopper;
+      releasedAt = releaseCopper ? performance.now() : null;
+      current.flash = 0;
       setPhase2("idle");
+      paint2();
       animate2();
     }, reset2 = function(cancelled = true) {
       clearResponse2();
@@ -756,6 +779,8 @@
       pointers.clear();
       for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
       release2(cancelled);
+      releasedAt = null;
+      current.copper = 0;
       for (const key of keys) target[key] = 0;
       animate2();
     }, clearResponse2 = function() {
@@ -781,9 +806,10 @@
       });
     }, burst2 = function() {
       if (reducedMotion.matches) return;
-      current.flash = 1;
-      current.pop = Math.max(current.pop, 0.045);
-      velocity.pop = 0.035;
+      const quick = releaseDuration === 70;
+      current.flash = quick ? 0.25 : 0.45;
+      current.pop = Math.max(current.pop, quick ? 0.018 : 0.035);
+      velocity.pop = quick ? 0.012 : 0.02;
       paint2();
       animate2();
       while (effects.childElementCount > 32) effects.firstElementChild?.remove();
@@ -867,13 +893,14 @@
     effects.setAttribute("aria-hidden", "true");
     stage.append(effects);
     const reducedMotion = motionPreference;
-    const keys = ["x", "y", "rx", "ry", "press", "pop"];
+    const keys = ["x", "y", "rx", "ry", "pop"];
     const current = {
       x: 0,
       y: 0,
       rx: 0,
       ry: 0,
       press: 0,
+      copper: 0,
       pop: 0,
       flash: 0,
       response: 0,
@@ -886,7 +913,7 @@
     const pointers = /* @__PURE__ */ new Map();
     let activeKey = null;
     let activatingRelease = false;
-    let pulseTimer = 0, holdTimer = 0, phase = "idle";
+    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = 70, holdTimer = 0, phase = "idle";
     let responseStarted = null;
     let responseDuration = 500;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -950,7 +977,7 @@
       if (button.disabled) return;
       if (event.detail === 0 && !activatingRelease) {
         begin2();
-        pulseTimer = window.setTimeout(() => release2(), 80);
+        release2();
       }
       burst2();
     });
