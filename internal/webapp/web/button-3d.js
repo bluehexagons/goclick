@@ -43,6 +43,8 @@ function createButtonRenderer(stage, button) {
     uniform vec2 shadowCenter;
     uniform vec2 shadowSize;
     uniform float shadowBlur;
+    uniform float press;
+    uniform float flash;
     varying vec3 worldPosition;
     varying vec3 worldNormal;
     varying vec2 texCoord;
@@ -60,8 +62,10 @@ function createButtonRenderer(stage, button) {
       vec3 view = normalize(vec3(0., 0., 850.) - worldPosition);
       float diffuse = max(dot(n, light), 0.);
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
-      vec3 gold = vec3(1., .77, .25) * (.52 + .70 * diffuse);
+      vec3 surface = mix(vec3(1., .77, .25), vec3(1., .58, .12), press * .48);
+      vec3 gold = surface * (.52 + .70 * diffuse);
       gold += vec3(1., .94, .72) * specular * .38;
+      gold += vec3(1., .88, .55) * flash * .22 * frontFace;
       vec4 text = texture2D(lettering, texCoord);
       gold = mix(gold, text.rgb * (.78 + .22 * diffuse), text.a * frontFace);
       gl_FragColor = vec4(gold, 1.);
@@ -145,7 +149,7 @@ function createButtonRenderer(stage, button) {
       const location = gl.getAttribLocation(program, name);
       gl.enableVertexAttribArray(location); gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset * 4);
     }
-    uniforms = Object.fromEntries(["rotation", "translation", "viewport", "scale", "recession", "shadow", "shadowCenter", "shadowSize", "shadowBlur", "lettering"].map(name => [name, gl.getUniformLocation(program, name)]));
+    uniforms = Object.fromEntries(["rotation", "translation", "viewport", "scale", "recession", "shadow", "shadowCenter", "shadowSize", "shadowBlur", "lettering", "press", "flash"].map(name => [name, gl.getUniformLocation(program, name)]));
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -171,10 +175,10 @@ function createButtonRenderer(stage, button) {
     const pixelWidth = Math.round(width * pixelRatio), pixelHeight = Math.round(height * pixelRatio);
     if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
     gl.viewport(0, 0, pixelWidth, pixelHeight); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    const scale = button.offsetWidth / 260, press = Math.max(0, Math.min(1, state.press));
+    const scale = button.offsetWidth / 260, press = Math.max(-.22, Math.min(1, state.press));
     const rx = state.rx * Math.PI / 180, ry = state.ry * Math.PI / 180;
     const cx = Math.cos(rx), sx = Math.sin(rx), cy = Math.cos(ry), sy = Math.sin(ry);
-    const recession = press * 12;
+    const recession = press * 24;
     // Keep the entire solid above the background, including its rear corners
     // at maximum tilt and full press. Bound the rotated box, not just its center.
     const lowest = -Math.abs(cx * sy) * 130 * scale - Math.abs(sx) * 72 * scale
@@ -182,6 +186,8 @@ function createButtonRenderer(stage, button) {
     const lift = Math.max(0, -34 - lowest); // Eight pixels above the z=-42 plane.
     rig.style.setProperty("--lift", `${lift.toFixed(3)}px`);
     gl.uniform2f(uniforms.viewport, width, height);
+    gl.uniform1f(uniforms.press, Math.max(0, press));
+    gl.uniform1f(uniforms.flash, state.flash || 0);
     // One soft shadow on the background plane. It approaches the solid as
     // the button is pushed away from the viewer.
     const centerX = state.x - sy * recession, centerY = state.y + sx * cy * recession;
@@ -213,7 +219,6 @@ function createButtonRenderer(stage, button) {
     if (!lost) draw(state);
   });
   const renderer = { draw };
-  const observer = new ResizeObserver(() => renderer.draw(state)); observer.observe(stage);
   draw();
   return renderer;
 }

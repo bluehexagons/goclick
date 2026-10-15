@@ -8,6 +8,13 @@ Go server and a dependency-free browser frontend.
 The server uses SQLite, embeds the frontend in its binary, and has two direct
 dependencies: a pure-Go SQLite driver and Go's bcrypt implementation.
 
+The button responds immediately to presses, with a distinct held state, a
+spring return, and small release bursts. Mouse, touch/pen, Space, and Enter
+activate once on release inside the button; cancelled gestures do not score.
+Pending clicks are shown separately from the server-confirmed total. Reduced
+motion keeps static press feedback. Account/counter reads start together, and
+graphics initialize only for a visible button, with a usable CSS fallback.
+
 ## Run it
 
 Go 1.27.2 or newer is required.

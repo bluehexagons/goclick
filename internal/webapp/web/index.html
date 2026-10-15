@@ -110,7 +110,10 @@
           <button id="retry-game-button" class="button button-quiet retry-game" type="button" hidden>Reload counter</button>
           <div id="counter-card" class="counter-card">
             <p class="counter-label">Clicks</p>
-            <p id="click-count" class="counter-value" aria-live="polite">0</p>
+            <div class="counter-total">
+              <p id="click-count" class="counter-value" aria-live="polite">0</p>
+              <span id="pending-clicks" class="pending-count" hidden></span>
+            </div>
             <div class="button-stage">
               <canvas class="button-scene" aria-hidden="true"></canvas>
               <div class="button-rig">
@@ -119,7 +122,7 @@
                 </button>
               </div>
             </div>
-            <p id="button-hint" class="button-hint">Give it a little push.</p>
+            <p id="button-hint" class="button-hint">Push, hold, let go.</p>
             <p id="last-click" class="last-click">No clicks yet.</p>
           </div>
 

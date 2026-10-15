@@ -13,6 +13,10 @@ const counterCard = document.querySelector("#counter-card");
 const retryGameButton = document.querySelector("#retry-game-button");
 const retryBootButton = document.querySelector("#retry-boot-button");
 const connection = document.querySelector("#connection");
+const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+const pendingIndicator = document.querySelector("#pending-clicks");
+let currentView = "", viewAnimation = null, impactAnimation = null;
+const numberAnimations = new WeakMap();
 let user = null;
 let gameReady = false;
 let pendingClicks = 0;
@@ -22,6 +26,13 @@ let clickGeneration = 0;
 const maxPendingClicks = 6;
 
 function show(view) {
+  const changed = view !== currentView;
+  if (changed) {
+    for (const controller of tactileButtons.values()) controller.reset();
+    viewAnimation?.cancel();
+  }
+  currentView = view;
+  if (changed) window.scrollTo(0, 0);
   const authenticated = view === "game";
   views.loading.hidden = view !== "loading";
   views.home.hidden = view !== "home";
@@ -31,6 +42,10 @@ function show(view) {
   signupForm.hidden = view !== "signup";
   document.querySelector("#guest-nav").hidden = authenticated || view === "loading";
   document.querySelector("#user-nav").hidden = !authenticated;
+  if (changed && view !== "loading" && !motionPreference.matches) {
+    const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
+    viewAnimation = incoming.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 170, easing: "cubic-bezier(.2,.8,.2,1)" });
+  }
   if (view === "login") {
     showError("#login-error", "");
     resetPasswordVisibility(loginForm);
@@ -110,25 +125,51 @@ function setUser(nextUser) {
 function resetClickState() {
   clickGeneration++;
   pendingClicks = 0;
+  updatePendingIndicator();
   clickBatchFailed = false;
   tactileButtons.get(clickButton).reset();
   clickButton.disabled = !gameReady;
 }
 
+function updatePendingIndicator() {
+  pendingIndicator.hidden = pendingClicks === 0;
+  pendingIndicator.textContent = pendingClicks ? `+${pendingClicks} saving` : "";
+}
+
+function animateNumber(element) {
+  if (motionPreference.matches) return;
+  numberAnimations.get(element)?.cancel();
+  numberAnimations.set(element, element.animate([{ transform: "scale(1)", color: "var(--ink)" }, { transform: "scale(1.08)", color: "var(--gold)", offset: .25 }, { transform: "scale(1)", color: "var(--ink)" }], { duration: 240, easing: "cubic-bezier(.2,.75,.3,1)" }));
+}
+
+function celebrateClick() {
+  if (motionPreference.matches) return;
+  const bonus = document.createElement("span"); bonus.className = "click-bonus"; bonus.textContent = "+1";
+  const effects = clickButton.closest(".button-stage").querySelector(".button-effects"); effects.append(bonus);
+  bonus.animate([{ opacity: 0, transform: "translate(-50%, 5px) scale(.6)" }, { opacity: 1, transform: "translate(-50%, -5px) scale(1)", offset: .2 }, { opacity: 0, transform: "translate(-50%, -30px) scale(.9)" }], { duration: 520, easing: "cubic-bezier(.2,.7,.3,1)" }).finished.then(() => bonus.remove(), () => bonus.remove());
+  impactAnimation?.cancel();
+  impactAnimation = counterCard.animate([{ boxShadow: "0 0 0 0 #ffc83d00" }, { boxShadow: "0 0 28px -9px #ffc83d66", offset: .2 }, { boxShadow: "0 0 0 0 #ffc83d00" }], { duration: 300 });
+}
+
+clickButton.addEventListener("buttonstate", (event) => {
+  document.querySelector("#button-hint").textContent = event.detail === "held" ? "Aaand… let go." : event.detail === "pressed" ? "Got it. Hold a little…" : "Push, hold, let go.";
+});
+
 function renderCounters(data, allowDecrease = false) {
   const clicks = data.click_count;
   const displayedClicks = Number(document.querySelector("#click-count").textContent);
   if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks) return;
-  document.querySelector("#click-count").textContent = clicks?.count ?? 0;
-  document.querySelector("#day-streak").textContent = data.streak_counter_day?.count ?? 0;
-  document.querySelector("#month-streak").textContent = data.streak_counter_month?.count ?? 0;
-  document.querySelector("#year-streak").textContent = data.streak_counter_year?.count ?? 0;
+  for (const [id, count] of [["click-count", clicks?.count ?? 0], ["day-streak", data.streak_counter_day?.count ?? 0], ["month-streak", data.streak_counter_month?.count ?? 0], ["year-streak", data.streak_counter_year?.count ?? 0]]) {
+    const element = document.querySelector(`#${id}`), changed = element.textContent !== String(count);
+    element.textContent = count;
+    if (changed && !allowDecrease) animateNumber(element);
+  }
   document.querySelector("#last-click").textContent = clicks?.modified_time
     ? `Last click ${new Date(clicks.modified_time).toLocaleString()}`
     : "No clicks yet.";
 }
 
-async function openGame() {
+async function openGame(initialCounters) {
   const greetings = ["Welcome back!", "Hi again!", "Thanks for coming by."];
   document.querySelector("#game-greeting").textContent = greetings[Math.floor(Math.random() ** 2 * greetings.length)];
   const generation = clickGeneration;
@@ -140,7 +181,7 @@ async function openGame() {
   counterCard.setAttribute("aria-busy", "true");
   setConnection("Loading…", "loading");
   try {
-    const data = await api("/api/clicks");
+    const data = await (initialCounters ?? api("/api/clicks"));
     if (generation !== clickGeneration) return;
     renderCounters(data, true);
     gameReady = true;
@@ -262,6 +303,8 @@ clickButton.addEventListener("click", async () => {
     clickBatchFailed = false;
   }
   pendingClicks++;
+  updatePendingIndicator();
+  celebrateClick();
   clickButton.disabled = pendingClicks >= maxPendingClicks;
   const started = performance.now();
   const generation = clickGeneration;
@@ -286,6 +329,7 @@ clickButton.addEventListener("click", async () => {
   } finally {
     if (generation !== clickGeneration) return;
     pendingClicks--;
+    updatePendingIndicator();
     clickButton.disabled = !gameReady || pendingClicks >= maxPendingClicks;
     if (!clickBatchFailed && pendingClicks > 0) {
       setConnection(pendingClicks === 1 ? "Saving click…" : `Saving ${pendingClicks} clicks…`, "loading");
@@ -302,8 +346,12 @@ async function boot() {
   document.querySelector("#loading-message").textContent = "Loading your counter…";
   retryBootButton.hidden = true;
   try {
+    // Start both reads together, but let identity decide whether to show the
+    // game. Observe the counter rejection even if checking identity fails.
+    const counters = api("/api/clicks");
+    counters.catch(() => {});
     setUser(await api("/api/me"));
-    await openGame();
+    await openGame(counters);
   } catch (error) {
     if (error.status === 401) {
       show("home");
@@ -317,7 +365,7 @@ async function boot() {
   }
 }
 
-retryGameButton.addEventListener("click", openGame);
-retryBootButton.addEventListener("click", boot);
+retryGameButton.addEventListener("click", () => openGame());
+retryBootButton.addEventListener("click", () => boot());
 
 boot();
