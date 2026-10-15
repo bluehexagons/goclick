@@ -330,6 +330,9 @@
                   <span id="ping">— ms</span>
                 </div>
               </div>
+              <p id="play-status" class="play-status" role="status" hidden>
+                Cooling down <span id="cooldown-time" aria-hidden="true"></span>
+              </p>
               <p id="share-status" class="share-status" role="status"></p>
             </div>
 
@@ -477,7 +480,10 @@
             <p>
               Online ping measures a click request, including server processing. +1 badges wait for
               confirmation and compare timing to the last 20 pings. Amber means pending or slow; red
-              means failed or unconfirmed. Account progress stays in SQLite on the server.
+              means failed or unconfirmed. Account progress stays in SQLite on the server. Server
+              limits pause online saves briefly; a countdown shows when play resumes. Rejected
+              clicks are not queued or replayed. Very regular or uninterrupted activity can also
+              trigger a brief cooldown.
             </p>
           </article>
           <article>

@@ -110,3 +110,14 @@ for (const status of [401, 429]) {
     await rejected;
   });
 }
+
+test("Retry-After accepts seconds and dates and bounds malformed or extreme values", () => {
+  const { retryAfterMilliseconds: retry } = frontend({}).load("http");
+  const now = Date.parse("2026-10-15T12:00:00Z");
+  assert.equal(retry("15", now), 15000);
+  assert.equal(retry("Thu, 15 Oct 2026 12:00:10 GMT", now), 10000);
+  assert.equal(retry("Thu, 15 Oct 2026 11:00:00 GMT", now), 1000);
+  assert.equal(retry("garbage", now), 5000);
+  assert.equal(retry(null, now), 5000);
+  assert.equal(retry("999999999999", now), 86400000);
+});

@@ -1,6 +1,6 @@
 import "./focus.js";
 import "./interaction.js";
-import { request, requestError } from "./http.js";
+import { request, requestError, retryAfterMilliseconds } from "./http.js";
 import { required as $ } from "./dom.js";
 import { gameSettings, motionPreference } from "./preferences.js";
 import { localGame } from "./local-game.js";
@@ -54,6 +54,26 @@ let refreshQueued = false;
 let offline = navigator.onLine === false;
 let lastCounterSync = -Infinity;
 const maxPendingClicks = 6;
+let cooldownUntil = 0,
+  cooldownTimer = 0;
+const coolingDown = () => !localMode && performance.now() < cooldownUntil;
+
+function paintCooldown() {
+  window.clearTimeout(cooldownTimer);
+  const remaining = cooldownUntil - performance.now();
+  const active = !localMode && remaining > 0;
+  $("#play-status").hidden = !active;
+  $("#cooldown-time").textContent = active ? `· ${Math.ceil(remaining / 1000)}s` : "";
+  if (active) cooldownTimer = window.setTimeout(paintCooldown, Math.min(1000, remaining));
+  else cooldownUntil = 0;
+  updateGameControls();
+  setConnection(null, pendingClicks ? "loading" : "");
+}
+
+function startCooldown(retryAfter: string | null) {
+  cooldownUntil = Math.max(cooldownUntil, performance.now() + retryAfterMilliseconds(retryAfter));
+  paintCooldown();
+}
 
 function show(view: View) {
   const changed = view !== currentView;
@@ -107,10 +127,19 @@ function setConnection(milliseconds: number | null = null, state: "" | "loading"
   if (Number.isFinite(milliseconds) && milliseconds !== null)
     $("#ping").textContent = `${Math.round(milliseconds)} ms`;
   const paintState = () => {
-    connection.classList.toggle("is-loading", state === "loading" && (!offline || localMode));
-    connection.classList.toggle("is-error", state === "error" || (offline && !localMode));
-    const status =
-      offline && !localMode
+    const cooling = coolingDown();
+    connection.classList.toggle("is-limited", cooling);
+    connection.classList.toggle(
+      "is-loading",
+      !cooling && state === "loading" && (!offline || localMode),
+    );
+    connection.classList.toggle(
+      "is-error",
+      !cooling && (state === "error" || (offline && !localMode)),
+    );
+    const status = cooling
+      ? "Server cooldown. Clicking paused"
+      : offline && !localMode
         ? "Offline. Clicking paused"
         : state === "loading"
           ? "Request in progress"
@@ -164,6 +193,10 @@ function setUser(nextUser: User | null) {
 
 function resetClickState() {
   clickGeneration++;
+  cooldownUntil = 0;
+  window.clearTimeout(cooldownTimer);
+  $("#play-status").hidden = true;
+  $("#cooldown-time").textContent = "";
   // Detach stale reads so returning from local play can load immediately.
   counterLoad = null;
   counterLoadOwner = null;
@@ -175,7 +208,7 @@ function resetClickState() {
   refreshQueued = false;
   window.clearTimeout(pingStateTimer);
   $("#ping").textContent = "— ms";
-  connection.classList.remove("is-loading", "is-error");
+  connection.classList.remove("is-loading", "is-error", "is-limited");
   connection.setAttribute("aria-label", "Ping: no click measured yet");
   tactileButtons.get(clickButton)?.reset();
   clickFeedback.reset();
@@ -190,6 +223,9 @@ function updateGameControls() {
     signingOut ||
     (localMode && localSaveReplacing) ||
     (!localMode && pendingClicks >= maxPendingClicks);
+  // Keep the physical button responsive while a server cooldown is active;
+  // the activation handler suppresses requests until its deadline expires.
+  clickButton.setAttribute("aria-disabled", String(clickButton.disabled || coolingDown()));
   // Keep a focused refresh control in the tab order while its read is in flight.
   // Repeated activations share counterLoad instead of starting another request.
   refreshCounterButton.disabled =
@@ -365,6 +401,7 @@ window.addEventListener("online", () => {
   refreshGame();
 });
 function resumeGame() {
+  if (cooldownUntil) paintCooldown();
   // Visibility and focus often arrive together. A brief switch away should not
   // interrupt the button or repeatedly fetch data we just loaded.
   if (gameReady && performance.now() - lastCounterSync < 15000) return;
@@ -494,6 +531,10 @@ clickButton.addEventListener("click", async (event) => {
     (!localMode && pendingClicks >= maxPendingClicks)
   )
     return;
+  if (coolingDown()) {
+    tactileButtons.get(clickButton)?.respond("limited");
+    return;
+  }
   if (pendingClicks === 0) {
     showError("#game-error", "");
     clickBatchFailed = false;
@@ -517,19 +558,21 @@ clickButton.addEventListener("click", async (event) => {
   } catch (caught) {
     const error = requestError(caught);
     if (generation !== clickGeneration) return;
-    feedback.fail(error.uncertain);
+    feedback.fail(error.uncertain, error.status === 429);
     if (error.status === 401) {
       if (user && !signingOut) handleExpiredSession();
+      return;
+    }
+    if (error.status === 429) {
+      startCooldown(error.retryAfter);
       return;
     }
     clickBatchFailed = true;
     showError(
       "#game-error",
-      error.status === 429 && error.retryAfter
-        ? `Slow down for ${error.retryAfter} seconds.`
-        : error.uncertain
-          ? `Couldn’t confirm your click. Reload your counter to check whether it saved. ${error.message}`
-          : `Your click wasn’t saved. ${error.message}`,
+      error.uncertain
+        ? `Couldn’t confirm your click. Reload your counter to check whether it saved. ${error.message}`
+        : `Your click wasn’t saved. ${error.message}`,
       true,
     );
     if (error.uncertain) retryGameButton.hidden = false;

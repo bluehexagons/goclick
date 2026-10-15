@@ -29,10 +29,10 @@ import (
 )
 
 const (
-	sessionCookie    = "goclick_session"
-	maxJSONBody      = 8 << 10
-	passwordHashCost = 12
-	clicksPerIP      = 360
+	sessionCookie      = "goclick_session"
+	maxJSONBody        = 8 << 10
+	passwordHashCost   = 12
+	defaultClicksPerIP = 360
 	// This is a bcrypt hash of a fixed, non-secret dummy password. Unknown
 	// users are rejected regardless of the comparison result, so storing the
 	// hash avoids a cost-12 bcrypt operation on every production startup.
@@ -46,12 +46,15 @@ var (
 )
 
 type Config struct {
-	SecureCookies bool
-	TrustProxy    bool
-	SessionTTL    time.Duration
-	Logger        *slog.Logger
-	Now           func() time.Time
-	BackupDir     string
+	// Zero selects the default click budgets. Limits are per minute.
+	ClicksPerMinute   int
+	ClicksPerIPMinute int
+	SecureCookies     bool
+	TrustProxy        bool
+	SessionTTL        time.Duration
+	Logger            *slog.Logger
+	Now               func() time.Time
+	BackupDir         string
 	// PasswordConcurrency bounds simultaneous HTTP password operations. Zero
 	// selects up to half the available Go CPUs, with a maximum of four.
 	PasswordConcurrency int
@@ -59,19 +62,22 @@ type Config struct {
 }
 
 type App struct {
-	store         *store.Store
-	secureCookies bool
-	trustProxy    bool
-	sessionTTL    time.Duration
-	passwordCost  int
-	logger        *slog.Logger
-	now           func() time.Time
-	limiter       *limiter
-	dummyHash     []byte
-	static        fs.FS
-	backupDir     string
-	requestGate   sync.RWMutex
-	passwordSlots chan struct{}
+	clicksPerMinute   int
+	clicksPerIPMinute int
+	playGuard         *playGuard
+	store             *store.Store
+	secureCookies     bool
+	trustProxy        bool
+	sessionTTL        time.Duration
+	passwordCost      int
+	logger            *slog.Logger
+	now               func() time.Time
+	limiter           *limiter
+	dummyHash         []byte
+	static            fs.FS
+	backupDir         string
+	requestGate       sync.RWMutex
+	passwordSlots     chan struct{}
 }
 
 type contextKey int
@@ -82,6 +88,16 @@ func New(database *store.Store, config Config) (*App, error) {
 	if database == nil {
 		return nil, errors.New("store is required")
 	}
+	if config.ClicksPerMinute < 0 || config.ClicksPerMinute > 1_000_000 || config.ClicksPerIPMinute < 0 || config.ClicksPerIPMinute > 1_000_000 {
+		return nil, errors.New("click budgets must be between 0 (default) and 1000000 per minute")
+	}
+	if config.ClicksPerMinute == 0 {
+		config.ClicksPerMinute = 320
+	}
+	if config.ClicksPerIPMinute == 0 {
+		config.ClicksPerIPMinute = defaultClicksPerIP
+	}
+
 	if config.PasswordConcurrency < 0 || config.PasswordConcurrency > 64 {
 		return nil, errors.New("password concurrency must be between 0 (automatic) and 64")
 	}
@@ -120,17 +136,20 @@ func New(database *store.Store, config Config) (*App, error) {
 	}
 
 	app := &App{
-		store:         database,
-		secureCookies: config.SecureCookies,
-		trustProxy:    config.TrustProxy,
-		sessionTTL:    config.SessionTTL,
-		passwordCost:  config.passwordCost,
-		logger:        config.Logger,
-		now:           config.Now,
-		dummyHash:     dummyHash,
-		static:        static,
-		backupDir:     config.BackupDir,
-		passwordSlots: make(chan struct{}, config.PasswordConcurrency),
+		clicksPerMinute:   config.ClicksPerMinute,
+		clicksPerIPMinute: config.ClicksPerIPMinute,
+		playGuard:         newPlayGuard(),
+		store:             database,
+		secureCookies:     config.SecureCookies,
+		trustProxy:        config.TrustProxy,
+		sessionTTL:        config.SessionTTL,
+		passwordCost:      config.passwordCost,
+		logger:            config.Logger,
+		now:               config.Now,
+		dummyHash:         dummyHash,
+		static:            static,
+		backupDir:         config.BackupDir,
+		passwordSlots:     make(chan struct{}, config.PasswordConcurrency),
 	}
 	app.limiter = newLimiter(config.Now)
 	return app, nil
@@ -363,8 +382,15 @@ func (a *App) current(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
-	if ok, retry := a.limiter.allow("click:"+strconv.FormatInt(user.ID, 10), 320, time.Minute); !ok {
+	if ok, retry := a.limiter.allow("click:"+strconv.FormatInt(user.ID, 10), a.clicksPerMinute, time.Minute); !ok {
 		rateLimited(w, retry)
+		return
+	}
+	if retry, reason := a.playGuard.allow(user.ID, a.now()); retry > 0 {
+		if reason != "" {
+			a.logger.Info("play cooldown", "user_id", user.ID, "reason", reason, "retry_after", retry.String())
+		}
+		rateLimitedReason(w, retry, "activity_cooldown", "Brief pause after sustained activity; try again shortly")
 		return
 	}
 	counters, err := a.store.Increment(r.Context(), user.ID, a.now())
@@ -505,7 +531,7 @@ func (a *App) globalLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost &&
 			(r.URL.Path == "/api/clicks" || r.URL.Path == "/entities/increment") {
-			if ok, retry := a.limiter.allow("click-ip:"+a.clientIP(r), clicksPerIP, time.Minute); !ok {
+			if ok, retry := a.limiter.allow("click-ip:"+a.clientIP(r), a.clicksPerIPMinute, time.Minute); !ok {
 				rateLimited(w, retry)
 				return
 			}
@@ -657,6 +683,10 @@ func (a *App) clientIP(r *http.Request) string {
 }
 
 func rateLimited(w http.ResponseWriter, retry time.Duration) {
+	rateLimitedReason(w, retry, "rate_limited", "Too many requests; try again shortly")
+}
+
+func rateLimitedReason(w http.ResponseWriter, retry time.Duration, code, message string) {
 	seconds := retry / time.Second
 	if retry%time.Second != 0 {
 		seconds++
@@ -665,7 +695,7 @@ func rateLimited(w http.ResponseWriter, retry time.Duration) {
 		seconds = 1
 	}
 	w.Header().Set("Retry-After", strconv.FormatInt(int64(seconds), 10))
-	writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "Too many requests; try again shortly"})
+	writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": message, "code": code})
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {

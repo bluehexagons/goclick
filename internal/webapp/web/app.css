@@ -1175,3 +1175,23 @@ select {
   color: var(--ink);
   font: 13px/1.7 var(--mono);
 }
+
+.connection.is-limited {
+  color: #ffab68;
+  border-color: #ba7a4680;
+  background: #ba7a4610;
+}
+.connection.is-limited .connection-dot {
+  background: #ffab68;
+}
+.play-status {
+  color: #ffab68;
+  font: 11px/1.5 var(--mono);
+  margin: 8px 0 0;
+}
+.click-bonus[data-state="limited"] {
+  color: #ffab68;
+}
+.click-bonus[data-state="saved"] {
+  color: #59abf0;
+}

@@ -42,8 +42,20 @@ func main() {
 		logger.Error("parse GOCLICK_PASSWORD_CONCURRENCY", "error", err)
 		os.Exit(1)
 	}
+	clicksPerMinute, err := strconv.Atoi(env("GOCLICK_CLICKS_PER_MINUTE", "320"))
+	if err != nil {
+		logger.Error("parse GOCLICK_CLICKS_PER_MINUTE", "error", err)
+		os.Exit(1)
+	}
+	clicksPerIPMinute, err := strconv.Atoi(env("GOCLICK_CLICKS_PER_IP_MINUTE", "360"))
+	if err != nil {
+		logger.Error("parse GOCLICK_CLICKS_PER_IP_MINUTE", "error", err)
+		os.Exit(1)
+	}
 	app, err := webapp.New(database, webapp.Config{
 		SecureCookies:       secureCookies,
+		ClicksPerMinute:     clicksPerMinute,
+		ClicksPerIPMinute:   clicksPerIPMinute,
 		TrustProxy:          trustProxy,
 		Logger:              logger,
 		BackupDir:           env("GOCLICK_BACKUP_DIR", filepath.Join(filepath.Dir(databasePath), "backups")),

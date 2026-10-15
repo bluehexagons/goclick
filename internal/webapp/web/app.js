@@ -138,6 +138,12 @@
     }
     return data;
   }
+  function retryAfterMilliseconds(value, now = Date.now()) {
+    if (!value?.trim()) return 5e3;
+    const text = value.trim();
+    const delay = /^\d+$/.test(text) ? Number(text) * 1e3 : Date.parse(text) - now;
+    return Number.isFinite(delay) ? Math.max(1e3, Math.min(864e5, delay)) : 5e3;
+  }
 
   // frontend/preferences.ts
   var gameSettings = (() => {
@@ -1257,6 +1263,24 @@
   var offline = navigator.onLine === false;
   var lastCounterSync = -Infinity;
   var maxPendingClicks = 6;
+  var cooldownUntil = 0;
+  var cooldownTimer = 0;
+  var coolingDown = () => !localMode && performance.now() < cooldownUntil;
+  function paintCooldown() {
+    window.clearTimeout(cooldownTimer);
+    const remaining = cooldownUntil - performance.now();
+    const active = !localMode && remaining > 0;
+    required("#play-status").hidden = !active;
+    required("#cooldown-time").textContent = active ? `\xB7 ${Math.ceil(remaining / 1e3)}s` : "";
+    if (active) cooldownTimer = window.setTimeout(paintCooldown, Math.min(1e3, remaining));
+    else cooldownUntil = 0;
+    updateGameControls();
+    setConnection(null, pendingClicks ? "loading" : "");
+  }
+  function startCooldown(retryAfter) {
+    cooldownUntil = Math.max(cooldownUntil, performance.now() + retryAfterMilliseconds(retryAfter));
+    paintCooldown();
+  }
   function show(view) {
     const changed = view !== currentView;
     if (changed) {
@@ -1307,9 +1331,17 @@
     if (Number.isFinite(milliseconds) && milliseconds !== null)
       required("#ping").textContent = `${Math.round(milliseconds)} ms`;
     const paintState = () => {
-      connection.classList.toggle("is-loading", state === "loading" && (!offline || localMode));
-      connection.classList.toggle("is-error", state === "error" || offline && !localMode);
-      const status = offline && !localMode ? "Offline. Clicking paused" : state === "loading" ? "Request in progress" : state === "error" ? "Last request failed" : "No requests pending";
+      const cooling = coolingDown();
+      connection.classList.toggle("is-limited", cooling);
+      connection.classList.toggle(
+        "is-loading",
+        !cooling && state === "loading" && (!offline || localMode)
+      );
+      connection.classList.toggle(
+        "is-error",
+        !cooling && (state === "error" || offline && !localMode)
+      );
+      const status = cooling ? "Server cooldown. Clicking paused" : offline && !localMode ? "Offline. Clicking paused" : state === "loading" ? "Request in progress" : state === "error" ? "Last request failed" : "No requests pending";
       connection.setAttribute("aria-label", `Ping ${required("#ping").textContent}. ${status}.`);
     };
     if (!state && connection.classList.contains("is-loading"))
@@ -1348,6 +1380,10 @@
   }
   function resetClickState() {
     clickGeneration++;
+    cooldownUntil = 0;
+    window.clearTimeout(cooldownTimer);
+    required("#play-status").hidden = true;
+    required("#cooldown-time").textContent = "";
     counterLoad = null;
     counterLoadOwner = null;
     counterCard.setAttribute("aria-busy", "false");
@@ -1358,7 +1394,7 @@
     refreshQueued = false;
     window.clearTimeout(pingStateTimer);
     required("#ping").textContent = "\u2014 ms";
-    connection.classList.remove("is-loading", "is-error");
+    connection.classList.remove("is-loading", "is-error", "is-limited");
     connection.setAttribute("aria-label", "Ping: no click measured yet");
     tactileButtons.get(clickButton)?.reset();
     clickFeedback.reset();
@@ -1367,6 +1403,7 @@
   }
   function updateGameControls() {
     clickButton.disabled = !gameReady || offline && !localMode || signingOut || localMode && localSaveReplacing || !localMode && pendingClicks >= maxPendingClicks;
+    clickButton.setAttribute("aria-disabled", String(clickButton.disabled || coolingDown()));
     refreshCounterButton.disabled = offline && !localMode || signingOut || pendingClicks > 0 || localMode && localSaveReplacing;
     refreshCounterButton.setAttribute(
       "aria-disabled",
@@ -1517,6 +1554,7 @@
     refreshGame();
   });
   function resumeGame() {
+    if (cooldownUntil) paintCooldown();
     if (gameReady && performance.now() - lastCounterSync < 15e3) return;
     refreshGame();
   }
@@ -1632,6 +1670,10 @@
     }
     if (!gameReady || offline && !localMode || signingOut || !localMode && pendingClicks >= maxPendingClicks)
       return;
+    if (coolingDown()) {
+      tactileButtons.get(clickButton)?.respond("limited");
+      return;
+    }
     if (pendingClicks === 0) {
       showError("#game-error", "");
       clickBatchFailed = false;
@@ -1655,15 +1697,19 @@
     } catch (caught) {
       const error = requestError(caught);
       if (generation !== clickGeneration) return;
-      feedback.fail(error.uncertain);
+      feedback.fail(error.uncertain, error.status === 429);
       if (error.status === 401) {
         if (user && !signingOut) handleExpiredSession();
+        return;
+      }
+      if (error.status === 429) {
+        startCooldown(error.retryAfter);
         return;
       }
       clickBatchFailed = true;
       showError(
         "#game-error",
-        error.status === 429 && error.retryAfter ? `Slow down for ${error.retryAfter} seconds.` : error.uncertain ? `Couldn\u2019t confirm your click. Reload your counter to check whether it saved. ${error.message}` : `Your click wasn\u2019t saved. ${error.message}`,
+        error.uncertain ? `Couldn\u2019t confirm your click. Reload your counter to check whether it saved. ${error.message}` : `Your click wasn\u2019t saved. ${error.message}`,
         true
       );
       if (error.uncertain) retryGameButton.hidden = false;

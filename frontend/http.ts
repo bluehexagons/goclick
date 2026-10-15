@@ -107,3 +107,12 @@ export function jsonOptions(body: unknown): RequestInit {
     body: JSON.stringify(body),
   };
 }
+
+// Retry-After can be delta seconds or an HTTP date. Never let malformed proxy
+// headers strand play, or exceed the browser's timeout range.
+export function retryAfterMilliseconds(value: string | null, now = Date.now()): number {
+  if (!value?.trim()) return 5000;
+  const text = value.trim();
+  const delay = /^\d+$/.test(text) ? Number(text) * 1000 : Date.parse(text) - now;
+  return Number.isFinite(delay) ? Math.max(1000, Math.min(86400000, delay)) : 5000;
+}

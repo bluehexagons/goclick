@@ -146,7 +146,7 @@ async function harness(options = {}) {
         return item;
       },
     },
-    tactileButtons: { values: () => [], get: () => ({ reset() {} }) },
+    tactileButtons: { values: () => [], get: () => ({ reset() {}, respond() {} }) },
     fetch: (url, options) => {
       requests.push({ url, method: options.method || "GET" });
       return handler(url, options);
@@ -673,4 +673,67 @@ test("a stale clipboard failure cannot interrupt a different mode and duplicate 
   await sharing;
   assert.equal(h.element("#share-status").textContent, "");
   assert.equal(h.element("#share-dialog").open, undefined);
+});
+
+test("429s start a calm cooldown, suppress requests, and resume without replaying clicks", async () => {
+  const h = await harness();
+  h.fetch(async () => ({ ...response({ error: "Slow down" }, 429), headers: { get: () => "5" } }));
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#play-status").hidden, false);
+  assert.match(h.element("#cooldown-time").textContent, /5s/);
+  assert.equal(h.element("#click-button").attributes.get("aria-disabled"), "true");
+  assert.equal(h.element("#game-error").hidden, true);
+  const requests = h.requests.length;
+  await h.element("#click-button").fire("click");
+  assert.equal(h.requests.length, requests);
+  assert.equal(h.element("#click-count").textContent, "10");
+  h.advance(5000);
+  h.runTimers();
+  assert.equal(h.element("#play-status").hidden, true);
+  assert.equal(h.element("#click-button").attributes.get("aria-disabled"), "false");
+  assert.equal(h.requests.length, requests);
+  h.fetch(async () => response(counters(11)));
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, "11");
+});
+
+test("overlapping cooldowns never shorten a deadline and switching to local play clears it", async () => {
+  const h = await harness();
+  const first = deferred(),
+    second = deferred();
+  let calls = 0;
+  h.fetch(() => (++calls === 1 ? first.promise : second.promise));
+  const a = h.element("#click-button").fire("click"),
+    b = h.element("#click-button").fire("click");
+  first.resolve({ ...response({}, 429), headers: { get: () => "10" } });
+  await a;
+  second.resolve({ ...response({}, 429), headers: { get: () => "2" } });
+  await b;
+  h.advance(3000);
+  await h.element("#click-button").fire("click");
+  assert.equal(calls, 2);
+  await h.context.startLocalGame();
+  assert.equal(h.element("#play-status").hidden, true);
+  await h.element("#click-button").fire("click");
+  assert.equal(calls, 2);
+  assert.equal(h.element("#click-count").textContent, "1");
+});
+
+test("accepted clicks already in flight still count when another request starts a cooldown", async () => {
+  const h = await harness(),
+    limited = deferred(),
+    saved = deferred();
+  let calls = 0;
+  h.fetch(() => (++calls === 1 ? limited.promise : saved.promise));
+  const a = h.element("#click-button").fire("click"),
+    b = h.element("#click-button").fire("click");
+  limited.resolve({ ...response({}, 429), headers: { get: () => "5" } });
+  await a;
+  saved.resolve(response(counters(11)));
+  await b;
+  assert.equal(h.element("#click-count").textContent, "11");
+  assert.equal(h.element("#play-status").hidden, false);
+  assert.equal(h.element("#click-button").attributes.get("aria-disabled"), "true");
+  assert.equal(h.element("#pending-clicks").hidden, true);
+  assert.equal(h.element("#game-error").hidden, true);
 });

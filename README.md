@@ -56,6 +56,8 @@ Configuration:
 | `GOCLICK_SECURE_COOKIES` | `false` | Set `true` whenever the public site uses HTTPS |
 | `GOCLICK_TRUST_PROXY` | `false` | Trust `X-Real-IP` only from a loopback reverse proxy |
 | `GOCLICK_BACKUP_DIR` | `backups` beside the database | Private directory for automatic pre-restore recovery snapshots |
+| `GOCLICK_CLICKS_PER_MINUTE` | `320` | Online click attempts per account per minute; 0 selects the default |
+| `GOCLICK_CLICKS_PER_IP_MINUTE` | `360` | Online click attempts per client IP per minute; 0 selects the default |
 | `GOCLICK_PASSWORD_CONCURRENCY` | `0` (automatic) | Simultaneous HTTP password operations; automatic uses half the Go CPUs, rounded down, with a minimum of 1 and maximum of 4. Explicit values: 1–64 |
 
 The server should be behind an HTTPS reverse proxy in production. With
@@ -141,7 +143,24 @@ has its own admin API described below.
 Use a dedicated, service-owned database directory in production. New directories
 are created with mode `0700`; existing directory permissions are left intact.
 
-Rate-limit state is local to one process and resets on restart. A shared
+Online play treats HTTP 429 as a cooldown: it shows a countdown, suppresses
+further save requests until `Retry-After` expires, and resumes automatically.
+The button still responds physically, but rejected clicks do not add progress
+and are never replayed. Accepted requests already in flight still count.
+The click budgets above can be tuned to the server's capacity without changing
+the client. Authentication and admin limits remain separate.
+
+A bounded, per-account timing check adds light friction to obvious automation.
+At least 240 intervals over five minutes with at most 4% timing variation trigger
+a 15-second pause. Gaps of 15 seconds reset the sample; multi-pointer bursts
+break the regular-cadence sample. Forty-five minutes without such a break and
+at least 1,200 click attempts trigger a 30-second pause. These are heuristics,
+not proof of automation: nobody is banned and saved progress is untouched.
+Cooldowns are logged with account ID and reason. Only server receipt times are
+used, without fingerprints or extra browser telemetry. Offline play is exempt.
+Determined automation can adapt its timing; this is intentionally modest friction.
+
+Rate-limit and activity-check state is local to one process and resets on restart. A shared
 concurrency budget bounds password work across signups, logins (including
 unknown users), and admin password checks. Saturated requests receive HTTP 503
 with `Retry-After: 1`, without queuing password work or creating accounts or

@@ -322,8 +322,8 @@ func TestInvalidClickSessionsAreRateLimitedBeforeAuthentication(t *testing.T) {
 		t.Fatalf("first invalid session status = %d, want 401", response.StatusCode)
 	}
 
-	for range clicksPerIP - 1 {
-		if ok, _ := app.limiter.allow("click-ip:192.0.2.1", clicksPerIP, time.Minute); !ok {
+	for range defaultClicksPerIP - 1 {
+		if ok, _ := app.limiter.allow("click-ip:192.0.2.1", defaultClicksPerIP, time.Minute); !ok {
 			t.Fatal("click IP bucket filled earlier than expected")
 		}
 	}
