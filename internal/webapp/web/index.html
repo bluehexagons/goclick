@@ -111,6 +111,7 @@
             </div>
           </div>
 
+          <p id="network-notice" class="notice notice-offline" role="status" hidden>You’re offline. Clicking is paused. Your saved progress will refresh when you reconnect.</p>
           <div id="game-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
           <button id="retry-game-button" class="button button-quiet retry-game" type="button" hidden>Reload counter</button>
           <div class="play-layout">
@@ -130,6 +131,7 @@
             </div>
             <p id="button-hint" class="button-hint">Mouse, touch, Space or Enter · one click per release.</p>
             <p id="last-click" class="last-click" title="Shown in your local time zone">No saved clicks yet.</p>
+            <button id="refresh-counter" class="text-link refresh-counter" type="button">Refresh counter</button>
           </div>
 
           <aside class="streak-panel" aria-label="Click streaks">
@@ -156,7 +158,7 @@
         <details class="technical-notes" id="technical-notes">
           <summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#info"/></svg> Game &amp; storage notes</summary>
           <div class="technical-grid">
-            <article><h2>Clicks &amp; saves</h2><p>Releasing inside the button adds one click. Holding does not add extra clicks. The total shows server-confirmed saves; pending clicks appear separately. Failed requests are not retried automatically.</p></article>
+            <article><h2>Clicks &amp; saves</h2><p>Releasing inside the button adds one click. Holding does not add extra clicks. The total shows server-confirmed saves; pending clicks appear separately. Returning to this tab or reconnecting refreshes saved progress. Failed clicks are never replayed.</p></article>
             <article><h2>Streak periods</h2><p>Days, calendar months, and calendar years use UTC. Multiple clicks in the same period do not extend a streak. The next click after a missed period starts that streak at one.</p></article>
             <article><h2>Ping &amp; storage</h2><p>Ping measures the last successful click request, including server processing. Amber means a request is in flight; red means a save failed. Progress is stored in SQLite on the server, so signing out does not delete it.</p></article>
             <article><h2>Account sessions</h2><p>Playing or opening your counter keeps you signed in, including on admin accounts. Sessions expire after about 180 days of inactivity. Your login uses an HttpOnly cookie. Signing out ends the session; your account data stays saved.</p></article>

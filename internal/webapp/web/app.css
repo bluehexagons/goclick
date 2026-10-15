@@ -74,6 +74,7 @@ input:focus { border-color: var(--gold); }
 .form-switch { color: var(--muted); text-align: center; font-size: 14px; margin: 23px 0 0; }
 .notice { padding: 11px 13px; margin: 17px 0; border-radius: 8px; font-size: 14px; }
 .notice-error { color: #ffdad5; border: 1px solid #7d484c; background: #36232e; }
+.notice-offline { color: #ffe4a6; border: 1px solid #80652c; background: #332b1d; }
 .game { padding: 38px 0 32px; max-width: 1000px; margin: auto; }
 .game-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
 .game-heading h1 { font-size: 34px; }
@@ -119,6 +120,9 @@ input:focus { border-color: var(--gold); }
 .click-bonus { position: absolute; top: 28px; left: 50%; color: #ffe5a0; font-size: 25px; font-weight: 850; letter-spacing: -.04em; text-shadow: 0 2px 12px #ffc83d55; }
 .button-hint { font-size: 12px; line-height: 1.6; min-height: 38px; color: var(--muted); margin: 0 0 12px; }
 .last-click { color: var(--muted); font: 11px/1.5 var(--mono); margin: 0; }
+.refresh-counter { min-height: 44px; padding: 10px; margin-top: 4px; font-size: 12px; }
+.refresh-counter:disabled { color: var(--muted); cursor: wait; text-decoration: none; }
+.refresh-counter[aria-busy="true"] { color: var(--gold); }
 .retry-game { margin: 0 0 16px; }
 .streak-panel { min-width: 0; }
 .streak-heading { display: flex; justify-content: space-between; align-items: center; margin: 0 0 14px; }

@@ -12,6 +12,7 @@ const clickButton = document.querySelector("#click-button");
 const counterCard = document.querySelector("#counter-card");
 const retryGameButton = document.querySelector("#retry-game-button");
 const retryBootButton = document.querySelector("#retry-boot-button");
+const refreshCounterButton = document.querySelector("#refresh-counter");
 const connection = document.querySelector("#connection");
 const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
 const pendingIndicator = document.querySelector("#pending-clicks");
@@ -29,6 +30,10 @@ let pendingClicks = 0;
 let clickBatchFailed = false;
 let signingOut = false;
 let clickGeneration = 0;
+let counterLoad = null;
+let refreshQueued = false;
+let offline = navigator.onLine === false;
+let lastCounterSync = -Infinity;
 const maxPendingClicks = 6;
 
 function show(view) {
@@ -75,9 +80,9 @@ function setConnection(milliseconds = null, state = "") {
   window.clearTimeout(pingStateTimer);
   if (Number.isFinite(milliseconds) && milliseconds !== null) document.querySelector("#ping").textContent = `${Math.round(milliseconds)} ms`;
   const paintState = () => {
-    connection.classList.toggle("is-loading", state === "loading");
-    connection.classList.toggle("is-error", state === "error");
-    const status = state === "loading" ? "Saving clicks" : state === "error" ? "Last request failed" : "No requests pending";
+    connection.classList.toggle("is-loading", state === "loading" && !offline);
+    connection.classList.toggle("is-error", state === "error" || offline);
+    const status = offline ? "Offline. Clicking paused" : state === "loading" ? "Request in progress" : state === "error" ? "Last request failed" : "No requests pending";
     connection.setAttribute("aria-label", `Ping ${document.querySelector("#ping").textContent}. ${status}.`);
   };
   // Keep the last measurement visible. Brief gaps between clicks should not
@@ -157,12 +162,23 @@ function resetClickState() {
   pendingClicks = 0;
   updatePendingIndicator();
   clickBatchFailed = false;
+  refreshQueued = false;
   window.clearTimeout(pingStateTimer);
   document.querySelector("#ping").textContent = "— ms";
   connection.classList.remove("is-loading", "is-error");
   connection.setAttribute("aria-label", "Ping: no click measured yet");
   tactileButtons.get(clickButton).reset();
-  clickButton.disabled = !gameReady;
+  updateGameControls();
+}
+
+function updateGameControls() {
+  clickButton.disabled = !gameReady || offline || signingOut || pendingClicks >= maxPendingClicks;
+  // Keep a focused refresh control in the tab order while its read is in flight.
+  // Repeated activations share counterLoad instead of starting another request.
+  refreshCounterButton.disabled = offline || signingOut || pendingClicks > 0;
+  refreshCounterButton.setAttribute("aria-disabled", String(refreshCounterButton.disabled || !!counterLoad));
+  refreshCounterButton.setAttribute("aria-busy", String(!!counterLoad));
+  document.querySelector("#network-notice").hidden = !offline;
 }
 
 function updatePendingIndicator() {
@@ -209,35 +225,82 @@ function renderCounters(data, allowDecrease = false) {
     : "No saved clicks yet.";
 }
 
-async function openGame(initialCounters) {
-  const generation = clickGeneration;
+function openGame(initialCounters, verifyIdentity = false) {
+  if (counterLoad) return counterLoad;
+  if (pendingClicks > 0) {
+    refreshQueued = true;
+    return Promise.resolve();
+  }
+  let generation = clickGeneration;
+  const focusButton = currentView === "login" || currentView === "signup";
   show("game");
   showError("#game-error", "");
   retryGameButton.hidden = true;
   gameReady = false;
   clickButton.disabled = true;
-  counterCard.setAttribute("aria-busy", "true");
+  if (!verifyIdentity) counterCard.setAttribute("aria-busy", "true");
   setConnection(null, "loading");
-  try {
-    const data = await (initialCounters ?? api("/api/clicks"));
-    if (generation !== clickGeneration) return;
-    renderCounters(data, true);
-    gameReady = true;
-    clickButton.disabled = false;
-    setConnection();
-  } catch (error) {
-    if (generation !== clickGeneration) return;
-    if (error.status === 401) {
-      if (user && !signingOut) handleExpiredSession();
-    } else {
-      showError("#game-error", `Couldn’t load your counter. ${error.message}`, true);
-      retryGameButton.hidden = false;
-      setConnection(null, "error");
+  counterLoad = (async () => {
+    try {
+      // Check identity as well as counters: another tab may have switched accounts.
+      const [nextUser, data] = verifyIdentity
+        ? await Promise.all([api("/api/me"), api("/api/clicks")])
+        : [user, await (initialCounters ?? api("/api/clicks"))];
+      if (generation !== clickGeneration) return;
+      if (verifyIdentity) {
+        setUser(nextUser);
+        generation = clickGeneration;
+      }
+      renderCounters(data, true);
+      lastCounterSync = performance.now();
+      gameReady = true;
+      updateGameControls();
+      if (focusButton && !clickButton.disabled) clickButton.focus();
+      setConnection();
+    } catch (error) {
+      if (generation !== clickGeneration) return;
+      if (error.status === 401) {
+        if (user && !signingOut) handleExpiredSession();
+      } else {
+        showError("#game-error", `Couldn’t load your counter. ${error.message}`, !verifyIdentity);
+        retryGameButton.hidden = false;
+        setConnection(null, "error");
+      }
+    } finally {
+      if (generation === clickGeneration) counterCard.setAttribute("aria-busy", "false");
+      counterLoad = null;
+      updateGameControls();
     }
-  } finally {
-    if (generation === clickGeneration) counterCard.setAttribute("aria-busy", "false");
-  }
+  })();
+  updateGameControls();
+  return counterLoad;
 }
+
+function refreshGame() {
+  if (currentView !== "game" || !user || signingOut || offline || document.hidden) return;
+  refreshQueued = false;
+  return openGame(undefined, true);
+}
+
+window.addEventListener("offline", () => {
+  offline = true;
+  updateGameControls();
+  setConnection(null, "error");
+});
+window.addEventListener("online", () => {
+  offline = false;
+  updateGameControls();
+  refreshGame();
+});
+function resumeGame() {
+  // Visibility and focus often arrive together. A brief switch away should not
+  // interrupt the button or repeatedly fetch data we just loaded.
+  if (gameReady && performance.now() - lastCounterSync < 15000) return;
+  refreshGame();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) resumeGame(); });
+window.addEventListener("focus", resumeGame);
+window.addEventListener("pageshow", (event) => { if (event.persisted) refreshGame(); });
 
 function handleExpiredSession() {
   gameReady = false;
@@ -318,7 +381,7 @@ logoutButton.addEventListener("click", async () => {
   showError("#game-error", "");
   signingOut = true;
   gameReady = false;
-  clickButton.disabled = true;
+  updateGameControls();
   logoutButton.disabled = true;
   try {
     await api("/api/auth/logout", { method: "DELETE" });
@@ -326,16 +389,16 @@ logoutButton.addEventListener("click", async () => {
     show("home");
   } catch (error) {
     gameReady = true;
-    clickButton.disabled = pendingClicks >= maxPendingClicks;
     showError("#game-error", `Could not sign out: ${error.message}`, true);
   } finally {
     signingOut = false;
     logoutButton.disabled = false;
+    updateGameControls();
   }
 });
 
 clickButton.addEventListener("click", async () => {
-  if (!gameReady || pendingClicks >= maxPendingClicks) return;
+  if (!gameReady || offline || signingOut || pendingClicks >= maxPendingClicks) return;
   if (pendingClicks === 0) {
     showError("#game-error", "");
     clickBatchFailed = false;
@@ -343,7 +406,7 @@ clickButton.addEventListener("click", async () => {
   pendingClicks++;
   updatePendingIndicator();
   celebrateClick();
-  clickButton.disabled = pendingClicks >= maxPendingClicks;
+  updateGameControls();
   const started = performance.now();
   const generation = clickGeneration;
   setConnection(null, "loading");
@@ -371,12 +434,13 @@ clickButton.addEventListener("click", async () => {
     if (generation !== clickGeneration) return;
     pendingClicks--;
     updatePendingIndicator();
-    clickButton.disabled = !gameReady || pendingClicks >= maxPendingClicks;
+    updateGameControls();
     if (!clickBatchFailed && pendingClicks > 0) {
       setConnection(null, "loading");
     } else if (!clickBatchFailed && saved) {
       setConnection(performance.now() - started);
     }
+    if (pendingClicks === 0 && refreshQueued) refreshGame();
   }
 });
 
@@ -406,7 +470,8 @@ async function boot() {
   }
 }
 
-retryGameButton.addEventListener("click", () => openGame());
+retryGameButton.addEventListener("click", refreshGame);
+refreshCounterButton.addEventListener("click", refreshGame);
 retryBootButton.addEventListener("click", () => boot());
 
 boot();
