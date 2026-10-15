@@ -256,31 +256,31 @@ test("reduced motion acknowledges with static color and reset clears stale respo
   assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
 });
 
-test("drag travel grows with the stage, stays bounded, and returns on mouse release", () => {
+test("dragging follows the pointer beyond the old stage cap and returns after release", () => {
   const h = harness(false);
   h.stage.getBoundingClientRect = () => ({ left: 0, top: 0, width: 680, height: 350 });
   h.pointer("pointerdown", 1, { pointerType: "mouse", clientX: 230, clientY: 172 });
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 310, clientY: 172 });
   for (let i = 1; i <= 90; i++) h.frame(i * 17);
   const pull = parseFloat(h.rig.props.get("--shift-x"));
-  assert.ok(pull > 45 && pull < 60, `Expected a substantial pull, got ${pull}`);
+  assert.ok(pull > 70 && pull < 85, `Expected a substantial pull, got ${pull}`);
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 1000, clientY: 172 });
   for (let i = 91; i <= 180; i++) h.frame(i * 17);
-  assert.ok(parseFloat(h.rig.props.get("--shift-x")) <= 88.01);
-  // Release outside cancels scoring and returns to the small hover displacement.
+  assert.ok(parseFloat(h.rig.props.get("--shift-x")) > 700);
+  // Release outside the button and stage cancels scoring and returns to origin.
   h.pointer("pointerup", 1, { pointerType: "mouse", clientX: 1000, clientY: 172 });
   for (let i = 181; i <= 270; i++) h.frame(i * 17);
-  assert.equal(h.rig.props.get("--shift-x"), "4.000px");
+  assert.equal(h.rig.props.get("--shift-x"), "0.000px");
   assert.equal(h.clicks.length, 0);
 });
 
-test("narrow stages limit dragging and cancellation returns to the origin", () => {
+test("narrow stages do not constrain the gesture and cancellation returns to the origin", () => {
   const h = harness(false);
   h.pointer("pointerdown", 1);
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "touch", clientX: 1000, clientY: 1000 });
   for (let i = 1; i <= 90; i++) h.frame(i * 17);
-  assert.ok(parseFloat(h.rig.props.get("--shift-x")) <= 24.01);
-  assert.ok(parseFloat(h.rig.props.get("--shift-y")) <= 28.01);
+  assert.ok(parseFloat(h.rig.props.get("--shift-x")) > 700);
+  assert.ok(parseFloat(h.rig.props.get("--shift-y")) > 700);
   h.pointer("pointercancel", 1);
   for (let i = 91; i <= 180; i++) h.frame(i * 17);
   assert.equal(h.rig.props.get("--shift-x"), "0.000px");
@@ -400,4 +400,24 @@ test("a deliberate fresh drag coasts on release while tiny movements and stale d
   assert.ok(Math.abs(jitter.after - jitter.before) < 2);
   assert.ok(stopped.after < stopped.before + 5);
   assert.equal(deliberate.clicks, 1);
+});
+
+test("release momentum remains smooth outside a narrow stage without snapping to its old bounds", () => {
+  const h = harness(false);
+  h.pointer("pointerdown", 1, { clientX: 170 });
+  h.setTime(16);
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "touch", clientX: 330, clientY: 150 });
+  for (let i = 1; i <= 8; i++) h.frame(i * 16);
+  h.setTime(130);
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "touch", clientX: 345, clientY: 150 });
+  h.setTime(138);
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "touch", clientX: 355, clientY: 150 });
+  h.setTime(140);
+  const before = parseFloat(h.rig.props.get("--shift-x"));
+  h.pointer("pointerup", 1, { clientX: 355 });
+  h.frame(156);
+  const after = parseFloat(h.rig.props.get("--shift-x"));
+  assert.ok(before > 100);
+  assert.ok(Math.abs(after - before) < 20, `Release snapped from ${before} to ${after}`);
+  assert.equal(h.clicks.length, 1);
 });

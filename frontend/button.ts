@@ -49,8 +49,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
   >();
   let coastUntil = 0;
-  let coastX = 24,
-    coastY = 28;
+  let coastFromX = 0,
+    coastFromY = 0;
   let activeKey: string | null = null;
   let activatingRelease = false;
   let pressedAt = 0,
@@ -93,16 +93,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     let moving = false;
     for (const key of keys) {
       const coasting = time < coastUntil && (key === "x" || key === "y");
+      const from = key === "x" ? coastFromX : coastFromY;
+      const springTarget = coasting
+        ? target[key] + (from - target[key]) * Math.max(0, (coastUntil - time) / 80)
+        : target[key];
       velocity[key] =
-        (velocity[key] + (target[key] - current[key]) * (coasting ? 0.045 : 0.16) * dt) *
+        (velocity[key] + (springTarget - current[key]) * (coasting ? 0.045 : 0.16) * dt) *
         Math.pow(coasting ? 0.88 : 0.64, dt);
       current[key] += velocity[key] * dt;
-      if (coasting) {
-        const bound = key === "x" ? coastX : coastY;
-        const bounded = clamp(current[key], -bound, bound);
-        if (bounded !== current[key]) velocity[key] = 0;
-        current[key] = bounded;
-      }
       if (Math.abs(target[key] - current[key]) > 0.002 || Math.abs(velocity[key]) > 0.002)
         moving = true;
       else {
@@ -174,19 +172,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     target.y = y * 4;
     if (pointers.size) {
       const points = [...pointers.values()];
-      // Keep the larger pull inside the stage, including on narrow screens.
-      const pullX = Math.min(84, Math.max(20, (rect.width - button.offsetWidth) / 2 - 12));
-      const pullY = Math.min(64, Math.max(24, (rect.height - button.offsetHeight) / 2 - 12));
-      target.x += clamp(
-        (points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length) * 0.65,
-        -pullX,
-        pullX,
-      );
-      target.y += clamp(
-        (points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length) * 0.65,
-        -pullY,
-        pullY,
-      );
+      // Track the gesture across the screen; the layout stage is not a drag
+      // boundary. Pointer capture keeps movement arriving outside that stage.
+      target.x +=
+        (points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length) * 0.95;
+      target.y +=
+        (points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length) * 0.95;
     }
     animate();
   }
@@ -337,7 +328,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     } else if (!pointers.size && activeKey === null && event.pointerType === "mouse") aim(event);
   });
   stage.addEventListener("pointerleave", () => {
-    if (!pointers.size && activeKey === null) reset(false);
+    if (!pointers.size && activeKey === null && performance.now() >= coastUntil) reset(false);
   });
   button.addEventListener("pointerdown", (event) => {
     if (
@@ -387,13 +378,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       Math.hypot(point.vx, point.vy) >= 0.12
     ) {
       coastUntil = performance.now() + 80;
-      const rect = stage.getBoundingClientRect();
-      coastX = Math.min(110, Math.max(24, (rect.width - button.offsetWidth) / 2 - 8));
-      coastY = Math.min(90, Math.max(28, (rect.height - button.offsetHeight) / 2 - 8));
+      coastFromX = current.x;
+      coastFromY = current.y;
       velocity.x = clamp(point.vx * 10, -14, 14);
       velocity.y = clamp(point.vy * 10, -14, 14);
     }
-    if (!pointers.size && !cancelled && event.pointerType === "mouse") aim(event);
+    const stageRect = stage.getBoundingClientRect();
+    const overStage =
+      event.clientX >= stageRect.left &&
+      event.clientX <= stageRect.left + stageRect.width &&
+      event.clientY >= stageRect.top &&
+      event.clientY <= stageRect.top + stageRect.height;
+    if (!pointers.size && !cancelled && event.pointerType === "mouse" && overStage) aim(event);
     else if (!pointers.size) {
       for (const key of ["x", "y", "rx", "ry"] as const) target[key] = 0;
       animate();

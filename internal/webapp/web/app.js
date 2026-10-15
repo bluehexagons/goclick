@@ -293,6 +293,68 @@
     return { key, read, encode, decode, validate, change, increment, replace: write };
   })();
 
+  // frontend/button-geometry.ts
+  function projectButtonScene(state, buttonWidth, stage, viewport) {
+    const scale = buttonWidth / 260 * (1 + Math.max(-0.065, Math.min(0.1, state.pop || 0)));
+    const press = Math.max(-0.22, Math.min(1, state.press));
+    const rx = state.rx * Math.PI / 180, ry = state.ry * Math.PI / 180;
+    const cx = Math.cos(rx), sx = Math.sin(rx), cy = Math.cos(ry), sy = Math.sin(ry);
+    const recession = press * 24;
+    const lowest = -Math.abs(cx * sy) * 130 * scale - Math.abs(sx) * 72 * scale + Math.min(cx * cy * (-16 - recession), cx * cy * (18 - recession));
+    const lift = Math.max(0, -34 - lowest);
+    const centerX = state.x - sy * recession, centerY = state.y + sx * cy * recession;
+    const centerZ = lift - cx * cy * recession, clearance = 42 + centerZ;
+    const projection = clearance / (500 - centerZ);
+    const shadow = {
+      x: centerX + (centerX + 280) * projection,
+      y: centerY + (centerY + 350) * projection,
+      halfWidth: 126 * scale * (1 - Math.abs(sy) * 0.15),
+      halfHeight: 70 * scale * (1 - Math.abs(sx) * 0.15),
+      blur: 8 + clearance * 0.18
+    };
+    const groundScale = 850 / 892;
+    let left = (shadow.x - shadow.halfWidth - shadow.blur) * groundScale;
+    let right = (shadow.x + shadow.halfWidth + shadow.blur) * groundScale;
+    let top = (shadow.y - shadow.halfHeight - shadow.blur) * groundScale;
+    let bottom = (shadow.y + shadow.halfHeight + shadow.blur) * groundScale;
+    for (const x of [-130 * scale, 130 * scale]) {
+      for (const y of [-72 * scale, 72 * scale]) {
+        for (const z of [-16 - recession, 18 - recession]) {
+          const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
+          const px = (cy * x + sy * z + state.x) * factor;
+          const py = (sx * sy * x + cx * y - sx * cy * z + state.y) * factor;
+          left = Math.min(left, px);
+          right = Math.max(right, px);
+          top = Math.min(top, py);
+          bottom = Math.max(bottom, py);
+        }
+      }
+    }
+    const originX = stage.left + stage.width / 2, originY = stage.top + stage.height / 2;
+    const visibleLeft = Math.max(0, Math.min(viewport.width - 1, originX + left - 4));
+    const visibleTop = Math.max(0, Math.min(viewport.height - 1, originY + top - 4));
+    const visibleRight = Math.min(viewport.width, Math.max(visibleLeft + 1, originX + right + 4));
+    const visibleBottom = Math.min(viewport.height, Math.max(visibleTop + 1, originY + bottom + 4));
+    const width = Math.min(viewport.width, Math.ceil((visibleRight - visibleLeft + 32) / 64) * 64);
+    const height = Math.min(viewport.height, Math.ceil((visibleBottom - visibleTop + 32) / 64) * 64);
+    const frame = {
+      left: Math.max(0, Math.min(viewport.width - width, Math.floor((visibleLeft - 16) / 16) * 16)),
+      top: Math.max(0, Math.min(viewport.height - height, Math.floor((visibleTop - 16) / 16) * 16)),
+      width,
+      height
+    };
+    return {
+      scale,
+      recession,
+      lift,
+      shadow,
+      frame,
+      originX: originX - frame.left - frame.width / 2,
+      originY: originY - frame.top - frame.height / 2,
+      rotation: [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy]
+    };
+  }
+
   // frontend/button-3d.ts
   function createButtonRenderer(stage, button) {
     const canvas = required(".button-scene", stage);
@@ -317,25 +379,37 @@
     uniform vec2 viewport;
     uniform float scale;
     uniform float recession;
+    uniform mediump float shadow;
+    uniform vec2 origin;
     varying vec3 worldPosition;
     varying vec3 worldNormal;
     varying vec2 texCoord;
     varying float frontFace;
     void main() {
+      if (shadow > .5) {
+        // Full drawing-surface quad, reconstructed on the background plane.
+        // Its bounds follow the projected shadow rather than a fixed world box.
+        worldPosition = vec3((position.xy * viewport * .5 - origin) * (892. / 850.), -42.);
+        worldNormal = vec3(0., 0., 1.);
+        texCoord = uv;
+        frontFace = 0.;
+        gl_Position = vec4(position.x, -position.y, 0., 1.);
+        return;
+      }
       worldPosition = rotation * vec3(position.xy * scale, position.z - recession)
         + translation;
       worldNormal = rotation * normalize(vec3(normal.xy / scale, normal.z));
       texCoord = uv;
       frontFace = face;
       float distance = 850. - worldPosition.z;
-      gl_Position = vec4(worldPosition.x * 1700. / viewport.x,
-        -worldPosition.y * 1700. / viewport.y,
+      gl_Position = vec4((worldPosition.x * 1700. + origin.x * 2. * distance) / viewport.x,
+        -(worldPosition.y * 1700. + origin.y * 2. * distance) / viewport.y,
         1.0010005 * distance - 2.0010005, distance);
     }`;
     const fragmentSource = `
     precision mediump float;
     uniform sampler2D surfaceAtlas;
-    uniform float shadow;
+    uniform mediump float shadow;
     uniform vec2 shadowCenter;
     uniform vec2 shadowSize;
     uniform float shadowBlur;
@@ -411,6 +485,7 @@
       "rotation",
       "translation",
       "viewport",
+      "origin",
       "scale",
       "recession",
       "shadow",
@@ -483,12 +558,12 @@
     }
     const solidCount = vertices.length / 9;
     for (const point of [
-      [-230, -180, -42],
-      [230, -180, -42],
-      [230, 180, -42],
-      [-230, -180, -42],
-      [230, 180, -42],
-      [-230, 180, -42]
+      [-1, -1, 0],
+      [1, -1, 0],
+      [1, 1, 0],
+      [-1, -1, 0],
+      [1, 1, 0],
+      [-1, 1, 0]
     ]) {
       vertex(point, [0, 0, 1]);
     }
@@ -592,12 +667,15 @@
       if (lost) return;
       if (!stage.clientWidth || !stage.clientHeight) return;
       const bounds = stage.getBoundingClientRect();
-      const gutter = Math.max(
-        0,
-        Math.min(40, bounds.left, document.documentElement.clientWidth - bounds.right)
-      );
-      stage.style.setProperty("--canvas-gutter", `${gutter.toFixed(3)}px`);
-      const width = canvas.clientWidth, height = canvas.clientHeight;
+      const scene = projectButtonScene(state, button.offsetWidth, bounds, {
+        width: document.documentElement.clientWidth,
+        height: document.documentElement.clientHeight
+      });
+      canvas.style.left = `${scene.frame.left - bounds.left}px`;
+      canvas.style.top = `${scene.frame.top - bounds.top}px`;
+      canvas.style.width = `${scene.frame.width}px`;
+      canvas.style.height = `${scene.frame.height}px`;
+      const width = scene.frame.width, height = scene.frame.height;
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       const pixelWidth = Math.round(width * pixelRatio), pixelHeight = Math.round(height * pixelRatio);
       if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
@@ -606,58 +684,32 @@
       }
       gl.viewport(0, 0, pixelWidth, pixelHeight);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      const scale = button.offsetWidth / 260 * (1 + Math.max(-0.065, Math.min(0.1, state.pop || 0))), press = Math.max(-0.22, Math.min(1, state.press));
-      const rx = state.rx * Math.PI / 180, ry = state.ry * Math.PI / 180;
-      const cx = Math.cos(rx), sx = Math.sin(rx), cy = Math.cos(ry), sy = Math.sin(ry);
-      const recession = press * 24;
-      const lowest = -Math.abs(cx * sy) * 130 * scale - Math.abs(sx) * 72 * scale + Math.min(cx * cy * (-16 - recession), cx * cy * (18 - recession));
-      const lift = Math.max(0, -34 - lowest);
-      rig.style.setProperty("--lift", `${lift.toFixed(3)}px`);
+      rig.style.setProperty("--lift", `${scene.lift.toFixed(3)}px`);
       gl.uniform2f(uniforms.viewport, width, height);
+      gl.uniform2f(uniforms.origin, scene.originX, scene.originY);
       gl.uniform1f(uniforms.copper, Math.max(0, Math.min(1, state.copper)));
       gl.uniform1f(uniforms.flash, state.flash || 0);
       gl.uniform1f(uniforms.response, state.response || 0);
       gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
       gl.uniform3f(uniforms.responseColor, ...state.responseColor || [0.38, 0.84, 0.8]);
-      const centerX = state.x - sy * recession, centerY = state.y + sx * cy * recession;
-      const centerZ = lift - cx * cy * recession, clearance = 42 + centerZ;
-      const projection = clearance / (500 - centerZ);
       gl.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
       gl.uniform3f(uniforms.translation, 0, 0, 0);
       gl.uniform1f(uniforms.scale, 1);
       gl.uniform1f(uniforms.shadow, 1);
       gl.uniform1f(uniforms.recession, 0);
-      gl.uniform2f(
-        uniforms.shadowCenter,
-        centerX + (centerX + 280) * projection,
-        centerY + (centerY + 350) * projection
-      );
-      gl.uniform2f(
-        uniforms.shadowSize,
-        126 * scale * (1 - Math.abs(sy) * 0.15),
-        70 * scale * (1 - Math.abs(sx) * 0.15)
-      );
-      gl.uniform1f(uniforms.shadowBlur, 8 + clearance * 0.18);
+      gl.uniform2f(uniforms.shadowCenter, scene.shadow.x, scene.shadow.y);
+      gl.uniform2f(uniforms.shadowSize, scene.shadow.halfWidth, scene.shadow.halfHeight);
+      gl.uniform1f(uniforms.shadowBlur, scene.shadow.blur);
       gl.enable(gl.BLEND);
       gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.depthMask(false);
       gl.drawArrays(gl.TRIANGLES, solidCount, 6);
       gl.depthMask(true);
       gl.disable(gl.BLEND);
-      gl.uniformMatrix3fv(uniforms.rotation, false, [
-        cy,
-        sx * sy,
-        -cx * sy,
-        0,
-        cx,
-        sx,
-        sy,
-        -sx * cy,
-        cx * cy
-      ]);
-      gl.uniform3f(uniforms.translation, state.x, state.y, lift);
-      gl.uniform1f(uniforms.recession, recession);
-      gl.uniform1f(uniforms.scale, scale);
+      gl.uniformMatrix3fv(uniforms.rotation, false, scene.rotation);
+      gl.uniform3f(uniforms.translation, state.x, state.y, scene.lift);
+      gl.uniform1f(uniforms.recession, scene.recession);
+      gl.uniform1f(uniforms.scale, scene.scale);
       gl.uniform1f(uniforms.shadow, 0);
       gl.drawArrays(gl.TRIANGLES, 0, solidCount);
       stage.classList.add("is-rendered");
@@ -692,6 +744,7 @@
       };
       image.src = source;
     }
+    window.addEventListener("scroll", () => draw(), { passive: true });
     const renderer = { draw };
     draw();
     return renderer;
@@ -729,14 +782,10 @@
       let moving = false;
       for (const key of keys) {
         const coasting = time < coastUntil && (key === "x" || key === "y");
-        velocity[key] = (velocity[key] + (target[key] - current[key]) * (coasting ? 0.045 : 0.16) * dt) * Math.pow(coasting ? 0.88 : 0.64, dt);
+        const from = key === "x" ? coastFromX : coastFromY;
+        const springTarget = coasting ? target[key] + (from - target[key]) * Math.max(0, (coastUntil - time) / 80) : target[key];
+        velocity[key] = (velocity[key] + (springTarget - current[key]) * (coasting ? 0.045 : 0.16) * dt) * Math.pow(coasting ? 0.88 : 0.64, dt);
         current[key] += velocity[key] * dt;
-        if (coasting) {
-          const bound = key === "x" ? coastX : coastY;
-          const bounded = clamp(current[key], -bound, bound);
-          if (bounded !== current[key]) velocity[key] = 0;
-          current[key] = bounded;
-        }
         if (Math.abs(target[key] - current[key]) > 2e-3 || Math.abs(velocity[key]) > 2e-3)
           moving = true;
         else {
@@ -804,18 +853,8 @@
       target.y = y * 4;
       if (pointers.size) {
         const points = [...pointers.values()];
-        const pullX = Math.min(84, Math.max(20, (rect.width - button.offsetWidth) / 2 - 12));
-        const pullY = Math.min(64, Math.max(24, (rect.height - button.offsetHeight) / 2 - 12));
-        target.x += clamp(
-          points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length * 0.65,
-          -pullX,
-          pullX
-        );
-        target.y += clamp(
-          points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length * 0.65,
-          -pullY,
-          pullY
-        );
+        target.x += points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length * 0.95;
+        target.y += points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length * 0.95;
       }
       animate2();
     }, release2 = function(cancelled = false) {
@@ -931,13 +970,14 @@
       if (!cancelled && inside && !button.disabled) activateRelease2(event);
       if (!pointers.size && !cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
         coastUntil = performance.now() + 80;
-        const rect2 = stage.getBoundingClientRect();
-        coastX = Math.min(110, Math.max(24, (rect2.width - button.offsetWidth) / 2 - 8));
-        coastY = Math.min(90, Math.max(28, (rect2.height - button.offsetHeight) / 2 - 8));
+        coastFromX = current.x;
+        coastFromY = current.y;
         velocity.x = clamp(point.vx * 10, -14, 14);
         velocity.y = clamp(point.vy * 10, -14, 14);
       }
-      if (!pointers.size && !cancelled && event.pointerType === "mouse") aim2(event);
+      const stageRect = stage.getBoundingClientRect();
+      const overStage = event.clientX >= stageRect.left && event.clientX <= stageRect.left + stageRect.width && event.clientY >= stageRect.top && event.clientY <= stageRect.top + stageRect.height;
+      if (!pointers.size && !cancelled && event.pointerType === "mouse" && overStage) aim2(event);
       else if (!pointers.size) {
         for (const key of ["x", "y", "rx", "ry"]) target[key] = 0;
         animate2();
@@ -972,7 +1012,7 @@
     let setupFrame = 0, frame = 0, lastFrame = 0;
     const pointers = /* @__PURE__ */ new Map();
     let coastUntil = 0;
-    let coastX = 24, coastY = 28;
+    let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
     let activatingRelease = false;
     let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = 70, holdTimer = 0, phase = "idle";
@@ -994,7 +1034,7 @@
       } else if (!pointers.size && activeKey === null && event.pointerType === "mouse") aim2(event);
     });
     stage.addEventListener("pointerleave", () => {
-      if (!pointers.size && activeKey === null) reset2(false);
+      if (!pointers.size && activeKey === null && performance.now() >= coastUntil) reset2(false);
     });
     button.addEventListener("pointerdown", (event) => {
       if (button.disabled || event.button !== 0 || activeKey !== null || pointers.has(event.pointerId))

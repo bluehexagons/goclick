@@ -49,6 +49,7 @@ function renderer(failure) {
   const canvas = {
     clientWidth: 400,
     clientHeight: 280,
+    style: {},
     getContext: () => (failure === "context" ? null : gl),
     addEventListener: (name, callback) => events.set(name, callback),
   };
@@ -56,14 +57,14 @@ function renderer(failure) {
     clientWidth: 400,
     clientHeight: 280,
     style,
-    getBoundingClientRect: () => ({ left: 100, right: 500 }),
+    getBoundingClientRect: () => ({ left: 100, top: 100, width: 400, height: 280 }),
     querySelector: (selector) => (selector === ".button-scene" ? canvas : { style }),
     classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name) },
   };
   const button = { offsetWidth: 260, querySelector: () => ({ textContent: "Click!" }) };
   const runtime = frontend({
     document: {
-      documentElement: { clientWidth: 800 },
+      documentElement: { clientWidth: 800, clientHeight: 700 },
       createElement: () => ({
         getContext: () => ({
           fillText() {},
@@ -75,7 +76,7 @@ function renderer(failure) {
         }),
       }),
     },
-    window: { devicePixelRatio: 1 },
+    window: { devicePixelRatio: 1, addEventListener() {} },
     Image: class {
       constructor() {
         images.push(this);

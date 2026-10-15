@@ -26,6 +26,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: clip;
   min-height: 100vh;
   background: radial-gradient(ellipse at 50% 0, #202a39, #111722 70%);
   -webkit-user-select: none;
@@ -527,9 +528,10 @@ input:focus {
 }
 .button-scene {
   position: absolute;
-  inset: -40px calc(-1 * var(--canvas-gutter, 0px));
-  width: calc(100% + 2 * var(--canvas-gutter, 0px));
-  height: calc(100% + 80px);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   visibility: hidden;
 }

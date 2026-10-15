@@ -1,3 +1,4 @@
+import { projectButtonScene } from "./button-geometry.js";
 import { required } from "./dom.js";
 import type { ButtonState, Renderer } from "./types.js";
 
@@ -27,25 +28,37 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     uniform vec2 viewport;
     uniform float scale;
     uniform float recession;
+    uniform mediump float shadow;
+    uniform vec2 origin;
     varying vec3 worldPosition;
     varying vec3 worldNormal;
     varying vec2 texCoord;
     varying float frontFace;
     void main() {
+      if (shadow > .5) {
+        // Full drawing-surface quad, reconstructed on the background plane.
+        // Its bounds follow the projected shadow rather than a fixed world box.
+        worldPosition = vec3((position.xy * viewport * .5 - origin) * (892. / 850.), -42.);
+        worldNormal = vec3(0., 0., 1.);
+        texCoord = uv;
+        frontFace = 0.;
+        gl_Position = vec4(position.x, -position.y, 0., 1.);
+        return;
+      }
       worldPosition = rotation * vec3(position.xy * scale, position.z - recession)
         + translation;
       worldNormal = rotation * normalize(vec3(normal.xy / scale, normal.z));
       texCoord = uv;
       frontFace = face;
       float distance = 850. - worldPosition.z;
-      gl_Position = vec4(worldPosition.x * 1700. / viewport.x,
-        -worldPosition.y * 1700. / viewport.y,
+      gl_Position = vec4((worldPosition.x * 1700. + origin.x * 2. * distance) / viewport.x,
+        -(worldPosition.y * 1700. + origin.y * 2. * distance) / viewport.y,
         1.0010005 * distance - 2.0010005, distance);
     }`;
   const fragmentSource = `
     precision mediump float;
     uniform sampler2D surfaceAtlas;
-    uniform float shadow;
+    uniform mediump float shadow;
     uniform vec2 shadowCenter;
     uniform vec2 shadowSize;
     uniform float shadowBlur;
@@ -122,6 +135,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     "rotation",
     "translation",
     "viewport",
+    "origin",
     "scale",
     "recession",
     "shadow",
@@ -202,12 +216,12 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
   }
   const solidCount = vertices.length / 9;
   for (const point of [
-    [-230, -180, -42],
-    [230, -180, -42],
-    [230, 180, -42],
-    [-230, -180, -42],
-    [230, 180, -42],
-    [-230, 180, -42],
+    [-1, -1, 0],
+    [1, -1, 0],
+    [1, 1, 0],
+    [-1, -1, 0],
+    [1, 1, 0],
+    [-1, 1, 0],
   ]) {
     vertex(point, [0, 0, 1]);
   }
@@ -317,13 +331,16 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     if (lost) return;
     if (!stage.clientWidth || !stage.clientHeight) return;
     const bounds = stage.getBoundingClientRect();
-    const gutter = Math.max(
-      0,
-      Math.min(40, bounds.left, document.documentElement.clientWidth - bounds.right),
-    );
-    stage.style.setProperty("--canvas-gutter", `${gutter.toFixed(3)}px`);
-    const width = canvas.clientWidth,
-      height = canvas.clientHeight;
+    const scene = projectButtonScene(state, button.offsetWidth, bounds, {
+      width: document.documentElement.clientWidth,
+      height: document.documentElement.clientHeight,
+    });
+    canvas.style.left = `${scene.frame.left - bounds.left}px`;
+    canvas.style.top = `${scene.frame.top - bounds.top}px`;
+    canvas.style.width = `${scene.frame.width}px`;
+    canvas.style.height = `${scene.frame.height}px`;
+    const width = scene.frame.width,
+      height = scene.frame.height;
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
     const pixelWidth = Math.round(width * pixelRatio),
       pixelHeight = Math.round(height * pixelRatio);
@@ -333,53 +350,22 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     }
     gl.viewport(0, 0, pixelWidth, pixelHeight);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    const scale =
-        (button.offsetWidth / 260) * (1 + Math.max(-0.065, Math.min(0.1, state.pop || 0))),
-      press = Math.max(-0.22, Math.min(1, state.press));
-    const rx = (state.rx * Math.PI) / 180,
-      ry = (state.ry * Math.PI) / 180;
-    const cx = Math.cos(rx),
-      sx = Math.sin(rx),
-      cy = Math.cos(ry),
-      sy = Math.sin(ry);
-    const recession = press * 24;
-    // Keep the entire solid above the background, including its rear corners
-    // at maximum tilt and full press. Bound the rotated box, not just its center.
-    const lowest =
-      -Math.abs(cx * sy) * 130 * scale -
-      Math.abs(sx) * 72 * scale +
-      Math.min(cx * cy * (-16 - recession), cx * cy * (18 - recession));
-    const lift = Math.max(0, -34 - lowest); // Eight pixels above the z=-42 plane.
-    rig.style.setProperty("--lift", `${lift.toFixed(3)}px`);
+    rig.style.setProperty("--lift", `${scene.lift.toFixed(3)}px`);
     gl.uniform2f(uniforms.viewport, width, height);
+    gl.uniform2f(uniforms.origin, scene.originX, scene.originY);
     gl.uniform1f(uniforms.copper, Math.max(0, Math.min(1, state.copper)));
     gl.uniform1f(uniforms.flash, state.flash || 0);
     gl.uniform1f(uniforms.response, state.response || 0);
     gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
     gl.uniform3f(uniforms.responseColor, ...(state.responseColor || [0.38, 0.84, 0.8]));
-    // One soft shadow on the background plane. It approaches the solid as
-    // the button is pushed away from the viewer.
-    const centerX = state.x - sy * recession,
-      centerY = state.y + sx * cy * recession;
-    const centerZ = lift - cx * cy * recession,
-      clearance = 42 + centerZ;
-    const projection = clearance / (500 - centerZ);
     gl.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
     gl.uniform3f(uniforms.translation, 0, 0, 0);
     gl.uniform1f(uniforms.scale, 1);
     gl.uniform1f(uniforms.shadow, 1);
     gl.uniform1f(uniforms.recession, 0);
-    gl.uniform2f(
-      uniforms.shadowCenter,
-      centerX + (centerX + 280) * projection,
-      centerY + (centerY + 350) * projection,
-    );
-    gl.uniform2f(
-      uniforms.shadowSize,
-      126 * scale * (1 - Math.abs(sy) * 0.15),
-      70 * scale * (1 - Math.abs(sx) * 0.15),
-    );
-    gl.uniform1f(uniforms.shadowBlur, 8 + clearance * 0.18);
+    gl.uniform2f(uniforms.shadowCenter, scene.shadow.x, scene.shadow.y);
+    gl.uniform2f(uniforms.shadowSize, scene.shadow.halfWidth, scene.shadow.halfHeight);
+    gl.uniform1f(uniforms.shadowBlur, scene.shadow.blur);
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     // A translucent shadow is a background pass, never an occluding surface.
@@ -387,20 +373,10 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     gl.drawArrays(gl.TRIANGLES, solidCount, 6);
     gl.depthMask(true);
     gl.disable(gl.BLEND);
-    gl.uniformMatrix3fv(uniforms.rotation, false, [
-      cy,
-      sx * sy,
-      -cx * sy,
-      0,
-      cx,
-      sx,
-      sy,
-      -sx * cy,
-      cx * cy,
-    ]);
-    gl.uniform3f(uniforms.translation, state.x, state.y, lift);
-    gl.uniform1f(uniforms.recession, recession);
-    gl.uniform1f(uniforms.scale, scale);
+    gl.uniformMatrix3fv(uniforms.rotation, false, scene.rotation);
+    gl.uniform3f(uniforms.translation, state.x, state.y, scene.lift);
+    gl.uniform1f(uniforms.recession, scene.recession);
+    gl.uniform1f(uniforms.scale, scene.scale);
     gl.uniform1f(uniforms.shadow, 0);
     gl.drawArrays(gl.TRIANGLES, 0, solidCount);
     stage.classList.add("is-rendered");
@@ -437,6 +413,8 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     };
     image.src = source;
   }
+  // A scrolled stage has a new screen-space origin even if its pose is idle.
+  window.addEventListener("scroll", () => draw(), { passive: true });
   const renderer = { draw };
   draw();
   return renderer;
