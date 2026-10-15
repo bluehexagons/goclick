@@ -25,6 +25,35 @@
     return error instanceof RequestError ? error : new RequestError(message(error));
   }
   async function request(url, options = {}, binary = false) {
+    const { timeoutMilliseconds = 3e4, signal, ...init } = options;
+    const controller = new AbortController();
+    const abort = () => controller.abort(signal?.reason);
+    if (signal?.aborted) abort();
+    else signal?.addEventListener("abort", abort, { once: true });
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMilliseconds);
+    try {
+      return await readResponse(url, { ...init, signal: controller.signal }, binary);
+    } catch (caught) {
+      if (timedOut) {
+        const cause = requestError(caught);
+        const error = new RequestError("The server took too long to respond. Check your connection.");
+        error.status = cause.status;
+        error.code = cause.code;
+        error.retryAfter = cause.retryAfter;
+        error.uncertain = cause.status < 400 || cause.uncertain;
+        throw error;
+      }
+      throw caught;
+    } finally {
+      window.clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    }
+  }
+  async function readResponse(url, options, binary) {
     let response;
     try {
       response = await fetch(url, { credentials: "same-origin", ...options });
@@ -398,51 +427,60 @@
     context.fillStyle = "#432d0d";
     context.fillText(required(".button-label", button).textContent, 390, 222);
     function initialize() {
+      let vertex2 = null, fragment = null, buffer = null, texture = null;
       try {
         program = gl.createProgram();
-        if (!program) return false;
-        const vertex2 = shader(gl.VERTEX_SHADER, vertexSource), fragment = shader(gl.FRAGMENT_SHADER, fragmentSource);
+        if (!program) throw new Error("Button program allocation failed");
+        vertex2 = shader(gl.VERTEX_SHADER, vertexSource);
+        fragment = shader(gl.FRAGMENT_SHADER, fragmentSource);
         gl.attachShader(program, vertex2);
         gl.attachShader(program, fragment);
         gl.linkProgram(program);
-        gl.deleteShader(vertex2);
-        gl.deleteShader(fragment);
         if (!gl.getProgramParameter(program, gl.LINK_STATUS))
           throw new Error("Button renderer could not link");
+        buffer = gl.createBuffer();
+        if (!buffer) throw new Error("Button buffer allocation failed");
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        gl.useProgram(program);
+        for (const [name, size, offset] of [
+          ["position", 3, 0],
+          ["normal", 3, 3],
+          ["uv", 2, 6],
+          ["face", 1, 8]
+        ]) {
+          const location = gl.getAttribLocation(program, name);
+          if (location < 0) throw new Error("Button attribute unavailable");
+          gl.enableVertexAttribArray(location);
+          gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset * 4);
+        }
+        uniforms = Object.fromEntries(
+          uniformNames.map((name) => [name, gl.getUniformLocation(program, name)])
+        );
+        texture = gl.createTexture();
+        if (!texture) throw new Error("Button texture allocation failed");
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.uniform1i(uniforms.lettering, 0);
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
+        gl.frontFace(gl.CW);
+        gl.clearColor(0, 0, 0, 0);
+        if (gl.getError() !== gl.NO_ERROR) throw new Error("Button graphics setup failed");
+        return true;
       } catch {
         if (program) gl.deleteProgram(program);
+        if (buffer) gl.deleteBuffer(buffer);
+        if (texture) gl.deleteTexture(texture);
         return false;
+      } finally {
+        if (vertex2) gl.deleteShader(vertex2);
+        if (fragment) gl.deleteShader(fragment);
       }
-      const buffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-      gl.useProgram(program);
-      for (const [name, size, offset] of [
-        ["position", 3, 0],
-        ["normal", 3, 3],
-        ["uv", 2, 6],
-        ["face", 1, 8]
-      ]) {
-        const location = gl.getAttribLocation(program, name);
-        gl.enableVertexAttribArray(location);
-        gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset * 4);
-      }
-      uniforms = Object.fromEntries(
-        uniformNames.map((name) => [name, gl.getUniformLocation(program, name)])
-      );
-      const texture = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.uniform1i(uniforms.lettering, 0);
-      gl.enable(gl.DEPTH_TEST);
-      gl.enable(gl.CULL_FACE);
-      gl.frontFace(gl.CW);
-      gl.clearColor(0, 0, 0, 0);
-      return true;
     }
     if (!initialize()) return { draw() {
     } };
@@ -1037,6 +1075,9 @@
   var lastOnlineCounters = null;
   var gameReady = false;
   var pendingClicks = 0;
+  var localSaveReplacing = false;
+  var localRefreshQueued = false;
+  var localAcknowledgement = 0;
   var clickBatchFailed = false;
   var signingOut = false;
   var clickGeneration = 0;
@@ -1143,6 +1184,7 @@
     counterLoadOwner = null;
     counterCard.setAttribute("aria-busy", "false");
     pendingClicks = 0;
+    localRefreshQueued = false;
     updatePendingIndicator();
     clickBatchFailed = false;
     refreshQueued = false;
@@ -1155,8 +1197,8 @@
     updateGameControls();
   }
   function updateGameControls() {
-    clickButton.disabled = !gameReady || offline && !localMode || signingOut || !localMode && pendingClicks >= maxPendingClicks;
-    refreshCounterButton.disabled = offline && !localMode || signingOut || pendingClicks > 0;
+    clickButton.disabled = !gameReady || offline && !localMode || signingOut || localMode && localSaveReplacing || !localMode && pendingClicks >= maxPendingClicks;
+    refreshCounterButton.disabled = offline && !localMode || signingOut || pendingClicks > 0 || localMode && localSaveReplacing;
     refreshCounterButton.setAttribute(
       "aria-disabled",
       String(refreshCounterButton.disabled || !!counterLoad)
@@ -1168,10 +1210,12 @@
     required(".connection-label").textContent = localMode ? "Sim ping" : "Ping";
     document.querySelectorAll("[data-play-local]").forEach((button) => {
       button.hidden = localMode;
-      button.disabled = pendingClicks > 0 || signingOut;
+      button.disabled = pendingClicks > 0 || signingOut || localSaveReplacing;
     });
-    required("#leave-local").disabled = pendingClicks > 0;
-    required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0;
+    required("#leave-local").disabled = pendingClicks > 0 || localSaveReplacing;
+    required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
+    for (const id of ["#restart-local", "#import-local", "#download-local", "#replace-local"])
+      required(id).disabled = localSaveReplacing;
     if (localMode) {
       required("#game-username").textContent = "Offline play";
       required("#game-player-id").textContent = "this browser";
@@ -1517,7 +1561,7 @@
   function updateOptions() {
     required("#motion-setting").value = gameSettings.value.motion;
     required("#simulated-ping").value = String(gameSettings.value.simulatedPing);
-    required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0;
+    required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
     required("#copy-online-note").textContent = lastOnlineCounters ? `Copy the last loaded account progress for ${user?.username ?? "your account"}. This only replaces the local save.` : "Open your account counter first to make a copy. Copying only replaces the local save.";
     try {
       const data = localGame.read();
@@ -1576,7 +1620,7 @@
     }
   }
   function startLocalGame() {
-    if (pendingClicks > 0 || signingOut) return;
+    if (pendingClicks > 0 || signingOut || localSaveReplacing) return;
     try {
       const data = localGame.read();
       gameSettings.setMode("local");
@@ -1597,7 +1641,7 @@
   }
   document.querySelectorAll("[data-play-local]").forEach((button) => button.addEventListener("click", startLocalGame));
   required("#leave-local").addEventListener("click", () => {
-    if (pendingClicks > 0) return;
+    if (pendingClicks > 0 || localSaveReplacing) return;
     try {
       gameSettings.setMode("online");
     } catch {
@@ -1614,8 +1658,8 @@
     boot();
   });
   async function clickLocal(event) {
-    if (!gameReady) return;
-    const feedback = clickFeedback.start(clickButton, event, true), generation = clickGeneration;
+    if (!gameReady || localSaveReplacing) return;
+    const feedback = clickFeedback.start(clickButton, event, true), generation = clickGeneration, acknowledgement = ++localAcknowledgement;
     const base = gameSettings.value.simulatedPing;
     const simulated = Math.round(base * (0.7 + Math.random() * 0.6));
     pendingClicks++;
@@ -1629,7 +1673,7 @@
       window.setTimeout(() => {
         if (generation !== clickGeneration) return;
         feedback.success(simulated);
-        setConnection(simulated);
+        if (acknowledgement === localAcknowledgement) setConnection(simulated);
       }, simulated);
     } catch (caught) {
       const error = requestError(caught);
@@ -1645,10 +1689,12 @@
       if (generation === clickGeneration) {
         pendingClicks--;
         updateGameControls();
+        if (pendingClicks === 0 && localRefreshQueued) synchronizeLocalSave();
       }
     }
   }
   async function replaceLocalSave(operation, message2) {
+    if (localSaveReplacing) return;
     if (!required("#replace-local").checked) {
       optionsNotice("Check \u201CAllow replacing my local save\u201D first.", true);
       return;
@@ -1657,18 +1703,25 @@
       optionsNotice("Wait for pending clicks to finish, then try again.", true);
       return;
     }
+    localSaveReplacing = true;
+    required("#replace-local").checked = false;
+    updateGameControls();
+    optionsNotice("Replacing the local save\u2026");
     try {
-      const data = await localGame.change(operation);
-      required("#replace-local").checked = false;
+      await localGame.change(operation);
       if (localMode) {
         resetClickState();
-        openLocalGame(data);
+        openLocalGame();
       }
       updateOptions();
       optionsNotice(message2);
     } catch (caught) {
       const error = requestError(caught);
       optionsNotice(`Local save was not replaced. ${error.message}`, true);
+    } finally {
+      localSaveReplacing = false;
+      updateGameControls();
+      if (localRefreshQueued) synchronizeLocalSave();
     }
   }
   required("#restart-local").addEventListener(
@@ -1693,8 +1746,10 @@
       return;
     }
     try {
-      const data = localGame.decode(await file.text());
-      await replaceLocalSave(() => localGame.replace(data), "Local save imported.");
+      await replaceLocalSave(
+        async () => localGame.replace(localGame.decode(await file.text())),
+        "Local save imported."
+      );
     } catch (caught) {
       const error = requestError(caught);
       optionsNotice(`Couldn\u2019t import this local save. ${error.message}`, true);
@@ -1717,8 +1772,17 @@
       optionsNotice(`Couldn\u2019t download the local save. ${error.message}`, true);
     }
   });
+  function synchronizeLocalSave() {
+    if (!localMode) return;
+    if (pendingClicks > 0 || localSaveReplacing) {
+      localRefreshQueued = true;
+      return;
+    }
+    resetClickState();
+    openLocalGame();
+  }
   window.addEventListener("storage", (event) => {
-    if (event.key === localGame.key && localMode && pendingClicks === 0) openLocalGame();
+    if (event.key === localGame.key || event.key === null) synchronizeLocalSave();
   });
   boot();
 })();

@@ -38,6 +38,9 @@ let localMode = gameSettings.mode() === "local";
 let lastOnlineCounters: Counters | null = null;
 let gameReady = false;
 let pendingClicks = 0;
+let localSaveReplacing = false;
+let localRefreshQueued = false;
+let localAcknowledgement = 0;
 let clickBatchFailed = false;
 let signingOut = false;
 let clickGeneration = 0;
@@ -164,6 +167,7 @@ function resetClickState() {
   counterLoadOwner = null;
   counterCard.setAttribute("aria-busy", "false");
   pendingClicks = 0;
+  localRefreshQueued = false;
   updatePendingIndicator();
   clickBatchFailed = false;
   refreshQueued = false;
@@ -181,10 +185,12 @@ function updateGameControls() {
     !gameReady ||
     (offline && !localMode) ||
     signingOut ||
+    (localMode && localSaveReplacing) ||
     (!localMode && pendingClicks >= maxPendingClicks);
   // Keep a focused refresh control in the tab order while its read is in flight.
   // Repeated activations share counterLoad instead of starting another request.
-  refreshCounterButton.disabled = (offline && !localMode) || signingOut || pendingClicks > 0;
+  refreshCounterButton.disabled =
+    (offline && !localMode) || signingOut || pendingClicks > 0 || (localMode && localSaveReplacing);
   refreshCounterButton.setAttribute(
     "aria-disabled",
     String(refreshCounterButton.disabled || !!counterLoad),
@@ -196,10 +202,13 @@ function updateGameControls() {
   $(".connection-label").textContent = localMode ? "Sim ping" : "Ping";
   document.querySelectorAll<HTMLButtonElement>("[data-play-local]").forEach((button) => {
     button.hidden = localMode;
-    button.disabled = pendingClicks > 0 || signingOut;
+    button.disabled = pendingClicks > 0 || signingOut || localSaveReplacing;
   });
-  $<HTMLButtonElement>("#leave-local").disabled = pendingClicks > 0;
-  $<HTMLButtonElement>("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0;
+  $<HTMLButtonElement>("#leave-local").disabled = pendingClicks > 0 || localSaveReplacing;
+  $<HTMLButtonElement>("#copy-online-local").disabled =
+    !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
+  for (const id of ["#restart-local", "#import-local", "#download-local", "#replace-local"])
+    $<HTMLButtonElement | HTMLInputElement>(id).disabled = localSaveReplacing;
   if (localMode) {
     $("#game-username").textContent = "Offline play";
     $("#game-player-id").textContent = "this browser";
@@ -587,7 +596,8 @@ function optionsNotice(message: string, error = false) {
 function updateOptions() {
   $<HTMLSelectElement>("#motion-setting").value = gameSettings.value.motion;
   $<HTMLSelectElement>("#simulated-ping").value = String(gameSettings.value.simulatedPing);
-  $<HTMLButtonElement>("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0;
+  $<HTMLButtonElement>("#copy-online-local").disabled =
+    !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
   $("#copy-online-note").textContent = lastOnlineCounters
     ? `Copy the last loaded account progress for ${user?.username ?? "your account"}. This only replaces the local save.`
     : "Open your account counter first to make a copy. Copying only replaces the local save.";
@@ -649,7 +659,7 @@ function openLocalGame(data?: Counters) {
   }
 }
 function startLocalGame() {
-  if (pendingClicks > 0 || signingOut) return;
+  if (pendingClicks > 0 || signingOut || localSaveReplacing) return;
   try {
     const data = localGame.read();
     gameSettings.setMode("local");
@@ -672,7 +682,7 @@ document
   .querySelectorAll<HTMLButtonElement>("[data-play-local]")
   .forEach((button) => button.addEventListener("click", startLocalGame));
 $<HTMLButtonElement>("#leave-local").addEventListener("click", () => {
-  if (pendingClicks > 0) return;
+  if (pendingClicks > 0 || localSaveReplacing) return;
   try {
     gameSettings.setMode("online");
   } catch {
@@ -689,9 +699,10 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", () => {
   boot();
 });
 async function clickLocal(event: Activation) {
-  if (!gameReady) return;
+  if (!gameReady || localSaveReplacing) return;
   const feedback = clickFeedback.start(clickButton, event, true),
-    generation = clickGeneration;
+    generation = clickGeneration,
+    acknowledgement = ++localAcknowledgement;
   const base = gameSettings.value.simulatedPing;
   const simulated = Math.round(base * (0.7 + Math.random() * 0.6));
   pendingClicks++;
@@ -706,7 +717,7 @@ async function clickLocal(event: Activation) {
     window.setTimeout(() => {
       if (generation !== clickGeneration) return;
       feedback.success(simulated);
-      setConnection(simulated);
+      if (acknowledgement === localAcknowledgement) setConnection(simulated);
     }, simulated);
   } catch (caught) {
     const error = requestError(caught);
@@ -722,10 +733,12 @@ async function clickLocal(event: Activation) {
     if (generation === clickGeneration) {
       pendingClicks--;
       updateGameControls();
+      if (pendingClicks === 0 && localRefreshQueued) synchronizeLocalSave();
     }
   }
 }
 async function replaceLocalSave(operation: () => Counters | Promise<Counters>, message: string) {
+  if (localSaveReplacing) return;
   if (!$<HTMLInputElement>("#replace-local").checked) {
     optionsNotice("Check “Allow replacing my local save” first.", true);
     return;
@@ -734,18 +747,25 @@ async function replaceLocalSave(operation: () => Counters | Promise<Counters>, m
     optionsNotice("Wait for pending clicks to finish, then try again.", true);
     return;
   }
+  localSaveReplacing = true;
+  $<HTMLInputElement>("#replace-local").checked = false;
+  updateGameControls();
+  optionsNotice("Replacing the local save…");
   try {
-    const data = await localGame.change(operation);
-    $<HTMLInputElement>("#replace-local").checked = false;
+    await localGame.change(operation);
     if (localMode) {
       resetClickState();
-      openLocalGame(data);
+      openLocalGame();
     }
     updateOptions();
     optionsNotice(message);
   } catch (caught) {
     const error = requestError(caught);
     optionsNotice(`Local save was not replaced. ${error.message}`, true);
+  } finally {
+    localSaveReplacing = false;
+    updateGameControls();
+    if (localRefreshQueued) synchronizeLocalSave();
   }
 }
 $<HTMLButtonElement>("#restart-local").addEventListener("click", () =>
@@ -769,8 +789,10 @@ $<HTMLInputElement>("#import-local").addEventListener("change", async (event) =>
     return;
   }
   try {
-    const data = localGame.decode(await file.text());
-    await replaceLocalSave(() => localGame.replace(data), "Local save imported.");
+    await replaceLocalSave(
+      async () => localGame.replace(localGame.decode(await file.text())),
+      "Local save imported.",
+    );
   } catch (caught) {
     const error = requestError(caught);
     optionsNotice(`Couldn’t import this local save. ${error.message}`, true);
@@ -793,8 +815,17 @@ $<HTMLButtonElement>("#download-local").addEventListener("click", async () => {
     optionsNotice(`Couldn’t download the local save. ${error.message}`, true);
   }
 });
+function synchronizeLocalSave() {
+  if (!localMode) return;
+  if (pendingClicks > 0 || localSaveReplacing) {
+    localRefreshQueued = true;
+    return;
+  }
+  resetClickState();
+  openLocalGame();
+}
 window.addEventListener("storage", (event) => {
-  if (event.key === localGame.key && localMode && pendingClicks === 0) openLocalGame();
+  if (event.key === localGame.key || event.key === null) synchronizeLocalSave();
 });
 
 boot();

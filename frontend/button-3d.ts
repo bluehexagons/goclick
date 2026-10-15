@@ -201,54 +201,65 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
   context.fillStyle = "#432d0d";
   context.fillText(required(".button-label", button).textContent, 390, 222);
   function initialize() {
+    let vertex: WebGLShader | null = null,
+      fragment: WebGLShader | null = null,
+      buffer: WebGLBuffer | null = null,
+      texture: WebGLTexture | null = null;
     try {
       program = gl.createProgram();
-      if (!program) return false;
-      const vertex = shader(gl.VERTEX_SHADER, vertexSource),
-        fragment = shader(gl.FRAGMENT_SHADER, fragmentSource);
+      if (!program) throw new Error("Button program allocation failed");
+      vertex = shader(gl.VERTEX_SHADER, vertexSource);
+      fragment = shader(gl.FRAGMENT_SHADER, fragmentSource);
       gl.attachShader(program, vertex);
       gl.attachShader(program, fragment);
       gl.linkProgram(program);
-      gl.deleteShader(vertex);
-      gl.deleteShader(fragment);
       if (!gl.getProgramParameter(program, gl.LINK_STATUS))
         throw new Error("Button renderer could not link");
+
+      buffer = gl.createBuffer();
+      if (!buffer) throw new Error("Button buffer allocation failed");
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+      gl.useProgram(program);
+      for (const [name, size, offset] of [
+        ["position", 3, 0],
+        ["normal", 3, 3],
+        ["uv", 2, 6],
+        ["face", 1, 8],
+      ] as const) {
+        const location = gl.getAttribLocation(program, name);
+        if (location < 0) throw new Error("Button attribute unavailable");
+        gl.enableVertexAttribArray(location);
+        gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset * 4);
+      }
+      uniforms = Object.fromEntries(
+        uniformNames.map((name) => [name, gl.getUniformLocation(program!, name)]),
+      ) as typeof uniforms;
+      texture = gl.createTexture();
+      if (!texture) throw new Error("Button texture allocation failed");
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.uniform1i(uniforms.lettering, 0);
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      gl.frontFace(gl.CW);
+      gl.clearColor(0, 0, 0, 0);
+
+      if (gl.getError() !== gl.NO_ERROR) throw new Error("Button graphics setup failed");
+      return true;
     } catch {
       if (program) gl.deleteProgram(program);
+      if (buffer) gl.deleteBuffer(buffer);
+      if (texture) gl.deleteTexture(texture);
       return false;
+    } finally {
+      if (vertex) gl.deleteShader(vertex);
+      if (fragment) gl.deleteShader(fragment);
     }
-
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    gl.useProgram(program);
-    for (const [name, size, offset] of [
-      ["position", 3, 0],
-      ["normal", 3, 3],
-      ["uv", 2, 6],
-      ["face", 1, 8],
-    ] as const) {
-      const location = gl.getAttribLocation(program, name);
-      gl.enableVertexAttribArray(location);
-      gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset * 4);
-    }
-    uniforms = Object.fromEntries(
-      uniformNames.map((name) => [name, gl.getUniformLocation(program!, name)]),
-    ) as typeof uniforms;
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.uniform1i(uniforms.lettering, 0);
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
-    gl.frontFace(gl.CW);
-    gl.clearColor(0, 0, 0, 0);
-
-    return true;
   }
   if (!initialize()) return { draw() {} };
 

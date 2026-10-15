@@ -85,12 +85,17 @@ async function harness(options = {}) {
     querySelector: element,
     querySelectorAll: () => [],
   });
+  const timers = new Map();
+  let timerID = 0;
   const window = Object.assign(new Element(), {
     matchMedia: () => ({ matches: true, addEventListener() {} }),
     scrollTo() {},
-    clearTimeout() {},
-    setTimeout() {
-      return 1;
+    clearTimeout(id) {
+      timers.delete(id);
+    },
+    setTimeout(callback) {
+      timers.set(++timerID, callback);
+      return timerID;
     },
   });
   let handler = async (url) => response(url === "/api/me" ? player : counters(10));
@@ -102,6 +107,7 @@ async function harness(options = {}) {
   const globals = {
     console,
     Headers,
+    AbortController,
     FormData: class {
       get() {
         return "password";
@@ -112,7 +118,7 @@ async function harness(options = {}) {
     },
     document,
     window,
-    navigator: { onLine: true },
+    navigator: { onLine: true, locks: options.locks },
     performance: { now: () => now },
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
@@ -166,6 +172,13 @@ async function harness(options = {}) {
     startupRequests,
     storage,
     feedback,
+    runTimers() {
+      while (timers.size) {
+        const [id, callback] = timers.entries().next().value;
+        timers.delete(id);
+        callback();
+      }
+    },
     failStorage: () => {
       failStorage = true;
     },
@@ -475,3 +488,105 @@ for (const kind of ["login", "signup"]) {
     assert.equal(h.requests.length, 1);
   });
 }
+
+test("a queued local replacement pauses play, mode changes, and duplicate replacements", async () => {
+  const gate = deferred();
+  let operations = 0;
+  const h = await harness({
+    storage: [["goclick.mode", "local"]],
+    locks: {
+      request: async (_key, operation) => {
+        operations++;
+        await gate.promise;
+        return operation();
+      },
+    },
+  });
+  h.element("#replace-local").checked = true;
+  const replacing = h.element("#restart-local").fire("click");
+  assert.equal(h.element("#click-button").disabled, true);
+  assert.equal(h.element("#leave-local").disabled, true);
+  assert.equal(h.element("#import-local").disabled, true);
+  await h.element("#click-button").fire("click");
+  h.element("#leave-local").fire("click");
+  await h.element("#restart-local").fire("click");
+  assert.equal(operations, 1);
+  assert.equal(h.storage.get("goclick.mode"), "local");
+  assert.deepEqual(h.requests, []);
+  gate.resolve();
+  await replacing;
+  assert.equal(h.element("#click-button").disabled, false);
+  assert.equal(h.element("#leave-local").disabled, false);
+  assert.equal(h.element("#import-local").disabled, false);
+  assert.equal(h.element("#replace-local").checked, false);
+});
+
+test("a failed local replacement releases the controls without erasing the saved slot", async () => {
+  const h = await harness({ storage: [["goclick.mode", "local"]] });
+  await h.element("#click-button").fire("click");
+  const saved = h.storage.get("goclick.local.v1");
+  h.failStorage();
+  h.element("#replace-local").checked = true;
+  await h.element("#restart-local").fire("click");
+  assert.equal(h.storage.get("goclick.local.v1"), saved);
+  assert.equal(h.element("#click-button").disabled, false);
+  assert.match(h.element("#options-status").textContent, /was not replaced/);
+});
+
+test("an older simulated response cannot hide a more recent local save failure", async () => {
+  const h = await harness({ storage: [["goclick.mode", "local"]] });
+  await h.element("#click-button").fire("click");
+  h.failStorage();
+  await h.element("#click-button").fire("click");
+  h.runTimers();
+  assert.equal(h.element("#connection").classList.contains("is-error"), true);
+  assert.match(h.element("#game-error").textContent, /wasn’t saved/);
+  assert.equal(h.feedback[0].failed, undefined);
+  assert.equal(h.feedback[1].failed, true);
+});
+
+test("external local-save changes received during a write are reconciled after it finishes", async () => {
+  const gate = deferred();
+  const h = await harness({
+    storage: [["goclick.mode", "local"]],
+    locks: {
+      request: async (_key, operation) => {
+        const saved = operation();
+        await gate.promise;
+        return saved;
+      },
+    },
+  });
+  const click = h.element("#click-button").fire("click");
+  const external = JSON.parse(h.storage.get("goclick.local.v1"));
+  external.counters.click_count.count = 42;
+  h.storage.set("goclick.local.v1", JSON.stringify(external));
+  h.window.fire("storage", { key: "goclick.local.v1" });
+  gate.resolve();
+  await click;
+  assert.equal(h.element("#click-count").textContent, "42");
+  h.storage.delete("goclick.local.v1");
+  h.window.fire("storage", { key: null });
+  assert.equal(h.element("#click-count").textContent, "0");
+  assert.deepEqual(h.requests, []);
+});
+
+test("a timed-out click releases pending controls without replaying an uncertain save", async () => {
+  const h = await harness();
+  h.fetch(
+    (_url, options) =>
+      new Promise((_resolve, reject) =>
+        options.signal.addEventListener("abort", () => reject(new Error("Aborted"))),
+      ),
+  );
+  const click = h.element("#click-button").fire("click");
+  assert.equal(h.element("#refresh-counter").disabled, true);
+  h.runTimers();
+  await click;
+  assert.equal(h.element("#refresh-counter").disabled, false);
+  assert.equal(h.element("#click-button").disabled, false);
+  assert.equal(h.element("#retry-game-button").hidden, false);
+  assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*took too long/);
+  assert.equal(h.feedback[0].uncertain, true);
+  assert.equal(h.requests.length, 1);
+});

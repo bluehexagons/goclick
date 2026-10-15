@@ -11,12 +11,52 @@ export function requestError(error: unknown): RequestError {
   return error instanceof RequestError ? error : new RequestError(message(error));
 }
 
-export function request<T>(url: string, options?: RequestInit, binary?: false): Promise<T>;
-export function request(url: string, options: RequestInit, binary: true): Promise<Blob>;
+export interface RequestOptions extends RequestInit {
+  timeoutMilliseconds?: number;
+}
+
+export function request<T>(url: string, options?: RequestOptions, binary?: false): Promise<T>;
+export function request(url: string, options: RequestOptions, binary: true): Promise<Blob>;
 export async function request<T>(
   url: string,
-  options: RequestInit = {},
+  options: RequestOptions = {},
   binary = false,
+): Promise<T | Blob> {
+  const { timeoutMilliseconds = 30000, signal, ...init } = options;
+  const controller = new AbortController();
+  const abort = () => controller.abort(signal?.reason);
+  if (signal?.aborted) abort();
+  else signal?.addEventListener("abort", abort, { once: true });
+  let timedOut = false;
+  const timer = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMilliseconds);
+  try {
+    return await readResponse<T>(url, { ...init, signal: controller.signal }, binary);
+  } catch (caught) {
+    if (timedOut) {
+      const cause = requestError(caught);
+      const error = new RequestError("The server took too long to respond. Check your connection.");
+      error.status = cause.status;
+      error.code = cause.code;
+      error.retryAfter = cause.retryAfter;
+      // Preserve a known rejection even if its body stalled. Without response
+      // headers, a timed-out write may have committed; never replay it here.
+      error.uncertain = cause.status < 400 || cause.uncertain;
+      throw error;
+    }
+    throw caught;
+  } finally {
+    window.clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}
+
+async function readResponse<T>(
+  url: string,
+  options: RequestInit,
+  binary: boolean,
 ): Promise<T | Blob> {
   let response: Response;
   try {

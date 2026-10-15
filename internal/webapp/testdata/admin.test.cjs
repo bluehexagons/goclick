@@ -93,7 +93,7 @@ function harness(fetch) {
       createElement: () => new Element(),
       body: new Element(),
     },
-    window: { setTimeout() {} },
+    window: { setTimeout() {}, clearTimeout() {} },
     fetch: (url, options) => (url === "/api/me" ? new Promise(() => {}) : fetch(url, options)),
   });
   return { context: runtime.load("admin"), element };

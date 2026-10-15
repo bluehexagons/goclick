@@ -1,4 +1,5 @@
 import { request as sendRequest, requestError, jsonOptions } from "./http.js";
+import type { RequestOptions } from "./http.js";
 import { required as $ } from "./dom.js";
 import type {
   User,
@@ -77,11 +78,11 @@ function denyAccess() {
   $("#access-error").hidden = false;
   $<HTMLDialogElement>("#player-dialog").close();
 }
-function request<T>(url: string, options?: RequestInit, binary?: false): Promise<T>;
-function request(url: string, options: RequestInit, binary: true): Promise<Blob>;
+function request<T>(url: string, options?: RequestOptions, binary?: false): Promise<T>;
+function request(url: string, options: RequestOptions, binary: true): Promise<Blob>;
 async function request<T>(
   url: string,
-  options: RequestInit = {},
+  options: RequestOptions = {},
   binary = false,
 ): Promise<T | Blob> {
   try {
@@ -487,7 +488,14 @@ $<HTMLFormElement>("#export-form").addEventListener("submit", async (event) => {
   const password = $<HTMLInputElement>("#export-password").value;
   $<HTMLInputElement>("#export-password").value = "";
   try {
-    const blob = await request("/api/admin/backups/export", jsonOptions({ password }), true);
+    const blob = await request(
+      "/api/admin/backups/export",
+      {
+        ...jsonOptions({ password }),
+        timeoutMilliseconds: 150000,
+      },
+      true,
+    );
     const url = URL.createObjectURL(blob);
     const link = node("a");
     link.href = url;
@@ -546,6 +554,7 @@ $<HTMLFormElement>("#restore-form").addEventListener("submit", async (event) => 
   );
   try {
     const result = await request<RecoveryResult>("/api/admin/backups/restore", {
+      timeoutMilliseconds: 150000,
       method: "POST",
       body: data,
     });
@@ -591,6 +600,7 @@ $<HTMLFormElement>("#import-form").addEventListener("submit", async (event) => {
   $<HTMLAnchorElement>("#import-replacement-link").hidden = true;
   try {
     const result = await request<RecoveryResult>("/api/admin/import/rails", {
+      timeoutMilliseconds: 150000,
       method: "POST",
       body: data,
     });

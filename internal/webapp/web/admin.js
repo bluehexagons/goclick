@@ -25,6 +25,35 @@
     return error instanceof RequestError ? error : new RequestError(message(error));
   }
   async function request(url, options = {}, binary = false) {
+    const { timeoutMilliseconds = 3e4, signal, ...init } = options;
+    const controller = new AbortController();
+    const abort = () => controller.abort(signal?.reason);
+    if (signal?.aborted) abort();
+    else signal?.addEventListener("abort", abort, { once: true });
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMilliseconds);
+    try {
+      return await readResponse(url, { ...init, signal: controller.signal }, binary);
+    } catch (caught) {
+      if (timedOut) {
+        const cause = requestError(caught);
+        const error = new RequestError("The server took too long to respond. Check your connection.");
+        error.status = cause.status;
+        error.code = cause.code;
+        error.retryAfter = cause.retryAfter;
+        error.uncertain = cause.status < 400 || cause.uncertain;
+        throw error;
+      }
+      throw caught;
+    } finally {
+      window.clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    }
+  }
+  async function readResponse(url, options, binary) {
     let response;
     try {
       response = await fetch(url, { credentials: "same-origin", ...options });
@@ -504,7 +533,14 @@
     const password = required("#export-password").value;
     required("#export-password").value = "";
     try {
-      const blob = await request2("/api/admin/backups/export", jsonOptions({ password }), true);
+      const blob = await request2(
+        "/api/admin/backups/export",
+        {
+          ...jsonOptions({ password }),
+          timeoutMilliseconds: 15e4
+        },
+        true
+      );
       const url = URL.createObjectURL(blob);
       const link = node("a");
       link.href = url;
@@ -559,6 +595,7 @@
     );
     try {
       const result = await request2("/api/admin/backups/restore", {
+        timeoutMilliseconds: 15e4,
         method: "POST",
         body: data
       });
@@ -598,6 +635,7 @@
     required("#import-replacement-link").hidden = true;
     try {
       const result = await request2("/api/admin/import/rails", {
+        timeoutMilliseconds: 15e4,
         method: "POST",
         body: data
       });
