@@ -14,6 +14,10 @@ activate once on release inside the button; cancelled gestures do not score.
 Pending clicks are shown separately from the server-confirmed total. Reduced
 motion keeps static press feedback. Account/counter reads start together, and
 graphics initialize only for a visible button, with a usable CSS fallback.
+The Ping readout retains its last successful request time while saving; its
+border indicates pending requests or errors. Short gaps between clicks do not
+reset the indicator. Expand **Game & storage notes** for UTC streak rules,
+request timing, and session/storage behavior.
 
 ## Run it
 

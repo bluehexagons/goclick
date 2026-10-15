@@ -7,6 +7,12 @@ let tab = "overview";
 let playersPage = 1, activityPage = 1, auditPage = 1, detailActivityPage = 1, detailEntityPage = 1;
 let selectedPlayer = null, detailGeneration = 0, restoring = false;
 function node(tag, className = "", text = "") { const element = document.createElement(tag); element.className = className; element.textContent = text; return element; }
+function activityIcon(action) {
+  const names = { click: "click", sign_in: "key", signup: "players" };
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  svg.setAttribute("class", "icon"); svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+  use.setAttribute("href", `/icons.svg#${names[action] || "activity"}`); svg.append(use); return svg;
+}
 function notice(selector, text, error = false) { const element = $(selector); element.textContent = text; element.hidden = !text; element.classList.toggle("notice-error", error); }
 function denyAccess() { $("#dashboard-body").hidden = true; $("#access-error").hidden = false; $("#player-dialog").close(); }
 async function request(url, options = {}, binary = false) {
@@ -37,18 +43,18 @@ function pager(selector, page, total, onPage) {
 }
 function report(error) { notice("#admin-error", error.message, true); }
 async function loadOverview() {
-  const [stats, recent] = await Promise.all([request("/api/admin/overview"), request("/api/admin/activity?limit=8")]);
+  const [stats, recent] = await Promise.all([request("/api/admin/overview"), request("/api/admin/activity?limit=6")]);
   $("#metric-players").textContent = number(stats.players); $("#metric-admins").textContent = `${number(stats.admins)} administrator${stats.admins === 1 ? "" : "s"}`;
   $("#metric-clicks").textContent = number(stats.clicks); $("#metric-active").textContent = number(stats.active_players_24h); $("#metric-today").textContent = number(stats.clicks_24h); $("#metric-sessions").textContent = `${number(stats.active_sessions)} active sessions`;
   const chart = $("#daily-chart"); chart.replaceChildren(); const max = Math.max(1, ...stats.daily_clicks.map((day) => day.clicks));
   for (const day of stats.daily_clicks) {
     const column = node("div", "chart-column"); column.setAttribute("aria-label", `${day.date}: ${number(day.clicks)} clicks`);
-    const track = node("div", "chart-track"); const bar = node("div", "chart-bar"); bar.style.height = `${day.clicks / max * 100}%`; track.append(bar);
+    const track = node("div", "chart-track"); const bar = node("div", "chart-bar"); bar.style.height = `${day.clicks / max * 100}%`; if (day.clicks > 0) bar.style.minHeight = "3px"; track.append(bar);
     column.append(node("span", "chart-value", number(day.clicks)), track, node("span", "chart-date", day.date.slice(5))); chart.append(column);
   }
   const feed = $("#recent-activity"); feed.replaceChildren();
   if (!recent.items.length) feed.append(node("p", "muted", "No recorded activity yet."));
-  for (const event of recent.items) { const item = node("div", "activity-item"); const who = node("div"); who.append(playerButton({ id: event.user_id, username: event.username }), node("div", "", actionName[event.action] || event.action)); item.append(who, node("span", "muted", date(event.occurred_at))); feed.append(item); }
+  for (const event of recent.items) { const item = node("div", "activity-item"); const who = node("div", "activity-who"); const symbol = node("span", "event-symbol"); symbol.append(activityIcon(event.action)); const identity = node("div"); identity.append(playerButton({ id: event.user_id, username: event.username }), node("div", "activity-action", actionName[event.action] || event.action)); who.append(symbol, identity); item.append(who, node("span", "muted", date(event.occurred_at))); feed.append(item); }
 }
 async function loadPlayers() {
   const query = new URLSearchParams({ page: playersPage, q: $("#search").value.trim(), sort: $("#sort").value });

@@ -15,7 +15,7 @@
     <div class="shell">
       <header class="site-header">
         <a class="brand" href="/" aria-label="Go Click home">
-          <span class="brand-mark" aria-hidden="true">G</span>
+          <img class="brand-mark" src="/favicon.svg" width="36" height="36" alt="">
           <span>Go Click</span>
         </a>
         <nav id="guest-nav" class="nav-actions" aria-label="Account" hidden>
@@ -38,7 +38,7 @@
 
         <section id="home-view" class="home" hidden>
           <h1>Go Click.</h1>
-          <p class="home-greeting">Login to Click.</p>
+          <p class="home-greeting">Sign in to save your clicks and streaks.</p>
           <div class="button-stage">
             <canvas class="button-scene" aria-hidden="true"></canvas>
             <div class="button-rig">
@@ -47,16 +47,16 @@
               </button>
             </div>
           </div>
-          <p class="home-signup">New here? <button class="text-link" type="button" data-view="signup">Sign up</button></p>
+          <p class="home-signup"><button class="text-link" type="button" data-view="signup">Create an account</button></p>
         </section>
 
         <section id="auth-view" class="auth-layout" hidden>
-          <button class="back-button" type="button" data-view="home">← Back</button>
+          <button class="back-button" type="button" data-view="home"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#arrow"/></svg> Back to game</button>
           <div class="card auth-card">
             <form id="login-form" name="login" action="/api/auth/login" method="post">
-              <p class="auth-greeting">Welcome back!</p>
+              <div class="auth-symbol" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#key"/></svg></div>
               <h1>Sign in</h1>
-              <p class="muted">Your old Minimal Clicker login works here.</p>
+              <p class="muted">Use your username or email and password.</p>
               <div id="login-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
               <label for="login-identifier">Username or email</label>
               <input id="login-identifier" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required autofocus>
@@ -66,23 +66,27 @@
                 <button class="password-toggle" type="button" data-toggle-password="login-password" aria-label="Show password">Show</button>
               </div>
               <button class="button button-block" type="submit" data-label="Sign in" data-busy-label="Signing in…">Sign in</button>
+              <details class="account-note"><summary>Migrated accounts</summary><p>Rails SQLite imports keep existing passwords. Accounts imported from JSON need a password set by the site operator.</p></details>
               <p class="form-switch">New here? <button type="button" data-view="signup">Create an account</button></p>
             </form>
 
             <form id="signup-form" name="signup" action="/api/auth/signup" method="post" hidden>
+              <div class="auth-symbol" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#players"/></svg></div>
               <h1>Create account</h1>
+              <p class="muted">Your clicks and streaks are stored with this account.</p>
               <div id="signup-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
               <label for="signup-username">Username</label>
               <input id="signup-username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="32" pattern="[A-Za-z0-9_\-]+" aria-describedby="username-hint" required>
               <p id="username-hint" class="field-hint">3–32 characters: letters, numbers, underscores, or dashes.</p>
               <label for="signup-email">Email <span>(optional)</span></label>
               <input id="signup-email" name="email" type="email" autocomplete="email" maxlength="254">
+              <p class="field-hint">If provided, your email can also be used to sign in.</p>
               <label for="signup-password">Password</label>
               <div class="password-field">
                 <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" aria-describedby="password-hint" required>
                 <button class="password-toggle" type="button" data-toggle-password="signup-password" aria-label="Show password">Show</button>
               </div>
-              <p id="password-hint" class="field-hint">Use at least 8 characters (72 bytes maximum).</p>
+              <p id="password-hint" class="field-hint">At least 8 characters; maximum 72 UTF-8 bytes.</p>
               <label for="signup-password-confirmation">Confirm password</label>
               <div class="password-field">
                 <input id="signup-password-confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="72" required>
@@ -97,19 +101,21 @@
         <section id="game-view" class="game" hidden>
           <div class="game-heading">
             <div>
-              <h1>Go Click.</h1>
-              <p class="game-greeting"><span id="game-greeting">Hi again!</span> Hello, <span id="game-username"></span>.</p>
+              <h1>Click counter</h1>
+              <p class="game-greeting"><span id="game-username"></span><span class="account-id" id="game-player-id"></span></p>
             </div>
-            <div id="connection" class="connection" role="status" aria-live="polite">
+            <div id="connection" class="connection" role="status" aria-live="off" aria-label="Ping: no click measured yet" title="Round-trip time of the last successful click request. The border indicates pending requests or a save error.">
               <span class="connection-dot" aria-hidden="true"></span>
-              <span id="ping">Ready</span>
+              <span class="connection-label">Ping</span>
+              <span id="ping">— ms</span>
             </div>
           </div>
 
           <div id="game-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
           <button id="retry-game-button" class="button button-quiet retry-game" type="button" hidden>Reload counter</button>
+          <div class="play-layout">
           <div id="counter-card" class="counter-card">
-            <p class="counter-label">Clicks</p>
+            <p class="counter-label">Saved clicks</p>
             <div class="counter-total">
               <p id="click-count" class="counter-value" aria-live="polite">0</p>
               <span id="pending-clicks" class="pending-count" hidden></span>
@@ -122,31 +128,47 @@
                 </button>
               </div>
             </div>
-            <p id="button-hint" class="button-hint">Push, hold, let go.</p>
-            <p id="last-click" class="last-click">No clicks yet.</p>
+            <p id="button-hint" class="button-hint">Mouse, touch, Space or Enter · one click per release.</p>
+            <p id="last-click" class="last-click" title="Shown in your local time zone">No saved clicks yet.</p>
           </div>
 
+          <aside class="streak-panel" aria-label="Click streaks">
+          <div class="streak-heading"><h2>Streaks</h2><span class="time-zone">UTC</span></div>
           <div class="streak-grid" aria-label="Click streaks">
             <article class="streak-card">
-              <span class="streak-letter">D</span>
-              <div><strong id="day-streak">0</strong><span>day streak</span></div>
+              <span class="streak-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day"/></svg></span>
+              <div><strong id="day-streak">0</strong><span>consecutive days</span></div>
             </article>
             <article class="streak-card">
-              <span class="streak-letter">M</span>
-              <div><strong id="month-streak">0</strong><span>month streak</span></div>
+              <span class="streak-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month"/></svg></span>
+              <div><strong id="month-streak">0</strong><span>consecutive months</span></div>
             </article>
             <article class="streak-card">
-              <span class="streak-letter">Y</span>
-              <div><strong id="year-streak">0</strong><span>year streak</span></div>
+              <span class="streak-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#year"/></svg></span>
+              <div><strong id="year-streak">0</strong><span>consecutive years</span></div>
             </article>
           </div>
+          <p class="streak-note">A saved click in each UTC period extends its streak. Gaps reset that streak on your next click.</p>
+          </aside>
+          </div>
         </section>
+
+        <details class="technical-notes" id="technical-notes">
+          <summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#info"/></svg> Game &amp; storage notes</summary>
+          <div class="technical-grid">
+            <article><h2>Clicks &amp; saves</h2><p>Releasing inside the button adds one click. Holding does not add extra clicks. The total shows server-confirmed saves; pending clicks appear separately. Failed requests are not retried automatically.</p></article>
+            <article><h2>Streak periods</h2><p>Days, calendar months, and calendar years use UTC. Multiple clicks in the same period do not extend a streak. The next click after a missed period starts that streak at one.</p></article>
+            <article><h2>Ping &amp; storage</h2><p>Ping measures the last successful click request, including server processing. Amber means a request is in flight; red means a save failed. Progress is stored in SQLite on the server, so signing out does not delete it.</p></article>
+            <article><h2>Account sessions</h2><p>Signing in uses an HttpOnly session cookie. Passwords are stored as bcrypt hashes. Signing out revokes the current session; account data stays available when you sign in again.</p></article>
+          </div>
+          <p class="implementation-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#terminal"/></svg> Go server · SQLite transactions · dependency-free browser UI · WebGL with a CSS fallback</p>
+        </details>
       </main>
 
       <footer>
         <span>Go Click</span>
-        <span>Minimal Clicker</span>
-        <a href="https://github.com/bluehexagons/goclick" rel="noopener noreferrer">Source</a>
+        <span>Go / SQLite</span>
+        <a href="https://github.com/bluehexagons/goclick" rel="noopener noreferrer">Source code</a>
       </footer>
     </div>
     <noscript>

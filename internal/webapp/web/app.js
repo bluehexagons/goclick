@@ -16,7 +16,13 @@ const connection = document.querySelector("#connection");
 const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
 const pendingIndicator = document.querySelector("#pending-clicks");
 let currentView = "", viewAnimation = null, impactAnimation = null;
+let pingStateTimer = 0, pendingIndicatorTimer = 0;
 const numberAnimations = new WeakMap();
+motionPreference.addEventListener("change", () => {
+  if (!motionPreference.matches) return;
+  viewAnimation?.cancel(); impactAnimation?.cancel();
+  for (const id of ["click-count", "day-streak", "month-streak", "year-streak"]) numberAnimations.get(document.querySelector(`#${id}`))?.cancel();
+});
 let user = null;
 let gameReady = false;
 let pendingClicks = 0;
@@ -65,10 +71,19 @@ function showError(id, message, focus = false) {
   if (message && focus) element.focus();
 }
 
-function setConnection(message, state = "") {
-  document.querySelector("#ping").textContent = message;
-  connection.classList.toggle("is-loading", state === "loading");
-  connection.classList.toggle("is-error", state === "error");
+function setConnection(milliseconds = null, state = "") {
+  window.clearTimeout(pingStateTimer);
+  if (Number.isFinite(milliseconds) && milliseconds !== null) document.querySelector("#ping").textContent = `${Math.round(milliseconds)} ms`;
+  const paintState = () => {
+    connection.classList.toggle("is-loading", state === "loading");
+    connection.classList.toggle("is-error", state === "error");
+    const status = state === "loading" ? "Saving clicks" : state === "error" ? "Last request failed" : "No requests pending";
+    connection.setAttribute("aria-label", `Ping ${document.querySelector("#ping").textContent}. ${status}.`);
+  };
+  // Keep the last measurement visible. Brief gaps between clicks should not
+  // flash the indicator back to idle or shift the badge's width.
+  if (!state && connection.classList.contains("is-loading")) pingStateTimer = window.setTimeout(paintState, 220);
+  else paintState();
 }
 
 function setSubmitting(form, submitting) {
@@ -115,6 +130,7 @@ function setUser(nextUser) {
   user = nextUser;
   document.querySelector("#nav-username").textContent = user?.username ?? "";
   document.querySelector("#game-username").textContent = user?.username ?? "";
+  document.querySelector("#game-player-id").textContent = user ? `#${user.id}` : "";
   document.querySelector("#admin-link").hidden = !user?.admin;
   if (identityChanged) {
     resetClickState();
@@ -127,13 +143,23 @@ function resetClickState() {
   pendingClicks = 0;
   updatePendingIndicator();
   clickBatchFailed = false;
+  window.clearTimeout(pingStateTimer);
+  document.querySelector("#ping").textContent = "— ms";
+  connection.classList.remove("is-loading", "is-error");
+  connection.setAttribute("aria-label", "Ping: no click measured yet");
   tactileButtons.get(clickButton).reset();
   clickButton.disabled = !gameReady;
 }
 
 function updatePendingIndicator() {
-  pendingIndicator.hidden = pendingClicks === 0;
-  pendingIndicator.textContent = pendingClicks ? `+${pendingClicks} saving` : "";
+  if (pendingClicks === 0) {
+    window.clearTimeout(pendingIndicatorTimer); pendingIndicatorTimer = 0;
+    pendingIndicator.hidden = true; pendingIndicator.textContent = ""; return;
+  }
+  pendingIndicator.textContent = `+${pendingClicks} pending`;
+  if (pendingIndicator.hidden && !pendingIndicatorTimer) pendingIndicatorTimer = window.setTimeout(() => {
+    pendingIndicatorTimer = 0; pendingIndicator.hidden = pendingClicks === 0;
+  }, 180);
 }
 
 function animateNumber(element) {
@@ -152,7 +178,7 @@ function celebrateClick() {
 }
 
 clickButton.addEventListener("buttonstate", (event) => {
-  document.querySelector("#button-hint").textContent = event.detail === "held" ? "Aaand… let go." : event.detail === "pressed" ? "Got it. Hold a little…" : "Push, hold, let go.";
+  document.querySelector("#button-hint").textContent = event.detail === "idle" ? "Mouse, touch, Space or Enter · one click per release." : "Held · release inside the button to add one click.";
 });
 
 function renderCounters(data, allowDecrease = false) {
@@ -166,12 +192,10 @@ function renderCounters(data, allowDecrease = false) {
   }
   document.querySelector("#last-click").textContent = clicks?.modified_time
     ? `Last click ${new Date(clicks.modified_time).toLocaleString()}`
-    : "No clicks yet.";
+    : "No saved clicks yet.";
 }
 
 async function openGame(initialCounters) {
-  const greetings = ["Welcome back!", "Hi again!", "Thanks for coming by."];
-  document.querySelector("#game-greeting").textContent = greetings[Math.floor(Math.random() ** 2 * greetings.length)];
   const generation = clickGeneration;
   show("game");
   showError("#game-error", "");
@@ -179,14 +203,14 @@ async function openGame(initialCounters) {
   gameReady = false;
   clickButton.disabled = true;
   counterCard.setAttribute("aria-busy", "true");
-  setConnection("Loading…", "loading");
+  setConnection(null, "loading");
   try {
     const data = await (initialCounters ?? api("/api/clicks"));
     if (generation !== clickGeneration) return;
     renderCounters(data, true);
     gameReady = true;
     clickButton.disabled = false;
-    setConnection("Ready");
+    setConnection();
   } catch (error) {
     if (generation !== clickGeneration) return;
     if (error.status === 401) {
@@ -194,7 +218,7 @@ async function openGame(initialCounters) {
     } else {
       showError("#game-error", `Couldn’t load your counter. ${error.message}`, true);
       retryGameButton.hidden = false;
-      setConnection("Not connected", "error");
+      setConnection(null, "error");
     }
   } finally {
     if (generation === clickGeneration) counterCard.setAttribute("aria-busy", "false");
@@ -308,7 +332,7 @@ clickButton.addEventListener("click", async () => {
   clickButton.disabled = pendingClicks >= maxPendingClicks;
   const started = performance.now();
   const generation = clickGeneration;
-  setConnection(pendingClicks === 1 ? "Saving click…" : `Saving ${pendingClicks} clicks…`, "loading");
+  setConnection(null, "loading");
   let saved = false;
   try {
     const data = await api("/api/clicks", { method: "POST" });
@@ -325,16 +349,16 @@ clickButton.addEventListener("click", async () => {
     showError("#game-error", error.status === 429 && error.retryAfter
       ? `Slow down for ${error.retryAfter} seconds.`
       : `Your click wasn’t saved. ${error.message}`, true);
-    setConnection("Not saved", "error");
+    setConnection(null, "error");
   } finally {
     if (generation !== clickGeneration) return;
     pendingClicks--;
     updatePendingIndicator();
     clickButton.disabled = !gameReady || pendingClicks >= maxPendingClicks;
     if (!clickBatchFailed && pendingClicks > 0) {
-      setConnection(pendingClicks === 1 ? "Saving click…" : `Saving ${pendingClicks} clicks…`, "loading");
+      setConnection(null, "loading");
     } else if (!clickBatchFailed && saved) {
-      setConnection(`Saved · ${Math.round(performance.now() - started)} ms`);
+      setConnection(performance.now() - started);
     }
   }
 });

@@ -163,7 +163,13 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     burst();
   });
   new MutationObserver(() => { if (button.disabled) reset(); }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
-  reducedMotion.addEventListener("change", () => reset());
+  reducedMotion.addEventListener("change", () => {
+    reset();
+    if (reducedMotion.matches) {
+      for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
+      effects.replaceChildren();
+    }
+  });
   window.addEventListener("blur", () => reset());
   window.addEventListener("resize", () => reset());
   document.addEventListener("visibilitychange", () => { if (document.hidden) reset(); });
