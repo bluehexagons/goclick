@@ -9,15 +9,30 @@ The server uses SQLite, embeds the frontend in its binary, and has two direct
 dependencies: a pure-Go SQLite driver and Go's bcrypt implementation.
 
 The button responds immediately to presses, with a distinct held state, a
-spring return, and small release bursts. Mouse, touch/pen, Space, and Enter
-activate once on release inside the button; cancelled gestures do not score.
-Pending clicks are shown separately from the server-confirmed total. Reduced
-motion keeps static press feedback. Account/counter reads start together, and
+spring return, a size pulse, and release bursts. Mouse, touch/pen, Space, and Enter
+activate once on release inside the button; each finger is tracked separately,
+and cancelled gestures do not score. Pointer-anchored +1 badges wait for their
+save response and show its ping, with color compared to recent timings. Pending
+clicks are shown separately from the server-confirmed total. **Options** offers
+Auto, Reduced, and Full motion; Reduced keeps static feedback without movement
+or flashes. Account/counter reads start together, and
 graphics initialize only for a visible button, with a usable CSS fallback.
 The Ping readout retains its last successful request time while saving; its
 border indicates pending requests or errors. Short gaps between clicks do not
 reset the indicator. Expand **Game & storage notes** for UTC streak rules,
 request timing, and session/storage behavior.
+
+**Play offline** uses one local save slot in browser storage, with optional
+simulated ping and no account API requests or click rate limit. It can be opened
+from the guest page or an account session. Options can download/import a
+`goclick-local` version 1 JSON save, restart the slot, or explicitly replace it
+with the last loaded account counters. Local clicks never upload or change
+account progress. A replacement requires checking the confirmation box; invalid
+imports and failed browser writes preserve the existing save. Writes use Web
+Locks where available to serialize tabs, and tabs observe local save changes.
+The chosen mode survives reloads, so a local-mode startup skips session checks.
+The page must be loaded to play; this does not install a service worker. Keep a
+downloaded save before clearing browser data or moving to another device.
 
 ## Run it
 

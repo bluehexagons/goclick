@@ -578,7 +578,7 @@ func (a *App) frontend(w http.ResponseWriter, r *http.Request) {
 	// fallback instead of the protected /admin.html route, and future embedded
 	// files must not become public merely by being added to the web directory.
 	switch requested {
-	case "index.html", "app.js", "app.css", "button.js", "button-3d.js",
+	case "index.html", "app.js", "app.css", "button.js", "button-3d.js", "preferences.js", "local-game.js", "click-feedback.js",
 		"admin.js", "admin.css", "favicon.svg", "icons.svg":
 	default:
 		http.NotFound(w, r)

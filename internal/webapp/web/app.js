@@ -14,17 +14,18 @@ const retryGameButton = document.querySelector("#retry-game-button");
 const retryBootButton = document.querySelector("#retry-boot-button");
 const refreshCounterButton = document.querySelector("#refresh-counter");
 const connection = document.querySelector("#connection");
-const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
 const pendingIndicator = document.querySelector("#pending-clicks");
-let currentView = "", viewAnimation = null, impactAnimation = null;
+let currentView = "", viewAnimation = null;
 let pingStateTimer = 0, pendingIndicatorTimer = 0;
 const numberAnimations = new WeakMap();
 motionPreference.addEventListener("change", () => {
   if (!motionPreference.matches) return;
-  viewAnimation?.cancel(); impactAnimation?.cancel();
+  viewAnimation?.cancel();
   for (const id of ["click-count", "day-streak", "month-streak", "year-streak"]) numberAnimations.get(document.querySelector(`#${id}`))?.cancel();
 });
 let user = null;
+let localMode = gameSettings.mode() === "local";
+let lastOnlineCounters = null;
 let gameReady = false;
 let pendingClicks = 0;
 let clickBatchFailed = false;
@@ -52,7 +53,8 @@ function show(view) {
   loginForm.hidden = view !== "login";
   signupForm.hidden = view !== "signup";
   document.querySelector("#guest-nav").hidden = authenticated || view === "loading";
-  document.querySelector("#user-nav").hidden = !authenticated;
+  document.querySelector("#user-nav").hidden = !authenticated || localMode;
+  document.querySelector("#local-nav").hidden = !authenticated || !localMode;
   if (changed && view !== "loading" && !motionPreference.matches) {
     const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
     viewAnimation = incoming.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 170, easing: "cubic-bezier(.2,.8,.2,1)" });
@@ -80,9 +82,9 @@ function setConnection(milliseconds = null, state = "") {
   window.clearTimeout(pingStateTimer);
   if (Number.isFinite(milliseconds) && milliseconds !== null) document.querySelector("#ping").textContent = `${Math.round(milliseconds)} ms`;
   const paintState = () => {
-    connection.classList.toggle("is-loading", state === "loading" && !offline);
-    connection.classList.toggle("is-error", state === "error" || offline);
-    const status = offline ? "Offline. Clicking paused" : state === "loading" ? "Request in progress" : state === "error" ? "Last request failed" : "No requests pending";
+    connection.classList.toggle("is-loading", state === "loading" && (!offline || localMode));
+    connection.classList.toggle("is-error", state === "error" || (offline && !localMode));
+    const status = offline && !localMode ? "Offline. Clicking paused" : state === "loading" ? "Request in progress" : state === "error" ? "Last request failed" : "No requests pending";
     connection.setAttribute("aria-label", `Ping ${document.querySelector("#ping").textContent}. ${status}.`);
   };
   // Keep the last measurement visible. Brief gaps between clicks should not
@@ -147,6 +149,7 @@ async function api(url, options = {}) {
 function setUser(nextUser) {
   const identityChanged = user?.id !== nextUser?.id;
   user = nextUser;
+  if (identityChanged) lastOnlineCounters = null;
   document.querySelector("#nav-username").textContent = user?.username ?? "";
   document.querySelector("#game-username").textContent = user?.username ?? "";
   document.querySelector("#game-player-id").textContent = user ? `#${user.id}` : "";
@@ -168,17 +171,28 @@ function resetClickState() {
   connection.classList.remove("is-loading", "is-error");
   connection.setAttribute("aria-label", "Ping: no click measured yet");
   tactileButtons.get(clickButton).reset();
+  clickFeedback.reset();
   updateGameControls();
 }
 
 function updateGameControls() {
-  clickButton.disabled = !gameReady || offline || signingOut || pendingClicks >= maxPendingClicks;
+  clickButton.disabled = !gameReady || (offline && !localMode) || signingOut || (!localMode && pendingClicks >= maxPendingClicks);
   // Keep a focused refresh control in the tab order while its read is in flight.
   // Repeated activations share counterLoad instead of starting another request.
-  refreshCounterButton.disabled = offline || signingOut || pendingClicks > 0;
+  refreshCounterButton.disabled = (offline && !localMode) || signingOut || pendingClicks > 0;
   refreshCounterButton.setAttribute("aria-disabled", String(refreshCounterButton.disabled || !!counterLoad));
   refreshCounterButton.setAttribute("aria-busy", String(!!counterLoad));
-  document.querySelector("#network-notice").hidden = !offline;
+  document.querySelector("#network-notice").hidden = !offline || localMode;
+  document.querySelector("#local-mode-note").hidden = !localMode;
+  document.querySelector("#counter-label").textContent = localMode ? "Local clicks" : "Saved clicks";
+  document.querySelector(".connection-label").textContent = localMode ? "Sim ping" : "Ping";
+  document.querySelectorAll("[data-play-local]").forEach(button => { button.hidden = localMode; button.disabled = pendingClicks > 0 || signingOut; });
+  document.querySelector("#leave-local").disabled = pendingClicks > 0;
+  document.querySelector("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0;
+  if (localMode) {
+    document.querySelector("#game-username").textContent = "Offline play";
+    document.querySelector("#game-player-id").textContent = "this browser";
+  }
 }
 
 function updatePendingIndicator() {
@@ -198,19 +212,6 @@ function animateNumber(element) {
   numberAnimations.set(element, element.animate([{ transform: "scale(1)", color: "var(--ink)" }, { transform: "scale(1.08)", color: "var(--gold)", offset: .25 }, { transform: "scale(1)", color: "var(--ink)" }], { duration: 240, easing: "cubic-bezier(.2,.75,.3,1)" }));
 }
 
-function celebrateClick() {
-  if (motionPreference.matches) return;
-  const bonus = document.createElement("span"); bonus.className = "click-bonus"; bonus.textContent = "+1";
-  const effects = clickButton.closest(".button-stage").querySelector(".button-effects"); effects.append(bonus);
-  bonus.animate([{ opacity: 0, transform: "translate(-50%, 5px) scale(.6)" }, { opacity: 1, transform: "translate(-50%, -5px) scale(1)", offset: .2 }, { opacity: 0, transform: "translate(-50%, -30px) scale(.9)" }], { duration: 520, easing: "cubic-bezier(.2,.7,.3,1)" }).finished.then(() => bonus.remove(), () => bonus.remove());
-  impactAnimation?.cancel();
-  impactAnimation = counterCard.animate([{ boxShadow: "0 0 0 0 #ffc83d00" }, { boxShadow: "0 0 28px -9px #ffc83d66", offset: .2 }, { boxShadow: "0 0 0 0 #ffc83d00" }], { duration: 300 });
-}
-
-clickButton.addEventListener("buttonstate", (event) => {
-  document.querySelector("#button-hint").textContent = event.detail === "idle" ? "Mouse, touch, Space or Enter · one click per release." : "Held · release inside the button to add one click.";
-});
-
 function renderCounters(data, allowDecrease = false) {
   const clicks = data.click_count;
   const displayedClicks = Number(document.querySelector("#click-count").textContent);
@@ -226,6 +227,7 @@ function renderCounters(data, allowDecrease = false) {
 }
 
 function openGame(initialCounters, verifyIdentity = false) {
+  if (localMode) { openLocalGame(); return Promise.resolve(); }
   if (counterLoad) return counterLoad;
   if (pendingClicks > 0) {
     refreshQueued = true;
@@ -251,6 +253,7 @@ function openGame(initialCounters, verifyIdentity = false) {
         setUser(nextUser);
         generation = clickGeneration;
       }
+      lastOnlineCounters = data;
       renderCounters(data, true);
       lastCounterSync = performance.now();
       gameReady = true;
@@ -277,6 +280,7 @@ function openGame(initialCounters, verifyIdentity = false) {
 }
 
 function refreshGame() {
+  if (localMode) { if (currentView === "game") openLocalGame(); return; }
   if (currentView !== "game" || !user || signingOut || offline || document.hidden) return;
   refreshQueued = false;
   return openGame(undefined, true);
@@ -285,7 +289,7 @@ function refreshGame() {
 window.addEventListener("offline", () => {
   offline = true;
   updateGameControls();
-  setConnection(null, "error");
+  if (!localMode) setConnection(null, "error");
 });
 window.addEventListener("online", () => {
   offline = false;
@@ -397,15 +401,16 @@ logoutButton.addEventListener("click", async () => {
   }
 });
 
-clickButton.addEventListener("click", async () => {
-  if (!gameReady || offline || signingOut || pendingClicks >= maxPendingClicks) return;
+clickButton.addEventListener("click", async event => {
+  if (localMode) { await clickLocal(event); return; }
+  if (!gameReady || (offline && !localMode) || signingOut || (!localMode && pendingClicks >= maxPendingClicks)) return;
   if (pendingClicks === 0) {
     showError("#game-error", "");
     clickBatchFailed = false;
   }
   pendingClicks++;
   updatePendingIndicator();
-  celebrateClick();
+  const feedback = clickFeedback.start(clickButton, event);
   updateGameControls();
   const started = performance.now();
   const generation = clickGeneration;
@@ -415,9 +420,12 @@ clickButton.addEventListener("click", async () => {
     const data = await api("/api/clicks", { method: "POST" });
     if (generation !== clickGeneration) return;
     renderCounters(data);
+    if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0)) lastOnlineCounters = data;
+    feedback.success(performance.now() - started);
     saved = true;
   } catch (error) {
     if (generation !== clickGeneration) return;
+    feedback.fail(error.uncertain);
     if (error.status === 401) {
       if (user && !signingOut) handleExpiredSession();
       return;
@@ -445,6 +453,8 @@ clickButton.addEventListener("click", async () => {
 });
 
 async function boot() {
+  if (localMode) { openLocalGame(); return; }
+  const generation = clickGeneration;
   show("loading");
   views.loading.setAttribute("aria-busy", "true");
   document.querySelector(".loading-spinner").hidden = false;
@@ -455,9 +465,12 @@ async function boot() {
     // game. Observe the counter rejection even if checking identity fails.
     const counters = api("/api/clicks");
     counters.catch(() => {});
-    setUser(await api("/api/me"));
+    const identity = await api("/api/me");
+    if (generation !== clickGeneration || localMode) return;
+    setUser(identity);
     await openGame(counters);
   } catch (error) {
+    if (generation !== clickGeneration || localMode) return;
     if (error.status === 401) {
       show("home");
       return;
@@ -473,5 +486,123 @@ async function boot() {
 retryGameButton.addEventListener("click", refreshGame);
 refreshCounterButton.addEventListener("click", refreshGame);
 retryBootButton.addEventListener("click", () => boot());
+
+const optionsDialog = document.querySelector("#options-dialog");
+function optionsNotice(message, error = false) {
+  const notice = document.querySelector("#options-status");
+  notice.textContent = message; notice.hidden = !message; notice.classList.toggle("notice-error", error);
+}
+function updateOptions() {
+  document.querySelector("#motion-setting").value = gameSettings.value.motion;
+  document.querySelector("#simulated-ping").value = String(gameSettings.value.simulatedPing);
+  document.querySelector("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0;
+  document.querySelector("#copy-online-note").textContent = lastOnlineCounters
+    ? `Copy the last loaded account progress for ${user?.username ?? "your account"}. This only replaces the local save.`
+    : "Open your account counter first to make a copy. Copying only replaces the local save.";
+  try {
+    const data = localGame.read();
+    document.querySelector("#local-save-summary").textContent = `${data.click_count?.count ?? 0} clicks saved in this browser.`;
+  } catch (error) { document.querySelector("#local-save-summary").textContent = `Local save unavailable. ${error.message}`; }
+}
+document.querySelector("#options-button").addEventListener("click", () => {
+  optionsNotice(""); document.querySelector("#replace-local").checked = false;
+  updateOptions(); optionsDialog.showModal();
+});
+document.querySelector("#close-options").addEventListener("click", () => optionsDialog.close());
+for (const [selector, key, convert] of [["#motion-setting", "motion", String], ["#simulated-ping", "simulatedPing", Number]]) {
+  document.querySelector(selector).addEventListener("change", event => {
+    try { gameSettings.update({ [key]: convert(event.target.value) }); optionsNotice("Option saved."); }
+    catch (_) { optionsNotice("Applied for this visit. Browser storage is unavailable, so this option could not be remembered.", true); }
+  });
+}
+function openLocalGame(data) {
+  show("game"); showError("#game-error", ""); retryGameButton.hidden = true;
+  try {
+    renderCounters(data ?? localGame.read(), true); gameReady = true;
+    counterCard.setAttribute("aria-busy", "false"); updateGameControls(); setConnection();
+  } catch (error) {
+    gameReady = false; updateGameControls();
+    showError("#game-error", `Couldn’t load your local save. ${error.message} Open Options to import a copy or restart the local save.`, true);
+  }
+}
+function startLocalGame() {
+  if (pendingClicks > 0 || signingOut) return;
+  try {
+    const data = localGame.read();
+    gameSettings.setMode("local"); localMode = true; gameReady = false; resetClickState();
+    optionsDialog.close(); openLocalGame(data); clickButton.focus();
+  } catch (error) {
+    optionsNotice(`Couldn’t open the local save. ${error.message}`, true);
+    if (!optionsDialog.open) { updateOptions(); optionsDialog.showModal(); }
+  }
+}
+document.querySelectorAll("[data-play-local]").forEach(button => button.addEventListener("click", startLocalGame));
+document.querySelector("#leave-local").addEventListener("click", () => {
+  if (pendingClicks > 0) return;
+  try { gameSettings.setMode("online"); }
+  catch (_) { showError("#game-error", "Browser storage is unavailable. Couldn’t remember the mode change.", true); return; }
+  localMode = false; gameReady = false; resetClickState(); boot();
+});
+async function clickLocal(event) {
+  if (!gameReady) return;
+  const feedback = clickFeedback.start(clickButton, event, true), generation = clickGeneration;
+  const base = gameSettings.value.simulatedPing;
+  const simulated = Math.round(base * (.7 + Math.random() * .6));
+  pendingClicks++; updateGameControls();
+  setConnection(null, "loading");
+  try {
+    // Save immediately; simulated ping affects only the visual acknowledgement.
+    const data = await localGame.change(() => localGame.increment());
+    if (generation !== clickGeneration) return;
+    renderCounters(data); showError("#game-error", "");
+    window.setTimeout(() => {
+      if (generation !== clickGeneration) return;
+      feedback.success(simulated); setConnection(simulated);
+    }, simulated);
+  } catch (error) {
+    if (generation !== clickGeneration) return;
+    feedback.fail(false); setConnection(null, "error");
+    showError("#game-error", `Your local click wasn’t saved. Browser storage may be full or unavailable. ${error.message}`, true);
+  } finally {
+    if (generation === clickGeneration) { pendingClicks--; updateGameControls(); }
+  }
+}
+async function replaceLocalSave(operation, message) {
+  if (!document.querySelector("#replace-local").checked) { optionsNotice("Check “Allow replacing my local save” first.", true); return; }
+  if (pendingClicks > 0) { optionsNotice("Wait for pending clicks to finish, then try again.", true); return; }
+  try {
+    const data = await localGame.change(operation);
+    document.querySelector("#replace-local").checked = false;
+    if (localMode) { resetClickState(); openLocalGame(data); }
+    updateOptions(); optionsNotice(message);
+  } catch (error) { optionsNotice(`Local save was not replaced. ${error.message}`, true); }
+}
+document.querySelector("#restart-local").addEventListener("click", () => replaceLocalSave(() => localGame.replace({}), "Local save restarted."));
+document.querySelector("#copy-online-local").addEventListener("click", () => {
+  if (!lastOnlineCounters) return;
+  const snapshot = lastOnlineCounters;
+  replaceLocalSave(() => localGame.replace(snapshot), "Account progress copied to the local save. Account progress is unchanged.");
+});
+document.querySelector("#import-local").addEventListener("change", async event => {
+  const file = event.target.files[0]; event.target.value = "";
+  if (!file) return;
+  if (file.size > 1024 * 1024) { optionsNotice("Choose a local save smaller than 1 MiB.", true); return; }
+  try {
+    const data = localGame.decode(await file.text());
+    await replaceLocalSave(() => localGame.replace(data), "Local save imported.");
+  } catch (error) { optionsNotice(`Couldn’t import this local save. ${error.message}`, true); }
+});
+document.querySelector("#download-local").addEventListener("click", async () => {
+  try {
+    const saved = await localGame.change(() => localGame.encode(localGame.read()));
+    const url = URL.createObjectURL(new Blob([saved], { type: "application/json" }));
+    const link = document.createElement("a"); link.href = url; link.download = "goclick-local.json";
+    document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    optionsNotice("Local save downloaded.");
+  } catch (error) { optionsNotice(`Couldn’t download the local save. ${error.message}`, true); }
+});
+window.addEventListener("storage", event => {
+  if (event.key === localGame.key && localMode && pendingClicks === 0) openLocalGame();
+});
 
 boot();

@@ -18,7 +18,7 @@ function deferred() {
 
 // Exercise the shipped game script and transport ordering without browser or
 // third-party dependencies. Real browser checks cover markup, focus and layout.
-async function harness() {
+async function harness(options = {}) {
   let document;
   class Element {
     events = new Map();
@@ -34,12 +34,17 @@ async function harness() {
       contains: name => this.classes.has(name),
       toggle: (name, enabled) => enabled ? this.classes.add(name) : this.classes.delete(name),
     };
-    addEventListener(name, handler) { this.events.set(name, handler); }
+    addEventListener(name, handler) {
+      const previous = this.events.get(name);
+      this.events.set(name, previous ? event => { previous(event); return handler(event); } : handler);
+    }
     setAttribute(key, value) { this.attributes.set(key, value); }
     querySelector() { return this.button ??= new Element(); }
     querySelectorAll() { return []; }
     focus() { document.activeElement = this; }
     reset() {}
+    showModal() { this.open = true; }
+    close() { this.open = false; }
     fire(name, event = {}) { return this.events.get(name)?.({ preventDefault() {}, ...event }); }
   }
   const elements = new Map();
@@ -47,24 +52,34 @@ async function harness() {
     if (!elements.has(selector)) elements.set(selector, new Element());
     return elements.get(selector);
   };
-  document = Object.assign(new Element(), { hidden: false, querySelector: element, querySelectorAll: () => [] });
+  document = Object.assign(new Element(), { documentElement: new Element(), hidden: false, querySelector: element, querySelectorAll: () => [] });
   const window = Object.assign(new Element(), {
     matchMedia: () => ({ matches: true, addEventListener() {} }),
     scrollTo() {}, clearTimeout() {}, setTimeout() { return 1; },
   });
   let handler = async url => response(url === "/api/me" ? player : counters(10));
   const requests = [];
+  const storage = new Map(options.storage);
+  let failStorage = false;
+  const feedback = [];
   let now = 1;
   const context = vm.createContext({
     console, document, window, navigator: { onLine: true }, performance: { now: () => now },
+    localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => {
+      if (failStorage) throw new Error("Storage full"); storage.set(key, value);
+    } },
+    clickFeedback: { reset() {}, start: () => { const item = { success(ms) { this.ms = ms; }, fail(uncertain) { this.failed = true; this.uncertain = uncertain; } }; feedback.push(item); return item; } },
     tactileButtons: { values: () => [], get: () => ({ reset() {} }) },
     fetch: (url, options) => { requests.push({ url, method: options.method || "GET" }); return handler(url, options); },
   });
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "../web/app.js"), "utf8"), context);
+  for (const script of ["preferences.js", "local-game.js", "app.js"]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "../web/" + script), "utf8"), context);
+  }
   await settle();
-  assert.equal(element("#click-count").textContent, 10);
+  assert.equal(element("#click-count").textContent, options.storage?.some(([key, value]) => key === "goclick.mode" && value === "local") ? 0 : 10);
+  const startupRequests = requests.slice();
   requests.length = 0;
-  return { context, element, document, window, requests, advance: milliseconds => { now += milliseconds; }, fetch: next => { handler = next; } };
+  return { context, element, document, window, requests, startupRequests, storage, feedback, failStorage: () => { failStorage = true; }, advance: milliseconds => { now += milliseconds; }, fetch: next => { handler = next; } };
 }
 
 test("focus and visibility refresh stale progress without interrupting brief tab switches", async () => {
@@ -192,4 +207,68 @@ test("a late refresh response cannot reopen the game after signing out", async (
   assert.equal(h.element("#home-view").hidden, false);
   assert.equal(h.element("#game-view").hidden, true);
   assert.equal(h.element("#click-count").textContent, 0);
+});
+
+test("remembered local play starts and runs without any account API calls", async () => {
+  const h = await harness({ storage: [["goclick.mode", "local"]] });
+  assert.deepEqual(h.startupRequests, []);
+  h.window.fire("offline");
+  assert.equal(h.element("#click-button").disabled, false);
+  for (let i = 0; i < 12; i++) await h.element("#click-button").fire("click");
+  h.window.fire("focus"); h.window.fire("online"); h.document.fire("visibilitychange");
+  assert.deepEqual(h.requests, []);
+  assert.equal(h.element("#click-count").textContent, 12);
+  assert.equal(JSON.parse(h.storage.get("goclick.local.v1")).counters.click_count.count, 12);
+  assert.equal(h.element("#local-mode-note").hidden, false);
+});
+
+test("entering local mode isolates account progress and returning rechecks the account", async () => {
+  const h = await harness();
+  h.context.startLocalGame();
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, 1);
+  assert.deepEqual(h.requests, []);
+  h.element("#leave-local").fire("click"); await settle();
+  assert.equal(h.element("#click-count").textContent, 10);
+  assert.deepEqual(h.requests.map(r => r.method), ["GET", "GET"]);
+  assert.equal(JSON.parse(h.storage.get("goclick.local.v1")).counters.click_count.count, 1);
+});
+
+test("copy and restart require explicit replacement and never mutate account data", async () => {
+  const h = await harness();
+  h.element("#copy-online-local").fire("click"); await settle();
+  assert.equal(h.storage.has("goclick.local.v1"), false);
+  h.element("#replace-local").checked = true;
+  h.element("#copy-online-local").fire("click"); await settle();
+  assert.equal(JSON.parse(h.storage.get("goclick.local.v1")).counters.click_count.count, 10);
+  assert.equal(h.element("#replace-local").checked, false);
+  h.context.startLocalGame();
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, 11);
+  h.element("#replace-local").checked = true;
+  await h.element("#restart-local").fire("click");
+  assert.equal(h.element("#click-count").textContent, 0);
+  assert.deepEqual(h.requests, []);
+});
+
+test("storage failure cannot pretend a local click was saved", async () => {
+  const h = await harness({ storage: [["goclick.mode", "local"]] });
+  h.failStorage();
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, 0);
+  assert.match(h.element("#game-error").textContent, /wasn’t saved/);
+  assert.equal(h.feedback[0].failed, true);
+  assert.deepEqual(h.requests, []);
+});
+
+test("an account refresh in flight cannot overwrite a newly opened local game", async () => {
+  const h = await harness();
+  const progress = deferred();
+  h.fetch(url => url === "/api/clicks" ? progress.promise : Promise.resolve(response(player)));
+  const refreshing = h.context.refreshGame();
+  h.context.startLocalGame();
+  await h.element("#click-button").fire("click");
+  progress.resolve(response(counters(999))); await refreshing;
+  assert.equal(h.element("#click-count").textContent, 1);
+  assert.equal(h.element("#local-nav").hidden, false);
 });

@@ -65,7 +65,7 @@ function createButtonRenderer(stage, button) {
       vec3 surface = mix(vec3(1., .77, .25), vec3(1., .58, .12), press * .48);
       vec3 gold = surface * (.52 + .70 * diffuse);
       gold += vec3(1., .94, .72) * specular * .38;
-      gold += vec3(1., .88, .55) * flash * .22 * frontFace;
+      gold += vec3(1., .88, .55) * flash * .55 * frontFace;
       vec4 text = texture2D(lettering, texCoord);
       gold = mix(gold, text.rgb * (.78 + .22 * diffuse), text.a * frontFace);
       gl_FragColor = vec4(gold, 1.);
@@ -175,7 +175,7 @@ function createButtonRenderer(stage, button) {
     const pixelWidth = Math.round(width * pixelRatio), pixelHeight = Math.round(height * pixelRatio);
     if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
     gl.viewport(0, 0, pixelWidth, pixelHeight); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    const scale = button.offsetWidth / 260, press = Math.max(-.22, Math.min(1, state.press));
+    const scale = button.offsetWidth / 260 * (1 + Math.max(-.03, Math.min(.10, state.pop || 0))), press = Math.max(-.22, Math.min(1, state.press));
     const rx = state.rx * Math.PI / 180, ry = state.ry * Math.PI / 180;
     const cx = Math.cos(rx), sx = Math.sin(rx), cy = Math.cos(ry), sy = Math.sin(ry);
     const recession = press * 24;

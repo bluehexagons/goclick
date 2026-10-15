@@ -7,13 +7,13 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
   const stage = button.closest(".button-stage"), rig = stage.querySelector(".button-rig");
   const effects = document.createElement("div");
   effects.className = "button-effects"; effects.setAttribute("aria-hidden", "true"); stage.append(effects);
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const keys = ["x", "y", "rx", "ry", "press"];
-  const current = { x: 0, y: 0, rx: 0, ry: 0, press: 0, flash: 0 };
+  const reducedMotion = motionPreference;
+  const keys = ["x", "y", "rx", "ry", "press", "pop"];
+  const current = { x: 0, y: 0, rx: 0, ry: 0, press: 0, pop: 0, flash: 0 };
   const target = { ...current }, velocity = { ...current };
   let renderer = null, setupFrame = 0, frame = 0, lastFrame = 0;
-  let pointer = null, origin = null, activeKey = null, cancelClick = false;
-  let suppressNativeClick = false, activatingRelease = false;
+  const pointers = new Map();
+  let activeKey = null, activatingRelease = false;
   let pulseTimer = 0, holdTimer = 0, phase = "idle";
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -23,6 +23,7 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
     rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
     rig.style.setProperty("--press", clamp(current.press, -.22, 1).toFixed(3));
+    rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -.03, .10)).toFixed(3));
     renderer?.draw(current);
   }
   function tick(time) {
@@ -58,9 +59,9 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
   }
   function begin() {
-    window.clearTimeout(pulseTimer); window.clearTimeout(holdTimer); cancelClick = false;
+    window.clearTimeout(pulseTimer); window.clearTimeout(holdTimer);
     target.press = 1; current.press = Math.max(.7, current.press); velocity.press = 0;
-    current.flash = reducedMotion.matches ? 0 : 1;
+    current.flash = reducedMotion.matches ? 0 : .45;
     setPhase("pressed"); paint(); animate();
     holdTimer = window.setTimeout(() => setPhase("held"), 180);
   }
@@ -70,29 +71,37 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
     target.rx = -y * 16; target.ry = x * 22;
     target.x = x * 3; target.y = y * 3;
-    if (pointer !== null && origin) {
-      target.x += clamp((event.clientX - origin.x) * .22, -16, 16);
-      target.y += clamp((event.clientY - origin.y) * .22, -12, 12);
+    if (pointers.size) {
+      const points = [...pointers.values()];
+      target.x += clamp(points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length * .22, -16, 16);
+      target.y += clamp(points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length * .22, -12, 12);
     }
     animate();
   }
   function release(cancelled = false) {
-    const captured = pointer;
-    pointer = null; origin = null; activeKey = null;
+    activeKey = null;
     window.clearTimeout(holdTimer); window.clearTimeout(pulseTimer);
-    target.press = 0; velocity.press = cancelled || phase === "idle" ? 0 : -.24;
-    setPhase("idle");
-    if (cancelled) cancelClick = true;
-    if (captured !== null && button.hasPointerCapture(captured)) button.releasePointerCapture(captured);
-    animate();
+    target.press = 0; velocity.press = cancelled || phase === "idle" ? 0 : -.3;
+    setPhase("idle"); animate();
   }
   function reset(cancelled = true) {
+    const captured = [...pointers.keys()]; pointers.clear();
+    for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
     release(cancelled);
     for (const key of keys) target[key] = 0;
     animate();
   }
+  function aimPointers() {
+    if (!pointers.size) return;
+    const points = [...pointers.values()];
+    aim({ clientX: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+      clientY: points.reduce((sum, point) => sum + point.y, 0) / points.length });
+  }
   function burst() {
     if (reducedMotion.matches) return;
+    current.flash = 1;
+    current.pop = Math.max(current.pop, .045); velocity.pop = .035;
+    paint(); animate();
     // Keep rapid clicks bounded, and keep particles inside the stage so they
     // cannot introduce horizontal scrolling on a phone.
     while (effects.childElementCount > 32) effects.firstElementChild.remove();
@@ -107,57 +116,71 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
       particle.animate([{ opacity: 0, transform: `translate(${x * .95}px, ${y * .95}px) scale(.3)` }, { opacity: 1, offset: .16 }, { opacity: 0, transform: `translate(${x * 1.22}px, ${y * 1.28 - 16}px) rotate(${i * 45}deg) scale(.4)` }], { duration: 420 + i * 15, easing: "cubic-bezier(.15,.65,.4,1)" }).finished.then(() => particle.remove(), () => particle.remove());
     }
   }
-  function activateRelease() {
+  function activateRelease(event) {
     activatingRelease = true;
-    try { button.click(); } finally { activatingRelease = false; }
+    try {
+      // Preserve the releasing pointer's coordinates, even for non-primary
+      // fingers. One controlled activation per release; native clicks are suppressed.
+      if (event) button.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true,
+        clientX: event.clientX, clientY: event.clientY, detail: 1 }));
+      else button.click();
+    } finally { activatingRelease = false; }
   }
-  stage.addEventListener("pointermove", (event) => {
-    if (button.disabled || (pointer !== null && event.pointerId !== pointer) || (event.pointerType === "touch" && pointer === null)) return;
-    aim(event);
+  stage.addEventListener("pointermove", event => {
+    if (button.disabled) return;
+    const point = pointers.get(event.pointerId);
+    if (point) { point.x = event.clientX; point.y = event.clientY; aimPointers(); }
+    else if (!pointers.size && activeKey === null && event.pointerType === "mouse") aim(event);
   });
-  stage.addEventListener("pointerleave", () => { if (pointer === null && activeKey === null) reset(false); });
-  button.addEventListener("pointerdown", (event) => {
-    if (button.disabled || !event.isPrimary || event.button !== 0 || pointer !== null || activeKey !== null) return;
-    suppressNativeClick = false;
-    pointer = event.pointerId; origin = { x: event.clientX, y: event.clientY };
-    begin(); button.setPointerCapture(pointer); aim(event);
-  });
-  button.addEventListener("pointerup", (event) => {
-    if (event.pointerId !== pointer) return;
-    const rect = button.getBoundingClientRect();
-    const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
-    release(outside);
-    // Browsers suppress a touch click after a drag, even inside the button.
-    // Activate that release explicitly and swallow its optional native click.
-    if (event.pointerType !== "mouse") {
-      suppressNativeClick = true;
-      if (!outside && !button.disabled) activateRelease();
-    }
-    if (event.pointerType !== "mouse" || outside) reset(outside);
-  });
-  button.addEventListener("pointercancel", (event) => { if (event.pointerId === pointer) reset(); });
-  button.addEventListener("lostpointercapture", () => { if (pointer !== null) reset(); });
-  button.addEventListener("keydown", (event) => {
-    if (button.disabled || (event.key !== " " && event.key !== "Enter")) return;
-    // Normalize Space and Enter to one activation on release, including when
-    // the OS repeats keydown events while the key is held.
+  stage.addEventListener("pointerleave", () => { if (!pointers.size && activeKey === null) reset(false); });
+  button.addEventListener("pointerdown", event => {
+    if (button.disabled || event.button !== 0 || activeKey !== null || pointers.has(event.pointerId)) return;
     event.preventDefault();
-    if (event.repeat || activeKey !== null || pointer !== null) return;
+    window.getSelection()?.removeAllRanges();
+    button.focus({ preventScroll: true });
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY });
+    if (pointers.size === 1) begin();
+    button.setPointerCapture(event.pointerId); aimPointers();
+  });
+  function endPointer(event, cancelled = false) {
+    if (!pointers.has(event.pointerId)) return;
+    const rect = button.getBoundingClientRect();
+    const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    pointers.delete(event.pointerId);
+    if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
+    if (!pointers.size) release(cancelled || !inside); else aimPointers();
+    if (!cancelled && inside && !button.disabled) activateRelease(event);
+    if (!pointers.size && event.pointerType !== "mouse") {
+      for (const key of ["x", "y", "rx", "ry"]) target[key] = 0;
+      animate();
+    }
+  }
+  button.addEventListener("pointerup", event => endPointer(event));
+  button.addEventListener("pointercancel", event => endPointer(event, true));
+  button.addEventListener("lostpointercapture", event => endPointer(event, true));
+  button.addEventListener("dragstart", event => event.preventDefault());
+  button.addEventListener("contextmenu", event => event.preventDefault());
+  button.addEventListener("keydown", event => {
+    if (button.disabled || (event.key !== " " && event.key !== "Enter")) return;
+    event.preventDefault();
+    if (event.repeat || activeKey !== null || pointers.size) return;
+    window.getSelection()?.removeAllRanges();
     activeKey = event.key; begin();
   });
-  button.addEventListener("keyup", (event) => {
+  button.addEventListener("keyup", event => {
     if (event.key !== " " && event.key !== "Enter") return;
     event.preventDefault();
     if (event.key !== activeKey) return;
-    if (!button.disabled) activateRelease();
     release();
+    if (!button.disabled) activateRelease();
   });
   button.addEventListener("blur", () => { if (activeKey !== null) reset(); });
-  button.addEventListener("click", (event) => {
-    if (suppressNativeClick && event.detail > 0) { event.preventDefault(); event.stopImmediatePropagation(); return; }
-    if (cancelClick && event.detail > 0) { event.preventDefault(); event.stopImmediatePropagation(); cancelClick = false; return; }
+  button.addEventListener("click", event => {
+    if (!activatingRelease && (event.detail > 0 || event.pointerType)) {
+      event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
     if (button.disabled) return;
-    if (event.detail === 0 && activeKey === null && !activatingRelease) {
+    if (event.detail === 0 && !activatingRelease) {
       begin(); pulseTimer = window.setTimeout(() => release(), 80);
     }
     burst();
