@@ -22,6 +22,16 @@ function harness(reducedMotion = true) {
     captures = new Set();
     props = new Map();
     children = [];
+    animations = [];
+    get childElementCount() {
+      return this.children.length;
+    }
+    get firstElementChild() {
+      return this.children[0];
+    }
+    remove() {
+      if (this.parent) this.parent.children.splice(this.parent.children.indexOf(this), 1);
+    }
     disabled = false;
     offsetWidth = 260;
     offsetHeight = 144;
@@ -42,10 +52,12 @@ function harness(reducedMotion = true) {
       return this.dispatchEvent(new Event(type, values));
     }
     append(child) {
+      child.parent = this;
       this.children.push(child);
     }
     setAttribute() {}
-    animate() {
+    animate(keyframes, options) {
+      this.animations.push({ keyframes, options });
       return { finished: new Promise(() => {}) };
     }
     getBoundingClientRect() {
@@ -336,4 +348,52 @@ test("cancelled, reduced-motion, and simulated activations never impose a hold",
   assert.equal(simulated.rig.props.get("--press"), "0");
   assert.equal(simulated.stage.classes.has("is-pressed"), false);
   assert.equal(simulated.clicks.length, 1);
+});
+
+test("quick taps kick harder and leave bounded sparks alive across presses", () => {
+  const h = harness(false);
+  h.pointer("pointerdown", 1);
+  h.pointer("pointerup", 1);
+  assert.ok(parseFloat(h.rig.props.get("--button-pop")) >= 1.06);
+  const cloud = h.stage.children[0];
+  assert.equal(cloud.childElementCount, 12);
+  assert.ok(cloud.children.every((p) => p.animations[0].options.duration >= 850));
+  const first = cloud.children[0];
+  h.pointer("pointerdown", 2);
+  h.pointer("pointerup", 2);
+  assert.equal(cloud.children.includes(first), true);
+  for (let i = 3; i < 20; i++) {
+    h.pointer("pointerdown", i);
+    h.pointer("pointerup", i);
+  }
+  assert.ok(cloud.childElementCount <= 64);
+});
+
+test("a deliberate fresh drag coasts on release while tiny movements and stale drags do not", () => {
+  const run = (distance, wait) => {
+    const h = harness(false);
+    h.stage.getBoundingClientRect = () => ({ left: 0, top: 0, width: 680, height: 350 });
+    h.pointer("pointerdown", 1, { clientX: 170 });
+    h.setTime(16);
+    h.stage.fire("pointermove", {
+      pointerId: 1,
+      pointerType: "touch",
+      clientX: 170 + distance,
+      clientY: 150,
+    });
+    h.frame(16);
+    h.frame(32);
+    const before = parseFloat(h.rig.props.get("--shift-x"));
+    h.setTime(32 + wait);
+    h.pointer("pointerup", 1, { clientX: 170 + distance });
+    h.frame(48 + wait);
+    return { before, after: parseFloat(h.rig.props.get("--shift-x")), clicks: h.clicks.length };
+  };
+  const deliberate = run(80, 0),
+    jitter = run(6, 0),
+    stopped = run(80, 100);
+  assert.ok(deliberate.after > deliberate.before + 5);
+  assert.ok(Math.abs(jitter.after - jitter.before) < 2);
+  assert.ok(stopped.after < stopped.before + 5);
+  assert.equal(deliberate.clicks, 1);
 });

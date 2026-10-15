@@ -71,10 +71,17 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       vec3 view = normalize(vec3(0., 0., 850.) - worldPosition);
       float diffuse = max(dot(n, light), 0.);
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
-      float edge = max(abs(texCoord.x - .5), abs(texCoord.y - .5)) * 2.;
-      float rim = smoothstep(.72, .98, edge);
+      // Distance to a rounded rectangle in physical units keeps every edge
+      // equally thick. A little fixed mottling breaks up the oxidized deposit.
+      vec2 p = (texCoord - .5) * vec2(260., 144.);
+      vec2 q = abs(p) - vec2(102., 44.);
+      float distance = 28. - length(max(q, 0.)) - min(max(q.x, q.y), 0.);
+      float mottling = .5 + .25 * sin(p.x * .13 + p.y * .07) * sin(p.y * .19 - p.x * .05)
+        + .2 * sin(p.x * .37 + p.y * .29);
+      float rim = 1. - smoothstep(3., 10. + mottling * 4., distance);
+      float oxide = copper * rim * (.35 + .4 * mottling) * frontFace;
       vec3 copperMetal = vec3(.78, .36, .20);
-      vec3 patina = vec3(.24, .65, .42);
+      vec3 patina = vec3(.12, .26, .18);
       vec3 surface = mix(vec3(1., .77, .25), copperMetal, copper);
       vec3 gold = surface * (.52 + .70 * diffuse);
       // A polished reflection band follows the surface normal as it tilts.
@@ -82,16 +89,15 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       float band = exp(-pow((reflected.y + reflected.x * .45 + .05) * 24., 2.));
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
-      gold = mix(gold, patina, copper * rim * .82 * frontFace);
-      gold += patina * copper * rim * .18;
+      gold = mix(gold, patina * (.8 + .2 * diffuse), oxide);
       gold += mix(vec3(1., .88, .55), vec3(1., .67, .43), copper) * flash * .38 * frontFace;
       // A response travels over the actual face, independently of press/release.
       float sweep = exp(-pow((texCoord.x - responseProgress) * 5., 2.));
-      gold = mix(gold, responseColor, response * (.12 + .48 * rim + .30 * sweep) * frontFace);
+      gold = mix(gold, responseColor, response * (.06 + .42 * rim + .12 * sweep) * frontFace);
       vec4 text = texture2D(lettering, texCoord);
       // The lettering is chemically darkened metal with a fine recessed edge,
       // so its reflections move with the face instead of looking like flat ink.
-      vec3 inscription = mix(surface * .32, vec3(.055, .27, .16), copper);
+      vec3 inscription = mix(surface * .32, vec3(.055, .19, .12), copper);
       inscription *= .72 + .28 * diffuse;
       inscription += mix(vec3(.28, .19, .065), patina * .38, copper) * (specular * .38 + band * .24);
       float above = texture2D(lettering, texCoord - vec2(1. / 780., 1. / 432.)).a;

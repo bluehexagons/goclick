@@ -131,7 +131,14 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
   assert.equal(popup.dataset.state, "error");
   assert.equal(popup.children[0].textContent, "?");
   assert.equal(popup.children[1].textContent, "unconfirmed");
-  assert.deepEqual(h.responses, [["fast", 50], ["slow", 900], ["error"]]);
+  assert.deepEqual(h.responses, [
+    ["pending"],
+    ["fast", 50],
+    ["pending"],
+    ["slow", 900],
+    ["pending"],
+    ["error"],
+  ]);
 });
 
 test("reduced motion uses static acknowledgement and resets clear every pending effect", () => {
@@ -148,4 +155,13 @@ test("reduced motion uses static acknowledgement and resets clear every pending 
     h.layer.children.every((popup) => popup.removed),
     true,
   );
+});
+
+test("a rejected rate-limited click gets a cooldown response rather than a save error", () => {
+  const h = effects();
+  h.feedback.start(h.button, { detail: 0 }).fail(false, true);
+  const popup = h.layer.children[0];
+  assert.equal(popup.dataset.state, "limited");
+  assert.equal(popup.children[1].textContent, "cooldown");
+  assert.deepEqual(h.responses, [["pending"], ["limited"]]);
 });

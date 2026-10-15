@@ -355,10 +355,17 @@
       vec3 view = normalize(vec3(0., 0., 850.) - worldPosition);
       float diffuse = max(dot(n, light), 0.);
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
-      float edge = max(abs(texCoord.x - .5), abs(texCoord.y - .5)) * 2.;
-      float rim = smoothstep(.72, .98, edge);
+      // Distance to a rounded rectangle in physical units keeps every edge
+      // equally thick. A little fixed mottling breaks up the oxidized deposit.
+      vec2 p = (texCoord - .5) * vec2(260., 144.);
+      vec2 q = abs(p) - vec2(102., 44.);
+      float distance = 28. - length(max(q, 0.)) - min(max(q.x, q.y), 0.);
+      float mottling = .5 + .25 * sin(p.x * .13 + p.y * .07) * sin(p.y * .19 - p.x * .05)
+        + .2 * sin(p.x * .37 + p.y * .29);
+      float rim = 1. - smoothstep(3., 10. + mottling * 4., distance);
+      float oxide = copper * rim * (.35 + .4 * mottling) * frontFace;
       vec3 copperMetal = vec3(.78, .36, .20);
-      vec3 patina = vec3(.24, .65, .42);
+      vec3 patina = vec3(.12, .26, .18);
       vec3 surface = mix(vec3(1., .77, .25), copperMetal, copper);
       vec3 gold = surface * (.52 + .70 * diffuse);
       // A polished reflection band follows the surface normal as it tilts.
@@ -366,16 +373,15 @@
       float band = exp(-pow((reflected.y + reflected.x * .45 + .05) * 24., 2.));
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
-      gold = mix(gold, patina, copper * rim * .82 * frontFace);
-      gold += patina * copper * rim * .18;
+      gold = mix(gold, patina * (.8 + .2 * diffuse), oxide);
       gold += mix(vec3(1., .88, .55), vec3(1., .67, .43), copper) * flash * .38 * frontFace;
       // A response travels over the actual face, independently of press/release.
       float sweep = exp(-pow((texCoord.x - responseProgress) * 5., 2.));
-      gold = mix(gold, responseColor, response * (.12 + .48 * rim + .30 * sweep) * frontFace);
+      gold = mix(gold, responseColor, response * (.06 + .42 * rim + .12 * sweep) * frontFace);
       vec4 text = texture2D(lettering, texCoord);
       // The lettering is chemically darkened metal with a fine recessed edge,
       // so its reflections move with the face instead of looking like flat ink.
-      vec3 inscription = mix(surface * .32, vec3(.055, .27, .16), copper);
+      vec3 inscription = mix(surface * .32, vec3(.055, .19, .12), copper);
       inscription *= .72 + .28 * diffuse;
       inscription += mix(vec3(.28, .19, .065), patina * .38, copper) * (specular * .38 + band * .24);
       float above = texture2D(lettering, texCoord - vec2(1. / 780., 1. / 432.)).a;
@@ -670,14 +676,25 @@
         "--response-wash",
         `rgba(${current.responseColor.map((value) => Math.round(value * 255)).join(",")},${(current.response * 0.5).toFixed(3)})`
       );
+      stage.style.setProperty(
+        "--spark-color",
+        `rgb(${current.responseColor.map((value) => Math.round(value * 255)).join(" ")})`
+      );
       renderer?.draw(current);
     }, tick2 = function(time) {
       const dt = lastFrame ? clamp((time - lastFrame) / (1e3 / 60), 0.25, 2) : 1;
       lastFrame = time;
       let moving = false;
       for (const key of keys) {
-        velocity[key] = (velocity[key] + (target[key] - current[key]) * 0.16 * dt) * Math.pow(0.64, dt);
+        const coasting = time < coastUntil && (key === "x" || key === "y");
+        velocity[key] = (velocity[key] + (target[key] - current[key]) * (coasting ? 0.045 : 0.16) * dt) * Math.pow(coasting ? 0.88 : 0.64, dt);
         current[key] += velocity[key] * dt;
+        if (coasting) {
+          const bound = key === "x" ? coastX : coastY;
+          const bounded = clamp(current[key], -bound, bound);
+          if (bounded !== current[key]) velocity[key] = 0;
+          current[key] = bounded;
+        }
         if (Math.abs(target[key] - current[key]) > 2e-3 || Math.abs(velocity[key]) > 2e-3)
           moving = true;
         else {
@@ -724,6 +741,7 @@
     }, begin2 = function() {
       window.clearTimeout(holdTimer);
       clearResponse2();
+      coastUntil = 0;
       pressedAt = performance.now();
       releasedAt = null;
       current.press = current.copper = 1;
@@ -780,6 +798,7 @@
       for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
       release2(cancelled);
       releasedAt = null;
+      coastUntil = 0;
       current.copper = 0;
       for (const key of keys) target[key] = 0;
       animate2();
@@ -787,14 +806,15 @@
       responseStarted = null;
       current.response = 0;
       current.responseProgress = 0;
+      current.responseColor = [1, 0.78, 0.32];
       delete stage.dataset.response;
     }, respond2 = function(state, milliseconds = 0) {
-      current.responseColor = state === "error" ? [1, 0.49, 0.47] : state === "slow" ? [0.64, 0.54, 1] : [0.38, 0.84, 0.8];
+      current.responseColor = state === "error" ? [1, 0.49, 0.47] : state === "slow" ? [0.64, 0.54, 1] : state === "limited" ? [1, 0.58, 0.26] : state === "pending" ? [1, 0.78, 0.32] : state === "fast" ? [0.38, 0.8, 0.65] : [0.35, 0.67, 0.94];
       stage.dataset.response = state;
       responseDuration = clamp(300 + milliseconds * 0.4, 320, 800);
       current.responseProgress = reducedMotion.matches ? 0.5 : 0;
-      current.response = reducedMotion.matches ? 0.22 : 1;
-      responseStarted = reducedMotion.matches ? null : performance.now();
+      current.response = state === "pending" ? 0.18 : reducedMotion.matches ? 0.22 : 1;
+      responseStarted = state === "pending" || reducedMotion.matches ? null : performance.now();
       paint2();
       animate2();
     }, aimPointers2 = function() {
@@ -807,45 +827,34 @@
     }, burst2 = function() {
       if (reducedMotion.matches) return;
       const quick = releaseDuration === 70;
-      current.flash = quick ? 0.25 : 0.45;
-      current.pop = Math.max(current.pop, quick ? 0.018 : 0.035);
-      velocity.pop = quick ? 0.012 : 0.02;
+      current.flash = quick ? 0.85 : 0.55;
+      current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
+      velocity.pop = quick ? 0.035 : 0.022;
       paint2();
       animate2();
-      while (effects.childElementCount > 32) effects.firstElementChild?.remove();
-      const ring = document.createElement("span");
-      ring.className = "click-ring";
-      effects.append(ring);
-      ring.animate(
-        [
-          { opacity: 0.7, transform: "translate(-50%, -50%) scale(.65)" },
-          { opacity: 0, transform: "translate(-50%, -50%) scale(1.45)" }
-        ],
-        { duration: 360, easing: "cubic-bezier(.15,.7,.3,1)" }
-      ).finished.then(
-        () => ring.remove(),
-        () => ring.remove()
-      );
-      for (let i = 0; i < 7; i++) {
+      const count = quick ? 12 : 8;
+      while (effects.childElementCount > 64 - count) effects.firstElementChild?.remove();
+      const width = button.offsetWidth, height = button.offsetHeight;
+      for (let i = 0; i < count; i++) {
         const particle = document.createElement("span");
         particle.className = "click-particle";
-        const angle = i / 7 * Math.PI * 2 - Math.PI / 2, scale = button.offsetWidth / 260;
-        const x = Math.cos(angle) * (115 + i % 3 * 4) * scale, y = Math.sin(angle) * 66 * scale;
-        particle.style.setProperty(
-          "--particle-color",
-          ["var(--gold)", "var(--teal)", "var(--violet)"][i % 3]
-        );
+        const side = i % 4, along = (Math.random() - 0.5) * 0.75;
+        const nx = side === 1 ? 1 : side === 3 ? -1 : 0;
+        const ny = side === 0 ? -1 : side === 2 ? 1 : 0;
+        const x = current.x + (nx ? nx * width / 2 : along * width);
+        const y = current.y + (ny ? ny * height / 2 : along * height);
+        const drift = 22 + Math.random() * 28;
         effects.append(particle);
         particle.animate(
           [
-            { opacity: 0, transform: `translate(${x * 0.95}px, ${y * 0.95}px) scale(.3)` },
-            { opacity: 1, offset: 0.16 },
+            { opacity: 0.95, transform: `translate(${x}px, ${y}px) scale(${quick ? 1.3 : 1})` },
+            { opacity: 0.6, offset: 0.22 },
             {
               opacity: 0,
-              transform: `translate(${x * 1.22}px, ${y * 1.28 - 16}px) rotate(${i * 45}deg) scale(.4)`
+              transform: `translate(${x + nx * drift + along * 15}px, ${y + ny * drift - 22}px) scale(.35)`
             }
           ],
-          { duration: 420 + i * 15, easing: "cubic-bezier(.15,.65,.4,1)" }
+          { duration: 850 + Math.random() * 650, easing: "cubic-bezier(.1,.5,.3,1)" }
         ).finished.then(
           () => particle.remove(),
           () => particle.remove()
@@ -872,11 +881,20 @@
       if (!pointers.has(event.pointerId)) return;
       const rect = button.getBoundingClientRect();
       const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      const point = pointers.get(event.pointerId);
       pointers.delete(event.pointerId);
       if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
       if (!pointers.size) release2(cancelled || !inside);
       else aimPointers2();
       if (!cancelled && inside && !button.disabled) activateRelease2(event);
+      if (!pointers.size && !cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
+        coastUntil = performance.now() + 80;
+        const rect2 = stage.getBoundingClientRect();
+        coastX = Math.min(110, Math.max(24, (rect2.width - button.offsetWidth) / 2 - 8));
+        coastY = Math.min(90, Math.max(28, (rect2.height - button.offsetHeight) / 2 - 8));
+        velocity.x = clamp(point.vx * 10, -14, 14);
+        velocity.y = clamp(point.vy * 10, -14, 14);
+      }
       if (!pointers.size && !cancelled && event.pointerType === "mouse") aim2(event);
       else if (!pointers.size) {
         for (const key of ["x", "y", "rx", "ry"]) target[key] = 0;
@@ -905,12 +923,14 @@
       flash: 0,
       response: 0,
       responseProgress: 0,
-      responseColor: [0.38, 0.84, 0.8]
+      responseColor: [0.35, 0.67, 0.94]
     };
     const target = { ...current }, velocity = { ...current };
     let renderer = null;
     let setupFrame = 0, frame = 0, lastFrame = 0;
     const pointers = /* @__PURE__ */ new Map();
+    let coastUntil = 0;
+    let coastX = 24, coastY = 28;
     let activeKey = null;
     let activatingRelease = false;
     let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = 70, holdTimer = 0, phase = "idle";
@@ -921,6 +941,11 @@
       if (button.disabled) return;
       const point = pointers.get(event.pointerId);
       if (point) {
+        const now = performance.now(), elapsed = now - point.movedAt;
+        const dt = clamp(elapsed, 8, 50);
+        point.vx = elapsed > 80 ? 0 : point.vx * 0.35 + (event.clientX - point.x) / dt * 0.65;
+        point.vy = elapsed > 80 ? 0 : point.vy * 0.35 + (event.clientY - point.y) / dt * 0.65;
+        point.movedAt = now;
         point.x = event.clientX;
         point.y = event.clientY;
         aimPointers2();
@@ -939,7 +964,10 @@
         x: event.clientX,
         y: event.clientY,
         startX: event.clientX,
-        startY: event.clientY
+        startY: event.clientY,
+        vx: 0,
+        vy: 0,
+        movedAt: performance.now()
       });
       if (pointers.size === 1) begin2();
       button.setPointerCapture(event.pointerId);
@@ -1051,6 +1079,7 @@
       timing.textContent = "\u2026";
       popup.append(score, timing);
       required(".score-effects", stage).append(popup);
+      tactileButtons.get(button)?.respond("pending");
       const baseline = average();
       let animation = null;
       let removal = 0, settled = false;
@@ -1090,14 +1119,14 @@
           if (samples.length > 20) samples.shift();
           finish();
         },
-        fail(uncertain = false) {
+        fail(uncertain = false, limited = false) {
           if (settled) return;
           settled = true;
           window.clearTimeout(slow);
-          popup.dataset.state = "error";
-          tactileButtons.get(button)?.respond("error");
-          score.textContent = uncertain ? "?" : "\xD7";
-          timing.textContent = uncertain ? "unconfirmed" : "not saved";
+          popup.dataset.state = limited ? "limited" : "error";
+          tactileButtons.get(button)?.respond(limited ? "limited" : "error");
+          score.textContent = limited ? "\u2026" : uncertain ? "?" : "\xD7";
+          timing.textContent = limited ? "cooldown" : uncertain ? "unconfirmed" : "not saved";
           finish();
         }
       };

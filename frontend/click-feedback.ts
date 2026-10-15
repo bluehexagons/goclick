@@ -7,7 +7,7 @@ interface Feedback {
   remove(): void;
   reduce(): void;
   success(milliseconds: number): void;
-  fail(uncertain?: boolean): void;
+  fail(uncertain?: boolean, limited?: boolean): void;
 }
 const clickFeedback = (() => {
   const samples: number[] = [],
@@ -40,6 +40,7 @@ const clickFeedback = (() => {
     timing.textContent = "…";
     popup.append(score, timing);
     required(".score-effects", stage).append(popup);
+    tactileButtons.get(button)?.respond("pending");
     const baseline = average();
     let animation: Animation | null = null;
     let removal = 0,
@@ -81,14 +82,14 @@ const clickFeedback = (() => {
         if (samples.length > 20) samples.shift();
         finish();
       },
-      fail(uncertain = false) {
+      fail(uncertain = false, limited = false) {
         if (settled) return;
         settled = true;
         window.clearTimeout(slow);
-        popup.dataset.state = "error";
-        tactileButtons.get(button)?.respond("error");
-        score.textContent = uncertain ? "?" : "×";
-        timing.textContent = uncertain ? "unconfirmed" : "not saved";
+        popup.dataset.state = limited ? "limited" : "error";
+        tactileButtons.get(button)?.respond(limited ? "limited" : "error");
+        score.textContent = limited ? "…" : uncertain ? "?" : "×";
+        timing.textContent = limited ? "cooldown" : uncertain ? "unconfirmed" : "not saved";
         finish();
       },
     };
