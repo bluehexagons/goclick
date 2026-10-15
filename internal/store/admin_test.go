@@ -118,8 +118,11 @@ func TestAdminStatsAndActivity(t *testing.T) {
 	if total != 4 || len(events) != 2 || events[0].Action != "click" || *events[0].ClickCount != 3 {
 		t.Fatalf("activity: %+v total=%d", events, total)
 	}
-	if _, err := db.UserBySession(ctx, []byte("admin session"), now.Add(AdminSessionTTL)); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("admin session exceeded lifetime: %v", err)
+	if _, err := db.UserBySession(ctx, []byte("admin session"), now.Add(12*time.Hour)); err != nil {
+		t.Fatalf("valid admin session rejected after eight hours: %v", err)
+	}
+	if _, err := db.UserBySession(ctx, []byte("admin session"), now.Add(24*time.Hour)); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expired admin session accepted: %v", err)
 	}
 }
 

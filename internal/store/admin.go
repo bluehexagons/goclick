@@ -121,8 +121,8 @@ func (s *Store) AdminOverview(ctx context.Context, now time.Time) (Overview, err
 		(SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM users WHERE admin = 1),
 		(SELECT COALESCE(SUM(click_count),0) FROM counters),
 		(SELECT COUNT(*) FROM counters WHERE last_clicked_at >= ?),
-		(SELECT COUNT(*) FROM sessions JOIN users ON users.id=sessions.user_id WHERE expires_at > ? AND (users.admin=0 OR sessions.created_at > ?)),
-		(SELECT COUNT(*) FROM player_activity WHERE action='click' AND occurred_at >= ?)`, formatTime(now.Add(-24*time.Hour)), now.Unix(), now.Add(-AdminSessionTTL).Unix(), formatTime(now.Add(-24*time.Hour))).Scan(&out.Players, &out.Admins, &out.Clicks, &out.ActivePlayers, &out.ActiveSessions, &out.Clicks24h)
+		(SELECT COUNT(*) FROM sessions WHERE expires_at > ?),
+		(SELECT COUNT(*) FROM player_activity WHERE action='click' AND occurred_at >= ?)`, formatTime(now.Add(-24*time.Hour)), now.Unix(), formatTime(now.Add(-24*time.Hour))).Scan(&out.Players, &out.Admins, &out.Clicks, &out.ActivePlayers, &out.ActiveSessions, &out.Clicks24h)
 	if err != nil {
 		return out, err
 	}

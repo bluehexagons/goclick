@@ -186,8 +186,8 @@ func adminTestApp(t *testing.T) (*App, *store.Store, *http.Client, int64) {
 	if response.StatusCode != 200 {
 		t.Fatalf("admin login = %d %s", response.StatusCode, readBody(t, response))
 	}
-	if response.Cookies()[0].MaxAge != int(store.AdminSessionTTL.Seconds()) {
-		t.Fatal("admin session lifetime was not shortened")
+	if response.Cookies()[0].MaxAge != int((180 * 24 * time.Hour).Seconds()) {
+		t.Fatal("admin session did not receive the normal inactivity window")
 	}
 	response.Body.Close()
 	return app, db, client, user.ID

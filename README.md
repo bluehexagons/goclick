@@ -99,6 +99,11 @@ has its own admin API described below.
   login performs the same-cost dummy bcrypt check. The Rails importer rejects
   malformed or unreasonable-cost password digests.
 - Session secrets are 256-bit random values and only SHA-256 digests are stored.
+- Players and administrators share a rolling 180-day inactivity window with no
+  absolute session-age limit. Authenticated activity renews the server deadline
+  and browser cookie together, roughly once a day. Renewal keeps the same token
+  so parallel clicks and other tabs remain signed in. Inactive sessions expire
+  after approximately 180 days; expired or revoked sessions are never revived.
 - The SQLite database is restricted to the service account (`0600`).
 - Existing database schemas are validated before Go Click enables WAL or
   applies upgrades, preventing an accidentally selected Rails or unrelated
@@ -139,7 +144,9 @@ go run ./cmd/admin -database data/goclick.db -username YOUR_USERNAME
 Sign in again and follow **Admin** in the account navigation, or open `/admin`.
 The operator command also accepts `-user-id` and supports `-revoke`; it refuses
 to revoke the last administrator. Role changes revoke that user's sessions.
-Admin sessions last at most eight hours.
+Administrators stay signed in under the same activity-based policy as players;
+there is no separate eight-hour cutoff. Sensitive recovery operations still
+require the current password.
 
 The panel shows aggregate player/click statistics, seven-day click activity,
 searchable player listings, counters and streaks, account details, recorded

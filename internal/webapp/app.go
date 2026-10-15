@@ -91,6 +91,9 @@ func New(database *store.Store, config Config) (*App, error) {
 	if config.SessionTTL <= 0 {
 		config.SessionTTL = 180 * 24 * time.Hour
 	}
+	if config.SessionTTL < time.Second {
+		return nil, errors.New("session lifetime must be at least one second")
+	}
 	if config.Logger == nil {
 		config.Logger = slog.Default()
 	}
@@ -416,11 +419,7 @@ func (a *App) startSession(w http.ResponseWriter, r *http.Request, user store.Us
 		return fmt.Errorf("generate session token: %w", err)
 	}
 	now := a.now()
-	ttl := a.sessionTTL
-	if user.Admin && ttl > store.AdminSessionTTL {
-		ttl = store.AdminSessionTTL
-	}
-	expires := now.Add(ttl)
+	expires := now.Add(a.sessionTTL)
 	previous, _, valid := rawSessionToken(r)
 	if !valid {
 		previous = nil
@@ -428,12 +427,16 @@ func (a *App) startSession(w http.ResponseWriter, r *http.Request, user store.Us
 	if err := a.store.ReplaceSession(r.Context(), raw, previous, user.ID, expires, now); err != nil {
 		return err
 	}
+	a.setSessionCookie(w, raw, expires, now)
+	return nil
+}
+
+func (a *App) setSessionCookie(w http.ResponseWriter, raw []byte, expires, now time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookie, Value: base64.RawURLEncoding.EncodeToString(raw),
-		Path: "/", Expires: expires, MaxAge: int(ttl.Seconds()),
+		Path: "/", Expires: expires, MaxAge: max(1, int(expires.Sub(now).Seconds())),
 		HttpOnly: true, Secure: a.secureCookies, SameSite: http.SameSiteStrictMode,
 	})
-	return nil
 }
 
 func (a *App) clearSessionCookie(w http.ResponseWriter) {
@@ -455,7 +458,8 @@ func (a *App) requireUser(next http.HandlerFunc) http.HandlerFunc {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid session"})
 			return
 		}
-		user, err := a.store.UserBySession(r.Context(), raw, a.now())
+		now := a.now()
+		session, err := a.store.UseSession(r.Context(), raw, now, a.sessionTTL)
 		if errors.Is(err, store.ErrNotFound) {
 			a.clearSessionCookie(w)
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid or expired session"})
@@ -465,7 +469,10 @@ func (a *App) requireUser(next http.HandlerFunc) http.HandlerFunc {
 			a.internalError(w, r, "authenticate session", err)
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), userContextKey, user)))
+		if session.Renewed {
+			a.setSessionCookie(w, raw, session.ExpiresAt, now)
+		}
+		next(w, r.WithContext(context.WithValue(r.Context(), userContextKey, session.User)))
 	}
 }
 

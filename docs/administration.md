@@ -3,8 +3,10 @@
 Sign in with an administrator account and open `/admin`, or follow **Admin**
 from the game's account navigation. Every panel and API request authenticates
 the session and checks the current database role. Guests receive 401; players
-receive 403. Signup cannot grant admin access. Admin sessions expire after at
-most eight hours, and sensitive backup operations require the current password.
+receive 403. Signup cannot grant admin access. Players and administrators use
+the same rolling 180-day inactivity window, with no absolute age cutoff while
+active. Authenticated activity renews the database expiry and persistent cookie
+roughly once a day. Sensitive backup operations require the current password.
 
 ## Grant access from the host
 

@@ -159,7 +159,7 @@
             <article><h2>Clicks &amp; saves</h2><p>Releasing inside the button adds one click. Holding does not add extra clicks. The total shows server-confirmed saves; pending clicks appear separately. Failed requests are not retried automatically.</p></article>
             <article><h2>Streak periods</h2><p>Days, calendar months, and calendar years use UTC. Multiple clicks in the same period do not extend a streak. The next click after a missed period starts that streak at one.</p></article>
             <article><h2>Ping &amp; storage</h2><p>Ping measures the last successful click request, including server processing. Amber means a request is in flight; red means a save failed. Progress is stored in SQLite on the server, so signing out does not delete it.</p></article>
-            <article><h2>Account sessions</h2><p>Signing in uses an HttpOnly session cookie. Passwords are stored as bcrypt hashes. Signing out revokes the current session; account data stays available when you sign in again.</p></article>
+            <article><h2>Account sessions</h2><p>Playing or opening your counter keeps you signed in, including on admin accounts. Sessions expire after about 180 days of inactivity. Your login uses an HttpOnly cookie. Signing out ends the session; your account data stays saved.</p></article>
           </div>
           <p class="implementation-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#terminal"/></svg> Go server · SQLite transactions · dependency-free browser UI · WebGL with a CSS fallback</p>
         </details>

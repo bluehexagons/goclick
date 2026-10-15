@@ -45,8 +45,6 @@ type Counters struct {
 
 const schemaVersion = 5
 
-const AdminSessionTTL = 8 * time.Hour
-
 type schemaTable struct {
 	name    string
 	columns []string
@@ -395,14 +393,15 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-func scanUser(row rowScanner) (User, error) {
+func scanUser(row rowScanner, extra ...any) (User, error) {
 	var (
 		user                 User
 		email                sql.NullString
 		admin                int
 		createdAt, updatedAt string
 	)
-	err := row.Scan(&user.ID, &user.Username, &email, &user.PasswordHash, &admin, &createdAt, &updatedAt)
+	destinations := []any{&user.ID, &user.Username, &email, &user.PasswordHash, &admin, &createdAt, &updatedAt}
+	err := row.Scan(append(destinations, extra...)...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
@@ -459,12 +458,60 @@ func (s *Store) ReplaceSession(ctx context.Context, rawToken, previousToken []by
 }
 
 func (s *Store) UserBySession(ctx context.Context, rawToken []byte, now time.Time) (User, error) {
+	session, err := s.readSession(ctx, rawToken, now)
+	return session.User, err
+}
+
+type Session struct {
+	User      User
+	ExpiresAt time.Time
+	Renewed   bool
+}
+
+func (s *Store) readSession(ctx context.Context, rawToken []byte, now time.Time) (Session, error) {
 	hash := sha256.Sum256(rawToken)
-	return scanUser(s.db.QueryRowContext(ctx, `
-		SELECT u.id, u.username, u.email, u.password_hash, u.admin, u.created_at, u.updated_at
+	var expires int64
+	user, err := scanUser(s.db.QueryRowContext(ctx, `
+		SELECT u.id, u.username, u.email, u.password_hash, u.admin, u.created_at, u.updated_at, s.expires_at
 		FROM sessions s JOIN users u ON u.id = s.user_id
-		WHERE s.token_hash = ? AND s.expires_at > ?
-		AND (u.admin = 0 OR s.created_at > ?)`, hash[:], now.Unix(), now.Add(-AdminSessionTTL).Unix()))
+		WHERE s.token_hash = ? AND s.expires_at > ?`, hash[:], now.Unix()), &expires)
+	if err != nil {
+		return Session{}, err
+	}
+	return Session{User: user, ExpiresAt: time.Unix(expires, 0).UTC()}, nil
+}
+
+// UseSession authenticates and periodically extends a live session's inactivity
+// deadline. Renewal preserves the token and original sign-in time, so parallel
+// clicks and other tabs remain valid. It never recreates a revoked/expired row.
+func (s *Store) UseSession(ctx context.Context, rawToken []byte, now time.Time, lifetime time.Duration) (Session, error) {
+	if lifetime < time.Second {
+		return Session{}, errors.New("session lifetime must be at least one second")
+	}
+	session, err := s.readSession(ctx, rawToken, now)
+	if err != nil {
+		return Session{}, err
+	}
+	expires := now.Add(lifetime)
+	// Ordinary gameplay stays read-only for authentication most of the time.
+	// Renew at daily intervals, or half a shorter configured lifetime.
+	interval := min(24*time.Hour, lifetime/2)
+	if session.ExpiresAt.After(expires.Add(-interval)) {
+		return session, nil
+	}
+	hash := sha256.Sum256(rawToken)
+	var renewedExpiry int64
+	err = s.db.QueryRowContext(ctx, `UPDATE sessions SET expires_at=MAX(expires_at,?)
+		WHERE token_hash=? AND expires_at>? RETURNING expires_at`, expires.Unix(), hash[:], now.Unix()).Scan(&renewedExpiry)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Session{}, ErrNotFound
+	}
+	if err != nil {
+		return Session{}, fmt.Errorf("renew session: %w", err)
+	}
+	session.ExpiresAt = time.Unix(renewedExpiry, 0).UTC()
+	session.Renewed = true
+	return session, nil
 }
 
 func (s *Store) DeleteSession(ctx context.Context, rawToken []byte) error {
