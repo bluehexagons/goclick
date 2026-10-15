@@ -42,6 +42,7 @@ let clickBatchFailed = false;
 let signingOut = false;
 let clickGeneration = 0;
 let counterLoad: Promise<void> | null = null;
+let counterLoadOwner: object | null = null;
 let refreshQueued = false;
 let offline = navigator.onLine === false;
 let lastCounterSync = -Infinity;
@@ -158,6 +159,10 @@ function setUser(nextUser: User | null) {
 
 function resetClickState() {
   clickGeneration++;
+  // Detach stale reads so returning from local play can load immediately.
+  counterLoad = null;
+  counterLoadOwner = null;
+  counterCard.setAttribute("aria-busy", "false");
   pendingClicks = 0;
   updatePendingIndicator();
   clickBatchFailed = false;
@@ -281,7 +286,9 @@ function openGame(
   clickButton.disabled = true;
   if (!verifyIdentity) counterCard.setAttribute("aria-busy", "true");
   setConnection(null, "loading");
-  counterLoad = (async () => {
+  const owner = {};
+  counterLoadOwner = owner;
+  const load = (async () => {
     try {
       // Check identity as well as counters: another tab may have switched accounts.
       const [nextUser, data] = verifyIdentity
@@ -289,8 +296,11 @@ function openGame(
         : [user, await (initialCounters ?? api<Counters>("/api/clicks"))];
       if (generation !== clickGeneration) return;
       if (verifyIdentity) {
+        const activeLoad = counterLoad;
         setUser(nextUser);
+        counterLoad = activeLoad;
         generation = clickGeneration;
+        counterLoadOwner = owner;
       }
       lastOnlineCounters = data;
       renderCounters(data, true);
@@ -311,12 +321,16 @@ function openGame(
       }
     } finally {
       if (generation === clickGeneration) counterCard.setAttribute("aria-busy", "false");
-      counterLoad = null;
+      if (counterLoadOwner === owner) {
+        counterLoad = null;
+        counterLoadOwner = null;
+      }
       updateGameControls();
     }
   })();
+  counterLoad = load;
   updateGameControls();
-  return counterLoad;
+  return load;
 }
 
 function refreshGame() {
@@ -383,6 +397,7 @@ loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   showError("#login-error", "");
   setSubmitting(loginForm, true);
+  const generation = clickGeneration;
   try {
     const form = new FormData(loginForm);
     const result = await api<{ user: User }>("/api/auth/login", {
@@ -392,12 +407,14 @@ loginForm.addEventListener("submit", async (event) => {
         password: form.get("password"),
       }),
     });
+    if (generation !== clickGeneration || currentView !== "login") return;
     loginForm.reset();
     setUser(result.user);
     await openGame();
   } catch (caught) {
     const error = requestError(caught);
-    showError("#login-error", error.message, true);
+    if (generation === clickGeneration && currentView === "login")
+      showError("#login-error", error.message, true);
   } finally {
     setSubmitting(loginForm, false);
   }
@@ -413,17 +430,20 @@ signupForm.addEventListener("submit", async (event) => {
     return;
   }
   setSubmitting(signupForm, true);
+  const generation = clickGeneration;
   try {
     const result = await api<{ user: User }>("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify(Object.fromEntries(form.entries())),
     });
+    if (generation !== clickGeneration || currentView !== "signup") return;
     signupForm.reset();
     setUser(result.user);
     await openGame();
   } catch (caught) {
     const error = requestError(caught);
-    showError("#signup-error", error.message, true);
+    if (generation === clickGeneration && currentView === "signup")
+      showError("#signup-error", error.message, true);
   } finally {
     setSubmitting(signupForm, false);
   }

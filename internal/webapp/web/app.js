@@ -86,9 +86,13 @@
         if (type === "change") listeners.add(callback);
       }
     };
+    let appliedMotion;
     function apply() {
-      document.documentElement.dataset.reducedMotion = String(motion.matches);
-      for (const callback of listeners) callback({ matches: motion.matches });
+      const matches = motion.matches;
+      document.documentElement.dataset.reducedMotion = String(matches);
+      if (matches === appliedMotion) return;
+      appliedMotion = matches;
+      for (const callback of listeners) callback({ matches });
     }
     browser.addEventListener("change", apply);
     window.addEventListener("storage", (event) => {
@@ -1037,6 +1041,7 @@
   var signingOut = false;
   var clickGeneration = 0;
   var counterLoad = null;
+  var counterLoadOwner = null;
   var refreshQueued = false;
   var offline = navigator.onLine === false;
   var lastCounterSync = -Infinity;
@@ -1134,6 +1139,9 @@
   }
   function resetClickState() {
     clickGeneration++;
+    counterLoad = null;
+    counterLoadOwner = null;
+    counterCard.setAttribute("aria-busy", "false");
     pendingClicks = 0;
     updatePendingIndicator();
     clickBatchFailed = false;
@@ -1235,13 +1243,18 @@
     clickButton.disabled = true;
     if (!verifyIdentity) counterCard.setAttribute("aria-busy", "true");
     setConnection(null, "loading");
-    counterLoad = (async () => {
+    const owner = {};
+    counterLoadOwner = owner;
+    const load = (async () => {
       try {
         const [nextUser, data] = verifyIdentity ? await Promise.all([api("/api/me"), api("/api/clicks")]) : [user, await (initialCounters ?? api("/api/clicks"))];
         if (generation !== clickGeneration) return;
         if (verifyIdentity) {
+          const activeLoad = counterLoad;
           setUser(nextUser);
+          counterLoad = activeLoad;
           generation = clickGeneration;
+          counterLoadOwner = owner;
         }
         lastOnlineCounters = data;
         renderCounters(data, true);
@@ -1262,12 +1275,16 @@
         }
       } finally {
         if (generation === clickGeneration) counterCard.setAttribute("aria-busy", "false");
-        counterLoad = null;
+        if (counterLoadOwner === owner) {
+          counterLoad = null;
+          counterLoadOwner = null;
+        }
         updateGameControls();
       }
     })();
+    counterLoad = load;
     updateGameControls();
-    return counterLoad;
+    return load;
   }
   function refreshGame() {
     if (localMode) {
@@ -1326,6 +1343,7 @@
     event.preventDefault();
     showError("#login-error", "");
     setSubmitting(loginForm, true);
+    const generation = clickGeneration;
     try {
       const form = new FormData(loginForm);
       const result = await api("/api/auth/login", {
@@ -1335,12 +1353,14 @@
           password: form.get("password")
         })
       });
+      if (generation !== clickGeneration || currentView !== "login") return;
       loginForm.reset();
       setUser(result.user);
       await openGame();
     } catch (caught) {
       const error = requestError(caught);
-      showError("#login-error", error.message, true);
+      if (generation === clickGeneration && currentView === "login")
+        showError("#login-error", error.message, true);
     } finally {
       setSubmitting(loginForm, false);
     }
@@ -1355,17 +1375,20 @@
       return;
     }
     setSubmitting(signupForm, true);
+    const generation = clickGeneration;
     try {
       const result = await api("/api/auth/signup", {
         method: "POST",
         body: JSON.stringify(Object.fromEntries(form.entries()))
       });
+      if (generation !== clickGeneration || currentView !== "signup") return;
       signupForm.reset();
       setUser(result.user);
       await openGame();
     } catch (caught) {
       const error = requestError(caught);
-      showError("#signup-error", error.message, true);
+      if (generation === clickGeneration && currentView === "signup")
+        showError("#signup-error", error.message, true);
     } finally {
       setSubmitting(signupForm, false);
     }

@@ -21,6 +21,10 @@ test("motion Auto follows the browser and both manual overrides survive preferen
   });
   const settings = runtime.load("preferences").gameSettings;
   assert.equal(root.dataset.reducedMotion, "true");
+  const notifications = [];
+  settings.motion.addEventListener("change", (event) => notifications.push(event.matches));
+  settings.update({ simulatedPing: 250 });
+  assert.deepEqual(notifications, []);
   settings.update({ motion: "off" });
   browser.matches = false;
   changes.get("browser-change")();
@@ -28,6 +32,7 @@ test("motion Auto follows the browser and both manual overrides survive preferen
   changes.get("browser-change")();
   assert.equal(root.dataset.reducedMotion, "false");
   assert.equal(JSON.parse(storage.get("goclick.settings.v1")).motion, "off");
+  assert.deepEqual(notifications, [false]);
   settings.update({ motion: "on" });
   browser.matches = false;
   changes.get("browser-change")();

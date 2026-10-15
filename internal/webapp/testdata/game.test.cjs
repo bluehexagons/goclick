@@ -102,6 +102,14 @@ async function harness(options = {}) {
   const globals = {
     console,
     Headers,
+    FormData: class {
+      get() {
+        return "password";
+      }
+      entries() {
+        return [];
+      }
+    },
     document,
     window,
     navigator: { onLine: true },
@@ -421,3 +429,49 @@ test("known authentication capacity rejection does not suggest replaying an unce
   assert.equal(h.element("#retry-game-button").hidden, true);
   assert.equal(h.feedback[0].uncertain, false);
 });
+
+test("switching back online detaches an old read without losing the new read's ownership", async () => {
+  const h = await harness();
+  const oldProgress = deferred(),
+    newProgress = deferred();
+  let reads = 0;
+  h.fetch((url) =>
+    url === "/api/me"
+      ? Promise.resolve(response(player))
+      : ++reads === 1
+        ? oldProgress.promise
+        : newProgress.promise,
+  );
+  const stale = h.context.refreshGame();
+  h.context.startLocalGame();
+  h.element("#leave-local").fire("click");
+  await settle();
+  assert.equal(h.requests.filter((r) => r.url === "/api/clicks").length, 2);
+  oldProgress.resolve(response(counters(999)));
+  await stale;
+  assert.equal(h.element("#refresh-counter").attributes.get("aria-busy"), "true");
+  newProgress.resolve(response(counters(24)));
+  await settle();
+  assert.equal(h.element("#game-view").hidden, false);
+  assert.equal(h.element("#click-count").textContent, "24");
+  assert.equal(h.element("#click-button").disabled, false);
+  assert.equal(h.element("#refresh-counter").attributes.get("aria-busy"), "false");
+});
+
+for (const kind of ["login", "signup"]) {
+  test(`late ${kind} success cannot reset a local game or request account counters`, async () => {
+    const h = await harness();
+    const auth = deferred();
+    h.context.show(kind);
+    h.fetch(() => auth.promise);
+    const signingIn = h.element(`#${kind}-form`).fire("submit");
+    h.context.startLocalGame();
+    await h.element("#click-button").fire("click");
+    auth.resolve(response({ user: { ...player, id: 2 } }));
+    await signingIn;
+    assert.equal(h.element("#click-count").textContent, "1");
+    assert.equal(h.element("#local-nav").hidden, false);
+    assert.equal(h.feedback.length, 1);
+    assert.equal(h.requests.length, 1);
+  });
+}

@@ -36,9 +36,13 @@ const gameSettings = (() => {
       if (type === "change") listeners.add(callback);
     },
   };
+  let appliedMotion: boolean | undefined;
   function apply() {
-    document.documentElement.dataset.reducedMotion = String(motion.matches);
-    for (const callback of listeners) callback({ matches: motion.matches });
+    const matches = motion.matches;
+    document.documentElement.dataset.reducedMotion = String(matches);
+    if (matches === appliedMotion) return;
+    appliedMotion = matches;
+    for (const callback of listeners) callback({ matches });
   }
   browser.addEventListener("change", apply);
   window.addEventListener("storage", (event) => {
