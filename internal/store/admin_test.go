@@ -296,7 +296,7 @@ func TestVersionThreeBackupCanBeRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(`DROP TABLE rails_json_users; PRAGMA user_version=3`); err != nil {
+	if _, err := raw.Exec(`DROP TABLE rails_json_users; DROP INDEX player_activity_sign_in; PRAGMA user_version=3`); err != nil {
 		t.Fatal(err)
 	}
 	raw.Close()
@@ -306,5 +306,108 @@ func TestVersionThreeBackupCanBeRestored(t *testing.T) {
 	var version int
 	if err := db.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != schemaVersion {
 		t.Fatal("restore downgraded the live schema")
+	}
+}
+
+func TestVersionFourBackupCanBeRestored(t *testing.T) {
+	db, user := adminFixture(t)
+	ctx := context.Background()
+	if _, err := db.ImportRailsJSON(ctx, "testdata/rails-admin-export.json"); err != nil {
+		t.Fatal(err)
+	}
+	legacy, err := db.UserByID(ctx, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Increment(ctx, user.ID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := db.Backup(ctx, t.TempDir(), "v4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := sql.Open("sqlite", snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec(`DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
+		t.Fatal(err)
+	}
+	raw.Close()
+	if _, err := db.Restore(ctx, snapshot, t.TempDir(), user, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	counters, err := db.Increment(ctx, user.ID, time.Now())
+	if err != nil || counters.Clicks != 2 {
+		t.Fatalf("v4 restore changed gameplay: %+v, %v", counters, err)
+	}
+	if _, err := db.AdminPlayer(ctx, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	entities, total, err := db.ArchivedEntities(ctx, 42, 25, 0)
+	if err != nil || total != 6 || entities[4].Kind == nil || *entities[4].Kind != "special_achievement" ||
+		entities[5].Kind != nil || entities[5].Count != nil {
+		t.Fatalf("v4 restore changed lossless archive: %+v, %v", entities, err)
+	}
+	restored, err := db.UserByID(ctx, 42)
+	if err != nil || restored.PasswordHash != legacy.PasswordHash || restored.ID != legacy.ID || restored.CreatedAt != legacy.CreatedAt {
+		t.Fatal("v4 restore changed migrated account credentials or identity")
+	}
+}
+
+func TestActivityFilteringAndSignInSurviveVersionFourUpgrade(t *testing.T) {
+	db := openTestStore(t)
+	ctx := context.Background()
+	first := createTestUser(t, db, "history_first")
+	second := createTestUser(t, db, "history_second")
+	now := time.Now().UTC().Truncate(time.Second)
+	if err := db.CreateSession(ctx, []byte("first_session"), first.ID, now.Add(time.Hour), now); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.CreateSession(ctx, []byte("older_session"), first.ID, now.Add(time.Hour), now.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	for i := range 5 {
+		for _, user := range []User{first, second} {
+			if _, err := db.Increment(ctx, user.ID, now.Add(time.Duration(i)*time.Second)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	path := dbPath(t, db)
+	if _, err := db.db.Exec(`DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer upgraded.Close()
+	var version int
+	if err := upgraded.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != 5 {
+		t.Fatalf("upgrade: version=%d, %v", version, err)
+	}
+	player, err := upgraded.AdminPlayer(ctx, first.ID)
+	if err != nil || player.LastSignInAt == nil || *player.LastSignInAt != formatTime(now) {
+		t.Fatalf("upgrade changed latest sign-in: %+v, %v", player, err)
+	}
+	if sessionUser, err := upgraded.UserBySession(ctx, []byte("first_session"), now); err != nil || sessionUser.ID != first.ID {
+		t.Fatal("index upgrade invalidated an existing session", err)
+	}
+	items, total, err := upgraded.Activity(ctx, first.ID, 2, 1)
+	if err != nil || total != 8 || len(items) != 2 || items[0].UserID != first.ID || items[1].UserID != first.ID ||
+		items[0].ClickCount == nil || *items[0].ClickCount != 4 || *items[1].ClickCount != 3 {
+		t.Fatalf("filtered pagination: %+v, total=%d, %v", items, total, err)
+	}
+	_, total, err = upgraded.Activity(ctx, 0, 25, 0)
+	if err != nil || total != 14 {
+		t.Fatalf("global history: total=%d, %v", total, err)
+	}
+	players, _, err := upgraded.ListPlayers(ctx, "history_", "username", 25, 0)
+	if err != nil || len(players) != 2 || players[1].LastSignInAt != nil {
+		t.Fatalf("player list: %+v, %v", players, err)
 	}
 }

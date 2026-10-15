@@ -159,6 +159,10 @@ Activity history starts with this release; migrated all-time counters remain
 intact. [`docs/administration.md`](docs/administration.md) covers bootstrap
 commands, the admin API, and production recovery details.
 
+Schema 5 adds a small index containing only sign-in events, so player lookups
+do not scan their click history. Upgrades preserve accounts, sessions, counters,
+and archives. The panel continues to accept schema-2 through schema-4 backups.
+
 See [`docs/backups.md`](docs/backups.md) for full SQLite backups, data checks,
 restore rehearsal, and session revocation during recovery. Deployment backups
 are useful rollback points; also schedule backups for gameplay changes between

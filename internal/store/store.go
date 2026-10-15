@@ -43,7 +43,7 @@ type Counters struct {
 	LastClickedAt *time.Time
 }
 
-const schemaVersion = 4
+const schemaVersion = 5
 
 const AdminSessionTTL = 8 * time.Hour
 
@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS player_activity (
 );
 CREATE INDEX IF NOT EXISTS player_activity_user_time ON player_activity(user_id, id DESC);
 CREATE INDEX IF NOT EXISTS player_activity_time ON player_activity(occurred_at);
+CREATE INDEX IF NOT EXISTS player_activity_sign_in ON player_activity(user_id, occurred_at DESC) WHERE action='sign_in';
 CREATE TABLE IF NOT EXISTS admin_audit (
 	id INTEGER PRIMARY KEY,
 	actor_id INTEGER,

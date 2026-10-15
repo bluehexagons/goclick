@@ -127,6 +127,9 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 	if version < 4 {
 		delete(expected, "rails_json_users")
 	}
+	if version < 5 {
+		delete(expected, "player_activity_sign_in")
+	}
 	if len(expected) != len(actual) {
 		return 0, errors.New("unexpected schema objects")
 	}

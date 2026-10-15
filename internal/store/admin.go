@@ -201,14 +201,24 @@ func (s *Store) AdminPlayer(ctx context.Context, id int64) (AdminPlayer, error) 
 }
 
 func (s *Store) Activity(ctx context.Context, userID int64, limit, offset int) ([]Activity, int64, error) {
-	if limit < 1 || limit > 100 || offset < 0 {
+	if userID < 0 || limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, errors.New("invalid activity query")
 	}
+	// Keep the filtered query usable by SQLite's index. An OR against the all-player sentinel
+	// forces a scan even when the existing user/time index could select one
+	// player's rows directly. Only this fixed clause is interpolated.
+	where := ""
+	var args []any
+	if userID != 0 {
+		where = " WHERE a.user_id=?"
+		args = append(args, userID)
+	}
 	var total int64
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM player_activity WHERE (?=0 OR user_id=?)`, userID, userID).Scan(&total); err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM player_activity a`+where, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT a.id,a.user_id,u.username,a.action,a.occurred_at,a.click_count FROM player_activity a JOIN users u ON u.id=a.user_id WHERE (?=0 OR a.user_id=?) ORDER BY a.id DESC LIMIT ? OFFSET ?`, userID, userID, limit, offset)
+	args = append(args, limit, offset)
+	rows, err := s.db.QueryContext(ctx, `SELECT a.id,a.user_id,u.username,a.action,a.occurred_at,a.click_count FROM player_activity a JOIN users u ON u.id=a.user_id`+where+` ORDER BY a.id DESC LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return nil, 0, err
 	}
