@@ -2,6 +2,12 @@
 const $ = (selector) => document.querySelector(selector);
 const number = (value) => new Intl.NumberFormat().format(value ?? 0);
 const date = (value) => value ? new Date(value).toLocaleString() : "—";
+function bytes(value) {
+  if (!Number.isFinite(value) || value < 0) return "Unavailable";
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"]; let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++; }
+  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: unit ? 1 : 0 }).format(value)} ${units[unit]}`;
+}
 const actionName = { signup: "Created account", sign_in: "Signed in", click: "Saved a click", admin_granted: "Admin access granted", admin_revoked: "Admin access revoked", backup_export: "Backup exported", backup_restore: "Backup restored", rails_import: "Rails players imported", password_set: "Password set by operator" };
 let tab = "overview";
 let playersPage = 1, activityPage = 1, auditPage = 1, detailActivityPage = 1, detailEntityPage = 1;
@@ -20,11 +26,12 @@ async function request(url, options = {}, binary = false) {
   try { response = await fetch(url, { credentials: "same-origin", ...options }); }
   catch (_) { const error = new Error("Can’t reach Go Click. Check your connection and try again."); error.uncertain = true; throw error; }
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
+    const payload = await response.json().catch(() => null);
+    const data = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
     if (response.status === 401 || (response.status === 403 && data.error === "Administrator access required")) denyAccess();
     const retry = response.headers.get("Retry-After");
     const error = new Error(response.status === 429 && retry ? `Try again in ${retry} seconds.` : (data.error || "Request failed. Try again."));
-    error.uncertain = response.status >= 500; error.code = data.code;
+    error.uncertain = response.status >= 500 && data.code !== "authentication_busy"; error.code = data.code;
     throw error;
   }
   try { return binary ? await response.blob() : await response.json(); }
@@ -77,9 +84,25 @@ async function loadAudit() {
   for (const event of data.items) { const row = node("tr"); cell(row, event.actor_username); cell(row, actionName[event.action] || event.action); cell(row, event.result); cell(row, date(event.occurred_at)); body.append(row); }
   pager("#audit-pager", auditPage, data.total, async (page) => { auditPage = page; await loadAudit(); });
 }
+async function loadStorage() {
+  const data = await request("/api/admin/storage"), snapshots = data.recovery_snapshots;
+  $("#storage-database").textContent = bytes(data.database_bytes);
+  $("#storage-reusable").textContent = `${bytes(data.reusable_bytes)} reusable pages`;
+  $("#storage-activity").textContent = number(data.activity_records);
+  $("#storage-oldest-activity").textContent = data.oldest_activity_at ? `Since ${date(data.oldest_activity_at)}` : "No recorded activity";
+  $("#storage-audit").textContent = number(data.audit_records);
+  $("#storage-snapshots").textContent = snapshots ? `${number(snapshots.count)} · ${bytes(snapshots.bytes)}` : "Unavailable";
+  $("#storage-snapshot-detail").textContent = !snapshots ? "Couldn’t read the recovery directory." : snapshots.oldest_at ? `Oldest ${date(snapshots.oldest_at)}` : "No local recovery snapshots";
+  const warnings = [];
+  if (!snapshots) warnings.push("Recovery snapshot usage could not be measured. Check the server log and directory access.");
+  if (snapshots?.oversized) warnings.push(`${number(snapshots.oversized)} local recovery snapshot${snapshots.oversized === 1 ? " exceeds" : "s exceed"} the ${bytes(data.restore_limit_bytes)} panel upload limit. Use host-side recovery for those files.`);
+  if (data.database_bytes >= data.restore_limit_bytes * .8) warnings.push(`Database allocation is approaching or above the ${bytes(data.restore_limit_bytes)} panel restore limit. Check the actual exported file size; larger snapshots require host-side recovery.`);
+  notice("#storage-warning", warnings.join(" "));
+}
+async function loadBackups() { await Promise.all([loadStorage(), loadAudit()]); }
 async function refresh() {
   if (restoring) return; notice("#admin-error", ""); $("#refresh").disabled = true; $("#refresh").textContent = "Refreshing…";
-  try { await ({ overview: loadOverview, players: loadPlayers, activity: loadActivity, backups: loadAudit })[tab](); $("#updated-at").textContent = `Updated ${new Date().toLocaleTimeString()}`; }
+  try { await ({ overview: loadOverview, players: loadPlayers, activity: loadActivity, backups: loadBackups })[tab](); $("#updated-at").textContent = `Updated ${new Date().toLocaleTimeString()}`; }
   catch (error) { report(error); }
   finally { $("#refresh").disabled = false; $("#refresh").textContent = "Refresh data"; }
 }
@@ -119,7 +142,7 @@ $("#restore-file").addEventListener("change", async () => {
 $("#export-form").addEventListener("submit", async (event) => {
   event.preventDefault(); if (restoring) return; const form = event.currentTarget; busy(form, true, "Preparing backup…"); notice("#export-status", "Creating a consistent snapshot…");
   const password = $("#export-password").value; $("#export-password").value = "";
-  try { const blob = await request("/api/admin/backups/export", jsonOptions({ password }), true); const url = URL.createObjectURL(blob); const link = node("a"); link.href = url; link.download = `goclick-${new Date().toISOString().replace(/[:.]/g, "-")}.db`; document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60000); notice("#export-status", "Backup ready. Keep this file in a private recovery location."); await loadAudit(); }
+  try { const blob = await request("/api/admin/backups/export", jsonOptions({ password }), true); const url = URL.createObjectURL(blob); const link = node("a"); link.href = url; link.download = `goclick-${new Date().toISOString().replace(/[:.]/g, "-")}.db`; document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60000); notice("#export-status", "Backup ready. Keep this file in a private recovery location."); await loadBackups(); }
   catch (error) { notice("#export-status", error.message, true); }
   finally { busy(form, false, "Download backup"); }
 });
@@ -142,7 +165,7 @@ $("#import-form").addEventListener("submit", async (event) => {
   const data = new FormData(); data.append("password", $("#import-password").value); data.append("confirmation", $("#import-confirmation").value); data.append("backup", file); $("#import-password").value = "";
   restoring = true; busy(form, true, "Importing…"); notice("#import-status", "Saving a recovery snapshot and checking the import…");
   $("#import-replacement-link").hidden = true;
-  try { const result = await request("/api/admin/import/rails", { method: "POST", body: data }); notice("#import-status", `${number(result.users)} players and ${number(result.entities)} entities imported. Recovery snapshot: ${result.recovery_backup}.${result.new_passwords_required ? " New accounts need an operator-set password before signing in." : " Existing passwords were preserved."}`); await loadAudit(); }
+  try { const result = await request("/api/admin/import/rails", { method: "POST", body: data }); notice("#import-status", `${number(result.users)} players and ${number(result.entities)} entities imported. Recovery snapshot: ${result.recovery_backup}.${result.new_passwords_required ? " New accounts need an operator-set password before signing in." : " Existing passwords were preserved."}`); await loadBackups(); }
   catch (error) { notice("#import-status", error.message + (error.uncertain ? " Check the audit history before retrying; the connection may have failed after the import." : ""), true); $("#import-replacement-link").hidden = error.code !== "import_conflict"; }
   finally { restoring = false; busy(form, false, "Import Rails players"); }
 });

@@ -53,6 +53,17 @@
         </section>
         <section id="backups-panel" class="admin-panel" aria-labelledby="backups-title" hidden>
           <h2 id="backups-title">Backups &amp; recovery</h2><p class="muted">Full SQLite snapshots preserve accounts, passwords, counters, and the complete migration archive. Keep downloaded backups private.</p>
+          <article class="card admin-card storage-card" aria-labelledby="storage-title">
+            <div class="section-heading"><h3 id="storage-title">Storage</h3><span class="time-zone">This server</span></div>
+            <dl class="storage-details">
+              <div><dt>Database allocation</dt><dd id="storage-database">—</dd><small id="storage-reusable">Loading allocation…</small></div>
+              <div><dt>Player activity</dt><dd id="storage-activity">—</dd><small id="storage-oldest-activity">Loading history…</small></div>
+              <div><dt>Audit history</dt><dd id="storage-audit">—</dd><small>Administrative events</small></div>
+              <div><dt>Recovery snapshots</dt><dd id="storage-snapshots">—</dd><small id="storage-snapshot-detail">Loading local snapshots…</small></div>
+            </dl>
+            <div id="storage-warning" class="notice" role="status" hidden></div>
+            <p class="field-hint">Database allocation includes committed WAL pages; WAL/SHM files use additional disk space. Exports are compacted and may be smaller. Local recovery counts exclude deployment and off-host backups. History and recovery snapshots are retained until an operator manages them.</p>
+          </article>
           <div class="backup-grid">
             <article class="card admin-card"><div class="operation-heading"><span class="operation-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#download"/></svg></span><div><h3>Export database</h3><span class="operation-format">SQLite snapshot</span></div></div><p class="muted">Download a transactionally consistent database file. It includes player activity and audit history.</p><details class="account-note"><summary>Snapshot contents</summary><p>Accounts, bcrypt password hashes, session digests, counters, migration archives, activity, and audit records. This file contains credentials and must be stored privately. Restoring a snapshot revokes all sessions.</p></details><form id="export-form"><input type="text" name="username" autocomplete="username" data-admin-username hidden><label for="export-password">Your current password</label><input id="export-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required><button class="button button-block" type="submit">Download backup</button></form><p id="export-status" class="notice" role="status" hidden></p></article>
             <article id="restore-card" class="card admin-card restore-card">

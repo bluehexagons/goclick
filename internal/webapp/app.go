@@ -146,6 +146,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("GET /admin", a.requireAdmin(a.adminPage))
 	mux.HandleFunc("GET /admin.html", a.requireAdmin(a.adminPage))
 	mux.HandleFunc("GET /api/admin/overview", a.requireAdmin(a.adminOverview))
+	mux.HandleFunc("GET /api/admin/storage", a.requireAdmin(a.adminStorage))
 	mux.HandleFunc("GET /api/admin/players", a.requireAdmin(a.adminPlayers))
 	mux.HandleFunc("GET /api/admin/players/{id}", a.requireAdmin(a.adminPlayer))
 	mux.HandleFunc("GET /api/admin/players/{id}/entities", a.requireAdmin(a.adminEntities))

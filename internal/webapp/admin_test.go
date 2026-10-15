@@ -207,6 +207,7 @@ func TestAdminEndpointsRequireServerSideAuthorization(t *testing.T) {
 	}
 	response.Body.Close()
 	for _, endpoint := range []struct{ method, path string }{
+		{"GET", "/api/admin/storage"},
 		{"GET", "/admin"}, {"GET", "/admin.html"}, {"GET", "/api/admin/overview"}, {"GET", "/api/admin/players"}, {"GET", "/api/admin/players/1"}, {"GET", "/api/admin/players/1/entities"}, {"GET", "/api/admin/activity"}, {"GET", "/api/admin/audit"}, {"POST", "/api/admin/backups/export"}, {"POST", "/api/admin/backups/restore"}, {"POST", "/api/admin/import/rails"},
 	} {
 		for _, test := range []struct {

@@ -143,7 +143,9 @@ Admin sessions last at most eight hours.
 
 The panel shows aggregate player/click statistics, seven-day click activity,
 searchable player listings, counters and streaks, account details, recorded
-activity, and the Rails entity archive. It also exports full SQLite backups and
+activity, and the Rails entity archive. The recovery panel reports database
+allocation, history counts, and local snapshot usage, including files too large
+for panel restore. It also exports full SQLite backups and
 restores validated snapshots after password verification and explicit
 confirmation. Restore first saves a recovery snapshot, replaces known data in
 one transaction, and revokes all sessions. Administrative operations are audited.

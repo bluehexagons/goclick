@@ -114,6 +114,26 @@ initiating admin may no longer exist or hold that role. After success, sign in
 with an administrator from the snapshot and verify player data. If access is
 lost, use the host operator command or [the offline recovery runbook](backups.md).
 
+## Storage visibility
+
+**Backups & recovery → Storage** shows database allocation, reusable pages,
+activity/audit record counts, and the count and total file sizes of local
+`pre-import-*.db` and `pre-restore-*.db` recovery snapshots. Snapshot timestamps
+are filesystem modification times. Symlinks, directories, unrelated files, and
+SQLite sidecars are excluded. This inventory does not validate snapshot contents
+or include protected deployment/off-host backups. A directory scan failure is
+shown as unavailable rather than an empty inventory; details stay in server logs.
+
+Database allocation uses SQLite's [page count and page size](https://www.sqlite.org/pragma.html#pragma_page_count),
+including committed pages in WAL. WAL/SHM files consume additional physical disk
+space, and compacted exports may be smaller than database allocation. The panel
+flags allocation at 80% of its 128 MiB restore limit and counts local snapshot
+files that actually exceed that limit. Larger snapshots remain recoverable
+through the stopped-service procedure in [backups.md](backups.md).
+
+This view is read-only. Activity and audit history and recovery snapshots are
+not automatically deleted. Plan retention and off-host backups separately.
+
 ## Admin API
 
 All endpoints below require admin authentication. Read endpoints accept
@@ -122,6 +142,7 @@ All endpoints below require admin authentication. Read endpoints accept
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | GET | `/api/admin/overview` | Aggregate counters, active players/sessions, daily clicks |
+| GET | `/api/admin/storage` | Database allocation/history counts, local recovery snapshot inventory, restore upload limit |
 | GET | `/api/admin/players` | Player list; `q` search and `sort=recent\|clicks\|username` |
 | GET | `/api/admin/players/{id}` | Player account/counter details |
 | GET | `/api/admin/players/{id}/entities` | Paginated lossless Rails entity archive |
