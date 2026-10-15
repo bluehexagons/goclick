@@ -117,6 +117,12 @@ has its own admin API described below.
 Use a dedicated, service-owned database directory in production. New directories
 are created with mode `0700`; existing directory permissions are left intact.
 
+Rate-limit state is local to one process and resets on restart. Password work
+has no global concurrency cap: requests from many IPs and identifiers can still
+consume CPU while staying within individual quotas. An aggregate authentication
+budget at the proxy or a bounded bcrypt worker pool is further hardening to
+consider for a public deployment.
+
 ## Administration and recovery
 
 Create an account through the normal signup page, then grant it admin access

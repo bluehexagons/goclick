@@ -546,6 +546,16 @@ func (a *App) frontend(w http.ResponseWriter, r *http.Request) {
 	if requested == "." || requested == "" {
 		requested = "index.html"
 	}
+	// Serve only public assets here. Escaped slashes and dots can reach this
+	// fallback instead of the protected /admin.html route, and future embedded
+	// files must not become public merely by being added to the web directory.
+	switch requested {
+	case "index.html", "app.js", "app.css", "button.js", "button-3d.js",
+		"admin.js", "admin.css", "favicon.svg", "icons.svg":
+	default:
+		http.NotFound(w, r)
+		return
+	}
 	content, err := fs.ReadFile(a.static, requested)
 	if err != nil {
 		http.NotFound(w, r)

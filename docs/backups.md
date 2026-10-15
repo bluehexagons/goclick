@@ -141,3 +141,10 @@ passwords; JSON requires explicit administrator password setup. See
 See [administration](administration.md) for password verification, upload limits,
 and recovery-snapshot locations. The stopped-service procedure above remains
 available when no administrator can sign in.
+
+Every saved click adds an activity row. Activity and audit history have no
+automatic retention policy, and pre-import/pre-restore recovery snapshots are
+not automatically pruned. Monitor both database and backup-directory growth.
+Exports can exceed the panel's 128 MiB upload limit; use the stopped-service
+restore procedure for those snapshots. Any future activity retention policy
+must account for the admin charts and history that query those rows.

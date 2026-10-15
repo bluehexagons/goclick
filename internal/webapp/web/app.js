@@ -113,13 +113,27 @@ async function api(url, options = {}) {
   } catch (_) {
     const error = new Error("Can’t reach Go Click. Check your connection and try again.");
     error.status = 0;
+    error.uncertain = true;
     throw error;
   }
-  const data = await response.json().catch(() => ({}));
+  let data;
+  try {
+    data = await response.json();
+    if (data === null || typeof data !== "object" || Array.isArray(data)) throw new TypeError("Expected a JSON object");
+  } catch (_) {
+    if (response.ok) {
+      const error = new Error("Couldn’t read the server’s response.");
+      error.status = response.status;
+      error.uncertain = true;
+      throw error;
+    }
+    data = {};
+  }
   if (!response.ok) {
     const error = new Error(Array.isArray(data.errors) ? data.errors.join(". ") : (data.error || "Something went wrong"));
     error.status = response.status;
     error.retryAfter = response.headers.get("Retry-After");
+    error.uncertain = response.status >= 500;
     throw error;
   }
   return data;
@@ -348,7 +362,10 @@ clickButton.addEventListener("click", async () => {
     clickBatchFailed = true;
     showError("#game-error", error.status === 429 && error.retryAfter
       ? `Slow down for ${error.retryAfter} seconds.`
-      : `Your click wasn’t saved. ${error.message}`, true);
+      : error.uncertain
+        ? `Couldn’t confirm your click. Reload your counter to check whether it saved. ${error.message}`
+        : `Your click wasn’t saved. ${error.message}`, true);
+    if (error.uncertain) retryGameButton.hidden = false;
     setConnection(null, "error");
   } finally {
     if (generation !== clickGeneration) return;
