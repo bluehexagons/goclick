@@ -34,6 +34,23 @@
     { capture: true, passive: true }
   );
 
+  // frontend/interaction.ts
+  document.addEventListener(
+    "dragstart",
+    (event) => {
+      const target = event.target;
+      const element = target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+      const editor = element?.closest("input, textarea, [contenteditable]");
+      if (editor?.isContentEditable) return;
+      if (editor?.matches("input:not([type=file]), textarea")) {
+        const field = editor;
+        if (!field.disabled && !field.readOnly) return;
+      }
+      event.preventDefault();
+    },
+    { capture: true }
+  );
+
   // frontend/dom.ts
   function required(selector, root2 = document) {
     const element = root2.querySelector(selector);

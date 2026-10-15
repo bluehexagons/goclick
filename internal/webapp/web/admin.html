@@ -10,17 +10,22 @@
     <script src="/admin.js" defer></script>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Skip to content</a>
+    <a draggable="false" class="skip-link" href="#main-content">Skip to content</a>
     <div class="shell admin-shell">
       <header class="site-header">
-        <a class="brand" href="/" aria-label="Go Click home"
-          ><img class="brand-mark" src="/favicon.svg" width="36" height="36" alt="" /><span
-            >Go Click <small>ADMIN</small></span
-          ></a
+        <a draggable="false" class="brand" href="/" aria-label="Go Click home"
+          ><img
+            draggable="false"
+            class="brand-mark"
+            src="/favicon.svg"
+            width="36"
+            height="36"
+            alt=""
+          /><span>Go Click <small>ADMIN</small></span></a
         >
         <nav class="nav-actions" aria-label="Account">
           <span id="admin-name" class="nav-username"></span
-          ><a class="button button-quiet" href="/">Back to game</a>
+          ><a draggable="false" class="button button-quiet" href="/">Back to game</a>
         </nav>
       </header>
       <main id="main-content" tabindex="-1">
@@ -37,7 +42,7 @@
         <div id="access-error" class="card access-error" hidden>
           <h2>Sign in with an admin account</h2>
           <p>Your session expired or no longer has administrator access.</p>
-          <a class="button" href="/">Sign in</a>
+          <a draggable="false" class="button" href="/">Sign in</a>
         </div>
         <section id="restore-success" class="card access-error" role="status" hidden>
           <p class="eyebrow">Recovery complete</p>
@@ -47,7 +52,7 @@
             All sessions have been revoked. Sign in with an administrator account from the restored
             data.
           </p>
-          <a class="button" href="/">Sign in again</a>
+          <a draggable="false" class="button" href="/">Sign in again</a>
         </section>
         <div id="dashboard-body">
           <nav class="admin-tabs" aria-label="Administration sections">
@@ -459,7 +464,12 @@
                   /><button class="button" type="submit">Import Rails players</button>
                 </form>
                 <p id="import-status" class="notice" role="status" hidden></p>
-                <a id="import-replacement-link" class="text-link" href="#restore-card" hidden
+                <a
+                  draggable="false"
+                  id="import-replacement-link"
+                  class="text-link"
+                  href="#restore-card"
+                  hidden
                   >Go to replacement migration</a
                 >
               </article>

@@ -230,6 +230,15 @@ existing browser test environment. It covers skip navigation, pointer/keyboard
 switching, held keys, dialogs, and the hidden file picker using offline play;
 it does not create an account or submit online clicks. `npm run check` runs the
 unit regressions without requiring browser packages.
+The companion `interaction.browser.cjs` exports `checkInteraction(page, baseURL)`
+for selection, native drag prevention, gameplay dragging, and clipboard/manual
+sharing. It writes only its own test stats and never reads the clipboard.
+
+The game's Share button copies confirmed clicks and UTC streaks as plain text.
+Offline summaries are labeled separately. Clipboard access failures open a
+read-only, selected summary for manual copying. Interface text and page links
+or images do not select or drag; forms, errors, technical help, and administrator
+data retain useful copying and editing behavior.
 
 CI runs these checks and a deployment smoke test. Dependabot checks Go modules,
 frontend tooling, GitHub Actions, and container images weekly. Keep `modernc.org/libc` at the

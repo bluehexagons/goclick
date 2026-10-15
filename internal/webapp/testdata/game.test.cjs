@@ -64,6 +64,9 @@ async function harness(options = {}) {
       document.activeElement = this;
     }
     reset() {}
+    select() {
+      this.selected = true;
+    }
     showModal() {
       this.open = true;
     }
@@ -118,7 +121,7 @@ async function harness(options = {}) {
     },
     document,
     window,
-    navigator: { onLine: true, locks: options.locks },
+    navigator: { onLine: true, locks: options.locks, clipboard: options.clipboard },
     performance: { now: () => now },
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
@@ -589,4 +592,85 @@ test("a timed-out click releases pending controls without replaying an uncertain
   assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*took too long/);
   assert.equal(h.feedback[0].uncertain, true);
   assert.equal(h.requests.length, 1);
+});
+
+test("Share copies confirmed progress without account requests or private identifiers", async () => {
+  const copies = [];
+  const h = await harness({ clipboard: { writeText: async (text) => copies.push(text) } });
+  assert.equal(h.element("#share-stats").disabled, false);
+  await h.element("#share-stats").fire("click");
+  assert.equal(copies.length, 1);
+  assert.match(copies[0], /Go Click\n10 saved clicks\nUTC streaks: 0 days · 0 months · 0 years/);
+  assert.equal(copies[0].includes(player.username), false);
+  assert.equal(h.element("#share-status").textContent, "Stats copied.");
+  assert.deepEqual(h.requests, []);
+  const save = deferred();
+  h.fetch(() => save.promise);
+  const clicking = h.element("#click-button").fire("click");
+  assert.equal(h.element("#share-stats").disabled, true);
+  await h.element("#share-stats").fire("click");
+  assert.equal(copies.length, 1);
+  save.resolve(response(counters(11)));
+  await clicking;
+  await h.element("#share-stats").fire("click");
+  assert.match(copies[1], /11 saved clicks/);
+});
+
+test("local Share uses the displayed local save and labels its separate progress", async () => {
+  const copies = [];
+  const h = await harness({ clipboard: { writeText: async (text) => copies.push(text) } });
+  h.context.startLocalGame();
+  await h.element("#click-button").fire("click");
+  await h.element("#share-stats").fire("click");
+  assert.equal(
+    copies[0],
+    "Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year",
+  );
+  assert.deepEqual(h.requests, []);
+});
+
+for (const clipboard of [
+  undefined,
+  {
+    writeText: async () => {
+      throw new Error("Denied");
+    },
+  },
+]) {
+  test(`clipboard ${clipboard ? "rejection" : "unavailability"} offers selectable stats for manual copying`, async () => {
+    const h = await harness({ clipboard });
+    await h.element("#share-stats").fire("click");
+    assert.equal(h.element("#share-dialog").open, true);
+    assert.match(h.element("#share-text").value, /10 saved clicks/);
+    assert.equal(h.element("#share-text").selected, true);
+    assert.equal(h.document.activeElement, h.element("#share-text"));
+    assert.equal(h.element("#share-stats").attributes.get("aria-busy"), "false");
+    assert.notEqual(h.element("#share-status").textContent, "Stats copied.");
+    h.element("#close-share").fire("click");
+    assert.equal(h.element("#share-dialog").open, false);
+    assert.deepEqual(h.requests, []);
+  });
+}
+
+test("a stale clipboard failure cannot interrupt a different mode and duplicate shares coalesce", async () => {
+  const copy = deferred();
+  let requests = 0;
+  const h = await harness({
+    clipboard: {
+      writeText: () => {
+        requests++;
+        return copy.promise.then(() => {
+          throw new Error("Denied");
+        });
+      },
+    },
+  });
+  const sharing = h.element("#share-stats").fire("click");
+  await h.element("#share-stats").fire("click");
+  assert.equal(requests, 1);
+  h.context.startLocalGame();
+  copy.resolve();
+  await sharing;
+  assert.equal(h.element("#share-status").textContent, "");
+  assert.equal(h.element("#share-dialog").open, undefined);
 });

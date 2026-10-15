@@ -28,6 +28,47 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: radial-gradient(ellipse at 50% 0, #202a39, #111722 70%);
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Editing, troubleshooting, and inspecting player data remain copyable. */
+input:is(
+  :not([type]),
+  [type="text"],
+  [type="email"],
+  [type="password"],
+  [type="search"],
+  [type="number"],
+  [type="url"],
+  [type="tel"]
+),
+textarea,
+[contenteditable]:not([contenteditable="false"]),
+.selectable,
+.notice-error,
+.admin-shell .notice,
+.technical-grid,
+.implementation-note,
+.controls-help p,
+.admin-shell table,
+#detail-profile,
+#detail-title,
+.storage-details,
+#restore-summary,
+pre,
+code {
+  -webkit-user-select: text;
+  user-select: text;
+}
+button,
+a,
+summary,
+label,
+img,
+svg,
+[contenteditable="false"] {
+  -webkit-user-select: none;
+  user-select: none;
 }
 button,
 input {
@@ -980,13 +1021,7 @@ footer a {
   margin: -6px 0 20px;
   line-height: 1.6;
 }
-.play-layout,
-.home .button-stage,
-.connection,
-.counter-actions {
-  user-select: none;
-  -webkit-user-select: none;
-}
+
 .click-button {
   -webkit-touch-callout: none;
 }
@@ -1183,4 +1218,31 @@ select {
 }
 :root[data-reduced-motion="true"] .loading-spinner {
   border-color: var(--gold);
+}
+
+.share-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.share-stats .icon {
+  width: 16px;
+  height: 16px;
+}
+.share-status {
+  min-height: 1.5em;
+  margin: 10px 0 0;
+  color: var(--teal);
+  font-size: 12px;
+}
+.share-dialog textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--well);
+  color: var(--ink);
+  font: 13px/1.7 var(--mono);
 }

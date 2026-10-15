@@ -10,11 +10,18 @@
     <script src="/app.js" defer></script>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Skip to content</a>
+    <a draggable="false" class="skip-link" href="#main-content">Skip to content</a>
     <div class="shell">
       <header class="site-header">
-        <a class="brand" href="/" aria-label="Go Click home">
-          <img class="brand-mark" src="/favicon.svg" width="36" height="36" alt="" />
+        <a draggable="false" class="brand" href="/" aria-label="Go Click home">
+          <img
+            draggable="false"
+            class="brand-mark"
+            src="/favicon.svg"
+            width="36"
+            height="36"
+            alt=""
+          />
           <span>Go Click</span>
         </a>
         <div class="header-actions">
@@ -26,7 +33,9 @@
           </nav>
           <nav id="user-nav" class="nav-actions" aria-label="Account" hidden>
             <span id="nav-username" class="nav-username"></span>
-            <a id="admin-link" class="button button-quiet" href="/admin" hidden>Admin</a>
+            <a draggable="false" id="admin-link" class="button button-quiet" href="/admin" hidden
+              >Admin</a
+            >
             <button id="logout-button" class="button button-quiet" type="button">Sign out</button>
           </nav>
           <nav id="local-nav" class="nav-actions" aria-label="Local game" hidden>
@@ -319,6 +328,18 @@
                 <button id="refresh-counter" class="text-link refresh-counter" type="button">
                   Refresh counter
                 </button>
+                <button
+                  id="share-stats"
+                  class="text-link share-stats"
+                  type="button"
+                  title="Copy stats for sharing"
+                  disabled
+                >
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons.svg#share" />
+                  </svg>
+                  Share
+                </button>
                 <button class="text-link" type="button" data-play-local>Play offline</button>
                 <details class="controls-help">
                   <summary>Controls</summary>
@@ -334,6 +355,7 @@
                   </p>
                 </details>
               </div>
+              <p id="share-status" class="share-status" role="status"></p>
             </div>
 
             <aside class="streak-panel" aria-label="Click streaks">
@@ -424,7 +446,12 @@
       <footer>
         <span>Go Click</span>
         <span>Go / SQLite</span>
-        <a href="https://github.com/bluehexagons/goclick" rel="noopener noreferrer">Source code</a>
+        <a
+          draggable="false"
+          href="https://github.com/bluehexagons/goclick"
+          rel="noopener noreferrer"
+          >Source code</a
+        >
       </footer>
     </div>
     <dialog id="options-dialog" class="options-dialog" aria-labelledby="options-title">
@@ -477,6 +504,28 @@
       <p id="copy-online-note" class="field-hint">
         Open your account counter first to make a copy. Copying only replaces the local save.
       </p>
+    </dialog>
+    <dialog
+      id="share-dialog"
+      class="options-dialog share-dialog"
+      aria-labelledby="share-title"
+      aria-describedby="share-hint"
+    >
+      <div class="options-heading">
+        <h1 id="share-title">Share stats</h1>
+        <button id="close-share" class="button button-quiet" type="button">Done</button>
+      </div>
+      <p id="share-hint" class="muted">
+        Clipboard access isn’t available. Copy the selected text and paste it into Discord or a
+        message.
+      </p>
+      <textarea
+        id="share-text"
+        rows="4"
+        readonly
+        aria-label="Stats to share"
+        spellcheck="false"
+      ></textarea>
     </dialog>
     <noscript>
       <p class="noscript-notice">

@@ -15,4 +15,5 @@
   <symbol id="terminal" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m6 9 3 3-3 3m7 0h5"/></symbol>
   <symbol id="arrow" viewBox="0 0 24 24"><path d="M20 12H4m6-6-6 6 6 6"/></symbol>
   <symbol id="settings" viewBox="0 0 24 24"><path d="m10 3-.6 2.5-2 .9L5 5.7 2.8 9.5l1.8 1.8v2l-1.8 1.8L5 19l2.4-.7 2 .9L10 22h4l.6-2.8 2-.9 2.4.7 2.2-3.9-1.8-1.8v-2l1.8-1.8L19 5.7l-2.4.7-2-.9L14 3z"/><circle cx="12" cy="12.5" r="3"/></symbol>
+  <symbol id="share" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M5 12H3v9h18v-9h-2"/></symbol>
 </svg>

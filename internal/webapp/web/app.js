@@ -34,6 +34,23 @@
     { capture: true, passive: true }
   );
 
+  // frontend/interaction.ts
+  document.addEventListener(
+    "dragstart",
+    (event) => {
+      const target = event.target;
+      const element = target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+      const editor = element?.closest("input, textarea, [contenteditable]");
+      if (editor?.isContentEditable) return;
+      if (editor?.matches("input:not([type=file]), textarea")) {
+        const field = editor;
+        if (!field.disabled && !field.readOnly) return;
+      }
+      event.preventDefault();
+    },
+    { capture: true }
+  );
+
   // frontend/dom.ts
   function required(selector, root2 = document) {
     const element = root2.querySelector(selector);
@@ -1076,6 +1093,59 @@
     };
   })();
 
+  // frontend/share.ts
+  function formatStats(counters, local) {
+    const number = new Intl.NumberFormat("en-US");
+    const quantity = (count, unit) => `${number.format(count)} ${unit}${count === 1 ? "" : "s"}`;
+    return [
+      `Go Click${local ? " \xB7 offline" : ""}`,
+      quantity(counters.click_count?.count ?? 0, local ? "local click" : "saved click"),
+      `UTC streaks: ${quantity(counters.streak_counter_day?.count ?? 0, "day")} \xB7 ${quantity(counters.streak_counter_month?.count ?? 0, "month")} \xB7 ${quantity(counters.streak_counter_year?.count ?? 0, "year")}`
+    ].join("\n");
+  }
+  var statsShare = (() => {
+    const button = required("#share-stats");
+    const status = required("#share-status");
+    const dialog = required("#share-dialog");
+    const text = required("#share-text");
+    let generation = 0, busy = false;
+    required("#close-share").addEventListener("click", () => dialog.close());
+    return {
+      reset() {
+        generation++;
+        busy = false;
+        button.setAttribute("aria-busy", "false");
+        status.textContent = "";
+        text.value = "";
+        if (dialog.open) dialog.close();
+      },
+      async copy(counters, local) {
+        if (busy) return;
+        busy = true;
+        const current = generation;
+        const summary = formatStats(counters, local);
+        button.setAttribute("aria-busy", "true");
+        status.textContent = "";
+        try {
+          await navigator.clipboard.writeText(summary);
+          if (current === generation) status.textContent = "Stats copied.";
+        } catch {
+          if (current !== generation) return;
+          text.value = summary;
+          status.textContent = "Select and copy your stats from the dialog.";
+          dialog.showModal();
+          text.focus();
+          text.select();
+        } finally {
+          if (current === generation) {
+            busy = false;
+            button.setAttribute("aria-busy", "false");
+          }
+        }
+      }
+    };
+  })();
+
   // frontend/app.ts
   var views = {
     loading: required("#loading-view"),
@@ -1106,6 +1176,7 @@
   var user = null;
   var localMode = gameSettings.mode() === "local";
   var lastOnlineCounters = null;
+  var displayedCounters = {};
   var gameReady = false;
   var pendingClicks = 0;
   var localSaveReplacing = false;
@@ -1227,6 +1298,7 @@
     connection.setAttribute("aria-label", "Ping: no click measured yet");
     tactileButtons.get(clickButton)?.reset();
     clickFeedback.reset();
+    statsShare.reset();
     updateGameControls();
   }
   function updateGameControls() {
@@ -1237,6 +1309,7 @@
       String(refreshCounterButton.disabled || !!counterLoad)
     );
     refreshCounterButton.setAttribute("aria-busy", String(!!counterLoad));
+    required("#share-stats").disabled = !gameReady || signingOut || pendingClicks > 0 || !!counterLoad || localSaveReplacing;
     required("#network-notice").hidden = !offline || localMode;
     required("#local-mode-note").hidden = !localMode;
     required("#counter-label").textContent = localMode ? "Local clicks" : "Saved clicks";
@@ -1289,6 +1362,7 @@
     const displayedClicks = Number(required("#click-count").textContent);
     if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks)
       return;
+    displayedCounters = data;
     for (const [id, count] of [
       ["click-count", clicks?.count ?? 0],
       ["day-streak", data.streak_counter_day?.count ?? 0],
@@ -1583,6 +1657,10 @@
   }
   retryGameButton.addEventListener("click", refreshGame);
   refreshCounterButton.addEventListener("click", refreshGame);
+  required("#share-stats").addEventListener("click", () => {
+    if (!gameReady || signingOut || pendingClicks > 0 || counterLoad || localSaveReplacing) return;
+    return statsShare.copy(displayedCounters, localMode);
+  });
   retryBootButton.addEventListener("click", () => boot());
   var optionsDialog = required("#options-dialog");
   function optionsNotice(message2, error = false) {

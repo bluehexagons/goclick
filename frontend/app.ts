@@ -1,10 +1,12 @@
 import "./focus.js";
+import "./interaction.js";
 import { request, requestError } from "./http.js";
 import { required as $ } from "./dom.js";
 import { gameSettings, motionPreference } from "./preferences.js";
 import { localGame } from "./local-game.js";
 import { tactileButtons } from "./button.js";
 import { clickFeedback } from "./click-feedback.js";
+import { statsShare } from "./share.js";
 import type { User, Counters, Activation } from "./types.js";
 
 const views = {
@@ -37,6 +39,7 @@ motionPreference.addEventListener("change", () => {
 let user: User | null = null;
 let localMode = gameSettings.mode() === "local";
 let lastOnlineCounters: Counters | null = null;
+let displayedCounters: Counters = {};
 let gameReady = false;
 let pendingClicks = 0;
 let localSaveReplacing = false;
@@ -178,6 +181,7 @@ function resetClickState() {
   connection.setAttribute("aria-label", "Ping: no click measured yet");
   tactileButtons.get(clickButton)?.reset();
   clickFeedback.reset();
+  statsShare.reset();
   updateGameControls();
 }
 
@@ -197,6 +201,8 @@ function updateGameControls() {
     String(refreshCounterButton.disabled || !!counterLoad),
   );
   refreshCounterButton.setAttribute("aria-busy", String(!!counterLoad));
+  $<HTMLButtonElement>("#share-stats").disabled =
+    !gameReady || signingOut || pendingClicks > 0 || !!counterLoad || localSaveReplacing;
   $("#network-notice").hidden = !offline || localMode;
   $("#local-mode-note").hidden = !localMode;
   $("#counter-label").textContent = localMode ? "Local clicks" : "Saved clicks";
@@ -258,6 +264,7 @@ function renderCounters(data: Counters, allowDecrease = false) {
     clicks.count < displayedClicks
   )
     return;
+  displayedCounters = data;
   for (const [id, count] of [
     ["click-count", clicks?.count ?? 0],
     ["day-streak", data.streak_counter_day?.count ?? 0],
@@ -585,6 +592,10 @@ async function boot() {
 
 retryGameButton.addEventListener("click", refreshGame);
 refreshCounterButton.addEventListener("click", refreshGame);
+$<HTMLButtonElement>("#share-stats").addEventListener("click", () => {
+  if (!gameReady || signingOut || pendingClicks > 0 || counterLoad || localSaveReplacing) return;
+  return statsShare.copy(displayedCounters, localMode);
+});
 retryBootButton.addEventListener("click", () => boot());
 
 const optionsDialog = $<HTMLDialogElement>("#options-dialog");
