@@ -13,6 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Check TypeScript, oxlint, oxfmt, generated bundles, and frontend regressions
+        run: npm run check
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -21,12 +28,6 @@ jobs:
       - run: go vet ./...
       - run: test -z "$(gofmt -l .)"
       - run: go mod verify
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          package-manager-cache: false
-      - name: Check browser script request ordering and recovery feedback
-        run: node --test internal/webapp/testdata/*.test.cjs
       - name: Check reachable Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - name: Smoke-test basaltwater.json build and runtime contract

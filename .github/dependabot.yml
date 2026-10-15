@@ -1,5 +1,12 @@
 version: 2
 updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      frontend-tooling:
+        patterns: ["*"]
   - package-ecosystem: gomod
     directory: /
     schedule:

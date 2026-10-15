@@ -203,19 +203,28 @@ go mod verify
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
-For browser-script regression checks, use Node.js 24 (no npm install required):
+Frontend source lives in `frontend/` as strict TypeScript ES modules. Development
+uses Node.js 24 and the exact tools in `package-lock.json`:
 
 ```bash
-node --test internal/webapp/testdata/*.test.cjs
+npm ci
+npm run build       # type-check and regenerate embedded app.js and admin.js
+npm run check       # types, oxlint, oxfmt, bundle freshness, and regression tests
+npm run fmt         # format TypeScript, tests, HTML, CSS, and tool configuration
 ```
 
-Node is only a test tool; building and running Go Click still requires only Go.
-The script checks cover delayed/failed admin requests and successful recovery
-operations followed by a failed dashboard refresh. The UI keeps the latest
-filter results and preserves the confirmed operation outcome.
+TypeScript checks nulls, indexed access, DOM bindings, and API response contracts;
+oxlint rejects correctness issues and explicit `any`. Esbuild bundles the game
+and admin entry points separately. The two generated JavaScript files are
+committed, and CI rejects stale bundles, so an ordinary Go, container, or
+Basaltwater build still needs only Go and serves no runtime npm dependencies.
+Edit TypeScript source rather than the generated files. Rebuild before running
+Go tests or restarting the dev server: assets are embedded at Go compilation.
+The JavaScript tests load isolated modules compiled from that same source and
+cover request ordering, recovery feedback, local saves, motion, and pointer input.
 
 CI runs these checks and a deployment smoke test. Dependabot checks Go modules,
-GitHub Actions, and container images weekly. Keep `modernc.org/libc` at the
+frontend tooling, GitHub Actions, and container images weekly. Keep `modernc.org/libc` at the
 version required by the SQLite driver's `go.mod` when updating that driver.
 
 ## Container

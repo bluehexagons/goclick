@@ -1,30 +1,27 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Go Click. A small clicker game.">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Go Click. A small clicker game." />
     <title>Go Click</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css">
-    <script src="/preferences.js" defer></script>
-    <script src="/local-game.js" defer></script>
-    <script src="/click-feedback.js" defer></script>
-    <script src="/button-3d.js" defer></script>
-    <script src="/button.js" defer></script>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/app.css" />
     <script src="/app.js" defer></script>
   </head>
   <body>
     <div class="shell">
       <header class="site-header">
         <a class="brand" href="/" aria-label="Go Click home">
-          <img class="brand-mark" src="/favicon.svg" width="36" height="36" alt="">
+          <img class="brand-mark" src="/favicon.svg" width="36" height="36" alt="" />
           <span>Go Click</span>
         </a>
         <div class="header-actions">
           <nav id="guest-nav" class="nav-actions" aria-label="Account" hidden>
             <button class="button button-quiet" type="button" data-view="login">Sign in</button>
-            <button class="button button-small" type="button" data-view="signup">Create account</button>
+            <button class="button button-small" type="button" data-view="signup">
+              Create account
+            </button>
           </nav>
           <nav id="user-nav" class="nav-actions" aria-label="Account" hidden>
             <span id="nav-username" class="nav-username"></span>
@@ -35,7 +32,17 @@
             <span class="local-badge">Offline</span>
             <button id="leave-local" class="button button-quiet" type="button">Back online</button>
           </nav>
-          <button id="options-button" class="button button-quiet options-button" type="button" aria-label="Options" title="Options"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#settings"/></svg></button>
+          <button
+            id="options-button"
+            class="button button-quiet options-button"
+            type="button"
+            aria-label="Options"
+            title="Options"
+          >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons.svg#settings" />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -43,7 +50,9 @@
         <section id="loading-view" class="loading-view" aria-live="polite" aria-busy="true">
           <span class="loading-spinner" aria-hidden="true"></span>
           <p id="loading-message">Loading your counter…</p>
-          <button id="retry-boot-button" class="button button-quiet" type="button" hidden>Try again</button>
+          <button id="retry-boot-button" class="button button-quiet" type="button" hidden>
+            Try again
+          </button>
           <button class="text-link" type="button" data-play-local>Play offline</button>
         </section>
 
@@ -53,60 +62,191 @@
           <div class="button-stage">
             <canvas class="button-scene" aria-hidden="true"></canvas>
             <div class="button-rig">
-              <button id="guest-click-button" class="click-button" type="button" data-tactile-button data-view="login" aria-label="Click to log in">
+              <button
+                id="guest-click-button"
+                class="click-button"
+                type="button"
+                data-tactile-button
+                data-view="login"
+                aria-label="Click to log in"
+              >
                 <span class="button-label">Click!</span>
               </button>
             </div>
           </div>
-          <p class="home-signup"><button class="text-link" type="button" data-view="signup">Create an account</button></p>
+          <p class="home-signup">
+            <button class="text-link" type="button" data-view="signup">Create an account</button>
+          </p>
           <button class="button button-quiet" type="button" data-play-local>Play offline</button>
           <p class="field-hint">One local save · no account needed</p>
         </section>
 
         <section id="auth-view" class="auth-layout" hidden>
-          <button class="back-button" type="button" data-view="home"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#arrow"/></svg> Back to game</button>
+          <button class="back-button" type="button" data-view="home">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons.svg#arrow" />
+            </svg>
+            Back to game
+          </button>
           <div class="card auth-card">
             <form id="login-form" name="login" action="/api/auth/login" method="post">
-              <div class="auth-symbol" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#key"/></svg></div>
+              <div class="auth-symbol" aria-hidden="true">
+                <svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#key" /></svg>
+              </div>
               <h1>Sign in</h1>
               <p class="muted">Use your username or email and password.</p>
-              <div id="login-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
+              <div
+                id="login-error"
+                class="notice notice-error"
+                role="alert"
+                tabindex="-1"
+                hidden
+              ></div>
               <label for="login-identifier">Username or email</label>
-              <input id="login-identifier" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required autofocus>
+              <input
+                id="login-identifier"
+                name="username"
+                type="text"
+                autocomplete="username"
+                autocapitalize="none"
+                spellcheck="false"
+                maxlength="254"
+                required
+                autofocus
+              />
               <label for="login-password">Password</label>
               <div class="password-field">
-                <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required>
-                <button class="password-toggle" type="button" data-toggle-password="login-password" aria-label="Show password">Show</button>
+                <input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  maxlength="1024"
+                  required
+                />
+                <button
+                  class="password-toggle"
+                  type="button"
+                  data-toggle-password="login-password"
+                  aria-label="Show password"
+                >
+                  Show
+                </button>
               </div>
-              <button class="button button-block" type="submit" data-label="Sign in" data-busy-label="Signing in…">Sign in</button>
-              <details class="account-note"><summary>Migrated accounts</summary><p>Rails SQLite imports keep existing passwords. Accounts imported from JSON need a password set by the site operator.</p></details>
-              <p class="form-switch">New here? <button type="button" data-view="signup">Create an account</button></p>
+              <button
+                class="button button-block"
+                type="submit"
+                data-label="Sign in"
+                data-busy-label="Signing in…"
+              >
+                Sign in
+              </button>
+              <details class="account-note">
+                <summary>Migrated accounts</summary>
+                <p>
+                  Rails SQLite imports keep existing passwords. Accounts imported from JSON need a
+                  password set by the site operator.
+                </p>
+              </details>
+              <p class="form-switch">
+                New here? <button type="button" data-view="signup">Create an account</button>
+              </p>
             </form>
 
             <form id="signup-form" name="signup" action="/api/auth/signup" method="post" hidden>
-              <div class="auth-symbol" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#players"/></svg></div>
+              <div class="auth-symbol" aria-hidden="true">
+                <svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#players" /></svg>
+              </div>
               <h1>Create account</h1>
               <p class="muted">Your clicks and streaks are stored with this account.</p>
-              <div id="signup-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
+              <div
+                id="signup-error"
+                class="notice notice-error"
+                role="alert"
+                tabindex="-1"
+                hidden
+              ></div>
               <label for="signup-username">Username</label>
-              <input id="signup-username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="32" pattern="[A-Za-z0-9_\-]+" aria-describedby="username-hint" required>
-              <p id="username-hint" class="field-hint">3–32 characters: letters, numbers, underscores, or dashes.</p>
+              <input
+                id="signup-username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                autocapitalize="none"
+                spellcheck="false"
+                minlength="3"
+                maxlength="32"
+                pattern="[A-Za-z0-9_\-]+"
+                aria-describedby="username-hint"
+                required
+              />
+              <p id="username-hint" class="field-hint">
+                3–32 characters: letters, numbers, underscores, or dashes.
+              </p>
               <label for="signup-email">Email <span>(optional)</span></label>
-              <input id="signup-email" name="email" type="email" autocomplete="email" maxlength="254">
+              <input
+                id="signup-email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                maxlength="254"
+              />
               <p class="field-hint">If provided, your email can also be used to sign in.</p>
               <label for="signup-password">Password</label>
               <div class="password-field">
-                <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" aria-describedby="password-hint" required>
-                <button class="password-toggle" type="button" data-toggle-password="signup-password" aria-label="Show password">Show</button>
+                <input
+                  id="signup-password"
+                  name="password"
+                  type="password"
+                  autocomplete="new-password"
+                  minlength="8"
+                  maxlength="72"
+                  aria-describedby="password-hint"
+                  required
+                />
+                <button
+                  class="password-toggle"
+                  type="button"
+                  data-toggle-password="signup-password"
+                  aria-label="Show password"
+                >
+                  Show
+                </button>
               </div>
-              <p id="password-hint" class="field-hint">At least 8 characters; maximum 72 UTF-8 bytes.</p>
+              <p id="password-hint" class="field-hint">
+                At least 8 characters; maximum 72 UTF-8 bytes.
+              </p>
               <label for="signup-password-confirmation">Confirm password</label>
               <div class="password-field">
-                <input id="signup-password-confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="72" required>
-                <button class="password-toggle" type="button" data-toggle-password="signup-password-confirmation" aria-label="Show password">Show</button>
+                <input
+                  id="signup-password-confirmation"
+                  name="password_confirmation"
+                  type="password"
+                  autocomplete="new-password"
+                  minlength="8"
+                  maxlength="72"
+                  required
+                />
+                <button
+                  class="password-toggle"
+                  type="button"
+                  data-toggle-password="signup-password-confirmation"
+                  aria-label="Show password"
+                >
+                  Show
+                </button>
               </div>
-              <button class="button button-block" type="submit" data-label="Create account" data-busy-label="Creating account…">Create account</button>
-              <p class="form-switch">Have an account? <button type="button" data-view="login">Sign in</button></p>
+              <button
+                class="button button-block"
+                type="submit"
+                data-label="Create account"
+                data-busy-label="Creating account…"
+              >
+                Create account
+              </button>
+              <p class="form-switch">
+                Have an account? <button type="button" data-view="login">Sign in</button>
+              </p>
             </form>
           </div>
         </section>
@@ -115,73 +255,168 @@
           <div class="game-heading">
             <div>
               <h1>Click counter</h1>
-              <p class="game-greeting"><span id="game-username"></span><span class="account-id" id="game-player-id"></span></p>
+              <p class="game-greeting">
+                <span id="game-username"></span><span class="account-id" id="game-player-id"></span>
+              </p>
             </div>
-            <div id="connection" class="connection" role="status" aria-live="off" aria-label="Ping: no click measured yet" title="Round-trip time of the last successful click request. The border indicates pending requests or a save error.">
+            <div
+              id="connection"
+              class="connection"
+              role="status"
+              aria-live="off"
+              aria-label="Ping: no click measured yet"
+              title="Round-trip time of the last successful click request. The border indicates pending requests or a save error."
+            >
               <span class="connection-dot" aria-hidden="true"></span>
               <span class="connection-label">Ping</span>
               <span id="ping">— ms</span>
             </div>
           </div>
 
-          <p id="network-notice" class="notice notice-offline" role="status" hidden>You’re offline. Clicking is paused. Your saved progress will refresh when you reconnect.</p>
+          <p id="network-notice" class="notice notice-offline" role="status" hidden>
+            You’re offline. Clicking is paused. Your saved progress will refresh when you reconnect.
+          </p>
           <div id="game-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
-          <button id="retry-game-button" class="button button-quiet retry-game" type="button" hidden>Reload counter</button>
-          <p id="local-mode-note" class="local-mode-note" hidden>Local save · only in this browser · separate from account progress</p>
+          <button
+            id="retry-game-button"
+            class="button button-quiet retry-game"
+            type="button"
+            hidden
+          >
+            Reload counter
+          </button>
+          <p id="local-mode-note" class="local-mode-note" hidden>
+            Local save · only in this browser · separate from account progress
+          </p>
           <div class="play-layout">
-          <div id="counter-card" class="counter-card">
-            <p id="counter-label" class="counter-label">Saved clicks</p>
-            <div class="counter-total">
-              <p id="click-count" class="counter-value" aria-live="polite">0</p>
-              <span id="pending-clicks" class="pending-count" hidden></span>
-            </div>
-            <div class="button-stage">
-              <div class="score-effects" aria-hidden="true"></div>
-              <canvas class="button-scene" aria-hidden="true"></canvas>
-              <div class="button-rig">
-                <button id="click-button" class="click-button" type="button" data-tactile-button aria-label="Click to increment score" aria-describedby="button-hint">
-                  <span class="button-label">Click!</span>
+            <div id="counter-card" class="counter-card">
+              <p id="counter-label" class="counter-label">Saved clicks</p>
+              <div class="counter-total">
+                <p id="click-count" class="counter-value" aria-live="polite">0</p>
+                <span id="pending-clicks" class="pending-count" hidden></span>
+              </div>
+              <div class="button-stage">
+                <div class="score-effects" aria-hidden="true"></div>
+                <canvas class="button-scene" aria-hidden="true"></canvas>
+                <div class="button-rig">
+                  <button
+                    id="click-button"
+                    class="click-button"
+                    type="button"
+                    data-tactile-button
+                    aria-label="Click to increment score"
+                    aria-describedby="button-hint"
+                  >
+                    <span class="button-label">Click!</span>
+                  </button>
+                </div>
+              </div>
+              <p id="last-click" class="last-click" title="Shown in your local time zone">
+                No saved clicks yet.
+              </p>
+              <div class="counter-actions">
+                <button id="refresh-counter" class="text-link refresh-counter" type="button">
+                  Refresh counter
                 </button>
+                <button class="text-link" type="button" data-play-local>Play offline</button>
+                <details class="controls-help">
+                  <summary>Controls</summary>
+                  <p id="button-hint">
+                    Press with a mouse or touch, then release inside the button. Each finger counts
+                    separately. With the button focused, Space or Enter adds one click on release.
+                    Holding never adds extra clicks.
+                  </p>
+                  <p>
+                    +1 stays amber while waiting. The button sweeps teal on confirmation, violet for
+                    a slower reply, and red for a failed or unconfirmed save. Reduced motion uses a
+                    static tint.
+                  </p>
+                </details>
               </div>
             </div>
-            <p id="last-click" class="last-click" title="Shown in your local time zone">No saved clicks yet.</p>
-            <div class="counter-actions">
-              <button id="refresh-counter" class="text-link refresh-counter" type="button">Refresh counter</button>
-              <button class="text-link" type="button" data-play-local>Play offline</button>
-              <details class="controls-help"><summary>Controls</summary><p id="button-hint">Press with a mouse or touch, then release inside the button. Each finger counts separately. With the button focused, Space or Enter adds one click on release. Holding never adds extra clicks.</p><p>+1 stays amber while waiting. The button sweeps teal on confirmation, violet for a slower reply, and red for a failed or unconfirmed save. Reduced motion uses a static tint.</p></details>
-            </div>
-          </div>
 
-          <aside class="streak-panel" aria-label="Click streaks">
-          <div class="streak-heading"><h2>Streaks</h2><span class="time-zone">UTC</span></div>
-          <div class="streak-grid" aria-label="Click streaks">
-            <article class="streak-card">
-              <span class="streak-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day"/></svg></span>
-              <div><strong id="day-streak">0</strong><span>consecutive days</span></div>
-            </article>
-            <article class="streak-card">
-              <span class="streak-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month"/></svg></span>
-              <div><strong id="month-streak">0</strong><span>consecutive months</span></div>
-            </article>
-            <article class="streak-card">
-              <span class="streak-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#year"/></svg></span>
-              <div><strong id="year-streak">0</strong><span>consecutive years</span></div>
-            </article>
-          </div>
-          <p class="streak-note">A saved click in each UTC period extends its streak. Gaps reset that streak on your next click.</p>
-          </aside>
+            <aside class="streak-panel" aria-label="Click streaks">
+              <div class="streak-heading">
+                <h2>Streaks</h2>
+                <span class="time-zone">UTC</span>
+              </div>
+              <div class="streak-grid" aria-label="Click streaks">
+                <article class="streak-card">
+                  <span class="streak-icon" aria-hidden="true"
+                    ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day" /></svg
+                  ></span>
+                  <div><strong id="day-streak">0</strong><span>consecutive days</span></div>
+                </article>
+                <article class="streak-card">
+                  <span class="streak-icon" aria-hidden="true"
+                    ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month" /></svg
+                  ></span>
+                  <div><strong id="month-streak">0</strong><span>consecutive months</span></div>
+                </article>
+                <article class="streak-card">
+                  <span class="streak-icon" aria-hidden="true"
+                    ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#year" /></svg
+                  ></span>
+                  <div><strong id="year-streak">0</strong><span>consecutive years</span></div>
+                </article>
+              </div>
+              <p class="streak-note">
+                A saved click in each UTC period extends its streak. Gaps reset that streak on your
+                next click.
+              </p>
+            </aside>
           </div>
         </section>
 
         <details class="technical-notes" id="technical-notes">
-          <summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#info"/></svg> Game &amp; storage notes</summary>
+          <summary>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons.svg#info" />
+            </svg>
+            Game &amp; storage notes
+          </summary>
           <div class="technical-grid">
-            <article><h2>Clicks &amp; saves</h2><p>Releasing inside the button adds one click. Holding does not add extra clicks. The total shows server-confirmed saves; pending clicks appear separately. Returning to this tab or reconnecting refreshes saved progress. Failed clicks are never replayed.</p></article>
-            <article><h2>Streak periods</h2><p>Days, calendar months, and calendar years use UTC. Multiple clicks in the same period do not extend a streak. The next click after a missed period starts that streak at one.</p></article>
-            <article><h2>Ping &amp; storage</h2><p>Online ping measures a click request, including server processing. +1 badges wait for confirmation and compare timing to the last 20 pings. Amber means pending or slow; red means failed or unconfirmed. Account progress stays in SQLite on the server.</p></article>
-            <article><h2>Local play &amp; sessions</h2><p>Offline play uses one browser-local save and simulated ping, with no account API calls. Options can download, import, restart, or copy account progress into that slot. Local clicks never transfer back to your account. Online activity keeps your session signed in; about 180 days of inactivity ends it.</p></article>
+            <article>
+              <h2>Clicks &amp; saves</h2>
+              <p>
+                Releasing inside the button adds one click. Holding does not add extra clicks. The
+                total shows server-confirmed saves; pending clicks appear separately. Returning to
+                this tab or reconnecting refreshes saved progress. Failed clicks are never replayed.
+              </p>
+            </article>
+            <article>
+              <h2>Streak periods</h2>
+              <p>
+                Days, calendar months, and calendar years use UTC. Multiple clicks in the same
+                period do not extend a streak. The next click after a missed period starts that
+                streak at one.
+              </p>
+            </article>
+            <article>
+              <h2>Ping &amp; storage</h2>
+              <p>
+                Online ping measures a click request, including server processing. +1 badges wait
+                for confirmation and compare timing to the last 20 pings. Amber means pending or
+                slow; red means failed or unconfirmed. Account progress stays in SQLite on the
+                server.
+              </p>
+            </article>
+            <article>
+              <h2>Local play &amp; sessions</h2>
+              <p>
+                Offline play uses one browser-local save and simulated ping, with no account API
+                calls. Options can download, import, restart, or copy account progress into that
+                slot. Local clicks never transfer back to your account. Online activity keeps your
+                session signed in; about 180 days of inactivity ends it.
+              </p>
+            </article>
           </div>
-          <p class="implementation-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#terminal"/></svg> Go server · SQLite transactions · dependency-free browser UI · WebGL with a CSS fallback</p>
+          <p class="implementation-note">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons.svg#terminal" />
+            </svg>
+            Go server · SQLite transactions · dependency-free browser UI · WebGL with a CSS fallback
+          </p>
         </details>
       </main>
 
@@ -192,31 +427,60 @@
       </footer>
     </div>
     <dialog id="options-dialog" class="options-dialog" aria-labelledby="options-title">
-      <div class="options-heading"><h1 id="options-title">Options</h1><button id="close-options" class="button button-quiet" type="button">Done</button></div>
+      <div class="options-heading">
+        <h1 id="options-title">Options</h1>
+        <button id="close-options" class="button button-quiet" type="button">Done</button>
+      </div>
       <div id="options-status" class="notice" role="status" hidden></div>
       <label for="motion-setting">Motion</label>
-      <select id="motion-setting"><option value="auto">Auto — follow browser preference</option><option value="on">Reduced — no movement or flashes</option><option value="off">Full — animations and effects</option></select>
+      <select id="motion-setting">
+        <option value="auto">Auto — follow browser preference</option>
+        <option value="on">Reduced — no movement or flashes</option>
+        <option value="off">Full — animations and effects</option>
+      </select>
       <p class="field-hint">Applies immediately and is remembered in this browser.</p>
       <h2>Offline play</h2>
-      <p class="muted">One local save in this browser. Local clicks never change your account progress. Leaving offline play keeps both saves.</p>
+      <p class="muted">
+        One local save in this browser. Local clicks never change your account progress. Leaving
+        offline play keeps both saves.
+      </p>
       <button class="button button-quiet" type="button" data-play-local>Play offline</button>
       <label for="simulated-ping">Simulated ping</label>
-      <select id="simulated-ping"><option value="0">Instant</option><option value="80">Around 80 ms</option><option value="250">Around 250 ms</option><option value="800">Around 800 ms</option></select>
-      <p class="field-hint">Offline effects only. Clicks are saved locally before the simulated response.</p>
+      <select id="simulated-ping">
+        <option value="0">Instant</option>
+        <option value="80">Around 80 ms</option>
+        <option value="250">Around 250 ms</option>
+        <option value="800">Around 800 ms</option>
+      </select>
+      <p class="field-hint">
+        Offline effects only. Clicks are saved locally before the simulated response.
+      </p>
       <h2>Local save</h2>
       <p id="local-save-summary" class="muted"></p>
       <button id="download-local" class="button button-quiet" type="button">Download save</button>
       <p class="field-hint">Keep a copy before clearing browser data or switching devices.</p>
-      <label class="replace-local"><input id="replace-local" type="checkbox"> Allow replacing my local save</label>
+      <label class="replace-local"
+        ><input id="replace-local" type="checkbox" /> Allow replacing my local save</label
+      >
       <div class="local-save-actions">
-        <button id="copy-online-local" class="button button-quiet" type="button">Copy account progress to local save</button>
-        <button id="restart-local" class="button button-quiet" type="button">Restart local save</button>
-        <label class="button button-quiet import-local">Import local save<input id="import-local" type="file" accept=".json,application/json"></label>
+        <button id="copy-online-local" class="button button-quiet" type="button">
+          Copy account progress to local save
+        </button>
+        <button id="restart-local" class="button button-quiet" type="button">
+          Restart local save
+        </button>
+        <label class="button button-quiet import-local"
+          >Import local save<input id="import-local" type="file" accept=".json,application/json"
+        /></label>
       </div>
-      <p id="copy-online-note" class="field-hint">Open your account counter first to make a copy. Copying only replaces the local save.</p>
+      <p id="copy-online-note" class="field-hint">
+        Open your account counter first to make a copy. Copying only replaces the local save.
+      </p>
     </dialog>
     <noscript>
-      <p class="noscript-notice">Go Click needs JavaScript enabled so it can sign you in and save your clicks.</p>
+      <p class="noscript-notice">
+        Go Click needs JavaScript enabled so it can sign you in and save your clicks.
+      </p>
     </noscript>
   </body>
 </html>

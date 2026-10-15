@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "no-unused-vars": "error",
+    "no-console": "error"
+  },
+  "env": { "browser": true },
+  "overrides": [
+    {
+      "files": ["scripts/**/*.mjs", "internal/webapp/testdata/**/*.cjs"],
+      "env": { "node": true },
+      "rules": { "no-console": "off" }
+    }
+  ]
+}

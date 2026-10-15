@@ -1,112 +1,543 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Administration · Go Click</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/app.css">
-  <link rel="stylesheet" href="/admin.css">
-  <script src="/admin.js" defer></script>
-</head>
-<body>
-  <div class="shell admin-shell">
-    <header class="site-header">
-      <a class="brand" href="/" aria-label="Go Click home"><img class="brand-mark" src="/favicon.svg" width="36" height="36" alt=""><span>Go Click <small>ADMIN</small></span></a>
-      <nav class="nav-actions" aria-label="Account"><span id="admin-name" class="nav-username"></span><a class="button button-quiet" href="/">Back to game</a></nav>
-    </header>
-    <main>
-      <div class="admin-heading"><div><h1>Administration</h1><p class="admin-description">Daily totals use UTC. Event timestamps use your local time.</p></div><button id="refresh" class="button button-quiet" type="button">Refresh data</button></div>
-      <div id="admin-error" class="notice notice-error" role="alert" hidden></div>
-      <div id="access-error" class="card access-error" hidden><h2>Sign in with an admin account</h2><p>Your session expired or no longer has administrator access.</p><a class="button" href="/">Sign in</a></div>
-      <section id="restore-success" class="card access-error" role="status" hidden><p class="eyebrow">Recovery complete</p><h2 id="restore-result-title">Database restored</h2><p id="restore-summary"></p><p>All sessions have been revoked. Sign in with an administrator account from the restored data.</p><a class="button" href="/">Sign in again</a></section>
-      <div id="dashboard-body">
-        <nav class="admin-tabs" aria-label="Administration sections">
-          <button type="button" data-tab="overview" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#chart"/></svg><span>Overview</span></button>
-          <button type="button" data-tab="players"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#players"/></svg><span>Players</span></button>
-          <button type="button" data-tab="activity"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#activity"/></svg><span>Activity</span></button>
-          <button type="button" data-tab="backups"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#database"/></svg><span>Backups &amp; recovery</span></button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Administration · Go Click</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/app.css" />
+    <link rel="stylesheet" href="/admin.css" />
+    <script src="/admin.js" defer></script>
+  </head>
+  <body>
+    <div class="shell admin-shell">
+      <header class="site-header">
+        <a class="brand" href="/" aria-label="Go Click home"
+          ><img class="brand-mark" src="/favicon.svg" width="36" height="36" alt="" /><span
+            >Go Click <small>ADMIN</small></span
+          ></a
+        >
+        <nav class="nav-actions" aria-label="Account">
+          <span id="admin-name" class="nav-username"></span
+          ><a class="button button-quiet" href="/">Back to game</a>
         </nav>
-        <section id="overview-panel" class="admin-panel" aria-labelledby="overview-title">
-          <h2 id="overview-title" class="visually-hidden">Overview</h2>
-          <div class="metrics" aria-live="polite">
-            <article class="metric"><span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#players"/></svg>Total players</span><strong id="metric-players">—</strong><small id="metric-admins">Loading administrators…</small></article>
-            <article class="metric"><span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#click"/></svg>All-time clicks</span><strong id="metric-clicks">—</strong><small>Includes migrated totals</small></article>
-            <article class="metric"><span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#activity"/></svg>Active players</span><strong id="metric-active">—</strong><small>Clicked in the last 24 hours</small></article>
-            <article class="metric"><span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#day"/></svg>Clicks in 24 hours</span><strong id="metric-today">—</strong><small id="metric-sessions">Loading sessions…</small></article>
+      </header>
+      <main>
+        <div class="admin-heading">
+          <div>
+            <h1>Administration</h1>
+            <p class="admin-description">
+              Daily totals use UTC. Event timestamps use your local time.
+            </p>
           </div>
-          <div class="overview-grid">
-            <article class="card admin-card"><div class="section-heading"><h2>Clicks · last 7 days</h2><span class="time-zone">UTC</span></div><div id="daily-chart" class="daily-chart" aria-label="Daily clicks over the last seven days"></div><p class="field-hint">Counts come from recorded click events. Migrated totals are included in player counters, not reconstructed as past events.</p></article>
-            <article class="card admin-card"><div class="section-heading"><h2>Latest activity</h2><button class="text-button" id="view-activity" type="button">View all →</button></div><div id="recent-activity" class="activity-feed"><p class="muted">Loading activity…</p></div></article>
-          </div>
+          <button id="refresh" class="button button-quiet" type="button">Refresh data</button>
+        </div>
+        <div id="admin-error" class="notice notice-error" role="alert" hidden></div>
+        <div id="access-error" class="card access-error" hidden>
+          <h2>Sign in with an admin account</h2>
+          <p>Your session expired or no longer has administrator access.</p>
+          <a class="button" href="/">Sign in</a>
+        </div>
+        <section id="restore-success" class="card access-error" role="status" hidden>
+          <p class="eyebrow">Recovery complete</p>
+          <h2 id="restore-result-title">Database restored</h2>
+          <p id="restore-summary"></p>
+          <p>
+            All sessions have been revoked. Sign in with an administrator account from the restored
+            data.
+          </p>
+          <a class="button" href="/">Sign in again</a>
         </section>
-        <section id="players-panel" class="admin-panel" aria-labelledby="players-title" hidden>
-          <div class="section-heading"><div><h2 id="players-title">All players</h2><p class="muted">Inspect counters, account details, and recorded activity.</p></div></div>
-          <form id="player-search" class="filters"><label class="search-field">Search players<input id="search" type="search" placeholder="Username or email" maxlength="128"></label><label>Sort by<select id="sort"><option value="recent">Latest click</option><option value="clicks">Most clicks</option><option value="username">Username</option></select></label><button class="button" type="submit">Search</button></form>
-          <div class="card table-wrap"><table><caption class="visually-hidden">Players and their counters</caption><thead><tr><th>Player</th><th>Clicks</th><th>Day / month / year</th><th>Last click</th><th>Joined</th></tr></thead><tbody id="players-rows"></tbody></table></div>
-          <div id="players-pager" class="pager"></div>
-        </section>
-        <section id="activity-panel" class="admin-panel" aria-labelledby="activity-title" hidden>
-          <h2 id="activity-title">Player activity</h2><p class="muted">Signups, sign-ins, and saved clicks. Historical clicks before activity recording are included in player totals.</p>
-          <form id="activity-filter" class="filters"><label>Player ID (optional)<input id="activity-user" type="number" min="1" step="1" placeholder="All players"></label><button class="button" type="submit">Filter activity</button></form>
-          <div class="card table-wrap"><table><caption class="visually-hidden">Recorded player activity</caption><thead><tr><th>Player</th><th>Activity</th><th>Click total</th><th>When</th></tr></thead><tbody id="activity-rows"></tbody></table></div><div id="activity-pager" class="pager"></div>
-        </section>
-        <section id="backups-panel" class="admin-panel" aria-labelledby="backups-title" hidden>
-          <h2 id="backups-title">Backups &amp; recovery</h2><p class="muted">Full SQLite snapshots preserve accounts, passwords, counters, and the complete migration archive. Keep downloaded backups private.</p>
-          <article class="card admin-card storage-card" aria-labelledby="storage-title">
-            <div class="section-heading"><h3 id="storage-title">Storage</h3><span class="time-zone">This server</span></div>
-            <dl class="storage-details">
-              <div><dt>Database allocation</dt><dd id="storage-database">—</dd><small id="storage-reusable">Loading allocation…</small></div>
-              <div><dt>Player activity</dt><dd id="storage-activity">—</dd><small id="storage-oldest-activity">Loading history…</small></div>
-              <div><dt>Audit history</dt><dd id="storage-audit">—</dd><small>Administrative events</small></div>
-              <div><dt>Recovery snapshots</dt><dd id="storage-snapshots">—</dd><small id="storage-snapshot-detail">Loading local snapshots…</small></div>
-            </dl>
-            <div id="storage-warning" class="notice" role="status" hidden></div>
-            <p class="field-hint">Database allocation includes committed WAL pages; WAL/SHM files use additional disk space. Exports are compacted and may be smaller. Local recovery counts exclude deployment and off-host backups. History and recovery snapshots are retained until an operator manages them.</p>
-          </article>
-          <div class="backup-grid">
-            <article class="card admin-card"><div class="operation-heading"><span class="operation-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#download"/></svg></span><div><h3>Export database</h3><span class="operation-format">SQLite snapshot</span></div></div><p class="muted">Download a transactionally consistent database file. It includes player activity and audit history.</p><details class="account-note"><summary>Snapshot contents</summary><p>Accounts, bcrypt password hashes, session digests, counters, migration archives, activity, and audit records. This file contains credentials and must be stored privately. Restoring a snapshot revokes all sessions.</p></details><form id="export-form"><input type="text" name="username" autocomplete="username" data-admin-username hidden><label for="export-password">Your current password</label><input id="export-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required><button class="button button-block" type="submit">Download backup</button></form><p id="export-status" class="notice" role="status" hidden></p></article>
-            <article id="restore-card" class="card admin-card restore-card">
-              <div class="operation-heading"><span class="operation-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#restore"/></svg></span><div><h3>Restore or migrate a database</h3><span class="operation-format">Replaces current data</span></div></div>
-              <p class="muted">Upload a Go Click backup or a Rails primary SQLite / admin JSON export to replace current accounts and gameplay.</p>
-              <p class="field-hint">A recovery snapshot is saved first. All sessions are revoked after replacement. The restored data must contain an administrator.</p>
-              <dl class="upload-specs"><div><dt>SQLite limit</dt><dd>128 MiB</dd></div><div><dt>JSON limit</dt><dd>16 MiB</dd></div></dl>
-              <details class="account-note"><summary>Formats and account access</summary><p>Go Click backups restore saved passwords and roles. Rails SQLite preserves original IDs, passwords, roles, and all entity records; its source must contain an administrator. Rails JSON omits passwords and requires explicit administrator password setup below.</p></details>
-              <form id="restore-form">
-                <input type="text" name="username" autocomplete="username" data-admin-username hidden>
-                <label for="restore-file">Go Click backup or Rails export</label><input id="restore-file" name="backup" type="file" accept=".db,.sqlite,.sqlite3,.json,application/json,application/octet-stream" required>
-                <fieldset id="restore-json-access" hidden>
-                  <legend>Administrator access after JSON migration</legend>
-                  <p class="field-hint">JSON omits passwords. Choose an account from the export and set its new password; it will have administrator access. Other imported accounts need operator-set passwords. Export with “Fetch User Entities” enabled.</p>
-                  <label for="restore-admin-username">Username in the JSON export</label><input id="restore-admin-username" name="admin_username" type="text" autocomplete="off" maxlength="1024" disabled>
-                  <label for="restore-admin-password">New password for that account</label><input id="restore-admin-password" name="admin_password" type="password" autocomplete="new-password" minlength="8" maxlength="72" disabled>
-                  <label for="restore-admin-password-confirmation">Confirm new password</label><input id="restore-admin-password-confirmation" name="admin_password_confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="72" disabled>
-                </fieldset>
-                <label for="restore-password">Your current administrator password</label><input id="restore-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required>
-                <label for="restore-confirmation">Type RESTORE to confirm replacement</label><input id="restore-confirmation" name="confirmation" type="text" pattern="RESTORE" autocomplete="off" spellcheck="false" required>
-                <button class="button button-danger button-block" type="submit">Restore or migrate database</button>
-              </form><p id="restore-status" class="notice" role="status" hidden></p>
+        <div id="dashboard-body">
+          <nav class="admin-tabs" aria-label="Administration sections">
+            <button type="button" data-tab="overview" aria-current="page">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons.svg#chart" /></svg
+              ><span>Overview</span>
+            </button>
+            <button type="button" data-tab="players">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons.svg#players" /></svg
+              ><span>Players</span>
+            </button>
+            <button type="button" data-tab="activity">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons.svg#activity" /></svg
+              ><span>Activity</span>
+            </button>
+            <button type="button" data-tab="backups">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons.svg#database" /></svg
+              ><span>Backups &amp; recovery</span>
+            </button>
+          </nav>
+          <section id="overview-panel" class="admin-panel" aria-labelledby="overview-title">
+            <h2 id="overview-title" class="visually-hidden">Overview</h2>
+            <div class="metrics" aria-live="polite">
+              <article class="metric">
+                <span
+                  ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons.svg#players" /></svg
+                  >Total players</span
+                ><strong id="metric-players">—</strong
+                ><small id="metric-admins">Loading administrators…</small>
+              </article>
+              <article class="metric">
+                <span
+                  ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons.svg#click" /></svg
+                  >All-time clicks</span
+                ><strong id="metric-clicks">—</strong><small>Includes migrated totals</small>
+              </article>
+              <article class="metric">
+                <span
+                  ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons.svg#activity" /></svg
+                  >Active players</span
+                ><strong id="metric-active">—</strong><small>Clicked in the last 24 hours</small>
+              </article>
+              <article class="metric">
+                <span
+                  ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons.svg#day" /></svg
+                  >Clicks in 24 hours</span
+                ><strong id="metric-today">—</strong
+                ><small id="metric-sessions">Loading sessions…</small>
+              </article>
+            </div>
+            <div class="overview-grid">
+              <article class="card admin-card">
+                <div class="section-heading">
+                  <h2>Clicks · last 7 days</h2>
+                  <span class="time-zone">UTC</span>
+                </div>
+                <div
+                  id="daily-chart"
+                  class="daily-chart"
+                  aria-label="Daily clicks over the last seven days"
+                ></div>
+                <p class="field-hint">
+                  Counts come from recorded click events. Migrated totals are included in player
+                  counters, not reconstructed as past events.
+                </p>
+              </article>
+              <article class="card admin-card">
+                <div class="section-heading">
+                  <h2>Latest activity</h2>
+                  <button class="text-button" id="view-activity" type="button">View all →</button>
+                </div>
+                <div id="recent-activity" class="activity-feed">
+                  <p class="muted">Loading activity…</p>
+                </div>
+              </article>
+            </div>
+          </section>
+          <section id="players-panel" class="admin-panel" aria-labelledby="players-title" hidden>
+            <div class="section-heading">
+              <div>
+                <h2 id="players-title">All players</h2>
+                <p class="muted">Inspect counters, account details, and recorded activity.</p>
+              </div>
+            </div>
+            <form id="player-search" class="filters">
+              <label class="search-field"
+                >Search players<input
+                  id="search"
+                  type="search"
+                  placeholder="Username or email"
+                  maxlength="128" /></label
+              ><label
+                >Sort by<select id="sort">
+                  <option value="recent">Latest click</option>
+                  <option value="clicks">Most clicks</option>
+                  <option value="username">Username</option>
+                </select></label
+              ><button class="button" type="submit">Search</button>
+            </form>
+            <div class="card table-wrap">
+              <table>
+                <caption class="visually-hidden">
+                  Players and their counters
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Clicks</th>
+                    <th>Day / month / year</th>
+                    <th>Last click</th>
+                    <th>Joined</th>
+                  </tr>
+                </thead>
+                <tbody id="players-rows"></tbody>
+              </table>
+            </div>
+            <div id="players-pager" class="pager"></div>
+          </section>
+          <section id="activity-panel" class="admin-panel" aria-labelledby="activity-title" hidden>
+            <h2 id="activity-title">Player activity</h2>
+            <p class="muted">
+              Signups, sign-ins, and saved clicks. Historical clicks before activity recording are
+              included in player totals.
+            </p>
+            <form id="activity-filter" class="filters">
+              <label
+                >Player ID (optional)<input
+                  id="activity-user"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="All players" /></label
+              ><button class="button" type="submit">Filter activity</button>
+            </form>
+            <div class="card table-wrap">
+              <table>
+                <caption class="visually-hidden">
+                  Recorded player activity
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Activity</th>
+                    <th>Click total</th>
+                    <th>When</th>
+                  </tr>
+                </thead>
+                <tbody id="activity-rows"></tbody>
+              </table>
+            </div>
+            <div id="activity-pager" class="pager"></div>
+          </section>
+          <section id="backups-panel" class="admin-panel" aria-labelledby="backups-title" hidden>
+            <h2 id="backups-title">Backups &amp; recovery</h2>
+            <p class="muted">
+              Full SQLite snapshots preserve accounts, passwords, counters, and the complete
+              migration archive. Keep downloaded backups private.
+            </p>
+            <article class="card admin-card storage-card" aria-labelledby="storage-title">
+              <div class="section-heading">
+                <h3 id="storage-title">Storage</h3>
+                <span class="time-zone">This server</span>
+              </div>
+              <dl class="storage-details">
+                <div>
+                  <dt>Database allocation</dt>
+                  <dd id="storage-database">—</dd>
+                  <small id="storage-reusable">Loading allocation…</small>
+                </div>
+                <div>
+                  <dt>Player activity</dt>
+                  <dd id="storage-activity">—</dd>
+                  <small id="storage-oldest-activity">Loading history…</small>
+                </div>
+                <div>
+                  <dt>Audit history</dt>
+                  <dd id="storage-audit">—</dd>
+                  <small>Administrative events</small>
+                </div>
+                <div>
+                  <dt>Recovery snapshots</dt>
+                  <dd id="storage-snapshots">—</dd>
+                  <small id="storage-snapshot-detail">Loading local snapshots…</small>
+                </div>
+              </dl>
+              <div id="storage-warning" class="notice" role="status" hidden></div>
+              <p class="field-hint">
+                Database allocation includes committed WAL pages; WAL/SHM files use additional disk
+                space. Exports are compacted and may be smaller. Local recovery counts exclude
+                deployment and off-host backups. History and recovery snapshots are retained until
+                an operator manages them.
+              </p>
             </article>
-          </div>
-          <details class="legacy-import"><summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#merge"/></svg> Rails merge import</summary>
-          <article class="card admin-card">
-            <h3>Merge Rails players into current data</h3>
-            <p class="muted">Import the primary SQLite database to keep existing passwords, or the admin JSON download with “Fetch User Entities” enabled to carry progress. New JSON accounts need an operator-set password before they can sign in.</p>
-            <p class="field-hint">Imports keep original IDs and refuse conflicts. For an initial migration with conflicting IDs, use Restore or migrate a database above. A pre-import snapshot is saved. SQLite: 128 MiB maximum; JSON: 16 MiB.</p>
-            <form id="import-form"><input type="text" name="username" autocomplete="username" data-admin-username hidden><label for="import-file">Rails SQLite database or JSON export</label><input id="import-file" type="file" accept=".db,.sqlite,.sqlite3,.json,application/json,application/octet-stream" required><label for="import-password">Your current password</label><input id="import-password" type="password" autocomplete="current-password" maxlength="1024" required><label for="import-confirmation">Type IMPORT to confirm</label><input id="import-confirmation" type="text" pattern="IMPORT" autocomplete="off" spellcheck="false" required><button class="button" type="submit">Import Rails players</button></form><p id="import-status" class="notice" role="status" hidden></p><a id="import-replacement-link" class="text-link" href="#restore-card" hidden>Go to replacement migration</a>
-          </article>
-          </details>
-          <div class="section-heading audit-heading"><h3>Administrative activity</h3><span class="muted">Access changes, imports, and backups</span></div><div class="card table-wrap"><table><caption class="visually-hidden">Administrative audit history</caption><thead><tr><th>Actor</th><th>Action</th><th>Result</th><th>When</th></tr></thead><tbody id="audit-rows"></tbody></table></div><div id="audit-pager" class="pager"></div>
-        </section>
+            <div class="backup-grid">
+              <article class="card admin-card">
+                <div class="operation-heading">
+                  <span class="operation-icon"
+                    ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <use href="/icons.svg#download" /></svg
+                  ></span>
+                  <div>
+                    <h3>Export database</h3>
+                    <span class="operation-format">SQLite snapshot</span>
+                  </div>
+                </div>
+                <p class="muted">
+                  Download a transactionally consistent database file. It includes player activity
+                  and audit history.
+                </p>
+                <details class="account-note">
+                  <summary>Snapshot contents</summary>
+                  <p>
+                    Accounts, bcrypt password hashes, session digests, counters, migration archives,
+                    activity, and audit records. This file contains credentials and must be stored
+                    privately. Restoring a snapshot revokes all sessions.
+                  </p>
+                </details>
+                <form id="export-form">
+                  <input
+                    type="text"
+                    name="username"
+                    autocomplete="username"
+                    data-admin-username
+                    hidden
+                  /><label for="export-password">Your current password</label
+                  ><input
+                    id="export-password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    maxlength="1024"
+                    required
+                  /><button class="button button-block" type="submit">Download backup</button>
+                </form>
+                <p id="export-status" class="notice" role="status" hidden></p>
+              </article>
+              <article id="restore-card" class="card admin-card restore-card">
+                <div class="operation-heading">
+                  <span class="operation-icon"
+                    ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <use href="/icons.svg#restore" /></svg
+                  ></span>
+                  <div>
+                    <h3>Restore or migrate a database</h3>
+                    <span class="operation-format">Replaces current data</span>
+                  </div>
+                </div>
+                <p class="muted">
+                  Upload a Go Click backup or a Rails primary SQLite / admin JSON export to replace
+                  current accounts and gameplay.
+                </p>
+                <p class="field-hint">
+                  A recovery snapshot is saved first. All sessions are revoked after replacement.
+                  The restored data must contain an administrator.
+                </p>
+                <dl class="upload-specs">
+                  <div>
+                    <dt>SQLite limit</dt>
+                    <dd>128 MiB</dd>
+                  </div>
+                  <div>
+                    <dt>JSON limit</dt>
+                    <dd>16 MiB</dd>
+                  </div>
+                </dl>
+                <details class="account-note">
+                  <summary>Formats and account access</summary>
+                  <p>
+                    Go Click backups restore saved passwords and roles. Rails SQLite preserves
+                    original IDs, passwords, roles, and all entity records; its source must contain
+                    an administrator. Rails JSON omits passwords and requires explicit administrator
+                    password setup below.
+                  </p>
+                </details>
+                <form id="restore-form">
+                  <input
+                    type="text"
+                    name="username"
+                    autocomplete="username"
+                    data-admin-username
+                    hidden
+                  />
+                  <label for="restore-file">Go Click backup or Rails export</label
+                  ><input
+                    id="restore-file"
+                    name="backup"
+                    type="file"
+                    accept=".db,.sqlite,.sqlite3,.json,application/json,application/octet-stream"
+                    required
+                  />
+                  <fieldset id="restore-json-access" hidden>
+                    <legend>Administrator access after JSON migration</legend>
+                    <p class="field-hint">
+                      JSON omits passwords. Choose an account from the export and set its new
+                      password; it will have administrator access. Other imported accounts need
+                      operator-set passwords. Export with “Fetch User Entities” enabled.
+                    </p>
+                    <label for="restore-admin-username">Username in the JSON export</label
+                    ><input
+                      id="restore-admin-username"
+                      name="admin_username"
+                      type="text"
+                      autocomplete="off"
+                      maxlength="1024"
+                      disabled
+                    />
+                    <label for="restore-admin-password">New password for that account</label
+                    ><input
+                      id="restore-admin-password"
+                      name="admin_password"
+                      type="password"
+                      autocomplete="new-password"
+                      minlength="8"
+                      maxlength="72"
+                      disabled
+                    />
+                    <label for="restore-admin-password-confirmation">Confirm new password</label
+                    ><input
+                      id="restore-admin-password-confirmation"
+                      name="admin_password_confirmation"
+                      type="password"
+                      autocomplete="new-password"
+                      minlength="8"
+                      maxlength="72"
+                      disabled
+                    />
+                  </fieldset>
+                  <label for="restore-password">Your current administrator password</label
+                  ><input
+                    id="restore-password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    maxlength="1024"
+                    required
+                  />
+                  <label for="restore-confirmation">Type RESTORE to confirm replacement</label
+                  ><input
+                    id="restore-confirmation"
+                    name="confirmation"
+                    type="text"
+                    pattern="RESTORE"
+                    autocomplete="off"
+                    spellcheck="false"
+                    required
+                  />
+                  <button class="button button-danger button-block" type="submit">
+                    Restore or migrate database
+                  </button>
+                </form>
+                <p id="restore-status" class="notice" role="status" hidden></p>
+              </article>
+            </div>
+            <details class="legacy-import">
+              <summary>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons.svg#merge" />
+                </svg>
+                Rails merge import
+              </summary>
+              <article class="card admin-card">
+                <h3>Merge Rails players into current data</h3>
+                <p class="muted">
+                  Import the primary SQLite database to keep existing passwords, or the admin JSON
+                  download with “Fetch User Entities” enabled to carry progress. New JSON accounts
+                  need an operator-set password before they can sign in.
+                </p>
+                <p class="field-hint">
+                  Imports keep original IDs and refuse conflicts. For an initial migration with
+                  conflicting IDs, use Restore or migrate a database above. A pre-import snapshot is
+                  saved. SQLite: 128 MiB maximum; JSON: 16 MiB.
+                </p>
+                <form id="import-form">
+                  <input
+                    type="text"
+                    name="username"
+                    autocomplete="username"
+                    data-admin-username
+                    hidden
+                  /><label for="import-file">Rails SQLite database or JSON export</label
+                  ><input
+                    id="import-file"
+                    type="file"
+                    accept=".db,.sqlite,.sqlite3,.json,application/json,application/octet-stream"
+                    required
+                  /><label for="import-password">Your current password</label
+                  ><input
+                    id="import-password"
+                    type="password"
+                    autocomplete="current-password"
+                    maxlength="1024"
+                    required
+                  /><label for="import-confirmation">Type IMPORT to confirm</label
+                  ><input
+                    id="import-confirmation"
+                    type="text"
+                    pattern="IMPORT"
+                    autocomplete="off"
+                    spellcheck="false"
+                    required
+                  /><button class="button" type="submit">Import Rails players</button>
+                </form>
+                <p id="import-status" class="notice" role="status" hidden></p>
+                <a id="import-replacement-link" class="text-link" href="#restore-card" hidden
+                  >Go to replacement migration</a
+                >
+              </article>
+            </details>
+            <div class="section-heading audit-heading">
+              <h3>Administrative activity</h3>
+              <span class="muted">Access changes, imports, and backups</span>
+            </div>
+            <div class="card table-wrap">
+              <table>
+                <caption class="visually-hidden">
+                  Administrative audit history
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Actor</th>
+                    <th>Action</th>
+                    <th>Result</th>
+                    <th>When</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-rows"></tbody>
+              </table>
+            </div>
+            <div id="audit-pager" class="pager"></div>
+          </section>
+        </div>
+      </main>
+      <footer>
+        <span>Go Click</span><span>Administration</span
+        ><span id="updated-at" class="updated-at" role="status">Loading data…</span>
+      </footer>
+    </div>
+    <dialog id="player-dialog" class="player-dialog">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Player details</p>
+          <h2 id="detail-title">Loading…</h2>
+        </div>
+        <button id="close-detail" class="button button-quiet" type="button">Close</button>
       </div>
-    </main>
-    <footer><span>Go Click</span><span>Administration</span><span id="updated-at" class="updated-at" role="status">Loading data…</span></footer>
-  </div>
-  <dialog id="player-dialog" class="player-dialog">
-    <div class="section-heading"><div><p class="eyebrow">Player details</p><h2 id="detail-title">Loading…</h2></div><button id="close-detail" class="button button-quiet" type="button">Close</button></div>
-    <div id="detail-error" class="notice notice-error" role="alert" hidden></div>
-    <div id="detail-content"><dl id="detail-profile" class="detail-profile"></dl><h3>Recorded activity</h3><div class="table-wrap"><table><thead><tr><th>Activity</th><th>Click total</th><th>When</th></tr></thead><tbody id="detail-activity"></tbody></table></div><div id="detail-activity-pager" class="pager"></div><h3>Rails entity archive</h3><p class="field-hint">Original migration records, preserved separately from current gameplay. JSON downloads omit record timestamps; those values are shown as unavailable.</p><div class="table-wrap"><table><thead><tr><th>ID / kind</th><th>Count</th><th>Created</th><th>Modified</th></tr></thead><tbody id="detail-entities"></tbody></table></div><div id="detail-entities-pager" class="pager"></div></div>
-  </dialog>
-  <noscript><p class="noscript-notice">Enable JavaScript to use the admin panel.</p></noscript>
-</body>
+      <div id="detail-error" class="notice notice-error" role="alert" hidden></div>
+      <div id="detail-content">
+        <dl id="detail-profile" class="detail-profile"></dl>
+        <h3>Recorded activity</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Activity</th>
+                <th>Click total</th>
+                <th>When</th>
+              </tr>
+            </thead>
+            <tbody id="detail-activity"></tbody>
+          </table>
+        </div>
+        <div id="detail-activity-pager" class="pager"></div>
+        <h3>Rails entity archive</h3>
+        <p class="field-hint">
+          Original migration records, preserved separately from current gameplay. JSON downloads
+          omit record timestamps; those values are shown as unavailable.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID / kind</th>
+                <th>Count</th>
+                <th>Created</th>
+                <th>Modified</th>
+              </tr>
+            </thead>
+            <tbody id="detail-entities"></tbody>
+          </table>
+        </div>
+        <div id="detail-entities-pager" class="pager"></div>
+      </div>
+    </dialog>
+    <noscript><p class="noscript-notice">Enable JavaScript to use the admin panel.</p></noscript>
+  </body>
 </html>

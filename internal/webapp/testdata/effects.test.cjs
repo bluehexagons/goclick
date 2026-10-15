@@ -1,30 +1,38 @@
 "use strict";
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-const vm = require("node:vm");
-const script = name => fs.readFileSync(path.join(__dirname, "../web/" + name + ".js"), "utf8");
+const { frontend } = require("./frontend.cjs");
 
 test("motion Auto follows the browser and both manual overrides survive preference changes", () => {
-  const root = { dataset: {} }, storage = new Map(), changes = new Map();
-  const browser = { matches: true, addEventListener: (name, fn) => changes.set("browser-" + name, fn) };
-  const context = vm.createContext({
+  const root = { dataset: {} },
+    storage = new Map(),
+    changes = new Map();
+  const browser = {
+    matches: true,
+    addEventListener: (name, fn) => changes.set("browser-" + name, fn),
+  };
+  const runtime = frontend({
     document: { documentElement: root },
     window: { matchMedia: () => browser, addEventListener: (name, fn) => changes.set(name, fn) },
-    localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) },
+    localStorage: {
+      getItem: (key) => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, value),
+    },
   });
-  vm.runInContext(script("preferences") + "\nglobalThis.settings = gameSettings;", context);
+  const settings = runtime.load("preferences").gameSettings;
   assert.equal(root.dataset.reducedMotion, "true");
-  context.settings.update({ motion: "off" });
-  browser.matches = false; changes.get("browser-change")();
-  browser.matches = true; changes.get("browser-change")();
+  settings.update({ motion: "off" });
+  browser.matches = false;
+  changes.get("browser-change")();
+  browser.matches = true;
+  changes.get("browser-change")();
   assert.equal(root.dataset.reducedMotion, "false");
   assert.equal(JSON.parse(storage.get("goclick.settings.v1")).motion, "off");
-  context.settings.update({ motion: "on" });
-  browser.matches = false; changes.get("browser-change")();
+  settings.update({ motion: "on" });
+  browser.matches = false;
+  changes.get("browser-change")();
   assert.equal(root.dataset.reducedMotion, "true");
-  context.settings.update({ motion: "auto" });
+  settings.update({ motion: "auto" });
   assert.equal(root.dataset.reducedMotion, "false");
   changes.get("storage")({ key: "goclick.settings.v1", newValue: '{"motion":"on"}' });
   assert.equal(root.dataset.reducedMotion, "true");
@@ -32,24 +40,68 @@ test("motion Auto follows the browser and both manual overrides survive preferen
 
 function effects() {
   let id = 0;
-  const timers = new Map(), layer = { children: [], append(item) { this.children.push(item); } };
+  const timers = new Map(),
+    layer = {
+      children: [],
+      append(item) {
+        this.children.push(item);
+      },
+    };
   const motion = { matches: false, addEventListener() {} };
   class Element {
-    dataset = {}; style = {}; children = []; textContent = ""; animations = [];
-    setAttribute() {} append(...children) { this.children.push(...children); }
-    remove() { this.removed = true; }
-    animate(frames, options) { const animation = { frames, options, cancel() {} }; this.animations.push(animation); return animation; }
+    dataset = {};
+    style = {};
+    children = [];
+    textContent = "";
+    animations = [];
+    setAttribute() {}
+    append(...children) {
+      this.children.push(...children);
+    }
+    remove() {
+      this.removed = true;
+    }
+    animate(frames, options) {
+      const animation = { frames, options, cancel() {} };
+      this.animations.push(animation);
+      return animation;
+    }
   }
   const responses = [];
-  const context = vm.createContext({
-    tactileButtons: { get: () => ({ respond: (...response) => responses.push(response) }) },
-    document: { createElement: () => new Element() }, motionPreference: motion, performance: { now: () => 0 },
-    window: { setTimeout: (callback, delay) => { timers.set(++id, { callback, delay }); return id; }, clearTimeout: id => timers.delete(id) },
-  });
-  const button = { closest: () => ({ getBoundingClientRect: () => ({ left: 20, top: 40, width: 340, height: 240 }), querySelector: () => layer }),
-    getBoundingClientRect: () => ({ left: 60, top: 80, width: 260, height: 144 }) };
-  vm.runInContext(script("click-feedback") + "\nglobalThis.feedback = clickFeedback;", context);
-  return { feedback: context.feedback, button, layer, timers, motion, responses };
+  const runtime = frontend(
+    {
+      document: { createElement: () => new Element() },
+      performance: { now: () => 0 },
+      window: {
+        setTimeout: (callback, delay) => {
+          timers.set(++id, { callback, delay });
+          return id;
+        },
+        clearTimeout: (id) => timers.delete(id),
+      },
+    },
+    {
+      button: {
+        tactileButtons: { get: () => ({ respond: (...response) => responses.push(response) }) },
+      },
+      preferences: { motionPreference: motion },
+    },
+  );
+  const button = {
+    closest: () => ({
+      getBoundingClientRect: () => ({ left: 20, top: 40, width: 340, height: 240 }),
+      querySelector: () => layer,
+    }),
+    getBoundingClientRect: () => ({ left: 60, top: 80, width: 260, height: 144 }),
+  };
+  return {
+    feedback: runtime.load("click-feedback").clickFeedback,
+    button,
+    layer,
+    timers,
+    motion,
+    responses,
+  };
 }
 
 test("+1 anchors to its pointer, stays pending, and shows measured slow or failed outcomes", () => {
@@ -78,7 +130,8 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
 });
 
 test("reduced motion uses static acknowledgement and resets clear every pending effect", () => {
-  const h = effects(); h.motion.matches = true;
+  const h = effects();
+  h.motion.matches = true;
   const saved = h.feedback.start(h.button, { detail: 0 }, true);
   saved.success(80);
   assert.equal(h.layer.children[0].animations.length, 0);
@@ -86,5 +139,8 @@ test("reduced motion uses static acknowledgement and resets clear every pending 
   h.feedback.start(h.button, { detail: 0 });
   h.feedback.reset();
   assert.equal(h.timers.size, 0);
-  assert.equal(h.layer.children.every(popup => popup.removed), true);
+  assert.equal(
+    h.layer.children.every((popup) => popup.removed),
+    true,
+  );
 });

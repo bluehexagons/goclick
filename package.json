@@ -1,0 +1,24 @@
+{
+  "name": "goclick-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run typecheck && node scripts/build-frontend.mjs",
+    "build:check": "node scripts/build-frontend.mjs --check",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --max-warnings 0 frontend scripts internal/webapp/testdata",
+    "fmt": "oxfmt --write frontend scripts internal/webapp/testdata internal/webapp/web/*.html internal/webapp/web/*.css package.json tsconfig.json .oxlintrc.json .oxfmtrc.json",
+    "fmt:check": "oxfmt --check frontend scripts internal/webapp/testdata internal/webapp/web/*.html internal/webapp/web/*.css package.json tsconfig.json .oxlintrc.json .oxfmtrc.json",
+    "test": "node scripts/build-frontend.mjs --tests && node --test internal/webapp/testdata/*.test.cjs",
+    "check": "npm run typecheck && npm run lint && npm run fmt:check && npm run build:check && npm test"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
