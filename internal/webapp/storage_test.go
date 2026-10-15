@@ -97,3 +97,27 @@ func TestAdminStorageReportsPartialFailuresWithoutLeakingPaths(t *testing.T) {
 		t.Fatalf("partial storage response: %d %s", response.StatusCode, body)
 	}
 }
+
+func TestRecoverySnapshotDanglingDirectoryIsUnavailable(t *testing.T) {
+	directory := t.TempDir()
+	link := filepath.Join(directory, "backups")
+	if err := os.Symlink(filepath.Join(directory, "missing-target"), link); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{link, filepath.Join(link, "nested")} {
+		stats, err := recoverySnapshots(context.Background(), path)
+		if err == nil || stats != nil {
+			t.Fatalf("broken configured directory reported as empty: %+v, %v", stats, err)
+		}
+	}
+	validLink := filepath.Join(directory, "valid-link")
+	if err := os.Symlink(t.TempDir(), validLink); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{filepath.Join(directory, "new", "nested"), filepath.Join(validLink, "new", "nested")} {
+		stats, err := recoverySnapshots(context.Background(), path)
+		if err != nil || stats == nil || stats.Count != 0 {
+			t.Fatalf("new recovery directory reported as unavailable: %+v, %v", stats, err)
+		}
+	}
+}

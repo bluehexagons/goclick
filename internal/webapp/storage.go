@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -46,9 +47,30 @@ func (a *App) adminStorage(w http.ResponseWriter, r *http.Request) {
 
 func recoverySnapshots(ctx context.Context, directory string) (*recoverySnapshotStats, error) {
 	out := &recoverySnapshotStats{}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	dir, err := os.Open(directory)
 	if errors.Is(err, fs.ErrNotExist) {
-		return out, nil
+		// A new directory can legitimately be absent before the first backup.
+		// A dangling configured link (including in a parent component) instead
+		// means the recovery location is unavailable, not empty.
+		for candidate := filepath.Clean(directory); ; candidate = filepath.Dir(candidate) {
+			_, inspectErr := os.Lstat(candidate)
+			if inspectErr == nil {
+				ancestor, resolveErr := os.Stat(candidate)
+				if resolveErr != nil {
+					return nil, resolveErr
+				}
+				if !ancestor.IsDir() {
+					return nil, err
+				}
+				return out, nil
+			}
+			if !errors.Is(inspectErr, fs.ErrNotExist) || filepath.Dir(candidate) == candidate {
+				return nil, inspectErr
+			}
+		}
 	}
 	if err != nil {
 		return nil, err

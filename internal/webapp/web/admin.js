@@ -12,6 +12,7 @@ const actionName = { signup: "Created account", sign_in: "Signed in", click: "Sa
 let tab = "overview";
 let playersPage = 1, activityPage = 1, auditPage = 1, detailActivityPage = 1, detailEntityPage = 1;
 let selectedPlayer = null, detailGeneration = 0, restoring = false;
+const pendingReads = new Map();
 function node(tag, className = "", text = "") { const element = document.createElement(tag); element.className = className; element.textContent = text; return element; }
 function activityIcon(action) {
   const names = { click: "click", sign_in: "key", signup: "players" };
@@ -34,8 +35,26 @@ async function request(url, options = {}, binary = false) {
     error.uncertain = response.status >= 500 && data.code !== "authentication_busy"; error.code = data.code;
     throw error;
   }
-  try { return binary ? await response.blob() : await response.json(); }
+  try {
+    if (binary) return await response.blob();
+    const data = await response.json();
+    if (data === null || typeof data !== "object" || Array.isArray(data)) throw new TypeError("Expected a JSON object");
+    return data;
+  }
   catch (_) { const error = new Error("Couldn’t read the server’s response."); error.uncertain = true; throw error; }
+}
+async function latestRead(key, url) {
+  pendingReads.get(key)?.abort();
+  const controller = new AbortController(); pendingReads.set(key, controller);
+  try {
+    const data = await request(url, { signal: controller.signal });
+    return pendingReads.get(key) === controller ? data : null;
+  } catch (error) {
+    if (pendingReads.get(key) === controller) throw error;
+    return null;
+  } finally {
+    if (pendingReads.get(key) === controller) pendingReads.delete(key);
+  }
 }
 function jsonOptions(body) { return { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }; }
 function playerButton(player) { const button = node("button", "text-button", player.username); button.type = "button"; button.addEventListener("click", () => openPlayer(player.id)); return button; }
@@ -64,25 +83,28 @@ async function loadOverview() {
   for (const event of recent.items) { const item = node("div", "activity-item"); const who = node("div", "activity-who"); const symbol = node("span", "event-symbol"); symbol.append(activityIcon(event.action)); const identity = node("div"); identity.append(playerButton({ id: event.user_id, username: event.username }), node("div", "activity-action", actionName[event.action] || event.action)); who.append(symbol, identity); item.append(who, node("span", "muted", date(event.occurred_at))); feed.append(item); }
 }
 async function loadPlayers() {
-  const query = new URLSearchParams({ page: playersPage, q: $("#search").value.trim(), sort: $("#sort").value });
-  const data = await request(`/api/admin/players?${query}`); const body = $("#players-rows"); body.replaceChildren();
+  const page = playersPage, query = new URLSearchParams({ page, q: $("#search").value.trim(), sort: $("#sort").value });
+  const data = await latestRead("players", `/api/admin/players?${query}`); if (!data) return;
+  const body = $("#players-rows"); body.replaceChildren();
   if (!data.items.length) emptyRow(body, 5, "No players match this search.");
   for (const player of data.items) { const row = node("tr"); const identity = cell(row, ""); identity.append(playerButton(player)); if (player.admin) identity.append(node("span", "pill", "ADMIN")); identity.append(node("span", "secondary", player.email || `Player #${player.id}`)); cell(row, number(player.clicks)); cell(row, `${number(player.day_streak)} / ${number(player.month_streak)} / ${number(player.year_streak)}`); cell(row, date(player.last_clicked_at)); cell(row, date(player.created_at)); body.append(row); }
-  pager("#players-pager", playersPage, data.total, async (page) => { playersPage = page; await loadPlayers(); });
+  pager("#players-pager", page, data.total, async (page) => { playersPage = page; await loadPlayers(); });
 }
 function activityRows(selector, items, includePlayer) {
   const body = $(selector); body.replaceChildren(); if (!items.length) emptyRow(body, includePlayer ? 4 : 3, "No recorded activity yet.");
   for (const event of items) { const row = node("tr"); if (includePlayer) cell(row, "").append(playerButton({ id: event.user_id, username: event.username })); cell(row, actionName[event.action] || event.action); cell(row, event.click_count == null ? "—" : number(event.click_count)); cell(row, date(event.occurred_at)); body.append(row); }
 }
 async function loadActivity() {
-  const query = new URLSearchParams({ page: activityPage }); if ($("#activity-user").value) query.set("user_id", $("#activity-user").value);
-  const data = await request(`/api/admin/activity?${query}`); activityRows("#activity-rows", data.items, true);
-  pager("#activity-pager", activityPage, data.total, async (page) => { activityPage = page; await loadActivity(); });
+  const page = activityPage, query = new URLSearchParams({ page }); if ($("#activity-user").value) query.set("user_id", $("#activity-user").value);
+  const data = await latestRead("activity", `/api/admin/activity?${query}`); if (!data) return;
+  activityRows("#activity-rows", data.items, true);
+  pager("#activity-pager", page, data.total, async (page) => { activityPage = page; await loadActivity(); });
 }
 async function loadAudit() {
-  const data = await request(`/api/admin/audit?page=${auditPage}`); const body = $("#audit-rows"); body.replaceChildren(); if (!data.items.length) emptyRow(body, 4, "No administrative activity yet.");
+  const page = auditPage, data = await latestRead("audit", `/api/admin/audit?page=${page}`); if (!data) return;
+  const body = $("#audit-rows"); body.replaceChildren(); if (!data.items.length) emptyRow(body, 4, "No administrative activity yet.");
   for (const event of data.items) { const row = node("tr"); cell(row, event.actor_username); cell(row, actionName[event.action] || event.action); cell(row, event.result); cell(row, date(event.occurred_at)); body.append(row); }
-  pager("#audit-pager", auditPage, data.total, async (page) => { auditPage = page; await loadAudit(); });
+  pager("#audit-pager", page, data.total, async (page) => { auditPage = page; await loadAudit(); });
 }
 async function loadStorage() {
   const data = await request("/api/admin/storage"), snapshots = data.recovery_snapshots;
@@ -100,6 +122,10 @@ async function loadStorage() {
   notice("#storage-warning", warnings.join(" "));
 }
 async function loadBackups() { await Promise.all([loadStorage(), loadAudit()]); }
+async function refreshAfterOperation() {
+  try { await loadBackups(); }
+  catch (error) { notice("#admin-error", `Operation completed, but the dashboard could not refresh. ${error.message}`, true); }
+}
 async function refresh() {
   if (restoring) return; notice("#admin-error", ""); $("#refresh").disabled = true; $("#refresh").textContent = "Refreshing…";
   try { await ({ overview: loadOverview, players: loadPlayers, activity: loadActivity, backups: loadBackups })[tab](); $("#updated-at").textContent = `Updated ${new Date().toLocaleTimeString()}`; }
@@ -108,14 +134,14 @@ async function refresh() {
 }
 function selectTab(next) { if (restoring) return; tab = next; for (const button of document.querySelectorAll("[data-tab]")) { if (button.dataset.tab === tab) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); } for (const panel of document.querySelectorAll(".admin-panel")) panel.hidden = panel.id !== `${tab}-panel`; refresh(); }
 async function detailActivity(generation) {
-  const data = await request(`/api/admin/activity?user_id=${selectedPlayer}&page=${detailActivityPage}`); if (generation !== detailGeneration) return;
-  activityRows("#detail-activity", data.items, false); pager("#detail-activity-pager", detailActivityPage, data.total, async (page) => { detailActivityPage = page; await detailActivity(generation); });
+  const page = detailActivityPage, data = await latestRead("detail-activity", `/api/admin/activity?user_id=${selectedPlayer}&page=${page}`); if (!data || generation !== detailGeneration) return;
+  activityRows("#detail-activity", data.items, false); pager("#detail-activity-pager", page, data.total, async (page) => { detailActivityPage = page; await detailActivity(generation); });
 }
 async function detailEntities(generation) {
-  const data = await request(`/api/admin/players/${selectedPlayer}/entities?page=${detailEntityPage}`); if (generation !== detailGeneration) return;
+  const page = detailEntityPage, data = await latestRead("detail-entities", `/api/admin/players/${selectedPlayer}/entities?page=${page}`); if (!data || generation !== detailGeneration) return;
   const body = $("#detail-entities"); body.replaceChildren(); if (!data.items.length) emptyRow(body, 4, "No archived Rails entities for this player.");
   for (const entity of data.items) { const row = node("tr"); cell(row, entity.kind ?? "(null kind)", `Entity #${entity.id} · ${entity.source === "json" ? "JSON" : "SQLite"}`); cell(row, entity.count == null ? "null" : number(entity.count)); cell(row, date(entity.created_time), `Record: ${date(entity.created_at)}`); cell(row, date(entity.modified_time), `Record: ${date(entity.updated_at)}`); body.append(row); }
-  pager("#detail-entities-pager", detailEntityPage, data.total, async (page) => { detailEntityPage = page; await detailEntities(generation); });
+  pager("#detail-entities-pager", page, data.total, async (page) => { detailEntityPage = page; await detailEntities(generation); });
 }
 async function openPlayer(id) {
   selectedPlayer = id; detailActivityPage = detailEntityPage = 1; const generation = ++detailGeneration;
@@ -142,7 +168,7 @@ $("#restore-file").addEventListener("change", async () => {
 $("#export-form").addEventListener("submit", async (event) => {
   event.preventDefault(); if (restoring) return; const form = event.currentTarget; busy(form, true, "Preparing backup…"); notice("#export-status", "Creating a consistent snapshot…");
   const password = $("#export-password").value; $("#export-password").value = "";
-  try { const blob = await request("/api/admin/backups/export", jsonOptions({ password }), true); const url = URL.createObjectURL(blob); const link = node("a"); link.href = url; link.download = `goclick-${new Date().toISOString().replace(/[:.]/g, "-")}.db`; document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60000); notice("#export-status", "Backup ready. Keep this file in a private recovery location."); await loadBackups(); }
+  try { const blob = await request("/api/admin/backups/export", jsonOptions({ password }), true); const url = URL.createObjectURL(blob); const link = node("a"); link.href = url; link.download = `goclick-${new Date().toISOString().replace(/[:.]/g, "-")}.db`; document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60000); notice("#export-status", "Backup ready. Keep this file in a private recovery location."); await refreshAfterOperation(); }
   catch (error) { notice("#export-status", error.message, true); }
   finally { busy(form, false, "Download backup"); }
 });
@@ -165,7 +191,7 @@ $("#import-form").addEventListener("submit", async (event) => {
   const data = new FormData(); data.append("password", $("#import-password").value); data.append("confirmation", $("#import-confirmation").value); data.append("backup", file); $("#import-password").value = "";
   restoring = true; busy(form, true, "Importing…"); notice("#import-status", "Saving a recovery snapshot and checking the import…");
   $("#import-replacement-link").hidden = true;
-  try { const result = await request("/api/admin/import/rails", { method: "POST", body: data }); notice("#import-status", `${number(result.users)} players and ${number(result.entities)} entities imported. Recovery snapshot: ${result.recovery_backup}.${result.new_passwords_required ? " New accounts need an operator-set password before signing in." : " Existing passwords were preserved."}`); await loadBackups(); }
+  try { const result = await request("/api/admin/import/rails", { method: "POST", body: data }); notice("#import-status", `${number(result.users)} players and ${number(result.entities)} entities imported. Recovery snapshot: ${result.recovery_backup}.${result.new_passwords_required ? " New accounts need an operator-set password before signing in." : " Existing passwords were preserved."}`); await refreshAfterOperation(); }
   catch (error) { notice("#import-status", error.message + (error.uncertain ? " Check the audit history before retrying; the connection may have failed after the import." : ""), true); $("#import-replacement-link").hidden = error.code !== "import_conflict"; }
   finally { restoring = false; busy(form, false, "Import Rails players"); }
 });

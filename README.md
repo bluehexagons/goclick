@@ -178,6 +178,17 @@ go mod verify
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
+For browser-script regression checks, use Node.js 24 (no npm install required):
+
+```bash
+node --test internal/webapp/testdata/*.test.cjs
+```
+
+Node is only a test tool; building and running Go Click still requires only Go.
+The script checks cover delayed/failed admin requests and successful recovery
+operations followed by a failed dashboard refresh. The UI keeps the latest
+filter results and preserves the confirmed operation outcome.
+
 CI runs these checks and a deployment smoke test. Dependabot checks Go modules,
 GitHub Actions, and container images weekly. Keep `modernc.org/libc` at the
 version required by the SQLite driver's `go.mod` when updating that driver.
