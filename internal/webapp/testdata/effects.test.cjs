@@ -40,14 +40,16 @@ function effects() {
     remove() { this.removed = true; }
     animate(frames, options) { const animation = { frames, options, cancel() {} }; this.animations.push(animation); return animation; }
   }
+  const responses = [];
   const context = vm.createContext({
+    tactileButtons: { get: () => ({ respond: (...response) => responses.push(response) }) },
     document: { createElement: () => new Element() }, motionPreference: motion, performance: { now: () => 0 },
     window: { setTimeout: (callback, delay) => { timers.set(++id, { callback, delay }); return id; }, clearTimeout: id => timers.delete(id) },
   });
   const button = { closest: () => ({ getBoundingClientRect: () => ({ left: 20, top: 40, width: 340, height: 240 }), querySelector: () => layer }),
     getBoundingClientRect: () => ({ left: 60, top: 80, width: 260, height: 144 }) };
   vm.runInContext(script("click-feedback") + "\nglobalThis.feedback = clickFeedback;", context);
-  return { feedback: context.feedback, button, layer, timers, motion };
+  return { feedback: context.feedback, button, layer, timers, motion, responses };
 }
 
 test("+1 anchors to its pointer, stays pending, and shows measured slow or failed outcomes", () => {
@@ -72,6 +74,7 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
   assert.equal(popup.dataset.state, "error");
   assert.equal(popup.children[0].textContent, "?");
   assert.equal(popup.children[1].textContent, "unconfirmed");
+  assert.deepEqual(h.responses, [["fast", 50], ["slow", 900], ["error"]]);
 });
 
 test("reduced motion uses static acknowledgement and resets clear every pending effect", () => {

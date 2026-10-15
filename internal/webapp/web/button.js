@@ -9,12 +9,14 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
   effects.className = "button-effects"; effects.setAttribute("aria-hidden", "true"); stage.append(effects);
   const reducedMotion = motionPreference;
   const keys = ["x", "y", "rx", "ry", "press", "pop"];
-  const current = { x: 0, y: 0, rx: 0, ry: 0, press: 0, pop: 0, flash: 0 };
+  const current = { x: 0, y: 0, rx: 0, ry: 0, press: 0, pop: 0, flash: 0,
+    response: 0, responseProgress: 0, responseColor: [.38, .84, .80] };
   const target = { ...current }, velocity = { ...current };
   let renderer = null, setupFrame = 0, frame = 0, lastFrame = 0;
   const pointers = new Map();
   let activeKey = null, activatingRelease = false;
   let pulseTimer = 0, holdTimer = 0, phase = "idle";
+  let responseStarted = null, responseDuration = 500;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
   function paint() {
@@ -23,7 +25,8 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
     rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
     rig.style.setProperty("--press", clamp(current.press, -.22, 1).toFixed(3));
-    rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -.03, .10)).toFixed(3));
+    rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -.065, .10)).toFixed(3));
+    rig.style.setProperty("--response-wash", `rgba(${current.responseColor.map(value => Math.round(value * 255)).join(",")},${(current.response * .5).toFixed(3)})`);
     renderer?.draw(current);
   }
   function tick(time) {
@@ -39,6 +42,12 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
     }
     current.flash *= Math.pow(.68, dt);
     if (current.flash > .005) moving = true; else current.flash = 0;
+    if (responseStarted !== null) {
+      current.responseProgress = clamp((time - responseStarted) / responseDuration, 0, 1);
+      current.response = Math.pow(1 - current.responseProgress, .65);
+      if (current.responseProgress < 1) moving = true;
+      else responseStarted = null;
+    }
     paint();
     frame = moving && !document.hidden ? requestAnimationFrame(tick) : 0;
     if (!frame) lastFrame = 0;
@@ -60,8 +69,11 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
   }
   function begin() {
     window.clearTimeout(pulseTimer); window.clearTimeout(holdTimer);
-    target.press = 1; current.press = Math.max(.7, current.press); velocity.press = 0;
-    current.flash = reducedMotion.matches ? 0 : .45;
+    clearResponse();
+    // Snap on the input event itself. Only the release waits for the spring.
+    target.press = current.press = 1; velocity.press = 0;
+    target.pop = current.pop = reducedMotion.matches ? 0 : -.045; velocity.pop = 0;
+    current.flash = reducedMotion.matches ? 0 : .3;
     setPhase("pressed"); paint(); animate();
     holdTimer = window.setTimeout(() => setPhase("held"), 180);
   }
@@ -81,15 +93,31 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
   function release(cancelled = false) {
     activeKey = null;
     window.clearTimeout(holdTimer); window.clearTimeout(pulseTimer);
-    target.press = 0; velocity.press = cancelled || phase === "idle" ? 0 : -.3;
+    target.press = 0; target.pop = 0; velocity.press = cancelled || phase === "idle" ? 0 : -.3;
     setPhase("idle"); animate();
   }
   function reset(cancelled = true) {
+    clearResponse();
     const captured = [...pointers.keys()]; pointers.clear();
     for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
     release(cancelled);
     for (const key of keys) target[key] = 0;
     animate();
+  }
+  function clearResponse() {
+    responseStarted = null; current.response = 0; current.responseProgress = 0;
+    delete stage.dataset.response;
+  }
+  function respond(state, milliseconds = 0) {
+    current.responseColor = state === "error" ? [1, .49, .47]
+      : state === "slow" ? [.64, .54, 1] : [.38, .84, .80];
+    stage.dataset.response = state;
+    responseDuration = clamp(300 + milliseconds * .4, 320, 800);
+    current.responseProgress = reducedMotion.matches ? .5 : 0;
+    // With reduced motion, keep a quiet static tint until the next interaction.
+    current.response = reducedMotion.matches ? .22 : 1;
+    responseStarted = reducedMotion.matches ? null : performance.now();
+    paint(); animate();
   }
   function aimPointers() {
     if (!pointers.size) return;
@@ -208,5 +236,5 @@ for (const button of document.querySelectorAll("[data-tactile-button]")) {
       });
     } else paint();
   }).observe(stage);
-  tactileButtons.set(button, { reset });
+  tactileButtons.set(button, { reset, respond });
 }

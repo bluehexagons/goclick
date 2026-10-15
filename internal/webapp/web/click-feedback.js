@@ -26,6 +26,7 @@ const clickFeedback = (() => {
         settled = true; window.clearTimeout(slow);
         const ms = Math.max(0, milliseconds);
         popup.dataset.state = ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * .7 ? "fast" : "saved";
+        tactileButtons.get(button)?.respond(popup.dataset.state, ms);
         timing.textContent = `✓ ${Math.round(ms)} ms${simulated ? " · sim" : ""}`;
         popup.title = `Saved · ${Math.round(ms)} ms · recent average ${Math.round(baseline)} ms`;
         samples.push(ms); if (samples.length > 20) samples.shift();
@@ -34,16 +35,17 @@ const clickFeedback = (() => {
       fail(uncertain = false) {
         if (settled) return;
         settled = true; window.clearTimeout(slow); popup.dataset.state = "error";
+        tactileButtons.get(button)?.respond("error");
         score.textContent = uncertain ? "?" : "×"; timing.textContent = uncertain ? "unconfirmed" : "not saved"; finish();
       },
     };
     function finish() {
       if (!motionPreference.matches) animation = popup.animate([
-        { transform: "translate(-50%, -65%) scale(1)", opacity: 1 },
-        { transform: "translate(-50%, -80%) scale(1.25)", opacity: 1, offset: .15 },
-        { transform: "translate(-50%, -160%) scale(1.05)", opacity: 0 },
-      ], { duration: 1200, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" });
-      removal = window.setTimeout(remove, motionPreference.matches ? 950 : 1250);
+        { transform: "translate(-50%, -115%) scale(1)", opacity: .85 },
+        { transform: "translate(-50%, -135%) scale(1.06)", opacity: .85, offset: .18 },
+        { transform: "translate(-50%, -220%) scale(.95)", opacity: 0 },
+      ], { duration: 900, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" });
+      removal = window.setTimeout(remove, motionPreference.matches ? 800 : 950);
     }
     // Pending +1s stay anchored until confirmed, including on a slow connection.
     popup.title = `Awaiting save · recent average ${Math.round(baseline)} ms`;

@@ -100,14 +100,15 @@ input:focus { border-color: var(--gold); }
    keyboard activation, and a hit surface projected with the same camera. */
 .button-stage { position: relative; width: min(340px, 100%); height: 240px; margin: 6px auto 24px; display: grid; place-items: center; perspective: 850px; }
 .button-stage::before { content: ""; position: absolute; inset: 22px 12px; border-radius: 50%; background: radial-gradient(ellipse, #ffc83d24, #a38aff0a 50%, transparent 70%); opacity: 0; transform: scale(.8); pointer-events: none; transition: opacity .1s, transform .16s; }
-.button-stage.is-pressed::before { opacity: .7; transform: scale(.92); }
+.button-stage.is-pressed::before { opacity: .95; transform: scale(1.02); transition: none; }
 .button-stage.is-held::before { opacity: 1; transform: scale(1.08); animation: held-glow 1.6s ease-in-out infinite alternate; }
 @keyframes held-glow { to { opacity: .65; transform: scale(1); } }
 .button-scene { position: absolute; inset: -40px calc(-1 * var(--canvas-gutter, 0px)); width: calc(100% + 2 * var(--canvas-gutter, 0px)); height: calc(100% + 80px); pointer-events: none; visibility: hidden; }
 .button-stage.is-rendered .button-scene { visibility: visible; }
 .button-rig { position: relative; width: 260px; max-width: 88%; aspect-ratio: 65 / 36; transform-style: preserve-3d; transform: translate3d(var(--shift-x, 0px), var(--shift-y, 0px), var(--lift, 0px)) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(var(--button-pop, 1)); }
 .click-button { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 28px; padding: 0; background: linear-gradient(135deg, #ffe094, #ffc83d); color: #432d0d; transform: translateZ(calc(18px - var(--press, 0) * 24px)); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
-.button-stage:not(.is-rendered) .click-button.is-pressed { background: linear-gradient(135deg, #ffd16a, #f5a523); }
+.button-stage:not(.is-rendered) .click-button { box-shadow: inset 0 0 26px var(--response-wash, transparent); }
+.button-stage:not(.is-rendered) .click-button.is-pressed { background: linear-gradient(135deg, #ffc34b, #e89718); }
 .button-label { display: block; font-size: 38px; font-weight: 700; letter-spacing: -.035em; pointer-events: none; }
 .button-stage.is-rendered .click-button { background: transparent; }
 .button-stage.is-rendered .button-label { opacity: 0; }
@@ -163,12 +164,11 @@ footer a { margin-left: auto; color: var(--violet); }
 .play-layout, .home .button-stage, .connection, .counter-actions { user-select: none; -webkit-user-select: none; }
 .click-button { -webkit-touch-callout: none; }
 .score-effects { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
-.click-bonus { position: absolute; display: grid; justify-items: center; gap: 0; min-width: 66px; padding: 5px 10px 7px; border: 1px solid #ffc83d88; border-radius: 14px; background: #161b28ee; color: var(--gold); font-variant-numeric: tabular-nums; text-shadow: 0 2px 4px #000; box-shadow: 0 4px 18px #0006; transform: translate(-50%, -65%); white-space: nowrap; }
-.click-bonus strong { font-size: 38px; font-weight: 900; line-height: 1.05; letter-spacing: -.06em; }
-.click-bonus small { font: 10px/1.5 var(--mono); letter-spacing: 0; }
-.click-bonus[data-state="saved"], .click-bonus[data-state="fast"] { color: var(--teal); border-color: #62d5cc99; }
-.click-bonus[data-state="fast"] { box-shadow: 0 0 22px #62d5cc55, 0 4px 18px #0006; }
-.click-bonus[data-state="error"] { color: var(--danger); border-color: #ff7c7799; }
+.click-bonus { position: absolute; display: grid; justify-items: center; gap: 1px; color: #ffe3a0; opacity: .85; font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px #0008; transform: translate(-50%, -115%); white-space: nowrap; }
+.click-bonus strong { font-size: 26px; font-weight: 650; line-height: 1; letter-spacing: -.04em; }
+.click-bonus small { font: 9px/1.5 var(--mono); letter-spacing: 0; opacity: .8; }
+.click-bonus[data-state="saved"], .click-bonus[data-state="fast"] { color: var(--teal); }
+.click-bonus[data-state="error"] { color: var(--danger); }
 .counter-actions { display: flex; flex-wrap: wrap; align-items: start; justify-content: center; gap: 6px 16px; margin-top: 10px; }
 .counter-actions > .text-link, .controls-help > summary { min-height: 44px; margin: 0; padding: 12px 0; font-size: 12px; }
 .controls-help { max-width: 340px; font-size: 12px; color: var(--muted); }

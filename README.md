@@ -11,8 +11,11 @@ dependencies: a pure-Go SQLite driver and Go's bcrypt implementation.
 The button responds immediately to presses, with a distinct held state, a
 spring return, a size pulse, and release bursts. Mouse, touch/pen, Space, and Enter
 activate once on release inside the button; each finger is tracked separately,
-and cancelled gestures do not score. Pointer-anchored +1 badges wait for their
-save response and show its ping, with color compared to recent timings. Pending
+and cancelled gestures do not score. Press-down immediately compresses the solid
+and deepens its amber face. Small, unboxed +1 labels wait for their save response
+and show its ping, with color compared to recent timings. The button itself
+sweeps teal on confirmation, violet for slow replies, and red on failure; sweep
+duration follows the measured or simulated ping. Pending
 clicks are shown separately from the server-confirmed total. **Options** offers
 Auto, Reduced, and Full motion; Reduced keeps static feedback without movement
 or flashes. Account/counter reads start together, and
