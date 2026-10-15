@@ -613,7 +613,7 @@ func (a *App) frontend(w http.ResponseWriter, r *http.Request) {
 	// files must not become public merely by being added to the web directory.
 	switch requested {
 	case "index.html", "app.js", "app.css",
-		"admin.js", "admin.css", "favicon.svg", "icons.svg":
+		"admin.js", "admin.css", "favicon.svg", "icons.svg", "button-patina.svg":
 	default:
 		http.NotFound(w, r)
 		return

@@ -9,7 +9,10 @@ function renderer(failure) {
     events = new Map(),
     classes = new Set();
   let shaderCount = 0,
-    draws = 0;
+    draws = 0,
+    uploads = 0;
+  const images = [],
+    paintedImages = [];
   const resource = (kind) => {
     if (failure === kind) return null;
     const item = { kind };
@@ -33,6 +36,7 @@ function renderer(failure) {
       getUniformLocation: () => ({}),
       getError: () => (failure === "upload" ? 1285 : 0),
       texImage2D: () => {
+        uploads++;
         if (failure === "exception") throw new Error("GPU unavailable");
       },
       drawArrays: () => {
@@ -60,13 +64,29 @@ function renderer(failure) {
   const runtime = frontend({
     document: {
       documentElement: { clientWidth: 800 },
-      createElement: () => ({ getContext: () => ({ fillText() {} }) }),
+      createElement: () => ({
+        getContext: () => ({
+          fillText() {},
+          clearRect() {},
+          drawImage(image) {
+            paintedImages.push(image);
+          },
+        }),
+      }),
     },
     window: { devicePixelRatio: 1 },
+    Image: class {
+      constructor() {
+        images.push(this);
+      }
+    },
   });
   const view = runtime.load("button-3d").createButtonRenderer(stage, button);
   return {
     view,
+    images,
+    paintedImages,
+    uploads: () => uploads,
     events,
     allocated,
     deleted,
@@ -123,4 +143,33 @@ test("context loss restores the native button, and failed GPU recovery remains u
   h.events.get("webglcontextrestored")();
   assert.equal(h.classes.has("is-rendered"), true);
   assert.equal(h.draws(), 4);
+});
+
+test("the designed patina loads after the first usable frame into the existing atlas", () => {
+  const h = renderer();
+  assert.equal(h.classes.has("is-rendered"), true);
+  assert.equal(h.draws(), 2);
+  assert.equal(h.images[0].src, "/button-patina.svg");
+  h.images[0].onload();
+  assert.equal(h.paintedImages[0], h.images[0]);
+  assert.equal(h.uploads(), 2);
+  assert.equal(h.draws(), 4);
+});
+
+test("patina loading during context loss waits for restoration to upload", () => {
+  const h = renderer();
+  h.events.get("webglcontextlost")({ preventDefault() {} });
+  h.images[0].onload();
+  assert.equal(h.uploads(), 1);
+  assert.equal(h.paintedImages.length, 1);
+  h.events.get("webglcontextrestored")();
+  assert.equal(h.uploads(), 2);
+  assert.equal(h.classes.has("is-rendered"), true);
+});
+
+test("a failed asynchronous texture upload restores the CSS button", () => {
+  const h = renderer();
+  h.fail("exception");
+  assert.doesNotThrow(() => h.images[0].onload());
+  assert.equal(h.classes.has("is-rendered"), false);
 });

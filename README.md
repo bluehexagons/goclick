@@ -253,6 +253,14 @@ The companion `interaction.browser.cjs` exports `checkInteraction(page, baseURL)
 for selection, native drag prevention, gameplay dragging, and clipboard/manual
 sharing. It writes only its own test stats and never reads the clipboard.
 
+The button's patina is an editable SVG at
+[`internal/webapp/web/button-patina.svg`](internal/webapp/web/button-patina.svg).
+Open it in Inkscape to adjust the labeled deposit, verdigris, and trace layers;
+keep the transparent 260 × 144 viewBox and the 780 × 432 export size. The 3D
+renderer loads it into the same texture atlas as the lettering, and the CSS
+fallback uses the SVG directly. No PNG export or frontend dependency is needed.
+Image loading never delays input; an unavailable image leaves clean copper.
+
 The game's Share button copies confirmed clicks and UTC streaks as plain text.
 Offline summaries are labeled separately. Clipboard access failures open a
 read-only, selected summary for manual copying. Interface text and page links
