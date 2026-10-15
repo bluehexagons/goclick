@@ -37,11 +37,17 @@ func main() {
 		logger.Error("parse GOCLICK_TRUST_PROXY", "error", err)
 		os.Exit(1)
 	}
+	passwordConcurrency, err := strconv.Atoi(env("GOCLICK_PASSWORD_CONCURRENCY", "0"))
+	if err != nil {
+		logger.Error("parse GOCLICK_PASSWORD_CONCURRENCY", "error", err)
+		os.Exit(1)
+	}
 	app, err := webapp.New(database, webapp.Config{
-		SecureCookies: secureCookies,
-		TrustProxy:    trustProxy,
-		Logger:        logger,
-		BackupDir:     env("GOCLICK_BACKUP_DIR", filepath.Join(filepath.Dir(databasePath), "backups")),
+		SecureCookies:       secureCookies,
+		TrustProxy:          trustProxy,
+		Logger:              logger,
+		BackupDir:           env("GOCLICK_BACKUP_DIR", filepath.Join(filepath.Dir(databasePath), "backups")),
+		PasswordConcurrency: passwordConcurrency,
 	})
 	if err != nil {
 		logger.Error("create application", "error", err)

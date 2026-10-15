@@ -182,6 +182,10 @@ func (a *App) allowAdminPassword(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 func (a *App) checkAdminPassword(w http.ResponseWriter, r *http.Request, password, action string) bool {
+	if !a.acquirePasswordSlot(w, r) {
+		return false
+	}
+	defer a.releasePasswordSlot()
 	user := userFromContext(r.Context())
 	if len(password) == 0 || len(password) > 1024 || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		if err := a.store.RecordAdminAudit(r.Context(), user, action, "denied", "Password verification failed", a.now()); err != nil {

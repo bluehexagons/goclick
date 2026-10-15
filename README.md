@@ -38,6 +38,7 @@ Configuration:
 | `GOCLICK_SECURE_COOKIES` | `false` | Set `true` whenever the public site uses HTTPS |
 | `GOCLICK_TRUST_PROXY` | `false` | Trust `X-Real-IP` only from a loopback reverse proxy |
 | `GOCLICK_BACKUP_DIR` | `backups` beside the database | Private directory for automatic pre-restore recovery snapshots |
+| `GOCLICK_PASSWORD_CONCURRENCY` | `0` (automatic) | Simultaneous HTTP password operations; automatic uses half the Go CPUs, rounded down, with a minimum of 1 and maximum of 4. Explicit values: 1–64 |
 
 The server should be behind an HTTPS reverse proxy in production. With
 `GOCLICK_TRUST_PROXY=true`, it accepts Nginx's `X-Real-IP` only when the TCP
@@ -117,11 +118,14 @@ has its own admin API described below.
 Use a dedicated, service-owned database directory in production. New directories
 are created with mode `0700`; existing directory permissions are left intact.
 
-Rate-limit state is local to one process and resets on restart. Password work
-has no global concurrency cap: requests from many IPs and identifiers can still
-consume CPU while staying within individual quotas. An aggregate authentication
-budget at the proxy or a bounded bcrypt worker pool is further hardening to
-consider for a public deployment.
+Rate-limit state is local to one process and resets on restart. A shared
+concurrency budget bounds password work across signups, logins (including
+unknown users), and admin password checks. Saturated requests receive HTTP 503
+with `Retry-After: 1`, without queuing password work or creating accounts or
+sessions. The automatic budget follows the available Go CPUs; override it with
+`GOCLICK_PASSWORD_CONCURRENCY` when needed. This bounds concurrent work, not
+total CPU consumption under sustained traffic. Keep aggregate authentication
+limits at the reverse proxy, particularly when running multiple instances.
 
 ## Administration and recovery
 

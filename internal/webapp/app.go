@@ -18,6 +18,7 @@ import (
 	"net/mail"
 	"path"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,7 +52,10 @@ type Config struct {
 	Logger        *slog.Logger
 	Now           func() time.Time
 	BackupDir     string
-	passwordCost  int
+	// PasswordConcurrency bounds simultaneous HTTP password operations. Zero
+	// selects up to half the available Go CPUs, with a maximum of four.
+	PasswordConcurrency int
+	passwordCost        int
 }
 
 type App struct {
@@ -67,6 +71,7 @@ type App struct {
 	static        fs.FS
 	backupDir     string
 	requestGate   sync.RWMutex
+	passwordSlots chan struct{}
 }
 
 type contextKey int
@@ -76,6 +81,12 @@ const userContextKey contextKey = 1
 func New(database *store.Store, config Config) (*App, error) {
 	if database == nil {
 		return nil, errors.New("store is required")
+	}
+	if config.PasswordConcurrency < 0 || config.PasswordConcurrency > 64 {
+		return nil, errors.New("password concurrency must be between 0 (automatic) and 64")
+	}
+	if config.PasswordConcurrency == 0 {
+		config.PasswordConcurrency = max(1, min(4, runtime.GOMAXPROCS(0)/2))
 	}
 	if config.SessionTTL <= 0 {
 		config.SessionTTL = 180 * 24 * time.Hour
@@ -116,6 +127,7 @@ func New(database *store.Store, config Config) (*App, error) {
 		dummyHash:     dummyHash,
 		static:        static,
 		backupDir:     config.BackupDir,
+		passwordSlots: make(chan struct{}, config.PasswordConcurrency),
 	}
 	app.limiter = newLimiter(config.Now)
 	return app, nil
@@ -231,6 +243,10 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !a.acquirePasswordSlot(w, r) {
+		return
+	}
+	defer a.releasePasswordSlot()
 	hash, err := bcrypt.GenerateFromPassword([]byte(payload.Password), a.passwordCost)
 	if err != nil {
 		a.internalError(w, r, "hash signup password", err)
@@ -281,6 +297,10 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !a.acquirePasswordSlot(w, r) {
+		return
+	}
+	defer a.releasePasswordSlot()
 	user, err := a.store.UserByIdentifier(r.Context(), identifier)
 	hash := a.dummyHash
 	if err == nil {
