@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("not found")
-	ErrConflict = errors.New("conflict")
+	ErrNotFound           = errors.New("not found")
+	ErrConflict           = errors.New("conflict")
+	ErrCredentialsChanged = errors.New("account changed during sign-in")
 )
 
 type Store struct {
@@ -424,17 +425,36 @@ func scanUser(row rowScanner, extra ...any) (User, error) {
 }
 
 func (s *Store) CreateSession(ctx context.Context, rawToken []byte, userID int64, expiresAt, now time.Time) error {
-	return s.ReplaceSession(ctx, rawToken, nil, userID, expiresAt, now)
+	return s.replaceSession(ctx, rawToken, nil, userID, expiresAt, now, nil)
 }
 
 // ReplaceSession creates a session and revokes the previous token atomically.
-// If creating the replacement fails, the previous session remains usable.
-func (s *Store) ReplaceSession(ctx context.Context, rawToken, previousToken []byte, userID int64, expiresAt, now time.Time) error {
+// The verified account must still have the same credentials and role. This
+// prevents an in-flight password check from creating a session after an
+// operator resets the password or revokes access. Failed replacements preserve
+// the previous session.
+func (s *Store) ReplaceSession(ctx context.Context, rawToken, previousToken []byte, verified User, expiresAt, now time.Time) error {
+	return s.replaceSession(ctx, rawToken, previousToken, verified.ID, expiresAt, now, &verified)
+}
+
+func (s *Store) replaceSession(ctx context.Context, rawToken, previousToken []byte, userID int64, expiresAt, now time.Time, verified *User) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin session replacement: %w", err)
 	}
 	defer tx.Rollback()
+	if verified != nil {
+		current, err := scanUser(tx.QueryRowContext(ctx, `SELECT id,username,email,password_hash,admin,created_at,updated_at FROM users WHERE id=?`, userID))
+		if errors.Is(err, ErrNotFound) {
+			return ErrCredentialsChanged
+		}
+		if err != nil {
+			return fmt.Errorf("verify session account: %w", err)
+		}
+		if current.PasswordHash != verified.PasswordHash || current.Admin != verified.Admin || !current.UpdatedAt.Equal(verified.UpdatedAt) {
+			return ErrCredentialsChanged
+		}
+	}
 	hash := sha256.Sum256(rawToken)
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO sessions (token_hash, user_id, expires_at, created_at)

@@ -266,6 +266,10 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.startSession(w, r, user); err != nil {
+		if errors.Is(err, store.ErrCredentialsChanged) {
+			invalidCredentials(w)
+			return
+		}
 		a.internalError(w, r, "start signup session", err)
 		return
 	}
@@ -319,6 +323,10 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.startSession(w, r, user); err != nil {
+		if errors.Is(err, store.ErrCredentialsChanged) {
+			invalidCredentials(w)
+			return
+		}
 		a.internalError(w, r, "start login session", err)
 		return
 	}
@@ -424,7 +432,7 @@ func (a *App) startSession(w http.ResponseWriter, r *http.Request, user store.Us
 	if !valid {
 		previous = nil
 	}
-	if err := a.store.ReplaceSession(r.Context(), raw, previous, user.ID, expires, now); err != nil {
+	if err := a.store.ReplaceSession(r.Context(), raw, previous, user, expires, now); err != nil {
 		return err
 	}
 	a.setSessionCookie(w, raw, expires, now)

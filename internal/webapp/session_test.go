@@ -113,3 +113,33 @@ func TestExistingShortAdminCookieIsExtendedOnUse(t *testing.T) {
 		t.Fatalf("legacy admin session was not upgraded in place: status=%d", response.Code)
 	}
 }
+
+func TestPasswordResetDuringLoginCannotIssueSession(t *testing.T) {
+	app, db, client, id := adminTestApp(t)
+	// The limiter retains its own clock. Session creation calls app.now only
+	// after bcrypt has verified the submitted password, making this ordering
+	// deterministic without relying on timing a slow hash in another goroutine.
+	now := time.Now().UTC()
+	app.now = func() time.Time {
+		if err := db.SetPassword(context.Background(), id, "replacement-password", now); err != nil {
+			t.Fatal(err)
+		}
+		return now
+	}
+	response := jsonRequest(t, client, "POST", "http://goclick.test/api/auth/login", map[string]string{"username": "test_admin", "password": "password123"}, nil)
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusUnauthorized || len(response.Cookies()) != 0 {
+		t.Fatalf("stale login issued a session: status=%d cookies=%d", response.StatusCode, len(response.Cookies()))
+	}
+	app.now = func() time.Time { return now }
+	response = jsonRequest(t, client, "GET", "http://goclick.test/api/me", nil, nil)
+	response.Body.Close()
+	if response.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("reset session revived: %d", response.StatusCode)
+	}
+	response = jsonRequest(t, client, "POST", "http://goclick.test/api/auth/login", map[string]string{"username": "test_admin", "password": "replacement-password"}, nil)
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("new password login failed: %d", response.StatusCode)
+	}
+}

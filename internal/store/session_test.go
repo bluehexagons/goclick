@@ -118,3 +118,59 @@ func TestConcurrentRenewalsDoNotInvalidateOrShortenSessions(t *testing.T) {
 	}
 	requests.Wait()
 }
+
+func TestSessionReplacementRejectsChangedCredentials(t *testing.T) {
+	for _, change := range []string{"password", "role", "deleted account"} {
+		t.Run(change, func(t *testing.T) {
+			db := openTestStore(t)
+			verified := createTestUser(t, db, "signing_in")
+			other := createTestUser(t, db, "previous_account")
+			ctx := context.Background()
+			now := time.Now().UTC()
+			previous, next := []byte("previous session"), []byte("late sign-in")
+			if err := db.CreateSession(ctx, previous, other.ID, now.Add(time.Hour), now); err != nil {
+				t.Fatal(err)
+			}
+			switch change {
+			case "password":
+				if err := db.SetPassword(ctx, verified.ID, "replacement-password", now); err != nil {
+					t.Fatal(err)
+				}
+			case "role":
+				if err := db.SetAdmin(ctx, verified.ID, true, now); err != nil {
+					t.Fatal(err)
+				}
+			case "deleted account":
+				if _, err := db.db.ExecContext(ctx, `DELETE FROM users WHERE id=?`, verified.ID); err != nil {
+					t.Fatal(err)
+				}
+			}
+			_, before, err := db.Activity(ctx, 0, 25, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := db.ReplaceSession(ctx, next, previous, verified, now.Add(time.Hour), now); !errors.Is(err, ErrCredentialsChanged) {
+				t.Fatalf("stale sign-in accepted: %v", err)
+			}
+			if _, err := db.UserBySession(ctx, next, now); !errors.Is(err, ErrNotFound) {
+				t.Fatalf("late session exists: %v", err)
+			}
+			if _, err := db.UserBySession(ctx, previous, now); err != nil {
+				t.Fatalf("failed sign-in revoked another account's session: %v", err)
+			}
+			_, after, err := db.Activity(ctx, 0, 25, 0)
+			if err != nil || before != after {
+				t.Fatalf("failed sign-in recorded activity: %d -> %d, %v", before, after, err)
+			}
+			if change != "deleted account" {
+				fresh, err := db.UserByID(ctx, verified.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := db.ReplaceSession(ctx, next, previous, fresh, now.Add(time.Hour), now); err != nil {
+					t.Fatalf("fresh sign-in rejected: %v", err)
+				}
+			}
+		})
+	}
+}

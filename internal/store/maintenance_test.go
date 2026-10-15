@@ -129,14 +129,14 @@ func TestReplaceSessionIsAtomic(t *testing.T) {
 	if err := database.CreateSession(ctx, oldToken, user.ID, now.Add(time.Hour), now); err != nil {
 		t.Fatal(err)
 	}
-	// A foreign-key failure must preserve the existing session.
-	if err := database.ReplaceSession(ctx, newToken, oldToken, user.ID+1, now.Add(time.Hour), now); err == nil {
+	// A missing account must preserve the existing session.
+	if err := database.ReplaceSession(ctx, newToken, oldToken, User{ID: user.ID + 1}, now.Add(time.Hour), now); err == nil {
 		t.Fatal("replacement accepted a nonexistent user")
 	}
 	if _, err := database.UserBySession(ctx, oldToken, now); err != nil {
 		t.Fatalf("failed replacement revoked previous session: %v", err)
 	}
-	if err := database.ReplaceSession(ctx, newToken, oldToken, user.ID, now.Add(time.Hour), now); err != nil {
+	if err := database.ReplaceSession(ctx, newToken, oldToken, user, now.Add(time.Hour), now); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.UserBySession(ctx, oldToken, now); !errors.Is(err, ErrNotFound) {
