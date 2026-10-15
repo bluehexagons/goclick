@@ -88,6 +88,8 @@ function harness(fetch) {
       append() {}
     },
     document: {
+      documentElement: { dataset: {} },
+      addEventListener() {},
       querySelector: element,
       querySelectorAll: () => [],
       createElement: () => new Element(),

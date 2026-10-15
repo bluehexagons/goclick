@@ -223,6 +223,14 @@ Go tests or restarting the dev server: assets are embedded at Go compilation.
 The JavaScript tests load isolated modules compiled from that same source and
 cover request ordering, recovery feedback, local saves, motion, and pointer input.
 
+The real-browser focus regression check in
+`internal/webapp/testdata/focus.browser.cjs` exports `checkFocus(page, baseURL)`.
+Run it with a fresh, isolated Playwright page in Chromium and Firefox using an
+existing browser test environment. It covers skip navigation, pointer/keyboard
+switching, held keys, dialogs, and the hidden file picker using offline play;
+it does not create an account or submit online clicks. `npm run check` runs the
+unit regressions without requiring browser packages.
+
 CI runs these checks and a deployment smoke test. Dependabot checks Go modules,
 frontend tooling, GitHub Actions, and container images weekly. Keep `modernc.org/libc` at the
 version required by the SQLite driver's `go.mod` when updating that driver.

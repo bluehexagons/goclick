@@ -1,9 +1,42 @@
 // Generated from frontend/*.ts by npm run build. Do not edit directly.
 "use strict";
 (() => {
+  // frontend/focus.ts
+  var root = document.documentElement;
+  root.dataset.focusInput = "pointer";
+  var navigationKeys = /* @__PURE__ */ new Set([
+    "Tab",
+    "Enter",
+    " ",
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+    "Escape"
+  ]);
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (navigationKeys.has(event.key)) root.dataset.focusInput = "keyboard";
+    },
+    { capture: true }
+  );
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      root.dataset.focusInput = "pointer";
+    },
+    { capture: true, passive: true }
+  );
+
   // frontend/dom.ts
-  function required(selector, root = document) {
-    const element = root.querySelector(selector);
+  function required(selector, root2 = document) {
+    const element = root2.querySelector(selector);
     if (!element) throw new Error(`Required element missing: ${selector}`);
     return element;
   }

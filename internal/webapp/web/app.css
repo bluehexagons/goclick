@@ -36,9 +36,35 @@ input {
 button {
   color: inherit;
 }
-:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 5px;
+:where(a[href], button, input, select, textarea, summary, [tabindex]):focus-visible,
+:root[data-focus-input="keyboard"]
+  :where(a[href], button, input, select, textarea, summary, [tabindex]):not(
+    main,
+    dialog,
+    .notice
+  ):focus {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+:focus:not(:focus-visible),
+:root[data-focus-input="pointer"] :focus,
+:where(html, body, main, dialog, .notice):focus {
+  outline: none;
+}
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 20px;
+  z-index: 20;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--well);
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: translateY(0);
 }
 .shell {
   width: min(1120px, calc(100% - 40px));
@@ -577,8 +603,9 @@ input:focus {
 .button-stage.is-rendered .button-label {
   opacity: 0;
 }
-.click-button:focus-visible {
-  outline-offset: 8px;
+.click-button:focus-visible,
+:root[data-focus-input="keyboard"] .click-button:focus {
+  outline-offset: 5px;
 }
 .click-button:disabled {
   cursor: wait;
@@ -1112,9 +1139,10 @@ select {
   cursor: pointer;
   padding: 0;
 }
-.import-local:focus-within {
-  outline: 3px solid var(--teal);
-  outline-offset: 4px;
+:root:not([data-focus-input="pointer"]) .import-local:has(input:focus-visible),
+:root[data-focus-input="keyboard"] .import-local:has(input:focus) {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
 }
 #options-status {
   color: var(--teal);

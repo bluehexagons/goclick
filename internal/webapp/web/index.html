@@ -10,6 +10,7 @@
     <script src="/app.js" defer></script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="shell">
       <header class="site-header">
         <a class="brand" href="/" aria-label="Go Click home">
@@ -46,7 +47,7 @@
         </div>
       </header>
 
-      <main>
+      <main id="main-content" tabindex="-1">
         <section id="loading-view" class="loading-view" aria-live="polite" aria-busy="true">
           <span class="loading-spinner" aria-hidden="true"></span>
           <p id="loading-message">Loading your counter…</p>

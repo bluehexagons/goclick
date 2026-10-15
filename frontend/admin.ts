@@ -1,3 +1,4 @@
+import "./focus.js";
 import { request as sendRequest, requestError, jsonOptions } from "./http.js";
 import type { RequestOptions } from "./http.js";
 import { required as $ } from "./dom.js";

@@ -1,3 +1,4 @@
+import "./focus.js";
 import { request, requestError } from "./http.js";
 import { required as $ } from "./dom.js";
 import { gameSettings, motionPreference } from "./preferences.js";
