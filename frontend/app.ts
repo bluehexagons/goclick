@@ -155,8 +155,6 @@ function setUser(nextUser: User | null) {
   user = nextUser;
   if (identityChanged) lastOnlineCounters = null;
   $("#nav-username").textContent = user?.username ?? "";
-  $("#game-username").textContent = user?.username ?? "";
-  $("#game-player-id").textContent = user ? `#${user.id}` : "";
   $<HTMLAnchorElement>("#admin-link").hidden = !user?.admin;
   if (identityChanged) {
     resetClickState();
@@ -216,10 +214,6 @@ function updateGameControls() {
     !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
   for (const id of ["#restart-local", "#import-local", "#download-local", "#replace-local"])
     $<HTMLButtonElement | HTMLInputElement>(id).disabled = localSaveReplacing;
-  if (localMode) {
-    $("#game-username").textContent = "Offline play";
-    $("#game-player-id").textContent = "this browser";
-  }
 }
 
 function updatePendingIndicator() {

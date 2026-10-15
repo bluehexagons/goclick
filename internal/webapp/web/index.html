@@ -261,28 +261,7 @@
           </div>
         </section>
 
-        <section id="game-view" class="game" hidden>
-          <div class="game-heading">
-            <div>
-              <h1>Click counter</h1>
-              <p class="game-greeting">
-                <span id="game-username"></span><span class="account-id" id="game-player-id"></span>
-              </p>
-            </div>
-            <div
-              id="connection"
-              class="connection"
-              role="status"
-              aria-live="off"
-              aria-label="Ping: no click measured yet"
-              title="Round-trip time of the last successful click request. The border indicates pending requests or a save error."
-            >
-              <span class="connection-dot" aria-hidden="true"></span>
-              <span class="connection-label">Ping</span>
-              <span id="ping">— ms</span>
-            </div>
-          </div>
-
+        <section id="game-view" class="game" aria-label="Play Go Click" hidden>
           <p id="network-notice" class="notice notice-offline" role="status" hidden>
             You’re offline. Clicking is paused. Your saved progress will refresh when you reconnect.
           </p>
@@ -295,9 +274,7 @@
           >
             Reload counter
           </button>
-          <p id="local-mode-note" class="local-mode-note" hidden>
-            Local save · only in this browser · separate from account progress
-          </p>
+          <p id="local-mode-note" class="local-mode-note" hidden>Offline · local save</p>
           <div class="play-layout">
             <div id="counter-card" class="counter-card">
               <p id="counter-label" class="counter-label">Saved clicks</p>
@@ -340,20 +317,18 @@
                   </svg>
                   Share
                 </button>
-                <button class="text-link" type="button" data-play-local>Play offline</button>
-                <details class="controls-help">
-                  <summary>Controls</summary>
-                  <p id="button-hint">
-                    Press with a mouse or touch, then release inside the button. Each finger counts
-                    separately. With the button focused, Space or Enter adds one click on release.
-                    Holding never adds extra clicks.
-                  </p>
-                  <p>
-                    +1 stays amber while waiting. The button sweeps teal on confirmation, violet for
-                    a slower reply, and red for a failed or unconfirmed save. Reduced motion uses a
-                    static tint.
-                  </p>
-                </details>
+                <div
+                  id="connection"
+                  class="connection"
+                  role="status"
+                  aria-live="off"
+                  aria-label="Ping: no click measured yet"
+                  title="Round-trip time of the last successful click request. The border indicates pending requests or a save error."
+                >
+                  <span class="connection-dot" aria-hidden="true"></span>
+                  <span class="connection-label">Ping</span>
+                  <span id="ping">— ms</span>
+                </div>
               </div>
               <p id="share-status" class="share-status" role="status"></p>
             </div>
@@ -368,89 +343,33 @@
                   <span class="streak-icon" aria-hidden="true"
                     ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day" /></svg
                   ></span>
-                  <div><strong id="day-streak">0</strong><span>consecutive days</span></div>
+                  <div><strong id="day-streak">0</strong><span>days</span></div>
                 </article>
                 <article class="streak-card">
                   <span class="streak-icon" aria-hidden="true"
                     ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month" /></svg
                   ></span>
-                  <div><strong id="month-streak">0</strong><span>consecutive months</span></div>
+                  <div><strong id="month-streak">0</strong><span>months</span></div>
                 </article>
                 <article class="streak-card">
                   <span class="streak-icon" aria-hidden="true"
                     ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#year" /></svg
                   ></span>
-                  <div><strong id="year-streak">0</strong><span>consecutive years</span></div>
+                  <div><strong id="year-streak">0</strong><span>years</span></div>
                 </article>
               </div>
-              <p class="streak-note">
-                A saved click in each UTC period extends its streak. Gaps reset that streak on your
-                next click.
-              </p>
             </aside>
           </div>
         </section>
-
-        <details class="technical-notes" id="technical-notes">
-          <summary>
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <use href="/icons.svg#info" />
-            </svg>
-            Game &amp; storage notes
-          </summary>
-          <div class="technical-grid">
-            <article>
-              <h2>Clicks &amp; saves</h2>
-              <p>
-                Releasing inside the button adds one click. Holding does not add extra clicks. The
-                total shows server-confirmed saves; pending clicks appear separately. Returning to
-                this tab or reconnecting refreshes saved progress. Failed clicks are never replayed.
-              </p>
-            </article>
-            <article>
-              <h2>Streak periods</h2>
-              <p>
-                Days, calendar months, and calendar years use UTC. Multiple clicks in the same
-                period do not extend a streak. The next click after a missed period starts that
-                streak at one.
-              </p>
-            </article>
-            <article>
-              <h2>Ping &amp; storage</h2>
-              <p>
-                Online ping measures a click request, including server processing. +1 badges wait
-                for confirmation and compare timing to the last 20 pings. Amber means pending or
-                slow; red means failed or unconfirmed. Account progress stays in SQLite on the
-                server.
-              </p>
-            </article>
-            <article>
-              <h2>Local play &amp; sessions</h2>
-              <p>
-                Offline play uses one browser-local save and simulated ping, with no account API
-                calls. Options can download, import, restart, or copy account progress into that
-                slot. Local clicks never transfer back to your account. Online activity keeps your
-                session signed in; about 180 days of inactivity ends it.
-              </p>
-            </article>
-          </div>
-          <p class="implementation-note">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <use href="/icons.svg#terminal" />
-            </svg>
-            Go server · SQLite transactions · dependency-free browser UI · WebGL with a CSS fallback
-          </p>
-        </details>
       </main>
 
       <footer>
-        <span>Go Click</span>
-        <span>Go / SQLite</span>
+        <span>© bluehexagons</span>
         <a
           draggable="false"
-          href="https://github.com/bluehexagons/goclick"
+          href="https://github.com/bluehexagons/goclick/blob/main/LICENSE"
           rel="noopener noreferrer"
-          >Source code</a
+          >Apache 2.0</a
         >
       </footer>
     </div>
@@ -460,49 +379,138 @@
         <button id="close-options" class="button button-quiet" type="button">Done</button>
       </div>
       <div id="options-status" class="notice" role="status" hidden></div>
-      <label for="motion-setting">Motion</label>
-      <select id="motion-setting">
-        <option value="auto">Auto — follow browser preference</option>
-        <option value="on">Reduced — no movement or flashes</option>
-        <option value="off">Full — animations and effects</option>
-      </select>
-      <p class="field-hint">Applies immediately and is remembered in this browser.</p>
-      <h2>Offline play</h2>
-      <p class="muted">
-        One local save in this browser. Local clicks never change your account progress. Leaving
-        offline play keeps both saves.
-      </p>
-      <button class="button button-quiet" type="button" data-play-local>Play offline</button>
-      <label for="simulated-ping">Simulated ping</label>
-      <select id="simulated-ping">
-        <option value="0">Instant</option>
-        <option value="80">Around 80 ms</option>
-        <option value="250">Around 250 ms</option>
-        <option value="800">Around 800 ms</option>
-      </select>
-      <p class="field-hint">
-        Offline effects only. Clicks are saved locally before the simulated response.
-      </p>
-      <h2>Local save</h2>
-      <p id="local-save-summary" class="muted"></p>
-      <button id="download-local" class="button button-quiet" type="button">Download save</button>
-      <p class="field-hint">Keep a copy before clearing browser data or switching devices.</p>
-      <label class="replace-local"
-        ><input id="replace-local" type="checkbox" /> Allow replacing my local save</label
-      >
-      <div class="local-save-actions">
-        <button id="copy-online-local" class="button button-quiet" type="button">
-          Copy account progress to local save
-        </button>
-        <button id="restart-local" class="button button-quiet" type="button">
-          Restart local save
-        </button>
-        <label class="button button-quiet import-local"
-          >Import local save<input id="import-local" type="file" accept=".json,application/json"
-        /></label>
+      <div class="options-grid">
+        <section class="options-section" aria-labelledby="play-options-title">
+          <h2 id="play-options-title">Play &amp; appearance</h2>
+          <label for="motion-setting">Motion</label>
+          <select id="motion-setting">
+            <option value="auto">Auto — follow browser preference</option>
+            <option value="on">Reduced — no movement or flashes</option>
+            <option value="off">Full — animations and effects</option>
+          </select>
+          <p class="field-hint">Applies immediately and is remembered in this browser.</p>
+          <h2>Offline play</h2>
+          <p class="muted">
+            One local save in this browser. Local clicks never change your account progress. Leaving
+            offline play keeps both saves.
+          </p>
+          <button class="button button-quiet" type="button" data-play-local>Play offline</button>
+          <label for="simulated-ping">Simulated ping</label>
+          <select id="simulated-ping">
+            <option value="0">Instant</option>
+            <option value="80">Around 80 ms</option>
+            <option value="250">Around 250 ms</option>
+            <option value="800">Around 800 ms</option>
+          </select>
+          <p class="field-hint">
+            Offline effects only. Clicks are saved locally before the simulated response.
+          </p>
+        </section>
+        <section class="options-section" aria-labelledby="local-save-title">
+          <h2 id="local-save-title">Local save</h2>
+          <p id="local-save-summary" class="muted"></p>
+          <button id="download-local" class="button button-quiet" type="button">
+            Download save
+          </button>
+          <p class="field-hint">Keep a copy before clearing browser data or switching devices.</p>
+          <label class="replace-local"
+            ><input id="replace-local" type="checkbox" /> Allow replacing my local save</label
+          >
+          <div class="local-save-actions">
+            <button id="copy-online-local" class="button button-quiet" type="button">
+              Copy account progress to local save
+            </button>
+            <button id="restart-local" class="button button-quiet" type="button">
+              Restart local save
+            </button>
+            <label class="button button-quiet import-local"
+              >Import local save<input
+                id="import-local"
+                type="file"
+                accept=".json,application/json"
+            /></label>
+          </div>
+          <p id="copy-online-note" class="field-hint">
+            Open your account counter first to make a copy. Copying only replaces the local save.
+          </p>
+        </section>
       </div>
-      <p id="copy-online-note" class="field-hint">
-        Open your account counter first to make a copy. Copying only replaces the local save.
+      <details class="controls-help">
+        <summary>Controls</summary>
+        <p id="button-hint">
+          Press with a mouse or touch, then release inside the button. Each finger counts
+          separately. With the button focused, Space or Enter adds one click on release. Holding
+          never adds extra clicks.
+        </p>
+        <p>
+          +1 stays amber while waiting. The button sweeps teal on confirmation, violet for a slower
+          reply, and red for a failed or unconfirmed save. Reduced motion uses a static tint.
+        </p>
+      </details>
+      <details class="technical-notes" id="technical-notes">
+        <summary>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <use href="/icons.svg#info" />
+          </svg>
+          Game &amp; storage notes
+        </summary>
+        <div class="technical-grid">
+          <article>
+            <h2>Clicks &amp; saves</h2>
+            <p>
+              Releasing inside the button adds one click. Holding does not add extra clicks. The
+              total shows server-confirmed saves; pending clicks appear separately. Returning to
+              this tab or reconnecting refreshes saved progress. Failed clicks are never replayed.
+            </p>
+          </article>
+          <article>
+            <h2>Streak periods</h2>
+            <p>
+              Days, calendar months, and calendar years use UTC. Multiple clicks in the same period
+              do not extend a streak. The next click after a missed period starts that streak at
+              one.
+            </p>
+          </article>
+          <article>
+            <h2>Ping &amp; storage</h2>
+            <p>
+              Online ping measures a click request, including server processing. +1 badges wait for
+              confirmation and compare timing to the last 20 pings. Amber means pending or slow; red
+              means failed or unconfirmed. Account progress stays in SQLite on the server.
+            </p>
+          </article>
+          <article>
+            <h2>Local play &amp; sessions</h2>
+            <p>
+              Offline play uses one browser-local save and simulated ping, with no account API
+              calls. Options can download, import, restart, or copy account progress into that slot.
+              Local clicks never transfer back to your account. Online activity keeps your session
+              signed in; about 180 days of inactivity ends it.
+            </p>
+          </article>
+        </div>
+        <p class="implementation-note">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <use href="/icons.svg#terminal" />
+          </svg>
+          Go server · SQLite transactions · dependency-free browser UI · WebGL with a CSS fallback
+        </p>
+      </details>
+      <p class="options-attribution">
+        © bluehexagons · Licensed under
+        <a
+          draggable="false"
+          href="https://github.com/bluehexagons/goclick/blob/main/LICENSE"
+          rel="noopener noreferrer"
+          >Apache 2.0</a
+        >
+        ·
+        <a
+          draggable="false"
+          href="https://github.com/bluehexagons/goclick"
+          rel="noopener noreferrer"
+          >Source code</a
+        >
       </p>
     </dialog>
     <dialog

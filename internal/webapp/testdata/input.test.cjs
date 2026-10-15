@@ -24,6 +24,7 @@ function harness(reducedMotion = true) {
     children = [];
     disabled = false;
     offsetWidth = 260;
+    offsetHeight = 144;
     style = { setProperty: (key, value) => this.props.set(key, value) };
     classList = { toggle: (name, on) => (on ? this.classes.add(name) : this.classes.delete(name)) };
     addEventListener(name, callback) {
@@ -230,4 +231,36 @@ test("reduced motion acknowledges with static color and reset clears stale respo
   h.controller.reset();
   assert.equal(h.stage.dataset.response, undefined);
   assert.match(h.rig.props.get("--response-wash"), /,0\.000\)/);
+});
+
+test("drag travel grows with the stage, stays bounded, and returns on mouse release", () => {
+  const h = harness(false);
+  h.stage.getBoundingClientRect = () => ({ left: 0, top: 0, width: 680, height: 350 });
+  h.pointer("pointerdown", 1, { pointerType: "mouse", clientX: 230, clientY: 172 });
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 310, clientY: 172 });
+  for (let i = 1; i <= 90; i++) h.frame(i * 17);
+  const pull = parseFloat(h.rig.props.get("--shift-x"));
+  assert.ok(pull > 45 && pull < 60, `Expected a substantial pull, got ${pull}`);
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 1000, clientY: 172 });
+  for (let i = 91; i <= 180; i++) h.frame(i * 17);
+  assert.ok(parseFloat(h.rig.props.get("--shift-x")) <= 88.01);
+  // Release outside cancels scoring and returns to the small hover displacement.
+  h.pointer("pointerup", 1, { pointerType: "mouse", clientX: 1000, clientY: 172 });
+  for (let i = 181; i <= 270; i++) h.frame(i * 17);
+  assert.equal(h.rig.props.get("--shift-x"), "4.000px");
+  assert.equal(h.clicks.length, 0);
+});
+
+test("narrow stages limit dragging and cancellation returns to the origin", () => {
+  const h = harness(false);
+  h.pointer("pointerdown", 1);
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "touch", clientX: 1000, clientY: 1000 });
+  for (let i = 1; i <= 90; i++) h.frame(i * 17);
+  assert.ok(parseFloat(h.rig.props.get("--shift-x")) <= 24.01);
+  assert.ok(parseFloat(h.rig.props.get("--shift-y")) <= 28.01);
+  h.pointer("pointercancel", 1);
+  for (let i = 91; i <= 180; i++) h.frame(i * 17);
+  assert.equal(h.rig.props.get("--shift-x"), "0.000px");
+  assert.equal(h.rig.props.get("--shift-y"), "0.000px");
+  assert.equal(h.clicks.length, 0);
 });

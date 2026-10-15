@@ -77,6 +77,7 @@ module.exports = async function checkInteraction(page, baseURL) {
   );
   await page.locator("#close-share").click();
 
+  await page.locator("#options-button").click();
   await page.locator("#technical-notes summary").click();
   await page
     .locator(".technical-grid p")
@@ -84,6 +85,7 @@ module.exports = async function checkInteraction(page, baseURL) {
     .dblclick({ position: { x: 12, y: 10 } });
   ensure((await selection()).length > 0, "Technical help must remain copyable");
   await page.evaluate(() => window.getSelection().removeAllRanges());
+  await page.locator("#close-options").click();
   await page.locator("#leave-local").click();
   await page.locator('#guest-nav [data-view="login"]').click();
   await page.locator("#login-identifier").fill("example_player");

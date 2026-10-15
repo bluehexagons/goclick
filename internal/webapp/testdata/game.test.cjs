@@ -226,7 +226,7 @@ test("returning to the game coalesces refreshes and updates a switched account",
   identity.resolve(response({ id: 2, username: "other_player", admin: true }));
   progress.resolve(response(counters(3)));
   await first;
-  assert.equal(h.element("#game-username").textContent, "other_player");
+  assert.equal(h.element("#nav-username").textContent, "other_player");
   assert.equal(h.element("#click-count").textContent, "3");
   assert.equal(h.element("#click-button").disabled, false);
   assert.equal(h.element("#admin-link").hidden, false);
@@ -421,7 +421,7 @@ test("an account refresh in flight cannot overwrite a newly opened local game", 
 
 test("the production game bundle boots without leaking application functions", async () => {
   const h = await harness({ production: true });
-  assert.equal(h.element("#game-username").textContent, "player");
+  assert.equal(h.element("#nav-username").textContent, "player");
   assert.equal(h.element("#click-button").disabled, false);
   assert.equal(h.context.openGame, undefined);
   assert.equal(h.context.gameSettings, undefined);

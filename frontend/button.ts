@@ -129,19 +129,22 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
     target.rx = -y * 16;
     target.ry = x * 22;
-    target.x = x * 3;
-    target.y = y * 3;
+    target.x = x * 4;
+    target.y = y * 4;
     if (pointers.size) {
       const points = [...pointers.values()];
+      // Keep the larger pull inside the stage, including on narrow screens.
+      const pullX = Math.min(84, Math.max(20, (rect.width - button.offsetWidth) / 2 - 12));
+      const pullY = Math.min(64, Math.max(24, (rect.height - button.offsetHeight) / 2 - 12));
       target.x += clamp(
-        (points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length) * 0.22,
-        -16,
-        16,
+        (points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length) * 0.65,
+        -pullX,
+        pullX,
       );
       target.y += clamp(
-        (points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length) * 0.22,
-        -12,
-        12,
+        (points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length) * 0.65,
+        -pullY,
+        pullY,
       );
     }
     animate();
@@ -312,7 +315,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (!pointers.size) release(cancelled || !inside);
     else aimPointers();
     if (!cancelled && inside && !button.disabled) activateRelease(event);
-    if (!pointers.size && event.pointerType !== "mouse") {
+    if (!pointers.size && !cancelled && event.pointerType === "mouse") aim(event);
+    else if (!pointers.size) {
       for (const key of ["x", "y", "rx", "ry"] as const) target[key] = 0;
       animate();
     }

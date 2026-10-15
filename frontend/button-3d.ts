@@ -71,14 +71,21 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       vec3 view = normalize(vec3(0., 0., 850.) - worldPosition);
       float diffuse = max(dot(n, light), 0.);
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
-      vec3 surface = mix(vec3(1., .77, .25), vec3(1., .55, .08), press * .88);
-      vec3 gold = surface * (.52 + .70 * diffuse) * (1. - press * .09);
-      gold += vec3(1., .94, .72) * specular * .38;
-      gold += vec3(1., .88, .55) * flash * .55 * frontFace;
-      // A response travels over the actual face, independently of press/release.
-      // Keep most of the gold visible, with extra color around its outer edge.
       float edge = max(abs(texCoord.x - .5), abs(texCoord.y - .5)) * 2.;
       float rim = smoothstep(.72, .98, edge);
+      vec3 copper = vec3(.78, .36, .20);
+      vec3 patina = vec3(.24, .65, .42);
+      vec3 surface = mix(vec3(1., .77, .25), copper, press);
+      vec3 gold = surface * (.52 + .70 * diffuse);
+      // A polished reflection band follows the surface normal as it tilts.
+      vec3 reflected = reflect(-view, n);
+      float band = exp(-pow((reflected.y + reflected.x * .45 + .05) * 24., 2.));
+      float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
+      gold += vec3(1., .92, .79) * (specular * .38 + press * (band * .38 + glint * .7));
+      gold = mix(gold, patina, press * rim * .82 * frontFace);
+      gold += patina * press * rim * .18;
+      gold += mix(vec3(1., .88, .55), vec3(1., .67, .43), press) * flash * .38 * frontFace;
+      // A response travels over the actual face, independently of press/release.
       float sweep = exp(-pow((texCoord.x - responseProgress) * 5., 2.));
       gold = mix(gold, responseColor, response * (.12 + .48 * rim + .30 * sweep) * frontFace);
       vec4 text = texture2D(lettering, texCoord);
