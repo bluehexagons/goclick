@@ -236,6 +236,8 @@ test("response glows finish without releasing another held pointer", () => {
   assert.equal(h.rig.props.get("--glow-color"), "rgb(163 138 255)");
   assert.equal(h.stage.classes.has("is-pressed"), true);
   assert.equal(h.button.hasPointerCapture(1), true);
+  h.frame(300);
+  assert.equal(h.rig.props.get("--glow-color"), "rgb(163 138 255)");
   h.frame(1000);
   assert.equal(h.rig.props.get("--glow-color"), "rgb(56 184 117)");
   assert.ok(parseFloat(h.rig.props.get("--glow-intensity")) < 0.6);
@@ -248,7 +250,7 @@ test("reduced motion acknowledges with static color and reset clears stale respo
   h.controller.respond("error");
   assert.equal(h.hasFrame(), false);
   assert.equal(h.rig.props.get("--glow-intensity"), "0.176");
-  assert.equal(h.rig.props.get("--glow-color"), "rgb(100 171 118)");
+  assert.equal(h.rig.props.get("--glow-color"), "rgb(255 125 120)");
   h.controller.reset();
   assert.equal(h.stage.dataset.response, undefined);
   assert.equal(h.rig.props.get("--glow-intensity"), "0.000");

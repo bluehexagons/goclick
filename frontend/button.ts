@@ -80,9 +80,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8,
     );
     rig.style.setProperty("--glow-intensity", glow.toFixed(3));
+    const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
     rig.style.setProperty(
       "--glow-color",
-      `rgb(${[0.22, 0.72, 0.46].map((value, i) => Math.round((value * (1 - current.response) + current.responseColor[i]! * current.response) * 255)).join(" ")})`,
+      `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`,
     );
     renderer?.draw(current);
   }

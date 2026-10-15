@@ -377,7 +377,7 @@
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulse = .8 + .2 * exp(-pow((texCoord.x - responseProgress) * 5., 2.));
       float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse);
-      vec3 lightColor = mix(vec3(.22, .72, .46), responseColor, response);
+      vec3 lightColor = response > 0. ? responseColor : vec3(.22, .72, .46);
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
       gold += lightColor * luminous * energy * .2 * frontFace;
@@ -717,9 +717,10 @@
         current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8
       );
       rig.style.setProperty("--glow-intensity", glow.toFixed(3));
+      const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
       rig.style.setProperty(
         "--glow-color",
-        `rgb(${[0.22, 0.72, 0.46].map((value, i) => Math.round((value * (1 - current.response) + current.responseColor[i] * current.response) * 255)).join(" ")})`
+        `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`
       );
       renderer?.draw(current);
     }, tick2 = function(time) {

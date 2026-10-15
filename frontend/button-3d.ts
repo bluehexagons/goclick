@@ -87,7 +87,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulse = .8 + .2 * exp(-pow((texCoord.x - responseProgress) * 5., 2.));
       float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse);
-      vec3 lightColor = mix(vec3(.22, .72, .46), responseColor, response);
+      vec3 lightColor = response > 0. ? responseColor : vec3(.22, .72, .46);
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
       gold += lightColor * luminous * energy * .2 * frontFace;
