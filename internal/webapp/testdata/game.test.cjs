@@ -33,6 +33,7 @@ async function harness(options = {}) {
     textContent = "";
     hidden = false;
     disabled = false;
+    checked = false;
     classList = {
       add: (...names) => names.forEach((name) => this.classes.add(name)),
       remove: (...names) => names.forEach((name) => this.classes.delete(name)),
@@ -79,7 +80,16 @@ async function harness(options = {}) {
   }
   const elements = new Map();
   const element = (selector) => {
-    if (!elements.has(selector)) elements.set(selector, new Element());
+    if (!elements.has(selector)) {
+      const next = new Element();
+      if (
+        selector === "#include-share-link" ||
+        selector === "#include-share-clicks" ||
+        selector === "#include-share-streaks"
+      )
+        next.checked = true;
+      elements.set(selector, next);
+    }
     return elements.get(selector);
   };
   document = Object.assign(new Element(), {
@@ -91,6 +101,7 @@ async function harness(options = {}) {
   const timers = new Map();
   let timerID = 0;
   const window = Object.assign(new Element(), {
+    location: { origin: "https://goclick.example" },
     matchMedia: () => ({ matches: true, addEventListener() {} }),
     scrollTo() {},
     clearTimeout(id) {
@@ -601,6 +612,7 @@ test("Share copies confirmed progress without account requests or private identi
   await h.element("#share-stats").fire("click");
   assert.equal(copies.length, 1);
   assert.match(copies[0], /Go Click\n10 saved clicks\nUTC streaks: 0 days · 0 months · 0 years/);
+  assert.match(copies[0], /Play: https:\/\/goclick\.example/);
   assert.equal(copies[0].includes(player.username), false);
   assert.equal(h.element("#share-status").textContent, "Stats copied.");
   assert.deepEqual(h.requests, []);
@@ -624,7 +636,7 @@ test("local Share uses the displayed local save and labels its separate progress
   await h.element("#share-stats").fire("click");
   assert.equal(
     copies[0],
-    "Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year",
+    "Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year\nPlay: https://goclick.example",
   );
   assert.deepEqual(h.requests, []);
 });
@@ -672,7 +684,7 @@ test("a stale clipboard failure cannot interrupt a different mode and duplicate 
   copy.resolve();
   await sharing;
   assert.equal(h.element("#share-status").textContent, "");
-  assert.equal(h.element("#share-dialog").open, undefined);
+  assert.equal(h.element("#share-dialog").open, false);
 });
 
 test("429s start a calm cooldown, suppress requests, and resume without replaying clicks", async () => {

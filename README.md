@@ -265,11 +265,13 @@ replace the artwork without changing gameplay. Keep the lettering area legible.
 The 3D renderer packs both images and lettering into one atlas; the CSS fallback
 uses the same SVGs. Neither image blocks input, and no PNG export is required.
 
-The game's Share button copies confirmed clicks and UTC streaks as plain text.
-Offline summaries are labeled separately. Clipboard access failures open a
-read-only, selected summary for manual copying. Interface text and page links
-or images do not select or drag; forms, errors, technical help, and administrator
-data retain useful copying and editing behavior.
+The game's Share button copies the current click total, UTC streaks, and a site
+link by default, then opens options to customize the text. Daily and weekly click
+totals are not part of the current counter summary. Offline summaries are
+labeled separately. Clipboard access failures leave a selectable preview for
+manual copying. Interface text and page links or images do not select or drag;
+forms, errors, technical help, and administrator data retain useful copying and
+editing behavior.
 
 CI runs these checks and a deployment smoke test. Dependabot checks Go modules,
 frontend tooling, GitHub Actions, and container images weekly. Keep `modernc.org/libc` at the

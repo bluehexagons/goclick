@@ -53,9 +53,11 @@ module.exports = async function checkInteraction(page, baseURL) {
   await page.locator("#share-status").getByText("Stats copied.", { exact: true }).waitFor();
   const copied = await page.evaluate(() => window.copiedStats);
   ensure(
-    copied === "Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year",
+    copied ===
+      `Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year\nPlay: ${new URL(baseURL).origin}`,
     "Share must copy the displayed local stats",
   );
+  await page.locator("#close-share").click();
   await page.evaluate(() => {
     navigator.clipboard.writeText = async () => {
       throw new DOMException("Denied", "NotAllowedError");

@@ -43,6 +43,18 @@
             <button id="leave-local" class="button button-quiet" type="button">Back online</button>
           </nav>
           <button
+            id="motion-shortcut"
+            class="button button-quiet motion-shortcut"
+            type="button"
+            aria-label="Turn on motion effects"
+            title="Reduced motion is on. Turn on motion effects."
+            hidden
+          >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons.svg#motion" />
+            </svg>
+          </button>
+          <button
             id="options-button"
             class="button button-quiet options-button"
             type="button"
@@ -302,12 +314,20 @@
                 No saved clicks yet.
               </p>
               <div class="counter-actions">
-                <button id="refresh-counter" class="text-link refresh-counter" type="button">
-                  Refresh counter
+                <button
+                  id="refresh-counter"
+                  class="counter-action-button refresh-counter"
+                  type="button"
+                  aria-label="Refresh counter"
+                  title="Refresh counter"
+                >
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons.svg#refresh" />
+                  </svg>
                 </button>
                 <button
                   id="share-stats"
-                  class="text-link share-stats"
+                  class="counter-action-button share-stats"
                   type="button"
                   title="Copy stats for sharing"
                   disabled
@@ -333,7 +353,6 @@
               <p id="play-status" class="play-status" role="status" hidden>
                 Cooling down <span id="cooldown-time" aria-hidden="true"></span>
               </p>
-              <p id="share-status" class="share-status" role="status"></p>
             </div>
 
             <aside class="streak-panel" aria-label="Click streaks">
@@ -531,9 +550,20 @@
         <button id="close-share" class="button button-quiet" type="button">Done</button>
       </div>
       <p id="share-hint" class="muted">
-        Clipboard access isn’t available. Copy the selected text and paste it into Discord or a
-        message.
+        Choose what to include. Changing an option updates the preview; copy again to share the
+        customized text.
       </p>
+      <fieldset class="share-options">
+        <legend>Include</legend>
+        <label><input id="include-share-link" type="checkbox" checked /> Site link</label>
+        <label><input id="include-share-clicks" type="checkbox" checked /> Click total</label>
+        <label><input id="include-share-streaks" type="checkbox" checked /> Streaks</label>
+      </fieldset>
+      <p class="field-hint share-data-note">
+        Click totals are cumulative. Daily and weekly totals are not part of the current counter
+        summary.
+      </p>
+      <label class="share-preview-label" for="share-text">Preview</label>
       <textarea
         id="share-text"
         rows="4"
@@ -541,6 +571,10 @@
         aria-label="Stats to share"
         spellcheck="false"
       ></textarea>
+      <div class="share-dialog-actions">
+        <button id="copy-share-text" class="button button-quiet" type="button">Copy text</button>
+      </div>
+      <p id="share-status" class="share-status" role="status" aria-live="polite"></p>
     </dialog>
     <noscript>
       <p class="noscript-notice">

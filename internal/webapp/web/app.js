@@ -1269,54 +1269,107 @@
   })();
 
   // frontend/share.ts
-  function formatStats(counters, local) {
+  function formatShareText(counters, local, options, siteUrl = window.location?.origin ?? "") {
     const number = new Intl.NumberFormat("en-US");
     const quantity = (count, unit) => `${number.format(count)} ${unit}${count === 1 ? "" : "s"}`;
-    return [
-      `Go Click${local ? " \xB7 offline" : ""}`,
-      quantity(counters.click_count?.count ?? 0, local ? "local click" : "saved click"),
-      `UTC streaks: ${quantity(counters.streak_counter_day?.count ?? 0, "day")} \xB7 ${quantity(counters.streak_counter_month?.count ?? 0, "month")} \xB7 ${quantity(counters.streak_counter_year?.count ?? 0, "year")}`
-    ].join("\n");
+    const lines = [`Go Click${local ? " \xB7 offline" : ""}`];
+    if (options.clicks)
+      lines.push(quantity(counters.click_count?.count ?? 0, local ? "local click" : "saved click"));
+    if (options.streaks) {
+      lines.push(
+        `UTC streaks: ${quantity(counters.streak_counter_day?.count ?? 0, "day")} \xB7 ${quantity(counters.streak_counter_month?.count ?? 0, "month")} \xB7 ${quantity(counters.streak_counter_year?.count ?? 0, "year")}`
+      );
+    }
+    if (options.siteLink && siteUrl) lines.push(`Play: ${siteUrl}`);
+    return lines.join("\n");
   }
   var statsShare = (() => {
     const button = required("#share-stats");
     const status = required("#share-status");
     const dialog = required("#share-dialog");
     const text = required("#share-text");
-    let generation = 0, busy = false;
+    const copyButton = required("#copy-share-text");
+    const options = {
+      siteLink: required("#include-share-link"),
+      clicks: required("#include-share-clicks"),
+      streaks: required("#include-share-streaks")
+    };
+    let generation = 0, feedbackTimer = 0, clearTimer = 0, busy = false, currentStats = null;
+    function announce(message2) {
+      window.clearTimeout(feedbackTimer);
+      window.clearTimeout(clearTimer);
+      status.textContent = message2;
+      status.setAttribute("data-visible", String(!!message2));
+      if (!message2) return;
+      feedbackTimer = window.setTimeout(() => {
+        status.setAttribute("data-visible", "false");
+        clearTimer = window.setTimeout(() => {
+          status.textContent = "";
+        }, 400);
+      }, 2200);
+    }
+    function selectedOptions() {
+      return {
+        siteLink: options.siteLink.checked,
+        clicks: options.clicks.checked,
+        streaks: options.streaks.checked
+      };
+    }
+    function updatePreview() {
+      if (currentStats)
+        text.value = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
+    }
+    async function copyCurrent(openDialog) {
+      if (busy || !currentStats) return;
+      busy = true;
+      const current = generation;
+      const summary = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
+      text.value = summary;
+      button.setAttribute("aria-busy", "true");
+      copyButton.setAttribute("aria-busy", "true");
+      announce("");
+      let clipboardWrite;
+      try {
+        clipboardWrite = navigator.clipboard.writeText(summary);
+      } catch {
+        clipboardWrite = Promise.reject(new Error("Clipboard unavailable"));
+      }
+      if (openDialog && !dialog.open) dialog.showModal();
+      try {
+        await clipboardWrite;
+        if (current === generation) announce("Stats copied.");
+      } catch {
+        if (current !== generation) return;
+        announce("Clipboard unavailable. Select and copy the preview text.");
+        text.focus();
+        text.select();
+      } finally {
+        if (current === generation) {
+          busy = false;
+          button.setAttribute("aria-busy", "false");
+          copyButton.setAttribute("aria-busy", "false");
+        }
+      }
+    }
     required("#close-share").addEventListener("click", () => dialog.close());
+    copyButton.addEventListener("click", () => void copyCurrent(false));
+    for (const option of Object.values(options)) option.addEventListener("change", updatePreview);
     return {
       reset() {
         generation++;
         busy = false;
+        currentStats = null;
+        window.clearTimeout(feedbackTimer);
+        window.clearTimeout(clearTimer);
         button.setAttribute("aria-busy", "false");
-        status.textContent = "";
+        copyButton.setAttribute("aria-busy", "false");
+        announce("");
         text.value = "";
         if (dialog.open) dialog.close();
       },
-      async copy(counters, local) {
-        if (busy) return;
-        busy = true;
-        const current = generation;
-        const summary = formatStats(counters, local);
-        button.setAttribute("aria-busy", "true");
-        status.textContent = "";
-        try {
-          await navigator.clipboard.writeText(summary);
-          if (current === generation) status.textContent = "Stats copied.";
-        } catch {
-          if (current !== generation) return;
-          text.value = summary;
-          status.textContent = "Select and copy your stats from the dialog.";
-          dialog.showModal();
-          text.focus();
-          text.select();
-        } finally {
-          if (current === generation) {
-            busy = false;
-            button.setAttribute("aria-busy", "false");
-          }
-        }
+      copy(counters, local) {
+        currentStats = { counters, local };
+        return copyCurrent(true);
       }
     };
   })();
@@ -1335,6 +1388,7 @@
   var retryGameButton = required("#retry-game-button");
   var retryBootButton = required("#retry-boot-button");
   var refreshCounterButton = required("#refresh-counter");
+  var motionShortcut = required("#motion-shortcut");
   var connection = required("#connection");
   var pendingIndicator = required("#pending-clicks");
   var currentView = "";
@@ -1342,7 +1396,12 @@
   var pingStateTimer = 0;
   var pendingIndicatorTimer = 0;
   var numberAnimations = /* @__PURE__ */ new WeakMap();
+  function updateMotionShortcut() {
+    motionShortcut.hidden = !motionPreference.matches;
+  }
+  updateMotionShortcut();
   motionPreference.addEventListener("change", () => {
+    updateMotionShortcut();
     if (!motionPreference.matches) return;
     viewAnimation?.cancel();
     for (const id of ["click-count", "day-streak", "month-streak", "year-streak"])
@@ -1912,6 +1971,12 @@
   required("#motion-setting").addEventListener("change", () => {
     const motion = required("#motion-setting").value;
     if (motion === "auto" || motion === "on" || motion === "off") saveOption({ motion });
+  });
+  motionShortcut.addEventListener("click", () => {
+    try {
+      gameSettings.update({ motion: "off" });
+    } catch {
+    }
   });
   required("#simulated-ping").addEventListener("change", () => {
     const simulatedPing = Number(required("#simulated-ping").value);

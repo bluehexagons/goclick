@@ -22,6 +22,7 @@ const counterCard = $("#counter-card");
 const retryGameButton = $<HTMLButtonElement>("#retry-game-button");
 const retryBootButton = $<HTMLButtonElement>("#retry-boot-button");
 const refreshCounterButton = $<HTMLButtonElement>("#refresh-counter");
+const motionShortcut = $<HTMLButtonElement>("#motion-shortcut");
 const connection = $("#connection");
 const pendingIndicator = $("#pending-clicks");
 type View = "loading" | "home" | "login" | "signup" | "game";
@@ -30,7 +31,12 @@ let viewAnimation: Animation | null = null;
 let pingStateTimer = 0,
   pendingIndicatorTimer = 0;
 const numberAnimations = new WeakMap<HTMLElement, Animation>();
+function updateMotionShortcut() {
+  motionShortcut.hidden = !motionPreference.matches;
+}
+updateMotionShortcut();
 motionPreference.addEventListener("change", () => {
+  updateMotionShortcut();
   if (!motionPreference.matches) return;
   viewAnimation?.cancel();
   for (const id of ["click-count", "day-streak", "month-streak", "year-streak"])
@@ -680,6 +686,13 @@ function saveOption(patch: Parameters<typeof gameSettings.update>[0]) {
 $<HTMLSelectElement>("#motion-setting").addEventListener("change", () => {
   const motion = $<HTMLSelectElement>("#motion-setting").value;
   if (motion === "auto" || motion === "on" || motion === "off") saveOption({ motion });
+});
+motionShortcut.addEventListener("click", () => {
+  try {
+    gameSettings.update({ motion: "off" });
+  } catch {
+    // The choice applies for this visit even if browser storage is unavailable.
+  }
 });
 $<HTMLSelectElement>("#simulated-ping").addEventListener("change", () => {
   const simulatedPing = Number($<HTMLSelectElement>("#simulated-ping").value);
