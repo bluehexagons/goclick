@@ -998,10 +998,14 @@ footer a {
 .counter-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: start;
+  align-items: center;
   justify-content: center;
   gap: 6px 16px;
   margin-top: 10px;
+}
+.counter-actions .connection {
+  min-height: 44px;
+  box-sizing: border-box;
 }
 .counter-action-button {
   display: inline-flex;
@@ -1257,11 +1261,23 @@ select {
   align-items: center;
   gap: 8px;
   margin: 0;
+  width: max-content;
+  min-height: 44px;
+  white-space: nowrap;
   color: var(--ink);
   font-size: 13px;
   cursor: pointer;
 }
-.share-options input {
+.share-options input[type="checkbox"] {
+  appearance: auto;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  padding: 0;
+  border-radius: 3px;
+  background: transparent;
   accent-color: var(--gold);
 }
 .share-data-note {
