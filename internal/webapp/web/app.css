@@ -797,7 +797,7 @@ footer a {
   align-items: center;
   justify-content: center;
   min-height: 30px;
-  padding: 4px 10px;
+  padding: 5px 10px 3px;
   border: 1px solid #ffc83d38;
   border-radius: 99px;
   background: #ffc83d08;
