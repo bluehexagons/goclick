@@ -795,13 +795,14 @@ footer a {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 30px;
   padding: 4px 10px;
   border: 1px solid #ffc83d38;
   border-radius: 99px;
   background: #ffc83d08;
   color: #d4bd87;
-  font: 10px var(--mono);
+  font: 10px/1 var(--mono);
   letter-spacing: 0.035em;
   text-decoration: none;
   transition:

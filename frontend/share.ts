@@ -121,6 +121,16 @@ export const statsShare = (() => {
   }
 
   $<HTMLButtonElement>("#close-share").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event) => {
+    if (event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    const outside =
+      event.clientX < bounds.left ||
+      event.clientX > bounds.right ||
+      event.clientY < bounds.top ||
+      event.clientY > bounds.bottom;
+    if (outside) dialog.close();
+  });
   copyButton.addEventListener("click", () => void copyCurrent(false));
   for (const option of Object.values(options)) option.addEventListener("change", updatePreview);
 
