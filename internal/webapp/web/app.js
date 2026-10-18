@@ -933,10 +933,7 @@
       if (reducedMotion.matches) return;
       const quick = press || releaseDuration === 70;
       current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
-      if (press) {
-        current.pop = -0.065;
-        velocity.pop = 0;
-      } else {
+      if (!press) {
         current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
         velocity.pop = quick ? 0.035 : 0.022;
       }

@@ -237,6 +237,10 @@ test("press-down compresses immediately before any animation frame or saved clic
   h.pointer("pointerdown", 1);
   assert.equal(h.rig.props.get("--press"), "1");
   assert.equal(h.rig.props.get("--button-pop"), "0.955");
+  const cloud = h.stage.children[0];
+  assert.equal(cloud.childElementCount, 8);
+  assert.ok(cloud.children.every((p) => p.animations[0].options.duration >= 520));
+  assert.ok(parseFloat(h.rig.props.get("--glow-intensity")) > 0.8);
   assert.equal(h.stage.classes.has("is-pressed"), true);
   assert.equal(h.clicks.length, 0);
 });
@@ -370,11 +374,13 @@ test("cancelled, reduced-motion, and simulated activations never impose a hold",
 test("quick taps kick harder and leave bounded sparks alive across presses", () => {
   const h = harness(false);
   h.pointer("pointerdown", 1);
+  const cloud = h.stage.children[0];
+  assert.equal(cloud.childElementCount, 8);
+  assert.ok(cloud.children.every((p) => p.animations[0].options.duration < 780));
   h.pointer("pointerup", 1);
   assert.ok(parseFloat(h.rig.props.get("--button-pop")) >= 1.06);
-  const cloud = h.stage.children[0];
-  assert.equal(cloud.childElementCount, 12);
-  assert.ok(cloud.children.every((p) => p.animations[0].options.duration >= 850));
+  assert.equal(cloud.childElementCount, 20);
+  assert.ok(cloud.children.slice(8).every((p) => p.animations[0].options.duration >= 850));
   const first = cloud.children[0];
   h.pointer("pointerdown", 2);
   h.pointer("pointerup", 2);
