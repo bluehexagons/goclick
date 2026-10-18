@@ -167,12 +167,15 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     pressedAt = performance.now();
     releasedAt = null;
     current.press = current.copper = 1;
-    target.pop = current.pop = reducedMotion.matches ? 0 : -0.045;
+    target.pop = reducedMotion.matches ? 0 : -0.045;
+    current.pop = target.pop;
     velocity.pop = 0;
-    current.flash = reducedMotion.matches ? 0 : 0.3;
+    current.flash = 0;
     setPhase("pressed");
-    paint();
-    animate();
+    if (reducedMotion.matches) {
+      paint();
+      animate();
+    } else burst(true);
     holdTimer = window.setTimeout(() => setPhase("held"), 180);
   }
   function aim(event: Pick<PointerEvent, "clientX" | "clientY">) {
@@ -261,17 +264,23 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       clientY: points.reduce((sum, point) => sum + point.y, 0) / points.length,
     });
   }
-  function burst() {
+  function burst(press = false) {
     if (reducedMotion.matches) return;
-    const quick = releaseDuration === 70;
-    current.flash = quick ? 0.85 : 0.55;
-    current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
-    velocity.pop = quick ? 0.035 : 0.022;
+    const quick = press || releaseDuration === 70;
+    current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
+    if (press) {
+      // Add a brief extra squeeze, then spring back to the held-down pose.
+      current.pop = -0.065;
+      velocity.pop = 0;
+    } else {
+      current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
+      velocity.pop = quick ? 0.035 : 0.022;
+    }
     paint();
     animate();
     // Small round sparks survive successive presses. Recolor the recent cloud
     // from the latest acknowledgement, without stretching a halo or an ellipse.
-    const count = quick ? 12 : 8;
+    const count = press ? 8 : quick ? 12 : 8;
     while (effects.childElementCount > 64 - count) effects.firstElementChild?.remove();
     const width = button.offsetWidth,
       height = button.offsetHeight;
@@ -284,7 +293,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       const ny = side === 0 ? -1 : side === 2 ? 1 : 0;
       const x = current.x + (nx ? (nx * width) / 2 : along * width);
       const y = current.y + (ny ? (ny * height) / 2 : along * height);
-      const drift = 22 + Math.random() * 28;
+      const drift = (press ? 12 : 22) + Math.random() * (press ? 18 : 28);
       effects.append(particle);
       particle
         .animate(
@@ -293,10 +302,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
             { opacity: 0.6, offset: 0.22 },
             {
               opacity: 0,
-              transform: `translate(${x + nx * drift + along * 15}px, ${y + ny * drift - 22}px) scale(.35)`,
+              transform: `translate(${x + nx * drift + along * 15}px, ${y + ny * drift - (press ? 12 : 22)}px) scale(.35)`,
             },
           ],
-          { duration: 850 + Math.random() * 650, easing: "cubic-bezier(.1,.5,.3,1)" },
+          {
+            duration: press ? 520 + Math.random() * 260 : 850 + Math.random() * 650,
+            easing: "cubic-bezier(.1,.5,.3,1)",
+          },
         )
         .finished.then(
           () => particle.remove(),
