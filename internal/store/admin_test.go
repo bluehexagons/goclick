@@ -273,6 +273,8 @@ func TestRestoreTransactionFailurePreservesLiveData(t *testing.T) {
 func TestRestoreRejectsUntrustedAndInvalidBackups(t *testing.T) {
 	for _, test := range []struct{ name, sql string }{
 		{"trigger", `CREATE TRIGGER uploaded AFTER INSERT ON users BEGIN DELETE FROM counters; END`},
+		{"system-prefix lookalike trigger", `CREATE TRIGGER sqlitex_hidden AFTER UPDATE ON counters BEGIN SELECT 1; END`},
+		{"uppercase system-prefix lookalike trigger", `CREATE TRIGGER SQLITEX_hidden AFTER UPDATE ON counters BEGIN SELECT 1; END`},
 		{"view", `CREATE VIEW uploaded AS SELECT * FROM users`},
 		{"extra table", `CREATE TABLE uploaded(value TEXT)`},
 		{"future schema", `PRAGMA user_version=999`},

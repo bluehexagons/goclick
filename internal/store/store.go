@@ -249,7 +249,7 @@ func validateExistingSchema(ctx context.Context, db *sql.DB, version int) error 
 	var objectCount int
 	if err := db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM sqlite_schema
-		WHERE name NOT LIKE 'sqlite_%'`).Scan(&objectCount); err != nil {
+		WHERE name NOT GLOB 'sqlite_*'`).Scan(&objectCount); err != nil {
 		return fmt.Errorf("inspect database schema: %w", err)
 	}
 	if objectCount == 0 {

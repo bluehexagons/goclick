@@ -226,7 +226,7 @@ func TestOpenRejectsForeignDatabaseWithoutModifyingSchema(t *testing.T) {
 	defer foreign.Close()
 	rows, err := foreign.Query(`
 		SELECT name FROM sqlite_schema
-		WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+		WHERE type = 'table' AND name NOT GLOB 'sqlite_*'
 		ORDER BY name`)
 	if err != nil {
 		t.Fatal(err)

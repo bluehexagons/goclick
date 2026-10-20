@@ -306,7 +306,7 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 }
 
 func schemaObjects(ctx context.Context, db *sql.DB) (map[string]string, error) {
-	rows, err := db.QueryContext(ctx, `SELECT name,type,sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name`)
+	rows, err := db.QueryContext(ctx, `SELECT name,type,sql FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*' ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -316,6 +316,11 @@ func schemaObjects(ctx context.Context, db *sql.DB) (map[string]string, error) {
 		var name, kind, statement string
 		if err := rows.Scan(&name, &kind, &statement); err != nil {
 			return nil, err
+		}
+		// Triggers have their own SQLite name namespace. Reject collisions
+		// before a later row can hide an extra object in this comparison map.
+		if _, exists := out[name]; exists {
+			return nil, fmt.Errorf("duplicate schema object name %q", name)
 		}
 		out[name] = kind + ":" + strings.Join(strings.Fields(statement), " ")
 	}
