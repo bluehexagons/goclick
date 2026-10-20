@@ -505,6 +505,9 @@ func validateRailsSchema(ctx context.Context, db railsQueryer) error {
 		"entities": {"id", "user_id", "kind", "count", "created_time", "modified_time", "created_at", "updated_at"},
 	}
 	for table, columns := range required {
+		if err := requireOrdinarySourceTable(ctx, db, table); err != nil {
+			return err
+		}
 		present := make(map[string]bool)
 		rows, err := db.QueryContext(ctx, `PRAGMA table_info(`+table+`)`)
 		if err != nil {
@@ -530,6 +533,36 @@ func validateRailsSchema(ctx context.Context, db railsQueryer) error {
 				return fmt.Errorf("source is not a Minimal Clicker database: missing %s.%s", table, column)
 			}
 		}
+	}
+	return nil
+}
+
+func requireOrdinarySourceTable(ctx context.Context, db railsQueryer, table string) error {
+	// Views and virtual tables can execute source-controlled SQL while their
+	// columns or rows are read. Check object types before either operation.
+	// Use the PRAGMA directly: source tables, including virtual tables, can
+	// impersonate its table-valued function even when called with parentheses.
+	rows, err := db.QueryContext(ctx, `PRAGMA main.table_list`)
+	if err != nil {
+		return fmt.Errorf("inspect rails %s object: %w", table, err)
+	}
+	defer rows.Close()
+	ordinary := false
+	for rows.Next() {
+		var schema, name, kind string
+		var columns, withoutRowID, strict int
+		if err := rows.Scan(&schema, &name, &kind, &columns, &withoutRowID, &strict); err != nil {
+			return fmt.Errorf("inspect rails %s object: %w", table, err)
+		}
+		if schema == "main" && name == table {
+			ordinary = kind == "table"
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("inspect rails %s object: %w", table, err)
+	}
+	if !ordinary {
+		return fmt.Errorf("source is not a Minimal Clicker database: %s must be an ordinary table", table)
 	}
 	return nil
 }

@@ -1832,7 +1832,8 @@
         method: "POST",
         body: JSON.stringify({
           username: form.get("username"),
-          password: form.get("password")
+          password: form.get("password"),
+          identifier_type: form.get("identifier_type") ?? "auto"
         })
       });
       if (generation !== clickGeneration || currentView !== "login") {

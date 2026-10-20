@@ -169,6 +169,16 @@
                   Rails SQLite imports keep existing passwords. Accounts imported from JSON need a
                   password set by the site operator.
                 </p>
+                <p>
+                  If your username matches another account’s email, choose which one you use to sign
+                  in.
+                </p>
+                <label for="login-identifier-type">Sign in with</label>
+                <select id="login-identifier-type" name="identifier_type">
+                  <option value="auto">Username or email</option>
+                  <option value="username">Username</option>
+                  <option value="email">Email</option>
+                </select>
               </details>
               <p class="form-switch">
                 New here? <button type="button" data-view="signup">Create an account</button>

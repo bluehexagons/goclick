@@ -15,6 +15,8 @@ cable databases.
 Back up both source and target databases before importing. The importer reads
 the Rails source through one consistent read-only snapshot and writes the Go
 target in one transaction.
+The source `users` and `entities` must be ordinary SQLite tables. Views and
+virtual tables are rejected before reading their data.
 
 ## Import
 

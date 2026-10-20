@@ -41,6 +41,10 @@ func prepareRestoreSource(ctx context.Context, path string, actor User, now time
 		if err != nil {
 			return "", "", "", noop, fmt.Errorf("%w: %v", ErrInvalidBackup, err)
 		}
+		if err := requireOrdinarySourceTable(ctx, db, "users"); err != nil {
+			db.Close()
+			return "", "", "", noop, fmt.Errorf("%w: %v", ErrInvalidBackup, err)
+		}
 		rows, err := db.QueryContext(ctx, `PRAGMA table_info(users)`)
 		if err != nil {
 			db.Close()

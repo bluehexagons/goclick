@@ -115,6 +115,12 @@ but authentication is cookie-based and old JWTs are not accepted. The Rails
 `/auth/refresh` and `/admin/*` endpoints are not compatibility aliases; Go Click
 has its own admin API described below.
 
+Login accepts an optional `identifier_type`: `auto` (the default), `username`,
+or `email`. Automatic lookup rejects identifiers shared by different accounts.
+For overlapping migrated usernames and emails, open **Migrated accounts** on
+the sign-in form and choose the identifier type. New registrations cannot
+create these overlaps; imports preserve existing source accounts.
+
 ## Security
 
 - Passwords use bcrypt cost 12 to match Rails production hashes; unknown-user

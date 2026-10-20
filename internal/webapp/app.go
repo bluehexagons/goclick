@@ -295,9 +295,10 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 }
 
 type loginPayload struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	Password       string `json:"password"`
+	IdentifierType string `json:"identifier_type"`
 }
 
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
@@ -314,6 +315,10 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	if identifier == "" {
 		identifier = strings.TrimSpace(payload.Email)
 	}
+	if payload.IdentifierType != "" && payload.IdentifierType != "auto" && payload.IdentifierType != "username" && payload.IdentifierType != "email" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Choose username or email as the sign-in method"})
+		return
+	}
 	if len(identifier) > 254 || len(payload.Password) > 1024 {
 		invalidCredentials(w)
 		return
@@ -327,11 +332,20 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer a.releasePasswordSlot()
-	user, err := a.store.UserByIdentifier(r.Context(), identifier)
+	var user store.User
+	var err error
+	switch payload.IdentifierType {
+	case "username":
+		user, err = a.store.UserByUsername(r.Context(), identifier)
+	case "email":
+		user, err = a.store.UserByEmail(r.Context(), identifier)
+	default:
+		user, err = a.store.UserByIdentifier(r.Context(), identifier)
+	}
 	hash := a.dummyHash
 	if err == nil {
 		hash = []byte(user.PasswordHash)
-	} else if !errors.Is(err, store.ErrNotFound) {
+	} else if !errors.Is(err, store.ErrNotFound) && !errors.Is(err, store.ErrAmbiguousIdentifier) {
 		a.internalError(w, r, "find login user", err)
 		return
 	}

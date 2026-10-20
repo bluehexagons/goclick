@@ -123,8 +123,8 @@ async function harness(options = {}) {
     Headers,
     AbortController,
     FormData: class {
-      get() {
-        return "password";
+      get(name) {
+        return options.form?.[name] ?? (name === "identifier_type" ? "auto" : "password");
       }
       entries() {
         return [];
@@ -488,6 +488,30 @@ test("switching back online detaches an old read without losing the new read's o
   assert.equal(h.element("#click-button").disabled, false);
   assert.equal(h.element("#refresh-counter").attributes.get("aria-busy"), "false");
 });
+
+for (const kind of ["username", "email"]) {
+  test(`login sends an explicit ${kind} choice for overlapping legacy identifiers`, async () => {
+    const h = await harness({
+      form: { username: "shared@example.com", password: "password123", identifier_type: kind },
+    });
+    h.context.show("login");
+    let submitted;
+    h.fetch((url, options) => {
+      if (url === "/api/auth/login") {
+        submitted = JSON.parse(options.body);
+        return Promise.resolve(response({ user: player }));
+      }
+      return Promise.resolve(response(counters(12)));
+    });
+    await h.element("#login-form").fire("submit");
+    assert.deepEqual(submitted, {
+      username: "shared@example.com",
+      password: "password123",
+      identifier_type: kind,
+    });
+    assert.equal(h.element("#nav-username").textContent, player.username);
+  });
+}
 
 for (const kind of ["login", "signup"]) {
   test(`${kind} focuses the enabled game button after authentication completes`, async () => {

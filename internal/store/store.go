@@ -16,9 +16,10 @@ import (
 )
 
 var (
-	ErrNotFound           = errors.New("not found")
-	ErrConflict           = errors.New("conflict")
-	ErrCredentialsChanged = errors.New("account changed during sign-in")
+	ErrNotFound            = errors.New("not found")
+	ErrConflict            = errors.New("conflict")
+	ErrAmbiguousIdentifier = errors.New("identifier matches multiple accounts")
+	ErrCredentialsChanged  = errors.New("account changed during sign-in")
 )
 
 type Store struct {
@@ -355,6 +356,15 @@ func (s *Store) CreateUser(ctx context.Context, username string, email *string, 
 		return User{}, err
 	}
 	defer tx.Rollback()
+	// Imported usernames and email addresses are preserved verbatim and may
+	// overlap. New registrations must not make another account's login ambiguous.
+	var overlap bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email=? OR username=?)`, username, email).Scan(&overlap); err != nil {
+		return User{}, err
+	}
+	if overlap {
+		return User{}, ErrConflict
+	}
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO users (username, email, password_hash, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?)`,
@@ -385,9 +395,33 @@ func (s *Store) CreateUser(ctx context.Context, username string, email *string, 
 }
 
 func (s *Store) UserByIdentifier(ctx context.Context, identifier string) (User, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, username, email, password_hash, admin, created_at, updated_at
+		FROM users WHERE username = ? OR email = ? LIMIT 2`, identifier, identifier)
+	if err != nil {
+		return User{}, err
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return User{}, err
+		}
+		return User{}, ErrNotFound
+	}
+	user, err := scanUser(rows)
+	if err != nil {
+		return User{}, err
+	}
+	if rows.Next() {
+		return User{}, ErrAmbiguousIdentifier
+	}
+	return user, rows.Err()
+}
+
+func (s *Store) UserByEmail(ctx context.Context, email string) (User, error) {
 	return scanUser(s.db.QueryRowContext(ctx, `
 		SELECT id, username, email, password_hash, admin, created_at, updated_at
-		FROM users WHERE username = ? OR email = ? LIMIT 1`, identifier, identifier))
+		FROM users WHERE email = ?`, email))
 }
 
 func (s *Store) UserByID(ctx context.Context, id int64) (User, error) {
