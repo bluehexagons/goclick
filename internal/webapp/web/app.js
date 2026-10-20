@@ -288,7 +288,50 @@
       return write(counters);
     }
     function change(operation) {
-      return navigator.locks ? navigator.locks.request(key, operation) : Promise.resolve().then(operation);
+      if (navigator.locks) return navigator.locks.request(key, operation);
+      if (typeof indexedDB === "undefined")
+        return Promise.reject(new Error("This browser cannot safely coordinate the local save."));
+      return new Promise((resolve, reject) => {
+        const opening = indexedDB.open("goclick-local-locks", 1);
+        let blocked = false;
+        opening.onupgradeneeded = () => opening.result.createObjectStore("locks");
+        opening.onerror = () => reject(opening.error);
+        opening.onblocked = () => {
+          blocked = true;
+          reject(new Error("Close other Go Click tabs, then try the local save again."));
+        };
+        opening.onsuccess = () => {
+          const database = opening.result;
+          if (blocked) {
+            database.close();
+            return;
+          }
+          let result;
+          let failure;
+          try {
+            const transaction = database.transaction("locks", "readwrite");
+            transaction.oncomplete = () => {
+              database.close();
+              resolve(result);
+            };
+            transaction.onabort = () => {
+              database.close();
+              reject(failure ?? transaction.error ?? new Error("Local save coordination failed."));
+            };
+            transaction.objectStore("locks").get(key).onsuccess = () => {
+              try {
+                result = operation();
+              } catch (error) {
+                failure = error;
+                transaction.abort();
+              }
+            };
+          } catch (error) {
+            database.close();
+            reject(error);
+          }
+        };
+      });
     }
     return { key, read, encode, decode, validate, change, increment, replace: write };
   })();
@@ -1432,6 +1475,7 @@
   var localAcknowledgement = 0;
   var clickBatchFailed = false;
   var signingOut = false;
+  var authenticating = false;
   var clickGeneration = 0;
   var counterLoad = null;
   var counterLoadOwner = null;
@@ -1578,7 +1622,7 @@
     updateGameControls();
   }
   function updateGameControls() {
-    clickButton.disabled = !gameReady || offline && !localMode || signingOut || localMode && localSaveReplacing || !localMode && pendingClicks >= maxPendingClicks;
+    clickButton.disabled = !gameReady || offline && !localMode || signingOut || authenticating && !localMode || localMode && localSaveReplacing || !localMode && pendingClicks >= maxPendingClicks;
     clickButton.setAttribute("aria-disabled", String(clickButton.disabled || coolingDown()));
     refreshCounterButton.disabled = offline && !localMode || signingOut || pendingClicks > 0 || localMode && localSaveReplacing;
     refreshCounterButton.setAttribute(
@@ -1595,7 +1639,7 @@
       button.hidden = localMode;
       button.disabled = pendingClicks > 0 || signingOut || localSaveReplacing;
     });
-    required("#leave-local").disabled = pendingClicks > 0 || localSaveReplacing;
+    required("#leave-local").disabled = pendingClicks > 0 || localSaveReplacing || authenticating;
     required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
     for (const id of ["#restart-local", "#import-local", "#download-local", "#replace-local"])
       required(id).disabled = localSaveReplacing;
@@ -1749,6 +1793,7 @@
   }
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (authenticating) return;
       const view = button.dataset.view;
       if (view === "home" && user) openGame();
       else if (view === "home" || view === "login" || view === "signup") show(view);
@@ -1764,11 +1809,23 @@
       input.focus();
     });
   });
+  function setAuthenticating(active, form) {
+    authenticating = active;
+    setSubmitting(form, active);
+    for (const other of [loginForm, signupForm])
+      required("button[type=submit]", other).disabled = active;
+    document.querySelectorAll("[data-view]").forEach((button) => {
+      button.disabled = active;
+    });
+    updateGameControls();
+  }
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (authenticating || signingOut) return;
     showError("#login-error", "");
-    setSubmitting(loginForm, true);
+    setAuthenticating(true, loginForm);
     const generation = clickGeneration;
+    let signedIn = false;
     try {
       const form = new FormData(loginForm);
       const result = await api("/api/auth/login", {
@@ -1778,20 +1835,26 @@
           password: form.get("password")
         })
       });
-      if (generation !== clickGeneration || currentView !== "login") return;
+      if (generation !== clickGeneration || currentView !== "login") {
+        if (!localMode) await boot();
+        return;
+      }
       loginForm.reset();
       setUser(result.user);
+      signedIn = true;
       await openGame();
     } catch (caught) {
       const error = requestError(caught);
       if (generation === clickGeneration && currentView === "login")
         showError("#login-error", error.message, true);
     } finally {
-      setSubmitting(loginForm, false);
+      setAuthenticating(false, loginForm);
+      if (signedIn && !localMode && currentView === "game" && gameReady) clickButton.focus();
     }
   });
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (authenticating || signingOut) return;
     showError("#signup-error", "");
     const form = new FormData(signupForm);
     if (form.get("password") !== form.get("password_confirmation")) {
@@ -1799,27 +1862,34 @@
       required("#signup-password-confirmation").focus();
       return;
     }
-    setSubmitting(signupForm, true);
+    setAuthenticating(true, signupForm);
     const generation = clickGeneration;
+    let signedIn = false;
     try {
       const result = await api("/api/auth/signup", {
         method: "POST",
         body: JSON.stringify(Object.fromEntries(form.entries()))
       });
-      if (generation !== clickGeneration || currentView !== "signup") return;
+      if (generation !== clickGeneration || currentView !== "signup") {
+        if (!localMode) await boot();
+        return;
+      }
       signupForm.reset();
       setUser(result.user);
+      signedIn = true;
       await openGame();
     } catch (caught) {
       const error = requestError(caught);
       if (generation === clickGeneration && currentView === "signup")
         showError("#signup-error", error.message, true);
     } finally {
-      setSubmitting(signupForm, false);
+      setAuthenticating(false, signupForm);
+      if (signedIn && !localMode && currentView === "game" && gameReady) clickButton.focus();
     }
   });
   var logoutButton = required("#logout-button");
   logoutButton.addEventListener("click", async () => {
+    if (authenticating || signingOut) return;
     showError("#game-error", "");
     signingOut = true;
     gameReady = false;
@@ -1844,7 +1914,7 @@
       await clickLocal(event);
       return;
     }
-    if (!gameReady || offline && !localMode || signingOut || !localMode && pendingClicks >= maxPendingClicks)
+    if (!gameReady || offline && !localMode || signingOut || authenticating || !localMode && pendingClicks >= maxPendingClicks)
       return;
     if (coolingDown()) {
       tactileButtons.get(clickButton)?.respond("limited");
@@ -2039,22 +2109,26 @@
     }
   }
   document.querySelectorAll("[data-play-local]").forEach((button) => button.addEventListener("click", startLocalGame));
-  required("#leave-local").addEventListener("click", () => {
-    if (pendingClicks > 0 || localSaveReplacing) return;
+  required("#leave-local").addEventListener("click", async () => {
+    if (pendingClicks > 0 || localSaveReplacing || authenticating) return;
+    let remembered = true;
     try {
       gameSettings.setMode("online");
     } catch {
-      showError(
-        "#game-error",
-        "Browser storage is unavailable. Couldn\u2019t remember the mode change.",
-        true
-      );
-      return;
+      remembered = false;
     }
     localMode = false;
     gameReady = false;
     resetClickState();
-    boot();
+    await boot();
+    if (!remembered) {
+      updateOptions();
+      optionsNotice(
+        "Back online for this visit. Browser storage is unavailable, so this mode change could not be remembered.",
+        true
+      );
+      optionsDialog.showModal();
+    }
   });
   async function clickLocal(event) {
     if (!gameReady || localSaveReplacing) return;
@@ -2107,7 +2181,8 @@
     updateGameControls();
     optionsNotice("Replacing the local save\u2026");
     try {
-      await localGame.change(operation);
+      const data = await operation();
+      await localGame.change(() => localGame.replace(data));
       if (localMode) {
         resetClickState();
         openLocalGame();
@@ -2125,13 +2200,13 @@
   }
   required("#restart-local").addEventListener(
     "click",
-    () => replaceLocalSave(() => localGame.replace({}), "Local save restarted.")
+    () => replaceLocalSave(() => ({}), "Local save restarted.")
   );
   required("#copy-online-local").addEventListener("click", () => {
     if (!lastOnlineCounters) return;
     const snapshot = lastOnlineCounters;
     replaceLocalSave(
-      () => localGame.replace(snapshot),
+      () => snapshot,
       "Account progress copied to the local save. Account progress is unchanged."
     );
   });
@@ -2145,10 +2220,7 @@
       return;
     }
     try {
-      await replaceLocalSave(
-        async () => localGame.replace(localGame.decode(await file.text())),
-        "Local save imported."
-      );
+      await replaceLocalSave(async () => localGame.decode(await file.text()), "Local save imported.");
     } catch (caught) {
       const error = requestError(caught);
       optionsNotice(`Couldn\u2019t import this local save. ${error.message}`, true);

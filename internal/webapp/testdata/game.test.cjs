@@ -132,7 +132,11 @@ async function harness(options = {}) {
     },
     document,
     window,
-    navigator: { onLine: true, locks: options.locks, clipboard: options.clipboard },
+    navigator: {
+      onLine: true,
+      locks: options.locks ?? { request: (_, operation) => Promise.resolve().then(operation) },
+      clipboard: options.clipboard,
+    },
     performance: { now: () => now },
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
@@ -486,6 +490,40 @@ test("switching back online detaches an old read without losing the new read's o
 });
 
 for (const kind of ["login", "signup"]) {
+  test(`${kind} focuses the enabled game button after authentication completes`, async () => {
+    const h = await harness();
+    h.context.show(kind);
+    h.fetch((url) =>
+      Promise.resolve(response(url.startsWith("/api/auth/") ? { user: player } : counters(12))),
+    );
+    await h.element(`#${kind}-form`).fire("submit");
+    assert.equal(h.element("#click-button").disabled, false);
+    assert.equal(h.document.activeElement, h.element("#click-button"));
+  });
+
+  test(`${kind} serializes both authentication forms until its session cookie settles`, async () => {
+    const h = await harness();
+    const auth = deferred();
+    h.context.show(kind);
+    h.fetch((url) =>
+      url.startsWith("/api/auth/")
+        ? auth.promise
+        : Promise.resolve(response(url === "/api/me" ? player : counters(12))),
+    );
+    const signingIn = h.element(`#${kind}-form`).fire("submit");
+    const other = kind === "login" ? "signup" : "login";
+    h.context.show(other);
+    assert.equal(h.element(`#${other}-form`).querySelector().disabled, true);
+    await h.element(`#${other}-form`).fire("submit");
+    await h.element(`#${kind}-form`).fire("submit");
+    assert.equal(h.requests.length, 1);
+    auth.resolve(response({ user: player }));
+    await signingIn;
+    assert.equal(h.element("#nav-username").textContent, player.username);
+    assert.equal(h.element("#click-count").textContent, "12");
+    assert.equal(h.element(`#${other}-form`).querySelector().disabled, false);
+  });
+
   test(`late ${kind} success cannot reset a local game or request account counters`, async () => {
     const h = await harness();
     const auth = deferred();
@@ -493,6 +531,8 @@ for (const kind of ["login", "signup"]) {
     h.fetch(() => auth.promise);
     const signingIn = h.element(`#${kind}-form`).fire("submit");
     h.context.startLocalGame();
+    assert.equal(h.element("#leave-local").disabled, true);
+    await h.element("#leave-local").fire("click");
     await h.element("#click-button").fire("click");
     auth.resolve(response({ user: { ...player, id: 2 } }));
     await signingIn;
@@ -500,8 +540,21 @@ for (const kind of ["login", "signup"]) {
     assert.equal(h.element("#local-nav").hidden, false);
     assert.equal(h.feedback.length, 1);
     assert.equal(h.requests.length, 1);
+    assert.equal(h.element("#leave-local").disabled, false);
   });
 }
+
+test("leaving local play still checks the account when the mode cannot be persisted", async () => {
+  const h = await harness({ storage: [["goclick.mode", "local"]] });
+  h.failStorage();
+  await h.element("#leave-local").fire("click");
+  assert.equal(h.element("#local-nav").hidden, true);
+  assert.equal(h.element("#nav-username").textContent, player.username);
+  assert.equal(h.element("#click-count").textContent, "10");
+  assert.equal(h.element("#options-dialog").open, true);
+  assert.match(h.element("#options-status").textContent, /Back online for this visit/);
+  assert.equal(h.storage.get("goclick.mode"), "local");
+});
 
 test("a queued local replacement pauses play, mode changes, and duplicate replacements", async () => {
   const gate = deferred();

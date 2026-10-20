@@ -3,7 +3,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
 
-function harness() {
+function harness(options = {}) {
   const storage = new Map();
   let tail = Promise.resolve();
   const runtime = frontend({
@@ -11,15 +11,17 @@ function harness() {
       getItem: (key) => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),
     },
-    navigator: {
-      locks: {
-        request: (_, callback) => {
-          const next = tail.then(callback);
-          tail = next.catch(() => {});
-          return next;
+    navigator: options.withoutLocks
+      ? {}
+      : {
+          locks: {
+            request: (_, callback) => {
+              const next = tail.then(callback);
+              tail = next.catch(() => {});
+              return next;
+            },
+          },
         },
-      },
-    },
   });
   return { game: runtime.load("local-game").localGame, storage };
 }
@@ -75,5 +77,16 @@ test("counter overflow is rejected before changing the local save", () => {
   game.replace({ click_count: { count: Number.MAX_SAFE_INTEGER } });
   const saved = storage.get(game.key);
   assert.throws(() => game.increment());
+  assert.equal(storage.get(game.key), saved);
+});
+
+test("missing cross-tab coordination refuses a local write without changing the slot", async () => {
+  const { game, storage } = harness({ withoutLocks: true });
+  game.replace({ click_count: { count: 12 } });
+  const saved = storage.get(game.key);
+  await assert.rejects(
+    game.change(() => game.increment()),
+    /safely coordinate/,
+  );
   assert.equal(storage.get(game.key), saved);
 });

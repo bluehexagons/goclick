@@ -53,6 +53,7 @@ let localRefreshQueued = false;
 let localAcknowledgement = 0;
 let clickBatchFailed = false;
 let signingOut = false;
+let authenticating = false;
 let clickGeneration = 0;
 let counterLoad: Promise<void> | null = null;
 let counterLoadOwner: object | null = null;
@@ -227,6 +228,7 @@ function updateGameControls() {
     !gameReady ||
     (offline && !localMode) ||
     signingOut ||
+    (authenticating && !localMode) ||
     (localMode && localSaveReplacing) ||
     (!localMode && pendingClicks >= maxPendingClicks);
   // Keep the physical button responsive while a server cooldown is active;
@@ -251,7 +253,8 @@ function updateGameControls() {
     button.hidden = localMode;
     button.disabled = pendingClicks > 0 || signingOut || localSaveReplacing;
   });
-  $<HTMLButtonElement>("#leave-local").disabled = pendingClicks > 0 || localSaveReplacing;
+  $<HTMLButtonElement>("#leave-local").disabled =
+    pendingClicks > 0 || localSaveReplacing || authenticating;
   $<HTMLButtonElement>("#copy-online-local").disabled =
     !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
   for (const id of ["#restart-local", "#import-local", "#download-local", "#replace-local"])
@@ -430,6 +433,7 @@ function handleExpiredSession() {
 
 document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
+    if (authenticating) return;
     const view = button.dataset.view;
     if (view === "home" && user) openGame();
     else if (view === "home" || view === "login" || view === "signup") show(view);
@@ -447,11 +451,24 @@ document.querySelectorAll<HTMLButtonElement>("[data-toggle-password]").forEach((
   });
 });
 
+function setAuthenticating(active: boolean, form: HTMLFormElement) {
+  authenticating = active;
+  setSubmitting(form, active);
+  for (const other of [loginForm, signupForm])
+    $<HTMLButtonElement>("button[type=submit]", other).disabled = active;
+  document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => {
+    button.disabled = active;
+  });
+  updateGameControls();
+}
+
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (authenticating || signingOut) return;
   showError("#login-error", "");
-  setSubmitting(loginForm, true);
+  setAuthenticating(true, loginForm);
   const generation = clickGeneration;
+  let signedIn = false;
   try {
     const form = new FormData(loginForm);
     const result = await api<{ user: User }>("/api/auth/login", {
@@ -461,21 +478,27 @@ loginForm.addEventListener("submit", async (event) => {
         password: form.get("password"),
       }),
     });
-    if (generation !== clickGeneration || currentView !== "login") return;
+    if (generation !== clickGeneration || currentView !== "login") {
+      if (!localMode) await boot();
+      return;
+    }
     loginForm.reset();
     setUser(result.user);
+    signedIn = true;
     await openGame();
   } catch (caught) {
     const error = requestError(caught);
     if (generation === clickGeneration && currentView === "login")
       showError("#login-error", error.message, true);
   } finally {
-    setSubmitting(loginForm, false);
+    setAuthenticating(false, loginForm);
+    if (signedIn && !localMode && currentView === "game" && gameReady) clickButton.focus();
   }
 });
 
 signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (authenticating || signingOut) return;
   showError("#signup-error", "");
   const form = new FormData(signupForm);
   if (form.get("password") !== form.get("password_confirmation")) {
@@ -483,28 +506,35 @@ signupForm.addEventListener("submit", async (event) => {
     $<HTMLInputElement>("#signup-password-confirmation").focus();
     return;
   }
-  setSubmitting(signupForm, true);
+  setAuthenticating(true, signupForm);
   const generation = clickGeneration;
+  let signedIn = false;
   try {
     const result = await api<{ user: User }>("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify(Object.fromEntries(form.entries())),
     });
-    if (generation !== clickGeneration || currentView !== "signup") return;
+    if (generation !== clickGeneration || currentView !== "signup") {
+      if (!localMode) await boot();
+      return;
+    }
     signupForm.reset();
     setUser(result.user);
+    signedIn = true;
     await openGame();
   } catch (caught) {
     const error = requestError(caught);
     if (generation === clickGeneration && currentView === "signup")
       showError("#signup-error", error.message, true);
   } finally {
-    setSubmitting(signupForm, false);
+    setAuthenticating(false, signupForm);
+    if (signedIn && !localMode && currentView === "game" && gameReady) clickButton.focus();
   }
 });
 
 const logoutButton = $<HTMLButtonElement>("#logout-button");
 logoutButton.addEventListener("click", async () => {
+  if (authenticating || signingOut) return;
   showError("#game-error", "");
   signingOut = true;
   gameReady = false;
@@ -534,6 +564,7 @@ clickButton.addEventListener("click", async (event) => {
     !gameReady ||
     (offline && !localMode) ||
     signingOut ||
+    authenticating ||
     (!localMode && pendingClicks >= maxPendingClicks)
   )
     return;
@@ -743,22 +774,26 @@ function startLocalGame() {
 document
   .querySelectorAll<HTMLButtonElement>("[data-play-local]")
   .forEach((button) => button.addEventListener("click", startLocalGame));
-$<HTMLButtonElement>("#leave-local").addEventListener("click", () => {
-  if (pendingClicks > 0 || localSaveReplacing) return;
+$<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
+  if (pendingClicks > 0 || localSaveReplacing || authenticating) return;
+  let remembered = true;
   try {
     gameSettings.setMode("online");
   } catch {
-    showError(
-      "#game-error",
-      "Browser storage is unavailable. Couldn’t remember the mode change.",
-      true,
-    );
-    return;
+    remembered = false;
   }
   localMode = false;
   gameReady = false;
   resetClickState();
-  boot();
+  await boot();
+  if (!remembered) {
+    updateOptions();
+    optionsNotice(
+      "Back online for this visit. Browser storage is unavailable, so this mode change could not be remembered.",
+      true,
+    );
+    optionsDialog.showModal();
+  }
 });
 async function clickLocal(event: Activation) {
   if (!gameReady || localSaveReplacing) return;
@@ -814,7 +849,8 @@ async function replaceLocalSave(operation: () => Counters | Promise<Counters>, m
   updateGameControls();
   optionsNotice("Replacing the local save…");
   try {
-    await localGame.change(operation);
+    const data = await operation();
+    await localGame.change(() => localGame.replace(data));
     if (localMode) {
       resetClickState();
       openLocalGame();
@@ -831,13 +867,13 @@ async function replaceLocalSave(operation: () => Counters | Promise<Counters>, m
   }
 }
 $<HTMLButtonElement>("#restart-local").addEventListener("click", () =>
-  replaceLocalSave(() => localGame.replace({}), "Local save restarted."),
+  replaceLocalSave(() => ({}), "Local save restarted."),
 );
 $<HTMLButtonElement>("#copy-online-local").addEventListener("click", () => {
   if (!lastOnlineCounters) return;
   const snapshot = lastOnlineCounters;
   replaceLocalSave(
-    () => localGame.replace(snapshot),
+    () => snapshot,
     "Account progress copied to the local save. Account progress is unchanged.",
   );
 });
@@ -851,10 +887,7 @@ $<HTMLInputElement>("#import-local").addEventListener("change", async (event) =>
     return;
   }
   try {
-    await replaceLocalSave(
-      async () => localGame.replace(localGame.decode(await file.text())),
-      "Local save imported.",
-    );
+    await replaceLocalSave(async () => localGame.decode(await file.text()), "Local save imported.");
   } catch (caught) {
     const error = requestError(caught);
     optionsNotice(`Couldn’t import this local save. ${error.message}`, true);

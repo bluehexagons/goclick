@@ -33,13 +33,15 @@ with the last loaded account counters. Local clicks never upload or change
 account progress. A replacement requires checking the confirmation box; invalid
 imports and failed browser writes preserve the existing save. Writes use Web
 Locks where available to serialize tabs, and tabs observe local save changes.
-The chosen mode survives reloads, so a local-mode startup skips session checks.
+Without Web Locks, IndexedDB transactions coordinate local writes between tabs;
+if neither is available, writes fail without changing the save. The chosen mode
+survives reloads, so a local-mode startup skips session checks.
 The page must be loaded to play; this does not install a service worker. Keep a
 downloaded save before clearing browser data or moving to another device.
 
 ## Run it
 
-Go 1.27.2 or newer is required.
+Go 1.27.3 or newer is required.
 
 ```bash
 go run ./cmd/server

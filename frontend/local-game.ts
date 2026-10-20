@@ -81,12 +81,53 @@ const localGame = (() => {
     }
     return write(counters);
   }
-  // Serialize writes between tabs when Web Locks is available. Every operation
-  // rereads the shared slot inside the lock, including import/copy/restart.
-  function change<T>(operation: () => T | Promise<T>): Promise<T> {
-    return navigator.locks
-      ? navigator.locks.request(key, operation)
-      : Promise.resolve().then(operation);
+  // Operations are synchronous so an IndexedDB read/write transaction can
+  // provide the same cross-tab exclusion on browsers without Web Locks.
+  function change<T>(operation: () => T): Promise<T> {
+    if (navigator.locks) return navigator.locks.request(key, operation);
+    if (typeof indexedDB === "undefined")
+      return Promise.reject(new Error("This browser cannot safely coordinate the local save."));
+    return new Promise((resolve, reject) => {
+      const opening = indexedDB.open("goclick-local-locks", 1);
+      let blocked = false;
+      opening.onupgradeneeded = () => opening.result.createObjectStore("locks");
+      opening.onerror = () => reject(opening.error);
+      opening.onblocked = () => {
+        blocked = true;
+        reject(new Error("Close other Go Click tabs, then try the local save again."));
+      };
+      opening.onsuccess = () => {
+        const database = opening.result;
+        if (blocked) {
+          database.close();
+          return;
+        }
+        let result: T;
+        let failure: unknown;
+        try {
+          const transaction = database.transaction("locks", "readwrite");
+          transaction.oncomplete = () => {
+            database.close();
+            resolve(result);
+          };
+          transaction.onabort = () => {
+            database.close();
+            reject(failure ?? transaction.error ?? new Error("Local save coordination failed."));
+          };
+          transaction.objectStore("locks").get(key).onsuccess = () => {
+            try {
+              result = operation();
+            } catch (error) {
+              failure = error;
+              transaction.abort();
+            }
+          };
+        } catch (error) {
+          database.close();
+          reject(error);
+        }
+      };
+    });
   }
   return { key, read, encode, decode, validate, change, increment, replace: write };
 })();
