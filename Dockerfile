@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.27.2-alpine AS build
+FROM golang:1.27.3-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -7,7 +7,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /goclick ./cmd/server
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /goclick-admin ./cmd/admin
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 WORKDIR /app
 COPY --from=build /goclick /app/goclick
 COPY --from=build /goclick-admin /app/goclick-admin
