@@ -262,6 +262,10 @@ unit regressions without requiring browser packages.
 The companion `interaction.browser.cjs` exports `checkInteraction(page, baseURL)`
 for selection, native drag prevention, gameplay dragging, and clipboard/manual
 sharing. It writes only its own test stats and never reads the clipboard.
+`local-save.browser.cjs` exports `checkLocalSave(page, baseURL, options)` to
+verify concurrent clicks, save replacement, and reloads across two tabs in a
+fresh isolated context. Run it once with the default Web Locks path and once
+with `{ withoutWebLocks: true }` for the IndexedDB fallback.
 
 The button material uses two editable Inkscape SVGs:
 [`button-material.svg`](internal/webapp/web/button-material.svg) covers the whole

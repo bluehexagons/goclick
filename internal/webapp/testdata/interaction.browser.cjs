@@ -8,6 +8,7 @@ module.exports = async function checkInteraction(page, baseURL) {
   };
   const selection = () => page.evaluate(() => window.getSelection().toString());
   await page.goto(baseURL);
+  const origin = await page.evaluate(() => location.origin);
   await page.locator("#home-view").waitFor({ state: "visible" });
   const title = await page.locator(".home h1").boundingBox();
   await page.mouse.move(title.x + 5, title.y + 15);
@@ -54,7 +55,7 @@ module.exports = async function checkInteraction(page, baseURL) {
   const copied = await page.evaluate(() => window.copiedStats);
   ensure(
     copied ===
-      `Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year\nPlay: ${new URL(baseURL).origin}`,
+      `Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year\nPlay: ${origin}`,
     "Share must copy the displayed local stats",
   );
   await page.locator("#close-share").click();
@@ -108,6 +109,7 @@ module.exports = async function checkInteraction(page, baseURL) {
   );
   return {
     browser: await page.evaluate(() => navigator.userAgent),
+    origin,
     noAccidentalSelection: true,
     nativeDragsBlocked: true,
     gameplayDrag: true,
