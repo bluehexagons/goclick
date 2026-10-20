@@ -21,6 +21,16 @@ session and database security properties intact.
 
 ## Verification
 
-Run `go test -race ./...`, `go vet ./...`, and `test -z "$(gofmt -l .)"` before
-committing Go changes. Keep migration fixtures representative of the Rails
-schema, including custom entity kinds and nullable entity fields.
+Use the canonical commands in [README.md](README.md#test). Run
+`go test -race ./...`, `go vet ./...`, and `test -z "$(gofmt -l .)"` before
+committing Go changes. Frontend changes require `npm run build` and `npm run check` with the
+locked tools under Node 24 (`.nvmrc`); commit the regenerated embedded bundles
+with their TypeScript source. Rebuild before Go tests or restarting the server.
+Keep migration fixtures representative of the Rails schema, including custom
+entity kinds and nullable entity fields.
+
+Basaltwater on Debian is the reference development environment; ordinary Go,
+Node and npm work without it. Follow its shared `basaltwater-project-development`
+skill when available. Preserve `data/`, `backups/` and database sidecars during
+development or cleanup; use disposable databases for tests. Generated embedded
+JavaScript is tracked release content, not disposable build output.

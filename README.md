@@ -232,6 +232,14 @@ npm run check       # types, oxlint, oxfmt, bundle freshness, and regression tes
 npm run fmt         # format TypeScript, tests, HTML, CSS, and tool configuration
 ```
 
+Basaltwater on Debian is the reference development environment, following the
+[shared project standards](https://github.com/bluehexagons/basaltwater/blob/main/docs/agents/project-standards.md).
+The commands above also work with ordinary Go, Node and npm. Use `nvm use` to
+select `.nvmrc`, or `basaltw node exec -- npm run check` on Basaltwater to select
+it without changing the host's default Node version. Install dependencies in
+each checkout with `npm ci`. A Go-only build uses the committed frontend bundles
+and does not need Node or Basaltwater.
+
 TypeScript checks nulls, indexed access, DOM bindings, and API response contracts;
 oxlint rejects correctness issues and explicit `any`. Esbuild bundles the game
 and admin entry points separately. The two generated JavaScript files are
