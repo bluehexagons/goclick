@@ -606,6 +606,11 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		if err != nil {
 			return Counters{}, fmt.Errorf("parse previous click: %w", err)
 		}
+		// Concurrent requests can reach the transaction in a different order
+		// from their receipt timestamps. Never move a saved period backward.
+		if now.Before(previous) {
+			now = previous
+		}
 		counters.DayStreak = updateStreak(counters.DayStreak, dateKey(previous), dateKey(now), dateKey(now.AddDate(0, 0, -1)))
 		counters.MonthStreak = updateStreak(counters.MonthStreak, monthKey(previous), monthKey(now), previousMonthKey(now))
 		counters.YearStreak = updateStreak(counters.YearStreak, yearKey(previous), yearKey(now), yearKey(now.AddDate(-1, 0, 0)))

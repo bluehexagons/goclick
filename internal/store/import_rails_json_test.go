@@ -124,6 +124,23 @@ func TestRailsJSONRejectsIncompleteInvalidAndConflictingImports(t *testing.T) {
 		}},
 		{"bad timestamp", func(e map[string]any) { e["users"].([]any)[1].(map[string]any)["created_at"] = "invalid" }},
 		{"credentials in JSON", func(e map[string]any) { e["users"].([]any)[1].(map[string]any)["password_digest"] = "secret" }},
+		{"uppercase collection", func(e map[string]any) { e["Users"] = e["users"]; delete(e, "users") }},
+		{"uppercase entities", func(e map[string]any) {
+			u := e["users"].([]any)[0].(map[string]any)
+			u["Entities"] = u["entities"]
+			delete(u, "entities")
+		}},
+		{"Unicode entity alias", func(e map[string]any) {
+			u := e["users"].([]any)[0].(map[string]any)
+			u["entitie\u017f"] = u["entities"]
+			delete(u, "entities")
+		}},
+		{"uppercase entity ID", func(e map[string]any) {
+			entity := e["users"].([]any)[0].(map[string]any)["entities"].([]any)[0].(map[string]any)
+			entity["ID"] = entity["id"]
+			delete(entity, "id")
+		}},
+		{"case alias collision", func(e map[string]any) { e["users"].([]any)[0].(map[string]any)["ID"] = 999 }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			db, err := Open(":memory:")

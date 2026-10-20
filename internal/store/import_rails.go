@@ -25,6 +25,22 @@ type ImportResult struct {
 type ImportAudit struct {
 	Actor User
 	Now   time.Time
+	// HTTP recovery must still be authorized when the import transaction starts.
+	RequireCurrentActor bool
+}
+
+func verifyRecoveryActor(ctx context.Context, tx *sql.Tx, actor User) error {
+	current, err := scanUser(tx.QueryRowContext(ctx, `SELECT id,username,email,password_hash,admin,created_at,updated_at FROM users WHERE id=?`, actor.ID))
+	if errors.Is(err, ErrNotFound) {
+		return ErrCredentialsChanged
+	}
+	if err != nil {
+		return err
+	}
+	if !actor.Admin || !current.Admin || current.PasswordHash != actor.PasswordHash || !current.UpdatedAt.Equal(actor.UpdatedAt) {
+		return ErrCredentialsChanged
+	}
+	return nil
 }
 
 func recordImportAudit(ctx context.Context, tx *sql.Tx, format string, result ImportResult, audit []ImportAudit) error {
@@ -131,6 +147,11 @@ func (s *Store) ImportRails(ctx context.Context, sourcePath string, audit ...Imp
 		return ImportResult{}, fmt.Errorf("begin import: %w", err)
 	}
 	defer tx.Rollback()
+	if len(audit) > 0 && audit[0].RequireCurrentActor {
+		if err := verifyRecoveryActor(ctx, tx, audit[0].Actor); err != nil {
+			return ImportResult{}, err
+		}
+	}
 
 	userIDs, result, err := importRailsUsers(ctx, sourceTx, tx)
 	if err != nil {

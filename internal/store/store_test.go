@@ -51,6 +51,32 @@ func TestIncrementUpdatesStreaks(t *testing.T) {
 	assertCounters(t, counters, 5, 1, 1, 2)
 }
 
+func TestOutOfOrderClicksKeepLatestPeriod(t *testing.T) {
+	db := openTestStore(t)
+	user := createTestUser(t, db, "late-click")
+	ctx := context.Background()
+	before := time.Date(2026, 12, 31, 23, 59, 59, 0, time.UTC)
+	after := before.Add(time.Second)
+	for _, when := range []time.Time{before, after, before, after.Add(-time.Hour)} {
+		if _, err := db.Increment(ctx, user.ID, when); err != nil {
+			t.Fatal(err)
+		}
+	}
+	counters, err := db.CurrentCounters(ctx, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertCounters(t, counters, 4, 2, 2, 2)
+	if counters.LastClickedAt == nil || !counters.LastClickedAt.Equal(after) {
+		t.Fatalf("last click moved backward: %v", counters.LastClickedAt)
+	}
+	counters, err = db.Increment(ctx, user.ID, after.AddDate(0, 0, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertCounters(t, counters, 5, 3, 2, 2)
+}
+
 func TestMonthlyStreakUsesMonthBoundary(t *testing.T) {
 	database := openTestStore(t)
 	user := createTestUser(t, database, "month-edge")

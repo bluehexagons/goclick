@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -73,6 +74,11 @@ func uniqueJSONKeys(decoder *json.Decoder, depth int) error {
 			name, ok := key.(string)
 			if !ok || seen[name] {
 				return errors.New("duplicate or invalid JSON object key")
+			}
+			// encoding/json matches struct fields without regard to case, while
+			// SQLite archive JSON paths use the exact Rails field names.
+			if name != strings.ToLower(name) || strings.IndexFunc(name, func(r rune) bool { return r > 127 }) >= 0 {
+				return fmt.Errorf("JSON field %q must use its lowercase Rails spelling", name)
 			}
 			seen[name] = true
 		}
@@ -186,6 +192,11 @@ func (s *Store) ImportRailsJSON(ctx context.Context, path string, audit ...Impor
 		return ImportResult{}, err
 	}
 	defer tx.Rollback()
+	if len(audit) > 0 && audit[0].RequireCurrentActor {
+		if err := verifyRecoveryActor(ctx, tx, audit[0].Actor); err != nil {
+			return ImportResult{}, err
+		}
+	}
 	archivedIDs, err := archiveIdentities(ctx, tx)
 	if err != nil {
 		return ImportResult{}, err

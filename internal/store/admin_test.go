@@ -26,6 +26,54 @@ func adminFixture(t *testing.T) (*Store, User) {
 	return db, user
 }
 
+func TestRecoveryTransactionsRejectChangedActor(t *testing.T) {
+	for _, change := range []string{"password", "role"} {
+		for _, operation := range []string{"restore", "json import", "sqlite import"} {
+			t.Run(change+"/"+operation, func(t *testing.T) {
+				db, actor := adminFixture(t)
+				ctx := context.Background()
+				now := time.Now()
+				snapshot, err := db.Backup(ctx, t.TempDir(), "before")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if change == "password" {
+					err = db.SetPassword(ctx, actor.ID, "replacement-password", now)
+				} else {
+					second := createTestUser(t, db, "other_admin")
+					if err := db.SetAdmin(ctx, second.ID, true, now); err != nil {
+						t.Fatal(err)
+					}
+					err = db.SetAdmin(ctx, actor.ID, false, now)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				audit := ImportAudit{Actor: actor, Now: now, RequireCurrentActor: true}
+				switch operation {
+				case "restore":
+					_, err = db.Restore(ctx, snapshot, t.TempDir(), actor, now)
+				case "json import":
+					_, err = db.ImportRailsJSON(ctx, jsonFixture(t, nil), audit)
+				case "sqlite import":
+					path, _ := railsRestoreFixture(t)
+					_, err = db.ImportRails(ctx, path, audit)
+				}
+				if !errors.Is(err, ErrCredentialsChanged) {
+					t.Fatalf("stale actor accepted: %v", err)
+				}
+				current, err := db.UserByID(ctx, actor.ID)
+				if err != nil || (change == "role" && current.Admin) || (change == "password" && current.PasswordHash == actor.PasswordHash) {
+					t.Fatalf("revocation was overwritten: %+v %v", current, err)
+				}
+				if _, err := db.UserByID(ctx, 42); !errors.Is(err, ErrNotFound) {
+					t.Fatalf("rejected import changed users: %v", err)
+				}
+			})
+		}
+	}
+}
+
 func TestAdminGrantRevokesSessionsAndProtectsLastAdmin(t *testing.T) {
 	db := openTestStore(t)
 	user := createTestUser(t, db, "promoted")

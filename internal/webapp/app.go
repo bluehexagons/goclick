@@ -189,10 +189,9 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("GET /", a.frontend)
 	handler := a.securityHeaders(a.recoverPanic(a.rejectCrossSite(a.bodyLimit(a.globalLimit(mux)))))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && (r.URL.Path == "/api/admin/backups/restore" || r.URL.Path == "/api/admin/import/rails") {
-			a.requestGate.Lock()
-			defer a.requestGate.Unlock()
-		} else {
+		// Recovery authenticates and stages the upload before requesting exclusive
+		// access. An anonymous or slow upload must not queue a global writer.
+		if !(r.Method == http.MethodPost && (r.URL.Path == "/api/admin/backups/restore" || r.URL.Path == "/api/admin/import/rails")) {
 			a.requestGate.RLock()
 			defer a.requestGate.RUnlock()
 		}

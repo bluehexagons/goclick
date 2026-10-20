@@ -380,6 +380,9 @@ func (s *Store) Restore(ctx context.Context, path, recoveryDirectory string, act
 		return result, err
 	}
 	defer tx.Rollback()
+	if err := verifyRecoveryActor(ctx, tx, actor); err != nil {
+		return result, err
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions; DELETE FROM player_activity; DELETE FROM rails_entities; DELETE FROM counters; DELETE FROM users;`); err != nil {
 		return result, err
 	}
