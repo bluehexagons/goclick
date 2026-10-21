@@ -326,6 +326,23 @@ basaltw setup server_web app.example.com deploy \
   --deploy app.example.com https://github.com/bluehexagons/goclick.git
 ```
 
+Update the controller's Basaltwater installation before deploying this revision:
+the manifest uses `build_runtimes: ["go"]` to skip Node and Python provisioning.
+Older Basaltwater versions reject this field. Node remains a development/CI
+tool for refreshing the committed frontend bundles; deployment does not rebuild
+them. The three release binaries are built together with `CGO_ENABLED=0`, so
+application builds require no C or C++ compiler.
+
+The first Go build still compiles the SQLite driver and can use substantial
+memory. Basaltwater keeps each application's Go build and module caches in
+its persistent build account home; retain those caches between deployments.
+An unchanged repeat build should reuse the compiled dependencies. If a small VM
+is swapping during the Go build, lower compiler parallelism with
+`GOFLAGS=-p=1` and, if necessary, `GOGC=50` in the component's build `env`.
+These trade CPU throughput for lower memory use; they are not needed by default.
+Toolchain or dependency upgrades can cause another cold build. Setup steps such
+as host package updates and backups take additional time outside the app build.
+
 The manifest deliberately enables secure cookies. Complete the test deployment
 with `--ssl`, or use `--cloudflare` and complete the tunnel setup, then browse
 it over HTTPS; login cookies will not be sent back by a browser over plain HTTP.

@@ -35,7 +35,11 @@ jobs:
         run: |
           set -euo pipefail
           build_command="$(python3 -c 'import json; print(json.load(open("basaltwater.json"))["components"][0]["build"])')"
-          bash -euo pipefail -c "$build_command"
+          CC=/bin/false CXX=/bin/false bash -euo pipefail -c "$build_command"
+          for binary in goclick migrate-rails goclick-admin; do
+            test -x ".basaltwater/bin/$binary"
+            go version -m ".basaltwater/bin/$binary" | grep -q 'CGO_ENABLED=0'
+          done
           smoke_dir="$(mktemp -d)"
           server_pid=""
           cleanup() {
