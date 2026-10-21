@@ -67,32 +67,13 @@ The server should be behind an HTTPS reverse proxy in production. With
 peer is loopback; forwarded headers from direct clients are ignored. Apply an
 additional client-IP rate limit at the proxy for defense in depth.
 
-## Import Minimal Clicker
+## Retired Rails migration
 
-Stop both applications and back up both database files first. Then point the
-importer at the Rails primary production database:
-
-```bash
-go run ./cmd/migrate-rails \
-  -source ../rails_test/storage/production.sqlite3 \
-  -target data/goclick.db
-```
-
-The import is transactional and idempotent. It preserves user IDs, usernames,
-optional email addresses, admin flags, timestamps, all four counters, and the
-last click time. Every Rails entity, including custom kinds, is retained in the
-`rails_entities` archive in addition to the normalized gameplay counters.
-Rails `has_secure_password` stores standard bcrypt hashes, so the password
-digests are copied unchanged and existing passwords work immediately—there is
-no first-login reset.
-
-Run the importer against a copy of production first and verify representative
-accounts before the final cutover. An unchanged import can be repeated, but a
-different existing Go Click record is reported as a conflict rather than
-silently overwritten. Refresh tokens from Rails are intentionally not migrated;
-users receive a new Go Click session when they sign in. See
-[`docs/migration.md`](docs/migration.md) for the complete procedure, including
-the progress-only JSON import and its password setup procedure.
+Rails migration is complete, and current releases no longer include the importer
+or accept Rails SQLite/JSON uploads. Existing migrated accounts, passwords,
+counters, and archived entities remain supported, including in Go Click backups.
+For a remaining legacy installation, use the pinned intermediate release in
+[`docs/migration.md`](docs/migration.md), then upgrade to the current version.
 
 ## API
 
@@ -117,15 +98,15 @@ has its own admin API described below.
 
 Login accepts an optional `identifier_type`: `auto` (the default), `username`,
 or `email`. Automatic lookup rejects identifiers shared by different accounts.
-For overlapping migrated usernames and emails, open **Migrated accounts** on
+For overlapping migrated usernames and emails, open **Sign-in options** on
 the sign-in form and choose the identifier type. New registrations cannot
-create these overlaps; imports preserve existing source accounts.
+create these overlaps; existing accounts keep their identities.
 
 ## Security
 
-- Passwords use bcrypt cost 12 to match Rails production hashes; unknown-user
-  login performs the same-cost dummy bcrypt check. The Rails importer rejects
-  malformed or unreasonable-cost password digests.
+- Passwords use bcrypt cost 12; unknown-user login performs the same-cost
+  dummy bcrypt check. Existing migrated bcrypt hashes remain usable, and
+  backup restore validates password-hash format and cost.
 - Session secrets are 256-bit random values and only SHA-256 digests are stored.
 - Players and administrators share a rolling 180-day inactivity window with no
   absolute session-age limit. Authenticated activity renews the server deadline
@@ -201,11 +182,8 @@ for panel restore. It also exports full SQLite backups and
 restores validated snapshots after password verification and explicit
 confirmation. Restore first saves a recovery snapshot, replaces known data in
 one transaction, and revokes all sessions. Administrative operations are audited.
-For an initial Rails cutover, **Restore or migrate a database** converts the
-primary SQLite snapshot while preserving old passwords and IDs, even when a
-bootstrap Go Click account has a conflicting ID. JSON replacement requires a
-new password for a selected imported administrator. Merge imports continue to
-refuse conflicts; see [`docs/migration.md`](docs/migration.md).
+Restore accepts Go Click SQLite backups only. Rails migration requires the
+intermediate version documented in [`docs/migration.md`](docs/migration.md).
 
 Activity history starts with this release; migrated all-time counters remain
 intact. [`docs/administration.md`](docs/administration.md) covers bootstrap
@@ -310,7 +288,7 @@ plain-HTTP container testing, override `GOCLICK_SECURE_COOKIES=false`.
 ## Deploy with Basaltwater
 
 The repository includes a `basaltwater.json` manifest for Basaltwater. It builds the
-server, migration, and admin operator binaries on the target VM, assigns a stable internal port,
+server and admin operator binaries on the target VM, assigns a stable internal port,
 keeps SQLite in Basaltwater's persistent service data directory, binds the
 service to loopback, and exposes a database-aware `/up` health check. Before
 each replacement deployment, Basaltwater verifies the old service is stopped,
@@ -330,7 +308,7 @@ Update the controller's Basaltwater installation before deploying this revision:
 the manifest uses `build_runtimes: ["go"]` to skip Node and Python provisioning.
 Older Basaltwater versions reject this field. Node remains a development/CI
 tool for refreshing the committed frontend bundles; deployment does not rebuild
-them. The three release binaries are built together with `CGO_ENABLED=0`, so
+them. The two release binaries are built together with `CGO_ENABLED=0`, so
 application builds require no C or C++ compiler.
 
 The first Go build still compiles the SQLite driver and can use substantial
@@ -350,9 +328,8 @@ For disposable HTTP-only testing, run the binary directly with
 `GOCLICK_SECURE_COOKIES=false`; Basaltwater does not override
 manifest runtime variables from the setup command.
 
-The Rails migration remains a separate one-time operation. Back up the Rails
-database and import it before switching traffic to the new service. The
-target-VM procedure is documented in [`docs/migration.md`](docs/migration.md).
+Legacy Rails installations must migrate using the pinned intermediate version
+before deploying the current release; see [`docs/migration.md`](docs/migration.md).
 
 ## License
 

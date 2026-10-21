@@ -11,7 +11,6 @@
   <symbol id="chart" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16v-4m5 4V7m5 9v-7"/></symbol>
   <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
   <symbol id="restore" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 8M3 4v6h6m3-4v6l4 3"/></symbol>
-  <symbol id="merge" viewBox="0 0 24 24"><path d="M5 3v4c0 5 14 5 14 10v4M19 3v18m-4-4 4 4 4-4"/></symbol>
   <symbol id="terminal" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m6 9 3 3-3 3m7 0h5"/></symbol>
   <symbol id="arrow" viewBox="0 0 24 24"><path d="M20 12H4m6-6-6 6 6 6"/></symbol>
   <symbol id="settings" viewBox="0 0 24 24"><path d="m10 3-.6 2.5-2 .9L5 5.7 2.8 9.5l1.8 1.8v2l-1.8 1.8L5 19l2.4-.7 2 .9L10 22h4l.6-2.8 2-.9 2.4.7 2.2-3.9-1.8-1.8v-2l1.8-1.8L19 5.7l-2.4.7-2-.9L14 3z"/><circle cx="12" cy="12.5" r="3"/></symbol>

@@ -111,7 +111,4 @@ export interface RecoveryResult {
   users: number;
   entities: number;
   recovery_backup: string;
-  source_format?: string;
-  admin_username?: string;
-  new_passwords_required?: boolean;
 }

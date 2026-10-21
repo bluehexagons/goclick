@@ -85,7 +85,10 @@ function harness(fetch) {
     AbortController,
     URL: { createObjectURL: () => "blob:fixture", revokeObjectURL() {} },
     FormData: class {
-      append() {}
+      fields = new Map();
+      append(name, value) {
+        this.fields.set(name, value);
+      }
     },
     document: {
       documentElement: { dataset: {} },
@@ -178,35 +181,28 @@ test("a current search failure is still reported, and superseded requests are ab
   await first;
 });
 
-for (const operation of ["import", "export"]) {
-  test(`a successful ${operation} remains successful when the following refresh fails`, async () => {
-    let mutations = 0;
-    const { element } = harness(async (url, options) => {
-      if (options?.method === "POST") {
-        mutations++;
-        return response({
-          users: 2,
-          entities: 6,
-          recovery_backup: "recovery.db",
-          new_passwords_required: true,
-        });
-      }
-      return response({ error: "Refresh unavailable" }, 503);
-    });
-    element("#import-file").files = [{ name: "rails.json", size: 100 }];
-    element(`#${operation}-password`).value = "fixture-password";
-    await element(`#${operation}-form`).submit();
-    const status = element(`#${operation}-status`);
-    assert.match(
-      status.textContent,
-      operation === "import" ? /players and .* entities imported/ : /Backup ready/,
-    );
-    assert.equal(status.classes.has("notice-error"), false);
-    assert.match(element("#admin-error").textContent, /completed.*refresh/i);
-    assert.equal(element(`#${operation}-password`).value, "");
-    assert.equal(mutations, 1);
+test("a successful export remains successful when the following refresh fails", async () => {
+  let mutations = 0;
+  const { element } = harness(async (url, options) => {
+    if (options?.method === "POST") {
+      mutations++;
+      return response({
+        users: 2,
+        entities: 6,
+        recovery_backup: "recovery.db",
+      });
+    }
+    return response({ error: "Refresh unavailable" }, 503);
   });
-}
+  element("#export-password").value = "fixture-password";
+  await element("#export-form").submit();
+  const status = element("#export-status");
+  assert.match(status.textContent, /Backup ready/);
+  assert.equal(status.classes.has("notice-error"), false);
+  assert.match(element("#admin-error").textContent, /completed.*refresh/i);
+  assert.equal(element("#export-password").value, "");
+  assert.equal(mutations, 1);
+});
 
 test("invalid successful JSON is rejected as an uncertain outcome", async () => {
   for (const body of [null, [], "invalid", 0]) {
@@ -226,4 +222,44 @@ test("authentication capacity rejection is a definite non-mutation", async () =>
     context.request("/api/admin/backups/export", { method: "POST" }),
     (error) => error.uncertain === false,
   );
+});
+
+test("native restore submits only backup credentials and shows a sign-in transition", async () => {
+  const requests = [];
+  const { element } = harness(async (url, options) => {
+    requests.push({ url, options });
+    return response({ users: 2, entities: 4, recovery_backup: "pre-restore-fixture.db" });
+  });
+  element("#restore-file").files = [{ size: 4096 }];
+  element("#restore-password").value = "fixture-password";
+  element("#restore-confirmation").value = "RESTORE";
+  await element("#restore-form").submit();
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, "/api/admin/backups/restore");
+  assert.deepEqual(Array.from(requests[0].options.body.fields.keys()), [
+    "password",
+    "confirmation",
+    "backup",
+  ]);
+  assert.equal(element("#restore-password").value, "");
+  assert.equal(element("#dashboard-body").hidden, true);
+  assert.equal(element("#restore-success").hidden, false);
+  assert.match(
+    element("#restore-summary").textContent,
+    /2 accounts and 4 archived entities restored/,
+  );
+  assert.match(element("#restore-summary").textContent, /pre-restore-fixture.db/);
+});
+
+test("oversized restore is rejected before upload without hiding the dashboard", async () => {
+  let requests = 0;
+  const { element } = harness(async () => {
+    requests++;
+    return response({});
+  });
+  element("#restore-file").files = [{ size: 128 * 1024 * 1024 + 1 }];
+  await element("#restore-form").submit();
+  assert.equal(requests, 0);
+  assert.match(element("#restore-status").textContent, /Go Click SQLite backup up to 128 MiB/);
+  assert.equal(element("#dashboard-body").hidden, false);
 });

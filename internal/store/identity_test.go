@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -11,11 +10,6 @@ import (
 func TestRegistrationCannotCreateAnOverlappingLegacyIdentifier(t *testing.T) {
 	for _, kind := range []string{"email", "username"} {
 		t.Run(kind, func(t *testing.T) {
-			path, _ := railsRestoreFixture(t)
-			source, err := sql.Open("sqlite", path)
-			if err != nil {
-				t.Fatal(err)
-			}
 			legacyUsername, legacyEmail := "shared@example.com", "legacy@example.com"
 			username := "new_player"
 			email := "shared@example.com"
@@ -23,17 +17,9 @@ func TestRegistrationCannotCreateAnOverlappingLegacyIdentifier(t *testing.T) {
 				legacyUsername, legacyEmail = "legacy_account", "legacy_name"
 				username, email = "legacy_name", "new@example.com"
 			}
-			_, err = source.Exec(`UPDATE users SET username=?,email=?`, legacyUsername, legacyEmail)
-			closeErr := source.Close()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if closeErr != nil {
-				t.Fatal(closeErr)
-			}
 			ctx := context.Background()
 			target := openTestStore(t)
-			if _, err := target.ImportRails(ctx, path); err != nil {
+			if _, err := target.CreateUser(ctx, legacyUsername, &legacyEmail, "existing-password-hash", time.Now()); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := target.CreateUser(ctx, username, &email, "unused because registration is rejected", time.Now()); !errors.Is(err, ErrConflict) {

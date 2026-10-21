@@ -29,7 +29,7 @@ Running a grant for an account already holding that role is a no-op. The tool
 refuses to create a new database at a mistyped path.
 
 Basaltwater builds `.basaltwater/bin/goclick-admin` alongside the server. Read
-its actual service account and database path as described in [migration.md](migration.md),
+its actual service account and database path as described below,
 then run that binary as the service account with `-database` and `-username`.
 The container includes `/app/goclick-admin`:
 
@@ -41,6 +41,26 @@ Role changes are deliberately operator-controlled in this release. The panel
 provides player inspection and recovery; it does not expose account deletion,
 password editing, or role changes over HTTP.
 
+## Basaltwater service details
+
+Inspect the actual unit before running operator commands or replacing database
+files. For the example deployment `app.example.com`, the default unit is
+`app-app_example_com-server.service`, the release is `/var/www/app_example_com`,
+and persistent data is under
+`/var/www/.basaltwater_shared/app_example_com/server/data`.
+Substitute your deployment name and verify these paths against its unit:
+
+```bash
+systemctl show app-app_example_com-server.service -p User -p Group -p WorkingDirectory -p Environment -p ExecStart
+systemctl cat app-app_example_com-server.service
+```
+
+Use the reported account to run `.basaltwater/bin/goclick-admin` from the
+release, and use the configured `GOCLICK_DATABASE` path. Do not derive the Linux
+account name from the hostname: Basaltwater hashes identities longer than
+31 characters. Stop that exact unit and confirm every database writer is stopped
+before following the [offline recovery procedure](backups.md#restore-while-stopped).
+
 ## Player statistics and activity
 
 The overview shows players, administrators, all-time clicks, players who clicked
@@ -48,8 +68,8 @@ in the past 24 hours, recent click events, active sessions, and daily clicks for
 the past seven UTC days. The player list supports username/email search,
 pagination, and sorting by last click, clicks, or username. A player detail
 panel shows account timestamps, email, current counters, streaks, last recorded
-sign-in, recorded activity, and paginated archived Rails entities from either
-import format. JSON archive rows identify their source and show omitted row timestamps as unavailable.
+sign-in, recorded activity, and paginated historical Rails entities from either
+archive format. JSON archive rows identify their source and show omitted row timestamps as unavailable.
 
 Signup, sign-in, and click activity is recorded transactionally with the related
 operation. Activity history starts with this release; earlier clicks are still
@@ -66,34 +86,19 @@ The file includes password hashes, session digests, users, counters, archive
 rows, player activity, and audit history. Store it privately; it is a recovery
 artifact, not a report to share publicly.
 
-**Restore or migrate a database** accepts a full version-2, version-3, version-4, or version-5
-Go Click SQLite snapshot or a Rails primary SQLite database, up to 128 MiB. It
-also accepts the Rails admin JSON export with entities, up to 16 MiB. Enter the
-current administrator's password and type
-`RESTORE` to confirm. Password attempts are rate limited. JSON endpoints retain
-their 8 KiB body limit; restore uses a separately bounded multipart upload.
+**Restore a database** accepts a full version-2, version-3, version-4, or
+version-5 Go Click SQLite snapshot, up to 128 MiB. Enter the current
+administrator's password and type `RESTORE` to confirm. Password attempts are
+rate limited. JSON endpoints retain their 8 KiB body limit; restore uses a
+separately bounded multipart upload. Rails databases and JSON exports are no
+longer accepted; see the [intermediate-version migration procedure](migration.md).
 
 The server checks supported schema objects, integrity, foreign keys, field
 types, password-hash format/cost, and timestamps before changing live data.
 For Go Click backups, extra tables, triggers, views, or incompatible schemas
-are rejected. The
-snapshot must contain at least one administrator; to recover an older snapshot
+are rejected. The snapshot must contain at least one administrator; to recover an older snapshot
 without an admin, grant a role on an isolated copy with the operator command
 before uploading it. Original recovery files should remain untouched.
-
-Rails databases normally have SQLite `user_version=0`; this does not make them
-Go Click backups. The server recognizes the Rails credential schema and imports
-data into an isolated fresh Go Click database using the migration validator.
-Only a validated snapshot of that trusted schema reaches the live restore
-transaction. Original Rails tables, triggers, and refresh-token digests are
-never copied. Rails SQLite preserves passwords and roles, and must contain an
-administrator. Go Click backups still require a supported schema version.
-
-For JSON replacement, the form requires a username from the export, a new
-8–72-byte password, and its confirmation. The selected imported account receives
-that password and administrator access; other imported accounts require
-operator-set passwords. JSON cannot recover old passwords. See
-[migration.md](migration.md) for the access plan and archive limitations.
 
 Before replacement, the server saves a private `pre-restore-*.db` snapshot to
 `GOCLICK_BACKUP_DIR`, defaulting to `backups` beside the database. Configure a
@@ -111,8 +116,9 @@ merged. All sessions are revoked. A failed transaction rolls back data changes;
 the pre-restore snapshot remains available for operator recovery.
 
 Run one Go Click service instance during recovery, and stop other instances or
-importers before restoring. Restored admin flags become authoritative: the
-initiating admin may no longer exist or hold that role. After success, sign in
+other database writers before restoring. Restored admin flags become
+authoritative: the initiating admin may no longer exist or hold that role.
+After success, sign in
 with an administrator from the snapshot and verify player data. If access is
 lost, use the host operator command or [the offline recovery runbook](backups.md).
 
@@ -151,35 +157,12 @@ All endpoints below require admin authentication. Read endpoints accept
 | GET | `/api/admin/activity` | Paginated events; optional `user_id` |
 | GET | `/api/admin/audit` | Paginated administrative history |
 | POST | `/api/admin/backups/export` | SQLite download; JSON `{ "password": "..." }` |
-| POST | `/api/admin/import/rails` | Multipart `password`, `confirmation=IMPORT`, `backup`; Rails SQLite or JSON |
-| POST | `/api/admin/backups/restore` | Multipart `password`, `confirmation=RESTORE`, `backup`; JSON additionally requires `admin_username`, `admin_password`, `admin_password_confirmation` |
+| POST | `/api/admin/backups/restore` | Multipart `password`, `confirmation=RESTORE`, `backup`; Go Click SQLite only |
 
 Mutations keep the server's cross-origin protection and security headers.
 Downloads and admin pages use `Cache-Control: no-store`. Audit history records
 operator grants/revocations, successful exports/restores, failed password
-verification, and failed restore/import attempts, imports, and operator password setup. It contains no credentials or
+verification, failed restore attempts, and operator password setup. Historical
+import audit events remain visible. The history contains no credentials or
 uploaded contents. The process log also records successful recovery and its
 snapshot filename, providing a record outside the restored player data.
-
-## Import legacy players
-
-The recovery panel accepts a primary Rails SQLite database (128 MiB maximum)
-or the old admin JSON download (16 MiB maximum) with **Fetch User Entities**
-enabled. Enter your current password and type `IMPORT`. The server detects the
-format, saves a private pre-import snapshot, then merges in one transaction.
-Conflicts abort the entire import; current players are never overwritten or
-renumbered. Import uploads use the same bounded multipart and password checks
-as restore. Successful imports and their audit event commit together.
-
-Original Rails IDs commonly collide with a newly created Go Click admin. For a
-first migration that replaces current players, use **Restore or migrate a
-database** and confirm `RESTORE`. Merge conflicts return HTTP 409 with a link
-to this separate replacement option. The host importer against a fresh target
-remains available as described in [migration.md](migration.md).
-
-SQLite preserves existing passwords. JSON only carries progress and the fields
-present in the download. Newly imported JSON accounts cannot sign in until an
-operator sets a new password with `cmd/admin -password-stdin`; an exact matching
-existing account keeps its current password. Host password changes revoke
-sessions, are audited, and leave the admin role unchanged. There is no public
-account-claim endpoint.

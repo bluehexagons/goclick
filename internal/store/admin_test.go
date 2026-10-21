@@ -28,49 +28,35 @@ func adminFixture(t *testing.T) (*Store, User) {
 
 func TestRecoveryTransactionsRejectChangedActor(t *testing.T) {
 	for _, change := range []string{"password", "role"} {
-		for _, operation := range []string{"restore", "json import", "sqlite import"} {
-			t.Run(change+"/"+operation, func(t *testing.T) {
-				db, actor := adminFixture(t)
-				ctx := context.Background()
-				now := time.Now()
-				snapshot, err := db.Backup(ctx, t.TempDir(), "before")
-				if err != nil {
+		t.Run(change, func(t *testing.T) {
+			db, actor := adminFixture(t)
+			ctx := context.Background()
+			now := time.Now()
+			snapshot, err := db.Backup(ctx, t.TempDir(), "before")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if change == "password" {
+				err = db.SetPassword(ctx, actor.ID, "replacement-password", now)
+			} else {
+				second := createTestUser(t, db, "other_admin")
+				if err := db.SetAdmin(ctx, second.ID, true, now); err != nil {
 					t.Fatal(err)
 				}
-				if change == "password" {
-					err = db.SetPassword(ctx, actor.ID, "replacement-password", now)
-				} else {
-					second := createTestUser(t, db, "other_admin")
-					if err := db.SetAdmin(ctx, second.ID, true, now); err != nil {
-						t.Fatal(err)
-					}
-					err = db.SetAdmin(ctx, actor.ID, false, now)
-				}
-				if err != nil {
-					t.Fatal(err)
-				}
-				audit := ImportAudit{Actor: actor, Now: now, RequireCurrentActor: true}
-				switch operation {
-				case "restore":
-					_, err = db.Restore(ctx, snapshot, t.TempDir(), actor, now)
-				case "json import":
-					_, err = db.ImportRailsJSON(ctx, jsonFixture(t, nil), audit)
-				case "sqlite import":
-					path, _ := railsRestoreFixture(t)
-					_, err = db.ImportRails(ctx, path, audit)
-				}
-				if !errors.Is(err, ErrCredentialsChanged) {
-					t.Fatalf("stale actor accepted: %v", err)
-				}
-				current, err := db.UserByID(ctx, actor.ID)
-				if err != nil || (change == "role" && current.Admin) || (change == "password" && current.PasswordHash == actor.PasswordHash) {
-					t.Fatalf("revocation was overwritten: %+v %v", current, err)
-				}
-				if _, err := db.UserByID(ctx, 42); !errors.Is(err, ErrNotFound) {
-					t.Fatalf("rejected import changed users: %v", err)
-				}
-			})
-		}
+				err = db.SetAdmin(ctx, actor.ID, false, now)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = db.Restore(ctx, snapshot, t.TempDir(), actor, now)
+			if !errors.Is(err, ErrCredentialsChanged) {
+				t.Fatalf("stale actor accepted: %v", err)
+			}
+			current, err := db.UserByID(ctx, actor.ID)
+			if err != nil || (change == "role" && current.Admin) || (change == "password" && current.PasswordHash == actor.PasswordHash) {
+				t.Fatalf("revocation was overwritten: %+v %v", current, err)
+			}
+		})
 	}
 }
 
@@ -178,6 +164,7 @@ func TestBackupRestorePreservesDataAndRevokesSessions(t *testing.T) {
 	db, user := adminFixture(t)
 	ctx := context.Background()
 	now := time.Now().UTC()
+	legacy := seedArchivedPlayer(t, db, user.PasswordHash)
 	if _, err := db.Increment(ctx, user.ID, now); err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +190,7 @@ func TestBackupRestorePreservesDataAndRevokesSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Users != 1 || result.Entities != 2 || !strings.HasPrefix(result.RecoveryBackup, "pre-restore-") {
+	if result.Users != 2 || result.Entities != 4 || !strings.HasPrefix(result.RecoveryBackup, "pre-restore-") {
 		t.Fatalf("restore: %+v", result)
 	}
 	restored, err := db.UserByID(ctx, user.ID)
@@ -217,6 +204,18 @@ func TestBackupRestorePreservesDataAndRevokesSessions(t *testing.T) {
 	entities, total, err := db.ArchivedEntities(ctx, user.ID, 25, 0)
 	if err != nil || total != 2 || entities[1].Kind != nil || entities[1].Count != nil || *entities[0].Kind != "custom_bonus" {
 		t.Fatalf("archive: %+v %v", entities, err)
+	}
+	archived, err := db.UserByID(ctx, legacy.ID)
+	if err != nil || archived != legacy {
+		t.Fatalf("historical account changed: %+v %v", archived, err)
+	}
+	var payload string
+	if err := db.db.QueryRow(`SELECT payload FROM rails_json_users WHERE user_id=?`, legacy.ID).Scan(&payload); err != nil || payload != historicalPlayerArchive {
+		t.Fatalf("historical JSON archive changed: %q %v", payload, err)
+	}
+	legacyCounters, err := db.CurrentCounters(ctx, legacy.ID)
+	if err != nil || legacyCounters.Clicks != 123 {
+		t.Fatalf("historical progress changed: %+v %v", legacyCounters, err)
 	}
 	if _, err := db.UserBySession(ctx, []byte("old token"), now); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("restored revoked session: %v", err)
@@ -365,13 +364,7 @@ func TestVersionThreeBackupCanBeRestored(t *testing.T) {
 func TestVersionFourBackupCanBeRestored(t *testing.T) {
 	db, user := adminFixture(t)
 	ctx := context.Background()
-	if _, err := db.ImportRailsJSON(ctx, "testdata/rails-admin-export.json"); err != nil {
-		t.Fatal(err)
-	}
-	legacy, err := db.UserByID(ctx, 42)
-	if err != nil {
-		t.Fatal(err)
-	}
+	legacy := seedArchivedPlayer(t, db, user.PasswordHash)
 	if _, err := db.Increment(ctx, user.ID, time.Now()); err != nil {
 		t.Fatal(err)
 	}
@@ -398,8 +391,8 @@ func TestVersionFourBackupCanBeRestored(t *testing.T) {
 		t.Fatal(err)
 	}
 	entities, total, err := db.ArchivedEntities(ctx, 42, 25, 0)
-	if err != nil || total != 6 || entities[4].Kind == nil || *entities[4].Kind != "special_achievement" ||
-		entities[5].Kind != nil || entities[5].Count != nil {
+	if err != nil || total != 2 || entities[0].Kind == nil || *entities[0].Kind != "special_achievement" ||
+		entities[1].Kind != nil || entities[1].Count != nil {
 		t.Fatalf("v4 restore changed lossless archive: %+v, %v", entities, err)
 	}
 	restored, err := db.UserByID(ctx, 42)

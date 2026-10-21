@@ -456,31 +456,6 @@ function busy(form: HTMLFormElement, state: boolean, label: string) {
   button.textContent = label;
   form.setAttribute("aria-busy", String(state));
 }
-let restoreFileGeneration = 0;
-$<HTMLInputElement>("#restore-file").addEventListener("change", async () => {
-  const generation = ++restoreFileGeneration,
-    file = $<HTMLInputElement>("#restore-file").files?.[0];
-  let json = false;
-  try {
-    if (file) {
-      const header = await file.slice(0, 16).text();
-      json =
-        header !== "SQLite format 3\0" &&
-        (file.type === "application/json" ||
-          /\.json$/i.test(file.name) ||
-          header.trimStart().startsWith("{"));
-    }
-  } catch {
-    notice("#restore-status", "Can’t read the selected file. Choose it again.", true);
-  }
-  if (generation !== restoreFileGeneration) return;
-  $("#restore-json-access").hidden = !json;
-  for (const input of $("#restore-json-access").querySelectorAll("input")) {
-    input.disabled = !json;
-    input.required = json;
-    if (!json) input.value = "";
-  }
-});
 $<HTMLFormElement>("#export-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   if (restoring) return;
@@ -520,21 +495,8 @@ $<HTMLFormElement>("#restore-form").addEventListener("submit", async (event) => 
   if (restoring) return;
   const form = event.currentTarget as HTMLFormElement;
   const file = $<HTMLInputElement>("#restore-file").files?.[0];
-  const json = !$("#restore-json-access").hidden;
-  if (!file || file.size > (json ? 16 : 128) * 1024 * 1024) {
-    notice(
-      "#restore-status",
-      "Choose a SQLite database up to 128 MiB, or Rails JSON up to 16 MiB.",
-      true,
-    );
-    return;
-  }
-  if (
-    !$("#restore-json-access").hidden &&
-    $<HTMLInputElement>("#restore-admin-password").value !==
-      $<HTMLInputElement>("#restore-admin-password-confirmation").value
-  ) {
-    notice("#restore-status", "The new administrator passwords do not match.", true);
+  if (!file || file.size > 128 * 1024 * 1024) {
+    notice("#restore-status", "Choose a Go Click SQLite backup up to 128 MiB.", true);
     return;
   }
   const data = new FormData();
@@ -542,12 +504,6 @@ $<HTMLFormElement>("#restore-form").addEventListener("submit", async (event) => 
   data.append("confirmation", $<HTMLInputElement>("#restore-confirmation").value);
   data.append("backup", file);
   $<HTMLInputElement>("#restore-password").value = "";
-  if (!$("#restore-json-access").hidden) {
-    for (const input of $("#restore-json-access").querySelectorAll("input")) {
-      data.append(input.name, input.value);
-      if (input.type === "password") input.value = "";
-    }
-  }
   restoring = true;
   busy(form, true, "Restoring…");
   notice(
@@ -562,10 +518,8 @@ $<HTMLFormElement>("#restore-form").addEventListener("submit", async (event) => 
     });
     $("#dashboard-body").hidden = true;
     $("#restore-success").hidden = false;
-    $("#restore-result-title").textContent =
-      result.source_format === "goclick" ? "Database restored" : "Rails players migrated";
     $("#restore-summary").textContent =
-      `${number(result.users)} accounts and ${number(result.entities)} archived entities restored. Recovery snapshot: ${result.recovery_backup}.${result.admin_username ? ` Sign in as ${result.admin_username} with the new password you set. Other JSON-imported accounts need an operator-set password.` : ""}`;
+      `${number(result.users)} accounts and ${number(result.entities)} archived entities restored. Recovery snapshot: ${result.recovery_backup}.`;
     $<HTMLButtonElement>("#refresh").hidden = true;
   } catch (caught) {
     const error = requestError(caught);
@@ -579,52 +533,7 @@ $<HTMLFormElement>("#restore-form").addEventListener("submit", async (event) => 
     );
   } finally {
     restoring = false;
-    busy(form, false, "Restore or migrate database");
-  }
-});
-$<HTMLFormElement>("#import-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (restoring) return;
-  const form = event.currentTarget as HTMLFormElement,
-    file = $<HTMLInputElement>("#import-file").files?.[0];
-  if (!file || file.size > 128 * 1024 * 1024) {
-    notice("#import-status", "Choose a Rails database up to 128 MiB, or JSON up to 16 MiB.", true);
-    return;
-  }
-  const data = new FormData();
-  data.append("password", $<HTMLInputElement>("#import-password").value);
-  data.append("confirmation", $<HTMLInputElement>("#import-confirmation").value);
-  data.append("backup", file);
-  $<HTMLInputElement>("#import-password").value = "";
-  restoring = true;
-  busy(form, true, "Importing…");
-  notice("#import-status", "Saving a recovery snapshot and checking the import…");
-  $<HTMLAnchorElement>("#import-replacement-link").hidden = true;
-  try {
-    const result = await request<RecoveryResult>("/api/admin/import/rails", {
-      timeoutMilliseconds: 150000,
-      method: "POST",
-      body: data,
-    });
-    notice(
-      "#import-status",
-      `${number(result.users)} players and ${number(result.entities)} entities imported. Recovery snapshot: ${result.recovery_backup}.${result.new_passwords_required ? " New accounts need an operator-set password before signing in." : " Existing passwords were preserved."}`,
-    );
-    await refreshAfterOperation();
-  } catch (caught) {
-    const error = requestError(caught);
-    notice(
-      "#import-status",
-      error.message +
-        (error.uncertain
-          ? " Check the audit history before retrying; the connection may have failed after the import."
-          : ""),
-      true,
-    );
-    $<HTMLAnchorElement>("#import-replacement-link").hidden = error.code !== "import_conflict";
-  } finally {
-    restoring = false;
-    busy(form, false, "Import Rails players");
+    busy(form, false, "Restore database");
   }
 });
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tab]"))

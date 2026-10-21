@@ -6,18 +6,16 @@ Go Click is the Go successor to the Minimal Clicker Rails application in
 `../rails_test`. Keep the browser UI dependency-free and keep the server-side
 session and database security properties intact.
 
-## Migration Rules
+## Historical data compatibility
 
-- The migration source is the Rails primary SQLite database, not the Rails
-  admin JSON download. The admin download intentionally omits
-  `password_digest`, so it cannot preserve existing passwords.
-- Keep Rails user IDs, bcrypt password hashes, timestamps, and every entity row
-  during migration. The `counters` table is only the normalized gameplay
-  projection; `rails_entities` is the lossless entity archive.
-- Imports must remain transactional and idempotent. Never silently overwrite a
-  different target user, counter set, or archived entity.
-- Refresh-token digests are not portable authentication sessions and must not be
-  migrated.
+- Rails migration is retired. Do not reintroduce importers or Rails SQLite/JSON
+  upload conversion; point legacy installations to the pinned intermediate
+  version in [docs/migration.md](docs/migration.md).
+- Preserve existing migrated user IDs, bcrypt hashes, timestamps, counters,
+  and entity archives. `rails_entities` and `rails_json_users` remain part of
+  the native Go Click schema, backup validation, restore, and admin inspection.
+- Native backup restore remains transactional and revokes all sessions.
+  Preserve support for schema versions documented in the recovery runbook.
 
 ## Verification
 
@@ -26,8 +24,8 @@ Use the canonical commands in [README.md](README.md#test). Run
 committing Go changes. Frontend changes require `npm run build` and `npm run check` with the
 locked tools under Node 24 (`.nvmrc`); commit the regenerated embedded bundles
 with their TypeScript source. Rebuild before Go tests or restarting the server.
-Keep migration fixtures representative of the Rails schema, including custom
-entity kinds and nullable entity fields.
+Keep native backup fixtures representative of existing archived data, including
+custom entity kinds and nullable entity fields.
 
 Basaltwater on Debian is the reference development environment; ordinary Go,
 Node and npm work without it. Follow its shared `basaltwater-project-development`

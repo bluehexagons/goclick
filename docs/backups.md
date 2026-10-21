@@ -9,7 +9,7 @@ live `.db` file with `cp`. See [SQLite's WAL documentation](https://www.sqlite.o
 Full backups preserve user IDs, password hashes, admin flags, timestamps,
 counters, the complete Rails entity archive, and session digests. Treat them
 as credentials-bearing private files. A public/admin JSON user-data report is
-not a substitute for a recovery backup or the Rails primary migration database.
+not a substitute for a recovery backup.
 
 Basaltwater makes a backup before replacement deployments and retains 14 copies
 in a root-controlled directory. Also schedule backups between deployments,
@@ -78,9 +78,9 @@ table/column checks alone do not establish that an untrusted upload is safe.
 
 ## Restore while stopped
 
-1. Stop the service and confirm all Go Click processes, importers, and other
+1. Stop the service and confirm all Go Click processes and other
    database writers are stopped. For Basaltwater, use the exact systemd unit
-   and account documented in [the migration procedure](migration.md). Keep
+   and account described in [the service details](administration.md#basaltwater-service-details). Keep
    traffic in maintenance mode until recovery is verified.
 2. Make and verify a fresh pre-restore backup with the procedure above, and
    retain its path independently from the chosen recovery snapshot.
@@ -133,18 +133,14 @@ pre-restore snapshot, and copies known data columns into the trusted schema in
 one transaction. Existing audit history is retained, and all sessions are
 revoked. A failed transaction leaves live data intact. Version-2, version-3, version-4, and version-5
 snapshots are supported; the snapshot must contain an administrator. Other
-service instances and importers must be stopped before panel recovery.
-For an initial migration, the panel can also convert a Rails primary SQLite
-snapshot or admin JSON export before replacement. SQLite preserves old
-passwords; JSON requires explicit administrator password setup. See
-[migration](migration.md#migrate-from-the-admin-panel) for that procedure.
+service instances and other database writers must be stopped before panel recovery.
 See [administration](administration.md) for password verification, upload limits,
 and recovery-snapshot locations. The stopped-service procedure above remains
 available when no administrator can sign in.
 
 Every saved click adds an activity row. Activity and audit history have no
-automatic retention policy, and pre-import/pre-restore recovery snapshots are
-not automatically pruned. Monitor both database and backup-directory growth;
+automatic retention policy. Historical pre-import and current pre-restore
+recovery snapshots are not automatically pruned. Monitor both database and backup-directory growth;
 the admin panel's **Backups & recovery → Storage** view reports allocation,
 history counts, and local recovery snapshot file sizes without modifying data.
 Exports can exceed the panel's 128 MiB upload limit; use the stopped-service

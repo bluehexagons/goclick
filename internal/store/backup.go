@@ -16,6 +16,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const maxBackupBcryptCost = 14
+
 var ErrInvalidBackup = errors.New("invalid database upload")
 var backupHashPattern = regexp.MustCompile(`^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$`)
 
@@ -201,7 +203,7 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 		if err == nil {
 			var cost int
 			cost, err = bcrypt.Cost([]byte(user.PasswordHash))
-			if err == nil && (cost > maxImportedBcryptCost || !backupHashPattern.MatchString(user.PasswordHash)) {
+			if err == nil && (cost > maxBackupBcryptCost || !backupHashPattern.MatchString(user.PasswordHash)) {
 				err = errors.New("invalid or excessive-cost password hash")
 			}
 		}
@@ -220,7 +222,7 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 		return 0, err
 	}
 	for entities.Next() {
-		if _, err := scanRailsEntity(entities); err != nil {
+		if err := validateEntityArchiveTimestamps(entities); err != nil {
 			entities.Close()
 			return 0, errors.New("backup contains invalid archive timestamps")
 		}
@@ -331,26 +333,18 @@ type RestoreResult struct {
 	RecoveryBackup string `json:"recovery_backup"`
 	Users          int64  `json:"users"`
 	Entities       int64  `json:"entities"`
-	SourceFormat   string `json:"source_format"`
-	AdminUsername  string `json:"admin_username,omitempty"`
 }
 
 // Restore imports only known data columns into the live, trusted schema. The
 // caller must quiesce HTTP requests through authentication and execution so a
 // previously authenticated request cannot act on a restored user's reused ID.
-func (s *Store) Restore(ctx context.Context, path, recoveryDirectory string, actor User, now time.Time, settings ...RestoreOptions) (RestoreResult, error) {
+func (s *Store) Restore(ctx context.Context, path, recoveryDirectory string, actor User, now time.Time) (RestoreResult, error) {
 	var result RestoreResult
-	var options RestoreOptions
-	if len(settings) > 0 {
-		options = settings[0]
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		return result, fmt.Errorf("%w: source must be an existing regular file", ErrInvalidBackup)
 	}
-	prepared, format, adminUsername, cleanup, err := prepareRestoreSource(ctx, path, actor, now, options)
-	if err != nil {
-		return result, err
-	}
-	defer cleanup()
-	result.SourceFormat, result.AdminUsername = format, adminUsername
-	source, uri, err := readOnlyDatabase(prepared)
+	source, uri, err := readOnlyDatabase(path)
 	if err != nil {
 		return result, fmt.Errorf("%w: %v", ErrInvalidBackup, err)
 	}
@@ -420,11 +414,25 @@ func (s *Store) Restore(ctx context.Context, path, recoveryDirectory string, act
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM (`+entityArchiveQuery+`)`).Scan(&result.Entities); err != nil {
 		return result, err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO admin_audit(actor_id,actor_username,action,result,details,occurred_at) VALUES (?,?,'backup_restore','success',?,?)`, actor.ID, actor.Username, format+": "+result.RecoveryBackup, formatTime(now)); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO admin_audit(actor_id,actor_username,action,result,details,occurred_at) VALUES (?,?,'backup_restore','success',?,?)`, actor.ID, actor.Username, "goclick: "+result.RecoveryBackup, formatTime(now)); err != nil {
 		return result, err
 	}
 	if err := tx.Commit(); err != nil {
 		return result, err
 	}
 	return result, nil
+}
+
+func verifyRecoveryActor(ctx context.Context, tx *sql.Tx, actor User) error {
+	current, err := scanUser(tx.QueryRowContext(ctx, `SELECT id,username,email,password_hash,admin,created_at,updated_at FROM users WHERE id=?`, actor.ID))
+	if errors.Is(err, ErrNotFound) {
+		return ErrCredentialsChanged
+	}
+	if err != nil {
+		return err
+	}
+	if !actor.Admin || !current.Admin || current.PasswordHash != actor.PasswordHash || !current.UpdatedAt.Equal(actor.UpdatedAt) {
+		return ErrCredentialsChanged
+	}
+	return nil
 }

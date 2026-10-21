@@ -1,7 +1,6 @@
 package webapp
 
 import (
-	"context"
 	"database/sql"
 	"io"
 	"log/slog"
@@ -26,7 +25,8 @@ func TestOverlappingLegacyIdentifiersRequireExplicitChoice(t *testing.T) {
 				name += "/reversed IDs"
 			}
 			t.Run(name, func(t *testing.T) {
-				db, err := store.Open(filepath.Join(t.TempDir(), "target.db"))
+				targetPath := filepath.Join(t.TempDir(), "target.db")
+				db, err := store.Open(targetPath)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -39,16 +39,11 @@ func TestOverlappingLegacyIdentifiersRequireExplicitChoice(t *testing.T) {
 				if sharedPassword {
 					emailPassword = usernamePassword
 				}
-				sourcePath := filepath.Join(t.TempDir(), "rails.sqlite3")
-				source, err := sql.Open("sqlite", sourcePath)
+				source, err := sql.Open("sqlite", targetPath)
 				if err != nil {
 					t.Fatal(err)
 				}
 				defer source.Close()
-				if _, err := source.Exec(`CREATE TABLE users(id INTEGER PRIMARY KEY,username TEXT,email TEXT,password_digest TEXT,admin INTEGER,created_at TEXT,updated_at TEXT);
-CREATE TABLE entities(id INTEGER PRIMARY KEY,user_id INTEGER,kind TEXT,count INTEGER,created_time TEXT,modified_time TEXT,created_at TEXT,updated_at TEXT);`); err != nil {
-					t.Fatal(err)
-				}
 				for _, account := range []struct {
 					id                        int64
 					username, email, password string
@@ -61,14 +56,11 @@ CREATE TABLE entities(id INTEGER PRIMARY KEY,user_id INTEGER,kind TEXT,count INT
 					if err != nil {
 						t.Fatal(err)
 					}
-					if _, err := source.Exec(`INSERT INTO users VALUES (?,?,?,?,?,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')`, account.id, account.username, account.email, string(hash), account.admin); err != nil {
+					if _, err := source.Exec(`INSERT INTO users (id,username,email,password_hash,admin,created_at,updated_at) VALUES (?,?,?,?,?,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')`, account.id, account.username, account.email, string(hash), account.admin); err != nil {
 						t.Fatal(err)
 					}
 				}
 				if err := source.Close(); err != nil {
-					t.Fatal(err)
-				}
-				if _, err := db.ImportRails(context.Background(), sourcePath); err != nil {
 					t.Fatal(err)
 				}
 				now := time.Now()

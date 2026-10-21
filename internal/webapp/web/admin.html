@@ -304,13 +304,12 @@
                       <use href="/icons.svg#restore" /></svg
                   ></span>
                   <div>
-                    <h3>Restore or migrate a database</h3>
+                    <h3>Restore a database</h3>
                     <span class="operation-format">Replaces current data</span>
                   </div>
                 </div>
                 <p class="muted">
-                  Upload a Go Click backup or a Rails primary SQLite / admin JSON export to replace
-                  current accounts and gameplay.
+                  Upload a Go Click SQLite backup to replace current accounts and gameplay.
                 </p>
                 <p class="field-hint">
                   A recovery snapshot is saved first. All sessions are revoked after replacement.
@@ -321,20 +320,10 @@
                     <dt>SQLite limit</dt>
                     <dd>128 MiB</dd>
                   </div>
-                  <div>
-                    <dt>JSON limit</dt>
-                    <dd>16 MiB</dd>
-                  </div>
                 </dl>
-                <details class="account-note">
-                  <summary>Formats and account access</summary>
-                  <p>
-                    Go Click backups restore saved passwords and roles. Rails SQLite preserves
-                    original IDs, passwords, roles, and all entity records; its source must contain
-                    an administrator. Rails JSON omits passwords and requires explicit administrator
-                    password setup below.
-                  </p>
-                </details>
+                <p class="field-hint">
+                  The backup restores its saved passwords and administrator roles.
+                </p>
                 <form id="restore-form">
                   <input
                     type="text"
@@ -343,51 +332,14 @@
                     data-admin-username
                     hidden
                   />
-                  <label for="restore-file">Go Click backup or Rails export</label
+                  <label for="restore-file">Go Click SQLite backup</label
                   ><input
                     id="restore-file"
                     name="backup"
                     type="file"
-                    accept=".db,.sqlite,.sqlite3,.json,application/json,application/octet-stream"
+                    accept=".db,.sqlite,.sqlite3,application/vnd.sqlite3,application/octet-stream"
                     required
                   />
-                  <fieldset id="restore-json-access" hidden>
-                    <legend>Administrator access after JSON migration</legend>
-                    <p class="field-hint">
-                      JSON omits passwords. Choose an account from the export and set its new
-                      password; it will have administrator access. Other imported accounts need
-                      operator-set passwords. Export with “Fetch User Entities” enabled.
-                    </p>
-                    <label for="restore-admin-username">Username in the JSON export</label
-                    ><input
-                      id="restore-admin-username"
-                      name="admin_username"
-                      type="text"
-                      autocomplete="off"
-                      maxlength="1024"
-                      disabled
-                    />
-                    <label for="restore-admin-password">New password for that account</label
-                    ><input
-                      id="restore-admin-password"
-                      name="admin_password"
-                      type="password"
-                      autocomplete="new-password"
-                      minlength="8"
-                      maxlength="72"
-                      disabled
-                    />
-                    <label for="restore-admin-password-confirmation">Confirm new password</label
-                    ><input
-                      id="restore-admin-password-confirmation"
-                      name="admin_password_confirmation"
-                      type="password"
-                      autocomplete="new-password"
-                      minlength="8"
-                      maxlength="72"
-                      disabled
-                    />
-                  </fieldset>
                   <label for="restore-password">Your current administrator password</label
                   ><input
                     id="restore-password"
@@ -408,75 +360,15 @@
                     required
                   />
                   <button class="button button-danger button-block" type="submit">
-                    Restore or migrate database
+                    Restore database
                   </button>
                 </form>
                 <p id="restore-status" class="notice" role="status" hidden></p>
               </article>
             </div>
-            <details class="legacy-import">
-              <summary>
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons.svg#merge" />
-                </svg>
-                Rails merge import
-              </summary>
-              <article class="card admin-card">
-                <h3>Merge Rails players into current data</h3>
-                <p class="muted">
-                  Import the primary SQLite database to keep existing passwords, or the admin JSON
-                  download with “Fetch User Entities” enabled to carry progress. New JSON accounts
-                  need an operator-set password before they can sign in.
-                </p>
-                <p class="field-hint">
-                  Imports keep original IDs and refuse conflicts. For an initial migration with
-                  conflicting IDs, use Restore or migrate a database above. A pre-import snapshot is
-                  saved. SQLite: 128 MiB maximum; JSON: 16 MiB.
-                </p>
-                <form id="import-form">
-                  <input
-                    type="text"
-                    name="username"
-                    autocomplete="username"
-                    data-admin-username
-                    hidden
-                  /><label for="import-file">Rails SQLite database or JSON export</label
-                  ><input
-                    id="import-file"
-                    type="file"
-                    accept=".db,.sqlite,.sqlite3,.json,application/json,application/octet-stream"
-                    required
-                  /><label for="import-password">Your current password</label
-                  ><input
-                    id="import-password"
-                    type="password"
-                    autocomplete="current-password"
-                    maxlength="1024"
-                    required
-                  /><label for="import-confirmation">Type IMPORT to confirm</label
-                  ><input
-                    id="import-confirmation"
-                    type="text"
-                    pattern="IMPORT"
-                    autocomplete="off"
-                    spellcheck="false"
-                    required
-                  /><button class="button" type="submit">Import Rails players</button>
-                </form>
-                <p id="import-status" class="notice" role="status" hidden></p>
-                <a
-                  draggable="false"
-                  id="import-replacement-link"
-                  class="text-link"
-                  href="#restore-card"
-                  hidden
-                  >Go to replacement migration</a
-                >
-              </article>
-            </details>
             <div class="section-heading audit-heading">
               <h3>Administrative activity</h3>
-              <span class="muted">Access changes, imports, and backups</span>
+              <span class="muted">Access changes and backups</span>
             </div>
             <div class="card table-wrap">
               <table>
