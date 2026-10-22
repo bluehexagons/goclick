@@ -22,7 +22,8 @@ session and database security properties intact.
 Use the canonical commands in [README.md](README.md#test). Run
 `go test -race ./...`, `go vet ./...`, and `test -z "$(gofmt -l .)"` before
 committing Go changes. Frontend changes require `npm run build` and `npm run check` with the
-locked tools under Node 24 (`.nvmrc`); commit the regenerated embedded bundles
+locked tools under Node 24.22.1+ within 24.x (LTS) or 26.12.1+ within 26.x (Current).
+`.nvmrc` selects Node 24.22.1; commit the regenerated embedded bundles
 with their TypeScript source. Rebuild before Go tests or restarting the server.
 Keep native backup fixtures representative of existing archived data, including
 custom entity kinds and nullable entity fields.

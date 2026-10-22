@@ -209,7 +209,8 @@ go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
 Frontend source lives in `frontend/` as strict TypeScript ES modules. Development
-uses Node.js 24 and the exact tools in `package-lock.json`:
+uses Node.js 24.22.1+ within 24.x (LTS) or 26.12.1+ within 26.x (Current),
+with Node 24.22.1 selected by `.nvmrc` and exact tools in `package-lock.json`:
 
 ```bash
 npm ci
