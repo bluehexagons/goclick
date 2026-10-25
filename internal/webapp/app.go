@@ -82,7 +82,10 @@ type App struct {
 
 type contextKey int
 
-const userContextKey contextKey = 1
+const (
+	userContextKey contextKey = iota + 1
+	sessionExpiryContextKey
+)
 
 func New(database *store.Store, config Config) (*App, error) {
 	if database == nil {
@@ -162,6 +165,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("POST /api/auth/signup", a.signup)
 	mux.HandleFunc("POST /api/auth/login", a.login)
 	mux.HandleFunc("DELETE /api/auth/logout", a.logout)
+	mux.HandleFunc("POST /api/auth/renew", a.requireUser(a.renewSession))
 	mux.HandleFunc("GET /api/me", a.requireUser(a.me))
 	mux.HandleFunc("GET /api/game", a.requireUser(a.game))
 	mux.HandleFunc("GET /api/clicks", a.requireUser(a.current))
@@ -519,6 +523,20 @@ func (a *App) clearSessionCookie(w http.ResponseWriter) {
 	})
 }
 
+// Cookie-changing requests must be serialized by the client. Ordinary reads
+// and writes never change cookies: their responses can arrive after a new login.
+func (a *App) renewSession(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	if r.Header.Get("X-GoClick-User-ID") != strconv.FormatInt(user.ID, 10) {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "Your account changed. Refresh before renewing the session.", "code": "account_changed"})
+		return
+	}
+	raw, _, _ := rawSessionToken(r) // requireUser already validated this token.
+	expires := r.Context().Value(sessionExpiryContextKey).(time.Time)
+	a.setSessionCookie(w, raw, expires, a.now())
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 func (a *App) requireUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		raw, present, valid := rawSessionToken(r)
@@ -527,14 +545,12 @@ func (a *App) requireUser(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if !valid {
-			a.clearSessionCookie(w)
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid session"})
 			return
 		}
 		now := a.now()
 		session, err := a.store.UseSession(r.Context(), raw, now, a.sessionTTL)
 		if errors.Is(err, store.ErrNotFound) {
-			a.clearSessionCookie(w)
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid or expired session"})
 			return
 		}
@@ -542,10 +558,11 @@ func (a *App) requireUser(next http.HandlerFunc) http.HandlerFunc {
 			a.internalError(w, r, "authenticate session", err)
 			return
 		}
-		if session.Renewed {
-			a.setSessionCookie(w, raw, session.ExpiresAt, now)
-		}
-		next(w, r.WithContext(context.WithValue(r.Context(), userContextKey, session.User)))
+		w.Header().Set("X-GoClick-User-ID", strconv.FormatInt(session.User.ID, 10))
+		w.Header().Set("X-GoClick-Session-Expires", strconv.FormatInt(session.ExpiresAt.Unix(), 10))
+		ctx := context.WithValue(r.Context(), userContextKey, session.User)
+		ctx = context.WithValue(ctx, sessionExpiryContextKey, session.ExpiresAt)
+		next(w, r.WithContext(ctx))
 	}
 }
 

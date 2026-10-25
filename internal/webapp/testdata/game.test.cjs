@@ -146,7 +146,9 @@ async function harness(options = {}) {
     window,
     navigator: {
       onLine: true,
-      locks: options.locks ?? { request: (_, operation) => Promise.resolve().then(operation) },
+      locks: options.locks ?? {
+        request: (_, options, operation) => Promise.resolve().then(operation ?? options),
+      },
       clipboard: options.clipboard,
     },
     performance: { now: () => now },

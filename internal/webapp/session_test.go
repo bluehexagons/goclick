@@ -10,6 +10,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -69,8 +70,16 @@ func TestActivePlayersAndAdminsStaySignedInAcrossOriginalExpiry(t *testing.T) {
 				now = now.Add(60 * 24 * time.Hour)
 				response = jsonRequest(t, client, "POST", "https://goclick.test/api/clicks", nil, nil)
 				response.Body.Close()
+				if response.StatusCode != http.StatusOK || len(response.Cookies()) != 0 {
+					t.Fatalf("ordinary activity changed cookies or expired: status=%d cookies=%d", response.StatusCode, len(response.Cookies()))
+				}
+				if response.Header.Get("X-GoClick-User-ID") != strconv.FormatInt(user.ID, 10) || response.Header.Get("X-GoClick-Session-Expires") != strconv.FormatInt(now.Add(lifetime).Unix(), 10) {
+					t.Fatal("missing authenticated renewal metadata")
+				}
+				response = jsonRequest(t, client, "POST", "https://goclick.test/api/auth/renew", nil, map[string]string{"X-GoClick-User-ID": strconv.FormatInt(user.ID, 10)})
+				response.Body.Close()
 				if response.StatusCode != http.StatusOK || len(response.Cookies()) != 1 {
-					t.Fatalf("active session expired: status=%d cookies=%d", response.StatusCode, len(response.Cookies()))
+					t.Fatalf("explicit renewal failed: status=%d cookies=%d", response.StatusCode, len(response.Cookies()))
 				}
 				renewed := response.Cookies()[0]
 				if renewed.Value != original.Value || !renewed.Expires.Equal(now.Add(lifetime)) || renewed.MaxAge != int(lifetime.Seconds()) || !renewed.HttpOnly || !renewed.Secure || renewed.SameSite != http.SameSiteStrictMode {
@@ -88,8 +97,8 @@ func TestActivePlayersAndAdminsStaySignedInAcrossOriginalExpiry(t *testing.T) {
 			now = now.Add(lifetime)
 			response = jsonRequest(t, client, "GET", "https://goclick.test/api/me", nil, nil)
 			response.Body.Close()
-			if response.StatusCode != http.StatusUnauthorized || len(response.Cookies()) != 1 || response.Cookies()[0].MaxAge >= 0 {
-				t.Fatal("inactivity did not expire the session and clear its cookie")
+			if response.StatusCode != http.StatusUnauthorized || len(response.Cookies()) != 0 {
+				t.Fatal("inactivity did not expire the session without changing cookies")
 			}
 		})
 	}
@@ -108,9 +117,33 @@ func TestExistingShortAdminCookieIsExtendedOnUse(t *testing.T) {
 	request.AddCookie(&http.Cookie{Name: sessionCookie, Value: value})
 	response := httptest.NewRecorder()
 	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || len(response.Result().Cookies()) != 0 {
+		t.Fatal("ordinary authentication unexpectedly changed the cookie")
+	}
+	request = httptest.NewRequest("POST", "https://goclick.test/api/auth/renew", nil)
+	request.AddCookie(&http.Cookie{Name: sessionCookie, Value: value})
+	request.Header.Set("X-GoClick-User-ID", strconv.FormatInt(id, 10))
+	response = httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
 	cookies := response.Result().Cookies()
 	if response.Code != http.StatusOK || len(cookies) != 1 || cookies[0].Value != value || !cookies[0].Expires.Equal(now.Add(180*24*time.Hour)) {
 		t.Fatalf("legacy admin session was not upgraded in place: status=%d", response.Code)
+	}
+}
+
+func TestSessionRenewalRequiresCurrentIdentity(t *testing.T) {
+	_, _, client, id := adminTestApp(t)
+	for _, expected := range []string{"", "0", "01", "invalid", strconv.FormatInt(id+1, 10)} {
+		response := jsonRequest(t, client, "POST", "http://goclick.test/api/auth/renew", nil, map[string]string{"X-GoClick-User-ID": expected})
+		response.Body.Close()
+		if response.StatusCode != http.StatusConflict || len(response.Cookies()) != 0 {
+			t.Fatalf("renewal accepted a missing/stale identity %q: status=%d", expected, response.StatusCode)
+		}
+	}
+	response := jsonRequest(t, client, "POST", "http://goclick.test/api/auth/renew", nil, map[string]string{"X-GoClick-User-ID": strconv.FormatInt(id, 10)})
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK || len(response.Cookies()) != 1 {
+		t.Fatalf("current identity could not renew: %d", response.StatusCode)
 	}
 }
 

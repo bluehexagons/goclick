@@ -3,11 +3,12 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
 
-function transport(fetch) {
+function transport(fetch, locks) {
   const timers = new Map();
   let id = 0;
   const { request } = frontend({
     AbortController,
+    navigator: { locks },
     window: {
       setTimeout(callback, delay) {
         timers.set(++id, { callback, delay });
@@ -75,6 +76,223 @@ test("successful requests clear their deadline and detach the caller's abort lis
   caller.abort();
   assert.equal(signal.aborted, false);
 });
+
+function sessionResponse(user = "1", expires = "1810000000") {
+  return {
+    ...response(),
+    headers: {
+      get: (name) =>
+        name === "X-GoClick-User-ID" ? user : name === "X-GoClick-Session-Expires" ? expires : null,
+    },
+  };
+}
+
+function sessionLocks() {
+  let tail = Promise.resolve();
+  return {
+    request(name, { signal }, callback) {
+      assert.equal(name, "goclick.session");
+      const pending = tail.then(() => {
+        if (signal.aborted) throw new Error("Aborted");
+        return callback();
+      });
+      tail = pending.catch(() => {});
+      let abort;
+      const cancelled = new Promise((_, reject) => {
+        abort = () => reject(new Error("Aborted"));
+        if (signal.aborted) abort();
+        else signal.addEventListener("abort", abort, { once: true });
+      });
+      return Promise.race([pending, cancelled]).finally(() =>
+        signal.removeEventListener("abort", abort),
+      );
+    },
+  };
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => (resolve = done));
+  return { promise, resolve };
+}
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+for (const cancel of ["deadline", "caller cancellation"]) {
+  test(`${cancel} removes a queued cookie mutation without dispatching it`, async () => {
+    const locks = sessionLocks();
+    const started = deferred();
+    const release = deferred();
+    const calls = [];
+    const fetch = async (url) => {
+      calls.push(url);
+      started.resolve();
+      await release.promise;
+      return response();
+    };
+    const first = transport(fetch, locks);
+    const second = transport(fetch, locks);
+    const holder = first.request("/api/admin/backups/restore", { method: "POST" });
+    await started.promise;
+    const caller = new AbortController();
+    const queued = second.request("/api/auth/login", { method: "POST", signal: caller.signal });
+    const rejected = assert.rejects(queued, (error) => !error.uncertain);
+    assert.equal(second.timers.size, 1);
+    if (cancel === "deadline") second.expire();
+    else caller.abort();
+    await rejected;
+    assert.equal(second.timers.size, 0);
+    assert.deepEqual(calls, ["/api/admin/backups/restore"]);
+    release.resolve();
+    await holder;
+    await flush();
+    assert.deepEqual(calls, ["/api/admin/backups/restore"]);
+  });
+}
+
+test("cross-tab login waits for a pending renewal response before replacing its cookie", async () => {
+  const locks = sessionLocks();
+  const renewing = deferred();
+  const release = deferred();
+  let cookie = "A";
+  const calls = [];
+  const fetch = async (url) => {
+    calls.push(url);
+    if (url === "/api/auth/renew") {
+      const token = cookie;
+      renewing.resolve();
+      await release.promise;
+      cookie = token; // Apply Set-Cookie when the delayed response arrives.
+    }
+    if (url === "/api/auth/login") cookie = "B";
+    return sessionResponse();
+  };
+  const first = transport(fetch, locks);
+  const second = transport(fetch, locks);
+  await first.request("/api/game");
+  await renewing.promise;
+  const login = second.request("/api/auth/login", { method: "POST" });
+  await flush();
+  assert.equal(calls.includes("/api/auth/login"), false);
+  release.resolve();
+  await login;
+  assert.equal(cookie, "B");
+  assert.equal(first.timers.size, 0);
+  assert.equal(second.timers.size, 0);
+});
+
+test("a late old-account read renews only its expected identity after a newer login", async () => {
+  const locks = sessionLocks();
+  const release = deferred();
+  const calls = [];
+  let cookie = "A";
+  const fetch = async (url, options) => {
+    calls.push(url);
+    if (url === "/api/game") {
+      await release.promise;
+      return sessionResponse("9007199254740993");
+    }
+    if (url === "/api/auth/login") cookie = "B";
+    if (url === "/api/auth/renew") {
+      assert.equal(cookie, "B");
+      assert.equal(options.headers["X-GoClick-User-ID"], "9007199254740993");
+      return {
+        ...sessionResponse(),
+        ok: false,
+        status: 409,
+        json: async () => ({ code: "account_changed" }),
+      };
+    }
+    return response();
+  };
+  const oldTab = transport(fetch, locks);
+  const newTab = transport(fetch, locks);
+  const oldRead = oldTab.request("/api/game");
+  await newTab.request("/api/auth/login", { method: "POST" });
+  release.resolve();
+  await oldRead;
+  await flush();
+  assert.equal(calls.filter((url) => url === "/api/auth/renew").length, 1);
+  assert.equal(cookie, "B");
+});
+
+test("renewal failure never fails or replays a successful click and later activity retries", async () => {
+  const calls = [];
+  const h = transport(async (url) => {
+    calls.push(url);
+    if (url === "/api/auth/renew") throw new Error("offline");
+    return sessionResponse();
+  }, sessionLocks());
+  assert.equal((await h.request("/api/clicks", { method: "POST" })).count, 1);
+  await flush();
+  await h.request("/api/game");
+  await flush();
+  assert.equal(calls.filter((url) => url === "/api/clicks").length, 1);
+  assert.equal(calls.filter((url) => url === "/api/auth/renew").length, 2);
+  assert.equal(h.timers.size, 0);
+});
+
+test("renewal coalesces parallel activity and only repeats when the expiry advances", async () => {
+  const release = deferred();
+  let expiry = "1810000000";
+  let renewals = 0;
+  const h = transport(async (url) => {
+    if (url === "/api/auth/renew") {
+      renewals++;
+      await release.promise;
+    }
+    return sessionResponse("1", expiry);
+  }, sessionLocks());
+  await Promise.all([h.request("/api/game"), h.request("/api/clicks", { method: "POST" })]);
+  assert.equal(renewals, 1);
+  release.resolve();
+  await flush();
+  await h.request("/api/game");
+  await flush();
+  assert.equal(renewals, 1);
+  expiry = "1810086400";
+  await h.request("/api/game");
+  await flush();
+  assert.equal(renewals, 2);
+});
+
+test("browsers without Web Locks keep ordinary requests and login working without automatic renewal", async () => {
+  const calls = [];
+  const h = transport(async (url) => {
+    calls.push(url);
+    return sessionResponse();
+  });
+  await h.request("/api/game");
+  await h.request("/api/auth/login", { method: "POST" });
+  await flush();
+  assert.deepEqual(calls, ["/api/game", "/api/auth/login"]);
+});
+
+for (const url of ["/api/auth/signup", "/api/auth/logout", "/api/admin/backups/restore"]) {
+  test(`${url} shares the session lock while ordinary reads remain parallel`, async () => {
+    const locks = sessionLocks();
+    const release = deferred();
+    const started = deferred();
+    const calls = [];
+    const fetch = async (path) => {
+      calls.push(path);
+      if (path === "/api/auth/login") {
+        started.resolve();
+        await release.promise;
+      }
+      return response();
+    };
+    const first = transport(fetch, locks);
+    const second = transport(fetch, locks);
+    const login = first.request("/api/auth/login", { method: "POST" });
+    await started.promise;
+    const mutation = second.request(url, { method: url.endsWith("logout") ? "DELETE" : "POST" });
+    await second.request("/api/game");
+    assert.deepEqual(calls, ["/api/auth/login", "/api/game"]);
+    release.resolve();
+    await Promise.all([login, mutation]);
+    assert.equal(calls[2], url);
+  });
+}
 
 test("caller cancellation still aborts transport and recovery operations can use a longer deadline", async () => {
   const caller = new AbortController();

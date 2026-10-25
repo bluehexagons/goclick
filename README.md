@@ -89,6 +89,7 @@ and aggregate statistics remain JSON numbers.
 | `POST` | `/api/auth/signup` | Create an account and session |
 | `POST` | `/api/auth/login` | Sign in with username or email |
 | `DELETE` | `/api/auth/logout` | Revoke the current session |
+| `POST` | `/api/auth/renew` | Extend the current cookie; requires `X-GoClick-User-ID` |
 | `GET` | `/api/me` | Read the current user |
 | `GET` | `/api/game` | Read `{ "user": ..., "counters": ... }` for one authenticated account |
 | `GET` | `/api/clicks` | Read click and streak counters |
@@ -126,9 +127,15 @@ create these overlaps; existing accounts keep their identities.
 - Session secrets are 256-bit random values and only SHA-256 digests are stored.
 - Players and administrators share a rolling 180-day inactivity window with no
   absolute session-age limit. Authenticated activity renews the server deadline
-  and browser cookie together, roughly once a day. Renewal keeps the same token
-  so parallel clicks and other tabs remain signed in. Inactive sessions expire
+  roughly once a day. The browser renews its cookie through `/api/auth/renew`,
+  coordinating renewal, login, signup, logout, and restore across tabs with Web
+  Locks. Ordinary responses never set or clear session cookies, so delayed reads
+  cannot erase a newer login. Renewal keeps the same token. Inactive sessions expire
   after approximately 180 days; expired or revoked sessions are never revived.
+  Browsers without Web Locks retain their existing cookie until its expiry and
+  then require sign-in. API clients can use authenticated response headers
+  `X-GoClick-User-ID` and `X-GoClick-Session-Expires` (Unix seconds) to schedule
+  renewal, and must serialize all cookie-changing requests themselves.
 - The SQLite database is restricted to the service account (`0600`).
 - Existing database schemas are validated before Go Click enables WAL or
   applies upgrades, preventing an accidentally selected Rails or unrelated

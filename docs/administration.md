@@ -5,8 +5,11 @@ from the game's account navigation. Every panel and API request authenticates
 the session and checks the current database role. Guests receive 401; players
 receive 403. Signup cannot grant admin access. Players and administrators use
 the same rolling 180-day inactivity window, with no absolute age cutoff while
-active. Authenticated activity renews the database expiry and persistent cookie
-roughly once a day. Sensitive backup operations require the current password.
+active. Authenticated activity renews the database expiry roughly once a day.
+The browser coordinates cookie renewal with login, logout, and restore across
+tabs using Web Locks, preventing older responses from erasing a newer login.
+Without Web Locks, the existing cookie remains usable until its expiry, after
+which sign-in is required. Sensitive backup operations require the current password.
 
 ## Grant access from the host
 

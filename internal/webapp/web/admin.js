@@ -74,6 +74,19 @@
   function requestError(error) {
     return error instanceof RequestError ? error : new RequestError(message(error));
   }
+  var sessionLock = "goclick.session";
+  var cookieMutations = /* @__PURE__ */ new Set([
+    "/api/auth/login",
+    "/api/auth/signup",
+    "/api/auth/logout",
+    "/api/auth/renew",
+    "/api/admin/backups/restore"
+  ]);
+  var renewedExpiries = /* @__PURE__ */ new Map();
+  var pendingRenewals = /* @__PURE__ */ new Set();
+  function sessionLocks() {
+    return typeof navigator === "undefined" ? void 0 : navigator.locks;
+  }
   async function request(url, options = {}, binary = false) {
     const { timeoutMilliseconds = 3e4, signal, ...init } = options;
     const controller = new AbortController();
@@ -85,8 +98,14 @@
       timedOut = true;
       controller.abort();
     }, timeoutMilliseconds);
+    let dispatched = false;
     try {
-      return await readResponse(url, { ...init, signal: controller.signal }, binary);
+      const send = () => {
+        dispatched = true;
+        return readResponse(url, { ...init, signal: controller.signal }, binary);
+      };
+      const locks = sessionLocks();
+      return locks && cookieMutations.has(url) ? await locks.request(sessionLock, { signal: controller.signal }, send) : await send();
     } catch (caught) {
       if (timedOut) {
         const cause = requestError(caught);
@@ -94,14 +113,30 @@
         error.status = cause.status;
         error.code = cause.code;
         error.retryAfter = cause.retryAfter;
-        error.uncertain = cause.status < 400 || cause.uncertain;
+        error.uncertain = dispatched && (cause.status < 400 || cause.uncertain);
         throw error;
       }
+      if (!dispatched) throw new RequestError("Request was cancelled before it was sent.");
       throw caught;
     } finally {
       window.clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
     }
+  }
+  function renewSession(url, response) {
+    if (cookieMutations.has(url) || !sessionLocks()) return;
+    const user = response.headers?.get("X-GoClick-User-ID");
+    const expires = response.headers?.get("X-GoClick-Session-Expires");
+    if (!user || !expires || !/^[1-9]\d*$/.test(user) || !/^\d+$/.test(expires)) return;
+    const key = `${user}:${expires}`;
+    if (renewedExpiries.get(user) === expires || pendingRenewals.has(key)) return;
+    pendingRenewals.add(key);
+    void request("/api/auth/renew", {
+      method: "POST",
+      headers: { "X-GoClick-User-ID": user },
+      timeoutMilliseconds: 5e3
+    }).then(() => renewedExpiries.set(user, expires)).catch(() => {
+    }).finally(() => pendingRenewals.delete(key));
   }
   async function readResponse(url, options, binary) {
     let response;
@@ -114,7 +149,11 @@
     }
     let data;
     try {
-      if (response.ok && binary) return await response.blob();
+      if (response.ok && binary) {
+        const blob = await response.blob();
+        renewSession(url, response);
+        return blob;
+      }
       data = await response.json();
       if (!isRecord(data)) throw new TypeError("Expected a JSON object");
     } catch {
@@ -136,6 +175,7 @@
       error.uncertain = response.status >= 500 && error.code !== "authentication_busy";
       throw error;
     }
+    renewSession(url, response);
     return data;
   }
   function jsonOptions(body) {

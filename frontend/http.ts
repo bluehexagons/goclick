@@ -15,6 +15,21 @@ export interface RequestOptions extends RequestInit {
   timeoutMilliseconds?: number;
 }
 
+const sessionLock = "goclick.session";
+const cookieMutations = new Set([
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/logout",
+  "/api/auth/renew",
+  "/api/admin/backups/restore",
+]);
+const renewedExpiries = new Map<string, string>();
+const pendingRenewals = new Set<string>();
+
+function sessionLocks(): LockManager | undefined {
+  return typeof navigator === "undefined" ? undefined : navigator.locks;
+}
+
 export function request<T>(url: string, options?: RequestOptions, binary?: false): Promise<T>;
 export function request(url: string, options: RequestOptions, binary: true): Promise<Blob>;
 export async function request<T>(
@@ -32,8 +47,18 @@ export async function request<T>(
     timedOut = true;
     controller.abort();
   }, timeoutMilliseconds);
+  let dispatched = false;
   try {
-    return await readResponse<T>(url, { ...init, signal: controller.signal }, binary);
+    const send = () => {
+      dispatched = true;
+      return readResponse<T>(url, { ...init, signal: controller.signal }, binary);
+    };
+    const locks = sessionLocks();
+    // Cover the queue wait with the same deadline and cancellation. Once sent,
+    // hold the lock through headers and body so login cannot overtake renewal.
+    return locks && cookieMutations.has(url)
+      ? await locks.request(sessionLock, { signal: controller.signal }, send)
+      : await send();
   } catch (caught) {
     if (timedOut) {
       const cause = requestError(caught);
@@ -43,14 +68,38 @@ export async function request<T>(
       error.retryAfter = cause.retryAfter;
       // Preserve a known rejection even if its body stalled. Without response
       // headers, a timed-out write may have committed; never replay it here.
-      error.uncertain = cause.status < 400 || cause.uncertain;
+      error.uncertain = dispatched && (cause.status < 400 || cause.uncertain);
       throw error;
     }
+    if (!dispatched) throw new RequestError("Request was cancelled before it was sent.");
     throw caught;
   } finally {
     window.clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
   }
+}
+
+function renewSession(url: string, response: Response): void {
+  // Without cross-tab coordination, leave the existing persistent cookie alone.
+  if (cookieMutations.has(url) || !sessionLocks()) return;
+  const user = response.headers?.get("X-GoClick-User-ID");
+  const expires = response.headers?.get("X-GoClick-Session-Expires");
+  if (!user || !expires || !/^[1-9]\d*$/.test(user) || !/^\d+$/.test(expires)) return;
+  const key = `${user}:${expires}`;
+  if (renewedExpiries.get(user) === expires || pendingRenewals.has(key)) return;
+  pendingRenewals.add(key);
+  // A stale response may schedule this after another tab has signed in. The
+  // endpoint checks the expected identity against the cookie at dispatch time.
+  void request("/api/auth/renew", {
+    method: "POST",
+    headers: { "X-GoClick-User-ID": user },
+    timeoutMilliseconds: 5000,
+  })
+    .then(() => renewedExpiries.set(user, expires))
+    .catch(() => {
+      // Renewal is best effort. Never fail or replay an already accepted click.
+    })
+    .finally(() => pendingRenewals.delete(key));
 }
 
 async function readResponse<T>(
@@ -68,7 +117,11 @@ async function readResponse<T>(
   }
   let data: unknown;
   try {
-    if (response.ok && binary) return await response.blob();
+    if (response.ok && binary) {
+      const blob = await response.blob();
+      renewSession(url, response);
+      return blob;
+    }
     data = await response.json();
     if (!isRecord(data)) throw new TypeError("Expected a JSON object");
   } catch {
@@ -97,6 +150,7 @@ async function readResponse<T>(
   }
   // Each endpoint supplies its Go response contract. Runtime object validation
   // above still rejects broken/empty success responses as uncertain outcomes.
+  renewSession(url, response);
   return data as T;
 }
 
