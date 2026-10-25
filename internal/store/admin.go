@@ -120,13 +120,14 @@ func (s *Store) AdminOverview(ctx context.Context, now time.Time) (Overview, err
 	err := s.db.QueryRowContext(ctx, `SELECT
 		(SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM users WHERE admin = 1),
 		(SELECT COALESCE(SUM(click_count),0) FROM counters),
-		(SELECT COUNT(*) FROM counters WHERE last_clicked_at >= ?),
+		(SELECT COUNT(*) FROM counters WHERE goclick_time_key(last_clicked_at) >= goclick_time_key(?)),
 		(SELECT COUNT(*) FROM sessions WHERE expires_at > ?),
-		(SELECT COUNT(*) FROM player_activity WHERE action='click' AND occurred_at >= ?)`, formatTime(now.Add(-24*time.Hour)), now.Unix(), formatTime(now.Add(-24*time.Hour))).Scan(&out.Players, &out.Admins, &out.Clicks, &out.ActivePlayers, &out.ActiveSessions, &out.Clicks24h)
+		(SELECT COUNT(*) FROM player_activity WHERE action='click' AND goclick_time_key(occurred_at) >= goclick_time_key(?))`, formatTime(now.Add(-24*time.Hour)), now.Unix(), formatTime(now.Add(-24*time.Hour))).Scan(&out.Players, &out.Admins, &out.Clicks, &out.ActivePlayers, &out.ActiveSessions, &out.Clicks24h)
 	if err != nil {
 		return out, err
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT substr(occurred_at,1,10), COUNT(*) FROM player_activity WHERE action='click' AND occurred_at >= ? GROUP BY substr(occurred_at,1,10) ORDER BY 1`, dateKey(now.AddDate(0, 0, -6)))
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	rows, err := s.db.QueryContext(ctx, `SELECT goclick_utc_date(occurred_at), COUNT(*) FROM player_activity WHERE action='click' AND goclick_time_key(occurred_at) >= goclick_time_key(?) GROUP BY goclick_utc_date(occurred_at) ORDER BY 1`, formatTime(startOfToday.AddDate(0, 0, -6)))
 	if err != nil {
 		return out, err
 	}
@@ -152,7 +153,7 @@ func (s *Store) AdminOverview(ctx context.Context, now time.Time) (Overview, err
 }
 
 func (s *Store) ListPlayers(ctx context.Context, search, sort string, limit, offset int) ([]AdminPlayer, int64, error) {
-	orders := map[string]string{"recent": "c.last_clicked_at DESC, u.id DESC", "clicks": "COALESCE(c.click_count,0) DESC, u.id DESC", "username": "u.username, u.id"}
+	orders := map[string]string{"recent": "goclick_time_key(c.last_clicked_at) DESC, u.id DESC", "clicks": "COALESCE(c.click_count,0) DESC, u.id DESC", "username": "u.username, u.id"}
 	order, ok := orders[sort]
 	if !ok || limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, errors.New("invalid player query")
@@ -165,7 +166,7 @@ func (s *Store) ListPlayers(ctx context.Context, search, sort string, limit, off
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT u.id,u.username,u.email,u.admin,u.created_at,u.updated_at,
 		COALESCE(c.click_count,0),COALESCE(c.day_streak,0),COALESCE(c.month_streak,0),COALESCE(c.year_streak,0),c.last_clicked_at,
-		(SELECT MAX(occurred_at) FROM player_activity WHERE user_id=u.id AND action='sign_in')
+		(SELECT occurred_at FROM player_activity WHERE user_id=u.id AND action='sign_in' ORDER BY goclick_time_key(occurred_at) DESC LIMIT 1)
 		FROM users u LEFT JOIN counters c ON c.user_id=u.id
 		WHERE u.username LIKE ? ESCAPE '\' OR u.email LIKE ? ESCAPE '\'
 		ORDER BY `+order+` LIMIT ? OFFSET ?`, pattern, pattern, limit, offset)
@@ -196,7 +197,7 @@ func scanAdminPlayer(row rowScanner) (AdminPlayer, error) {
 func (s *Store) AdminPlayer(ctx context.Context, id int64) (AdminPlayer, error) {
 	return scanAdminPlayer(s.db.QueryRowContext(ctx, `SELECT u.id,u.username,u.email,u.admin,u.created_at,u.updated_at,
 		COALESCE(c.click_count,0),COALESCE(c.day_streak,0),COALESCE(c.month_streak,0),COALESCE(c.year_streak,0),c.last_clicked_at,
-		(SELECT MAX(occurred_at) FROM player_activity WHERE user_id=u.id AND action='sign_in')
+		(SELECT occurred_at FROM player_activity WHERE user_id=u.id AND action='sign_in' ORDER BY goclick_time_key(occurred_at) DESC LIMIT 1)
 		FROM users u LEFT JOIN counters c ON c.user_id=u.id WHERE u.id=?`, id))
 }
 
