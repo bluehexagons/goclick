@@ -19,6 +19,10 @@ export const counterKinds = [
 ] as const;
 export type CounterKind = (typeof counterKinds)[number];
 export type Counters = Partial<Record<CounterKind, Counter | null>>;
+export interface GameState {
+  user: User;
+  counters: Counters;
+}
 export type ResponseState = "saved" | "fast" | "slow" | "error" | "pending" | "limited";
 export interface Activation {
   detail: number;

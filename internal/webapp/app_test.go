@@ -90,6 +90,53 @@ func TestAccountClickAndLogoutFlow(t *testing.T) {
 	response.Body.Close()
 }
 
+func TestGameSnapshotBindsCountersToItsAuthenticatedUser(t *testing.T) {
+	app, db, adminClient, adminID := adminTestApp(t)
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	playerClient := &http.Client{Jar: jar, Transport: adminClient.Transport}
+	response := jsonRequest(t, playerClient, "POST", "http://goclick.test/api/auth/signup", map[string]string{"username": "snapshot_player", "password": "password123"}, nil)
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("signup = %d: %s", response.StatusCode, readBody(t, response))
+	}
+	var signup struct{ User publicUserResponse }
+	decodeResponse(t, response, &signup)
+	for _, account := range []struct {
+		client *http.Client
+		id     int64
+		clicks int
+	}{{adminClient, adminID, 7}, {playerClient, signup.User.ID, 3}} {
+		for range account.clicks {
+			if _, err := db.Increment(context.Background(), account.id, time.Now()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		response := jsonRequest(t, account.client, "GET", "http://goclick.test/api/game", nil, nil)
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("snapshot = %d: %s", response.StatusCode, readBody(t, response))
+		}
+		if response.Header.Get("Cache-Control") != "no-store" {
+			t.Fatal("account snapshot may be cached")
+		}
+		var state struct {
+			User     publicUserResponse
+			Counters entitiesResponse
+		}
+		decodeResponse(t, response, &state)
+		if state.User.ID != account.id || state.Counters.ClickCount == nil || state.Counters.ClickCount.Count != int64(account.clicks) {
+			t.Fatalf("snapshot combined accounts: %+v", state)
+		}
+	}
+	guest := &http.Client{Transport: handlerTransport{handler: app.Handler()}}
+	response = jsonRequest(t, guest, "GET", "http://goclick.test/api/game", nil, nil)
+	if response.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("guest snapshot = %d", response.StatusCode)
+	}
+	response.Body.Close()
+}
+
 func TestValidationAndCrossSiteProtection(t *testing.T) {
 	baseURL, client := testServer(t)
 

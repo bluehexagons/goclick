@@ -6,6 +6,7 @@ const { frontend } = require("./frontend.cjs");
 
 const player = { id: "1", username: "player", admin: false };
 const counters = (count) => ({ click_count: { count } });
+const game = (count, user = player) => ({ user, counters: counters(count) });
 const response = (body, status = 200) => ({
   ok: status < 400,
   status,
@@ -30,10 +31,19 @@ async function harness(options = {}) {
     attributes = new Map();
     classes = new Set();
     dataset = {};
+    style = {};
     textContent = "";
     hidden = false;
     disabled = false;
     checked = false;
+    closest() {
+      return this;
+    }
+    getBoundingClientRect() {
+      return { width: 100, height: 100, top: 0, left: 0 };
+    }
+    append() {}
+    remove() {}
     classList = {
       add: (...names) => names.forEach((name) => this.classes.add(name)),
       remove: (...names) => names.forEach((name) => this.classes.delete(name)),
@@ -96,6 +106,7 @@ async function harness(options = {}) {
     documentElement: new Element(),
     hidden: false,
     querySelector: element,
+    createElement: () => new Element(),
     querySelectorAll: () => [],
   });
   const timers = new Map();
@@ -112,7 +123,7 @@ async function harness(options = {}) {
       return timerID;
     },
   });
-  let handler = async (url) => response(url === "/api/me" ? player : counters(10));
+  let handler = options.initialFetch ?? (async () => response(game(10)));
   const requests = [];
   const storage = new Map(options.storage);
   let failStorage = false;
@@ -177,7 +188,7 @@ async function harness(options = {}) {
     element("#click-count").textContent,
     options.storage?.some(([key, value]) => key === "goclick.mode" && value === "local")
       ? "0"
-      : "10",
+      : String(options.expectedCount ?? 10),
   );
   const startupRequests = requests.slice();
   requests.length = 0;
@@ -211,9 +222,8 @@ async function harness(options = {}) {
 
 test("even brief tab switches recheck identity and coalesce focus with visibility", async () => {
   const h = await harness();
-  const identity = deferred(),
-    progress = deferred();
-  h.fetch((url) => (url === "/api/me" ? identity.promise : progress.promise));
+  const progress = deferred();
+  h.fetch(() => progress.promise);
   h.document.hidden = true;
   h.document.fire("visibilitychange");
   assert.equal(h.requests.length, 0);
@@ -221,12 +231,11 @@ test("even brief tab switches recheck identity and coalesce focus with visibilit
   h.document.fire("visibilitychange");
   h.window.fire("focus");
   assert.equal(h.element("#click-button").disabled, true);
-  identity.resolve(response({ id: "2", username: "other_player", admin: false }));
-  progress.resolve(response(counters(3)));
+  progress.resolve(response(game(3, { id: "2", username: "other_player", admin: false })));
   await settle();
   assert.deepEqual(
     h.requests.map((r) => r.url),
-    ["/api/me", "/api/clicks"],
+    ["/api/game"],
   );
   assert.equal(h.element("#nav-username").textContent, "other_player");
   assert.equal(h.element("#click-count").textContent, "3");
@@ -240,13 +249,13 @@ test("a session replaced before a click refreshes identity without replaying the
       assert.equal(options.headers.get("X-GoClick-User-ID"), "1");
       return response({ error: "Account changed", code: "account_changed" }, 409);
     }
-    return response(url === "/api/me" ? { id: "2", username: "other_player" } : counters(3));
+    return response(game(3, { id: "2", username: "other_player" }));
   });
   await h.element("#click-button").fire("click");
   await settle();
   assert.deepEqual(
     h.requests.map((request) => request.method),
-    ["POST", "GET", "GET"],
+    ["POST", "GET"],
   );
   assert.equal(h.feedback[0].failed, true);
   assert.equal(h.feedback[0].uncertain, false);
@@ -257,16 +266,14 @@ test("a session replaced before a click refreshes identity without replaying the
 
 test("returning to the game coalesces refreshes and updates a switched account", async () => {
   const h = await harness();
-  const identity = deferred(),
-    progress = deferred();
-  h.fetch((url) => (url === "/api/me" ? identity.promise : progress.promise));
+  const progress = deferred();
+  h.fetch(() => progress.promise);
   const first = h.context.refreshGame();
   assert.equal(h.context.refreshGame(), first);
   assert.equal(h.element("#click-button").disabled, true);
   assert.equal(h.element("#refresh-counter").attributes.get("aria-busy"), "true");
   assert.equal(h.element("#counter-card").attributes.get("aria-busy"), "false");
-  identity.resolve(response({ id: "2", username: "other_player", admin: true }));
-  progress.resolve(response(counters(3)));
+  progress.resolve(response(game(3, { id: "2", username: "other_player", admin: true })));
   await first;
   assert.equal(h.element("#nav-username").textContent, "other_player");
   assert.equal(h.element("#click-count").textContent, "3");
@@ -274,17 +281,114 @@ test("returning to the game coalesces refreshes and updates a switched account",
   assert.equal(h.element("#admin-link").hidden, false);
   assert.deepEqual(
     h.requests.map((r) => r.method),
-    ["GET", "GET"],
+    ["GET"],
   );
+});
+
+test("production startup uses one account snapshot for display, clicks, and local copying", async () => {
+  const other = { id: "2", username: "other_player", admin: false };
+  const h = await harness({
+    production: true,
+    expectedCount: 3,
+    initialFetch: async (url) => {
+      assert.equal(url, "/api/game");
+      return response(game(3, other));
+    },
+  });
+  assert.equal(h.element("#nav-username").textContent, other.username);
+  h.fetch(async (url, options) => {
+    assert.equal(url, "/api/clicks");
+    assert.equal(options.headers.get("X-GoClick-User-ID"), other.id);
+    return response(counters(4));
+  });
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, "4");
+  h.element("#options-button").fire("click");
+  assert.match(h.element("#copy-online-note").textContent, /other_player/);
+  h.element("#replace-local").checked = true;
+  await h.element("#copy-online-local").fire("click");
+  await settle();
+  assert.equal(JSON.parse(h.storage.get("goclick.local.v1")).counters.click_count.count, 4);
+});
+
+for (const leave of ["visibility", "blur"]) {
+  for (const status of [200, 401]) {
+    test(`a later ${leave} return supersedes an older ${status} read without briefly enabling stale play`, async () => {
+      const h = await harness({ production: true });
+      const oldRead = deferred(),
+        freshRead = deferred();
+      let reads = 0;
+      h.fetch(() => (++reads === 1 ? oldRead.promise : freshRead.promise));
+      h.window.fire("focus");
+      if (leave === "visibility") {
+        h.document.hidden = true;
+        h.document.fire("visibilitychange");
+        h.document.hidden = false;
+        h.document.fire("visibilitychange");
+      } else h.window.fire("blur");
+      h.window.fire("focus");
+      oldRead.resolve(response(status === 200 ? game(77) : { error: "Expired" }, status));
+      await settle();
+      assert.equal(reads, 2);
+      assert.equal(h.element("#click-count").textContent, "10");
+      assert.equal(h.element("#click-button").disabled, true);
+      freshRead.resolve(response(game(3, { id: "2", username: "other_player" })));
+      await settle();
+      assert.equal(h.element("#nav-username").textContent, "other_player");
+      assert.equal(h.element("#click-count").textContent, "3");
+      assert.equal(h.element("#click-button").disabled, false);
+      assert.deepEqual(
+        h.requests.map((request) => request.url),
+        ["/api/game", "/api/game"],
+      );
+    });
+  }
+}
+
+test("an initial snapshot also rechecks identity after returning to the loading tab", async () => {
+  const initial = deferred();
+  const h = await harness({
+    production: true,
+    expectedCount: "",
+    initialFetch: () => initial.promise,
+  });
+  h.fetch(async () => response(game(3, { id: "2", username: "other_player" })));
+  h.window.fire("blur");
+  h.window.fire("focus");
+  initial.resolve(response(game(77)));
+  await settle();
+  assert.equal(h.element("#nav-username").textContent, "other_player");
+  assert.equal(h.element("#click-count").textContent, "3");
+  assert.equal(h.element("#click-button").disabled, false);
+  assert.deepEqual(
+    h.requests.map((request) => request.url),
+    ["/api/game"],
+  );
+});
+
+test("an open Options dialog updates the account and requires fresh replacement consent", async () => {
+  const h = await harness();
+  h.element("#options-button").fire("click");
+  assert.match(h.element("#copy-online-note").textContent, /for player\./);
+  h.element("#replace-local").checked = true;
+  h.fetch(async () => response(game(3, { id: "2", username: "other_player" })));
+  h.window.fire("focus");
+  await settle();
+  assert.match(h.element("#copy-online-note").textContent, /for other_player\./);
+  assert.equal(h.element("#replace-local").checked, false);
+  await h.element("#copy-online-local").fire("click");
+  assert.equal(h.storage.has("goclick.local.v1"), false);
+  h.element("#replace-local").checked = true;
+  await h.element("#copy-online-local").fire("click");
+  await settle();
+  assert.equal(JSON.parse(h.storage.get("goclick.local.v1")).counters.click_count.count, 3);
 });
 
 test("a refresh waits for pending clicks instead of replacing their results", async () => {
   const h = await harness();
   const click = deferred();
   h.fetch((url, options) =>
-    options.method === "POST"
-      ? click.promise
-      : Promise.resolve(response(url === "/api/me" ? player : counters(25))),
+    options.method === "POST" ? click.promise : Promise.resolve(response(game(25))),
   );
   const saving = h.element("#click-button").fire("click");
   h.context.refreshGame();
@@ -299,7 +403,7 @@ test("a refresh waits for pending clicks instead of replacing their results", as
   assert.equal(h.element("#click-count").textContent, "25");
   assert.deepEqual(
     h.requests.map((r) => r.method),
-    ["POST", "GET", "GET"],
+    ["POST", "GET"],
   );
 });
 
@@ -310,7 +414,7 @@ test("offline clicks are paused and reconnection reads progress without replayin
   assert.equal(h.element("#network-notice").hidden, false);
   await h.element("#click-button").fire("click");
   assert.deepEqual(h.requests, []);
-  h.fetch(async (url) => response(url === "/api/me" ? player : counters(18)));
+  h.fetch(async () => response(game(18)));
   h.window.fire("online");
   await settle();
   assert.equal(h.element("#click-count").textContent, "18");
@@ -318,7 +422,7 @@ test("offline clicks are paused and reconnection reads progress without replayin
   assert.equal(h.element("#network-notice").hidden, true);
   assert.deepEqual(
     h.requests.map((r) => r.method),
-    ["GET", "GET"],
+    ["GET"],
   );
 });
 
@@ -344,7 +448,7 @@ test("failed refresh preserves saved values and offers a read-only retry", async
   assert.equal(h.element("#click-count").textContent, "10");
   assert.equal(h.element("#retry-game-button").hidden, false);
   assert.equal(h.element("#click-button").disabled, true);
-  h.fetch(async (url) => response(url === "/api/me" ? player : counters(15)));
+  h.fetch(async () => response(game(15)));
   await h.element("#retry-game-button").fire("click");
   assert.equal(h.element("#click-count").textContent, "15");
   assert.equal(h.element("#game-error").hidden, true);
@@ -378,10 +482,10 @@ test("keyboard users land on the game button after sign-in, without refresh stea
 test("a late refresh response cannot reopen the game after signing out", async () => {
   const h = await harness();
   const progress = deferred();
-  h.fetch((url) => (url === "/api/clicks" ? progress.promise : Promise.resolve(response(player))));
+  h.fetch((url) => (url === "/api/game" ? progress.promise : Promise.resolve(response({}))));
   const refreshing = h.context.refreshGame();
   await h.element("#logout-button").fire("click");
-  progress.resolve(response(counters(99)));
+  progress.resolve(response(game(99)));
   await refreshing;
   assert.equal(h.element("#home-view").hidden, false);
   assert.equal(h.element("#game-view").hidden, true);
@@ -414,7 +518,7 @@ test("entering local mode isolates account progress and returning rechecks the a
   assert.equal(h.element("#click-count").textContent, "10");
   assert.deepEqual(
     h.requests.map((r) => r.method),
-    ["GET", "GET"],
+    ["GET"],
   );
   assert.equal(JSON.parse(h.storage.get("goclick.local.v1")).counters.click_count.count, 1);
 });
@@ -451,11 +555,11 @@ test("storage failure cannot pretend a local click was saved", async () => {
 test("an account refresh in flight cannot overwrite a newly opened local game", async () => {
   const h = await harness();
   const progress = deferred();
-  h.fetch((url) => (url === "/api/clicks" ? progress.promise : Promise.resolve(response(player))));
+  h.fetch((url) => (url === "/api/game" ? progress.promise : Promise.resolve(response({}))));
   const refreshing = h.context.refreshGame();
   h.context.startLocalGame();
   await h.element("#click-button").fire("click");
-  progress.resolve(response(counters(999)));
+  progress.resolve(response(game(999)));
   await refreshing;
   assert.equal(h.element("#click-count").textContent, "1");
   assert.equal(h.element("#local-nav").hidden, false);
@@ -469,7 +573,7 @@ test("the production game bundle boots without leaking application functions", a
   assert.equal(h.context.gameSettings, undefined);
   assert.deepEqual(
     h.startupRequests.map((request) => request.url),
-    ["/api/clicks", "/api/me"],
+    ["/api/game"],
   );
 });
 
@@ -488,27 +592,23 @@ test("known authentication capacity rejection does not suggest replaying an unce
   assert.equal(h.feedback[0].uncertain, false);
 });
 
-test("switching back online detaches an old read without losing the new read's ownership", async () => {
+test("an old account read cannot interrupt the new snapshot when returning from local play", async () => {
   const h = await harness();
   const oldProgress = deferred(),
     newProgress = deferred();
   let reads = 0;
-  h.fetch((url) =>
-    url === "/api/me"
-      ? Promise.resolve(response(player))
-      : ++reads === 1
-        ? oldProgress.promise
-        : newProgress.promise,
-  );
+  h.fetch(() => (++reads === 1 ? oldProgress.promise : newProgress.promise));
   const stale = h.context.refreshGame();
   h.context.startLocalGame();
   h.element("#leave-local").fire("click");
   await settle();
-  assert.equal(h.requests.filter((r) => r.url === "/api/clicks").length, 2);
-  oldProgress.resolve(response(counters(999)));
+  assert.equal(h.requests.filter((r) => r.url === "/api/game").length, 2);
+  oldProgress.resolve(response(game(999)));
   await stale;
-  assert.equal(h.element("#refresh-counter").attributes.get("aria-busy"), "true");
-  newProgress.resolve(response(counters(24)));
+  assert.equal(h.element("#loading-view").hidden, false);
+  assert.equal(h.element("#game-view").hidden, true);
+  assert.equal(h.element("#click-count").textContent, "0");
+  newProgress.resolve(response(game(24)));
   await settle();
   assert.equal(h.element("#game-view").hidden, false);
   assert.equal(h.element("#click-count").textContent, "24");
@@ -528,7 +628,7 @@ for (const kind of ["username", "email"]) {
         submitted = JSON.parse(options.body);
         return Promise.resolve(response({ user: player }));
       }
-      return Promise.resolve(response(counters(12)));
+      return Promise.resolve(response(game(12)));
     });
     await h.element("#login-form").fire("submit");
     assert.deepEqual(submitted, {
@@ -541,11 +641,31 @@ for (const kind of ["username", "email"]) {
 }
 
 for (const kind of ["login", "signup"]) {
+  test(`${kind} rechecks the snapshot if the shared account changes after authentication`, async () => {
+    const h = await harness();
+    h.context.show(kind);
+    h.fetch(async (url) =>
+      response(
+        url.startsWith("/api/auth/")
+          ? { user: player }
+          : game(3, { id: "2", username: "other_player" }),
+      ),
+    );
+    await h.element(`#${kind}-form`).fire("submit");
+    assert.equal(h.element("#nav-username").textContent, "other_player");
+    assert.equal(h.element("#click-count").textContent, "3");
+    assert.equal(h.element("#click-button").disabled, false);
+    assert.deepEqual(
+      h.requests.map((request) => request.url),
+      [`/api/auth/${kind}`, "/api/game"],
+    );
+  });
+
   test(`${kind} focuses the enabled game button after authentication completes`, async () => {
     const h = await harness();
     h.context.show(kind);
     h.fetch((url) =>
-      Promise.resolve(response(url.startsWith("/api/auth/") ? { user: player } : counters(12))),
+      Promise.resolve(response(url.startsWith("/api/auth/") ? { user: player } : game(12))),
     );
     await h.element(`#${kind}-form`).fire("submit");
     assert.equal(h.element("#click-button").disabled, false);
@@ -557,9 +677,7 @@ for (const kind of ["login", "signup"]) {
     const auth = deferred();
     h.context.show(kind);
     h.fetch((url) =>
-      url.startsWith("/api/auth/")
-        ? auth.promise
-        : Promise.resolve(response(url === "/api/me" ? player : counters(12))),
+      url.startsWith("/api/auth/") ? auth.promise : Promise.resolve(response(game(12))),
     );
     const signingIn = h.element(`#${kind}-form`).fire("submit");
     const other = kind === "login" ? "signup" : "login";

@@ -18,7 +18,7 @@ sweeps teal on confirmation, violet for slow replies, and red on failure; sweep
 duration follows the measured or simulated ping. Pending
 clicks are shown separately from the server-confirmed total. **Options** offers
 Auto, Reduced, and Full motion; Reduced keeps static feedback without movement
-or flashes. Account/counter reads start together, and
+or flashes. Account identity and counters load in one authenticated snapshot, and
 graphics initialize only for a visible button, with a usable CSS fallback.
 The Ping readout retains its last successful request time while saving; its
 border indicates pending requests or errors. Short gaps between clicks do not
@@ -90,11 +90,14 @@ and aggregate statistics remain JSON numbers.
 | `POST` | `/api/auth/login` | Sign in with username or email |
 | `DELETE` | `/api/auth/logout` | Revoke the current session |
 | `GET` | `/api/me` | Read the current user |
+| `GET` | `/api/game` | Read `{ "user": ..., "counters": ... }` for one authenticated account |
 | `GET` | `/api/clicks` | Read click and streak counters |
 | `POST` | `/api/clicks` | Add one click and update streaks |
 | `GET` | `/up` | Health check |
 
-The browser rechecks identity and counters when the game regains focus. Click
+The browser rechecks the game snapshot when it regains focus. A later return
+supersedes an older read still in flight. Changing accounts also updates an open
+Options dialog and clears local-save replacement consent. Click
 requests include `X-GoClick-User-ID` with the displayed account's ID; if the
 shared session changed in another tab, the server returns HTTP 409 with code
 `account_changed` without adding a click. The browser then refreshes the account

@@ -163,6 +163,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("POST /api/auth/login", a.login)
 	mux.HandleFunc("DELETE /api/auth/logout", a.logout)
 	mux.HandleFunc("GET /api/me", a.requireUser(a.me))
+	mux.HandleFunc("GET /api/game", a.requireUser(a.game))
 	mux.HandleFunc("GET /api/clicks", a.requireUser(a.current))
 	mux.HandleFunc("POST /api/clicks", a.requireUser(a.increment))
 	mux.HandleFunc("GET /admin", a.requireAdmin(a.adminPage))
@@ -390,6 +391,18 @@ func (a *App) current(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, entityResponse(counters))
+}
+
+// game keeps identity and counters bound to the same authenticated request.
+// Separate requests could use different shared cookies during a tab switch.
+func (a *App) game(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	counters, err := a.store.CurrentCounters(r.Context(), user.ID)
+	if err != nil {
+		a.internalError(w, r, "read game state", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"user": publicUser(user), "counters": entityResponse(counters)})
 }
 
 func (a *App) increment(w http.ResponseWriter, r *http.Request) {

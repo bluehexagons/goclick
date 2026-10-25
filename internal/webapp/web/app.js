@@ -1477,6 +1477,7 @@
   var signingOut = false;
   var authenticating = false;
   var clickGeneration = 0;
+  var identityEpoch = 0;
   var counterLoad = null;
   var counterLoadOwner = null;
   var refreshQueued = false;
@@ -1586,6 +1587,18 @@
     if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
     return request(url, { ...options, headers });
   }
+  async function readGameState() {
+    const generation = clickGeneration;
+    for (; ; ) {
+      const epoch = identityEpoch;
+      try {
+        const state = await api("/api/game");
+        if (epoch === identityEpoch || generation !== clickGeneration) return state;
+      } catch (error) {
+        if (epoch === identityEpoch || generation !== clickGeneration) throw error;
+      }
+    }
+  }
   function setUser(nextUser) {
     const identityChanged = user?.id !== nextUser?.id;
     user = nextUser;
@@ -1593,8 +1606,10 @@
     required("#nav-username").textContent = user?.username ?? "";
     required("#admin-link").hidden = !user?.admin;
     if (identityChanged) {
+      required("#replace-local").checked = false;
       resetClickState();
       renderCounters({}, true);
+      if (optionsDialog.open) updateOptions();
     }
   }
   function resetClickState() {
@@ -1691,7 +1706,7 @@
     }
     required("#last-click").textContent = clicks?.modified_time ? `Last click ${new Date(clicks.modified_time).toLocaleString()}` : "No saved clicks yet.";
   }
-  function openGame(initialCounters, verifyIdentity = false) {
+  function openGame(initialGame, backgroundRefresh = false) {
     if (localMode) {
       openLocalGame();
       return Promise.resolve();
@@ -1708,23 +1723,22 @@
     retryGameButton.hidden = true;
     gameReady = false;
     clickButton.disabled = true;
-    if (!verifyIdentity) counterCard.setAttribute("aria-busy", "true");
+    if (!backgroundRefresh) counterCard.setAttribute("aria-busy", "true");
     setConnection(null, "loading");
     const owner = {};
     counterLoadOwner = owner;
     const load = (async () => {
       try {
-        const [nextUser, data] = verifyIdentity ? await Promise.all([api("/api/me"), api("/api/clicks")]) : [user, await (initialCounters ?? api("/api/clicks"))];
+        const state = await (initialGame ?? readGameState());
         if (generation !== clickGeneration) return;
-        if (verifyIdentity) {
-          const activeLoad = counterLoad;
-          setUser(nextUser);
-          counterLoad = activeLoad;
-          generation = clickGeneration;
-          counterLoadOwner = owner;
-        }
-        lastOnlineCounters = data;
-        renderCounters(data, true);
+        const activeLoad = counterLoad;
+        setUser(state.user);
+        counterLoad = activeLoad;
+        generation = clickGeneration;
+        counterLoadOwner = owner;
+        lastOnlineCounters = state.counters;
+        renderCounters(state.counters, true);
+        if (optionsDialog.open) updateOptions();
         gameReady = true;
         updateGameControls();
         if (focusButton && !clickButton.disabled) clickButton.focus();
@@ -1735,7 +1749,11 @@
         if (error.status === 401) {
           if (user && !signingOut) handleExpiredSession();
         } else {
-          showError("#game-error", `Couldn\u2019t load your counter. ${error.message}`, !verifyIdentity);
+          showError(
+            "#game-error",
+            `Couldn\u2019t load your counter. ${error.message}`,
+            !backgroundRefresh
+          );
           retryGameButton.hidden = false;
           setConnection(null, "error");
         }
@@ -1776,8 +1794,10 @@
     refreshGame();
   }
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) resumeGame();
+    if (document.hidden) identityEpoch++;
+    else resumeGame();
   });
+  window.addEventListener("blur", () => identityEpoch++);
   window.addEventListener("focus", resumeGame);
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) refreshGame();
@@ -1992,13 +2012,10 @@
     required("#loading-message").textContent = "Loading your counter\u2026";
     retryBootButton.hidden = true;
     try {
-      const counters = api("/api/clicks");
-      counters.catch(() => {
-      });
-      const identity = await api("/api/me");
+      const state = await readGameState();
       if (generation !== clickGeneration || localMode) return;
-      setUser(identity);
-      await openGame(counters);
+      setUser(state.user);
+      await openGame(state);
     } catch (caught) {
       const error = requestError(caught);
       if (generation !== clickGeneration || localMode) return;

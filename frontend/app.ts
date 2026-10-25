@@ -7,7 +7,7 @@ import { localGame } from "./local-game.js";
 import { tactileButtons } from "./button.js";
 import { clickFeedback } from "./click-feedback.js";
 import { statsShare } from "./share.js";
-import type { User, Counters, Activation } from "./types.js";
+import type { User, Counters, GameState, Activation } from "./types.js";
 
 const views = {
   loading: $("#loading-view"),
@@ -55,6 +55,7 @@ let clickBatchFailed = false;
 let signingOut = false;
 let authenticating = false;
 let clickGeneration = 0;
+let identityEpoch = 0;
 let counterLoad: Promise<void> | null = null;
 let counterLoadOwner: object | null = null;
 let refreshQueued = false;
@@ -185,6 +186,21 @@ function api<T>(url: string, options: RequestInit = {}): Promise<T> {
   return request<T>(url, { ...options, headers });
 }
 
+async function readGameState(): Promise<GameState> {
+  const generation = clickGeneration;
+  for (;;) {
+    const epoch = identityEpoch;
+    try {
+      const state = await api<GameState>("/api/game");
+      if (epoch === identityEpoch || generation !== clickGeneration) return state;
+    } catch (error) {
+      if (epoch === identityEpoch || generation !== clickGeneration) throw error;
+    }
+    // A later return to the tab supersedes an earlier read, including an old
+    // authentication error. Retry only the read before enabling account play.
+  }
+}
+
 function setUser(nextUser: User | null) {
   const identityChanged = user?.id !== nextUser?.id;
   user = nextUser;
@@ -192,8 +208,10 @@ function setUser(nextUser: User | null) {
   $("#nav-username").textContent = user?.username ?? "";
   $<HTMLAnchorElement>("#admin-link").hidden = !user?.admin;
   if (identityChanged) {
+    $<HTMLInputElement>("#replace-local").checked = false;
     resetClickState();
     renderCounters({}, true);
+    if (optionsDialog.open) updateOptions();
   }
 }
 
@@ -319,10 +337,7 @@ function renderCounters(data: Counters, allowDecrease = false) {
     : "No saved clicks yet.";
 }
 
-function openGame(
-  initialCounters?: Counters | Promise<Counters>,
-  verifyIdentity = false,
-): Promise<void> {
+function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<void> {
   if (localMode) {
     openLocalGame();
     return Promise.resolve();
@@ -339,26 +354,24 @@ function openGame(
   retryGameButton.hidden = true;
   gameReady = false;
   clickButton.disabled = true;
-  if (!verifyIdentity) counterCard.setAttribute("aria-busy", "true");
+  if (!backgroundRefresh) counterCard.setAttribute("aria-busy", "true");
   setConnection(null, "loading");
   const owner = {};
   counterLoadOwner = owner;
   const load = (async () => {
     try {
-      // Check identity as well as counters: another tab may have switched accounts.
-      const [nextUser, data] = verifyIdentity
-        ? await Promise.all([api<User>("/api/me"), api<Counters>("/api/clicks")])
-        : [user, await (initialCounters ?? api<Counters>("/api/clicks"))];
+      // Both parts belong to one authenticated request, even when the shared
+      // session changes while this request or a sign-in response is in flight.
+      const state = await (initialGame ?? readGameState());
       if (generation !== clickGeneration) return;
-      if (verifyIdentity) {
-        const activeLoad = counterLoad;
-        setUser(nextUser);
-        counterLoad = activeLoad;
-        generation = clickGeneration;
-        counterLoadOwner = owner;
-      }
-      lastOnlineCounters = data;
-      renderCounters(data, true);
+      const activeLoad = counterLoad;
+      setUser(state.user);
+      counterLoad = activeLoad;
+      generation = clickGeneration;
+      counterLoadOwner = owner;
+      lastOnlineCounters = state.counters;
+      renderCounters(state.counters, true);
+      if (optionsDialog.open) updateOptions();
       gameReady = true;
       updateGameControls();
       if (focusButton && !clickButton.disabled) clickButton.focus();
@@ -369,7 +382,11 @@ function openGame(
       if (error.status === 401) {
         if (user && !signingOut) handleExpiredSession();
       } else {
-        showError("#game-error", `Couldn’t load your counter. ${error.message}`, !verifyIdentity);
+        showError(
+          "#game-error",
+          `Couldn’t load your counter. ${error.message}`,
+          !backgroundRefresh,
+        );
         retryGameButton.hidden = false;
         setConnection(null, "error");
       }
@@ -414,8 +431,10 @@ function resumeGame() {
   refreshGame();
 }
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) resumeGame();
+  if (document.hidden) identityEpoch++;
+  else resumeGame();
 });
+window.addEventListener("blur", () => identityEpoch++);
 window.addEventListener("focus", resumeGame);
 window.addEventListener("pageshow", (event) => {
   if (event.persisted) refreshGame();
@@ -648,14 +667,10 @@ async function boot() {
   $("#loading-message").textContent = "Loading your counter…";
   retryBootButton.hidden = true;
   try {
-    // Start both reads together, but let identity decide whether to show the
-    // game. Observe the counter rejection even if checking identity fails.
-    const counters = api<Counters>("/api/clicks");
-    counters.catch(() => {});
-    const identity = await api<User>("/api/me");
+    const state = await readGameState();
     if (generation !== clickGeneration || localMode) return;
-    setUser(identity);
-    await openGame(counters);
+    setUser(state.user);
+    await openGame(state);
   } catch (caught) {
     const error = requestError(caught);
     if (generation !== clickGeneration || localMode) return;
