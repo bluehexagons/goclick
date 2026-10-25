@@ -116,18 +116,20 @@ type Overview struct {
 
 func (s *Store) AdminOverview(ctx context.Context, now time.Time) (Overview, error) {
 	now = now.UTC()
+	since := now.Add(-24 * time.Hour)
 	var out Overview
 	err := s.db.QueryRowContext(ctx, `SELECT
 		(SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM users WHERE admin = 1),
 		(SELECT COALESCE(SUM(click_count),0) FROM counters),
 		(SELECT COUNT(*) FROM counters WHERE goclick_time_key(last_clicked_at) >= goclick_time_key(?)),
 		(SELECT COUNT(*) FROM sessions WHERE expires_at > ?),
-		(SELECT COUNT(*) FROM player_activity WHERE action='click' AND goclick_time_key(occurred_at) >= goclick_time_key(?))`, formatTime(now.Add(-24*time.Hour)), now.Unix(), formatTime(now.Add(-24*time.Hour))).Scan(&out.Players, &out.Admins, &out.Clicks, &out.ActivePlayers, &out.ActiveSessions, &out.Clicks24h)
+		(SELECT COUNT(*) FROM player_activity WHERE action='click' AND occurred_at >= ? AND goclick_time_key(occurred_at) >= goclick_time_key(?))`, formatTime(since), now.Unix(), timestampDateFloor(since), formatTime(since)).Scan(&out.Players, &out.Admins, &out.Clicks, &out.ActivePlayers, &out.ActiveSessions, &out.Clicks24h)
 	if err != nil {
 		return out, err
 	}
 	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	rows, err := s.db.QueryContext(ctx, `SELECT goclick_utc_date(occurred_at), COUNT(*) FROM player_activity WHERE action='click' AND goclick_time_key(occurred_at) >= goclick_time_key(?) GROUP BY goclick_utc_date(occurred_at) ORDER BY 1`, formatTime(startOfToday.AddDate(0, 0, -6)))
+	startOfWeek := startOfToday.AddDate(0, 0, -6)
+	rows, err := s.db.QueryContext(ctx, `SELECT goclick_utc_date(occurred_at), COUNT(*) FROM player_activity WHERE action='click' AND occurred_at >= ? AND goclick_time_key(occurred_at) >= goclick_time_key(?) GROUP BY goclick_utc_date(occurred_at) ORDER BY 1`, timestampDateFloor(startOfWeek), formatTime(startOfWeek))
 	if err != nil {
 		return out, err
 	}

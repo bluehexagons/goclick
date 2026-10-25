@@ -165,6 +165,15 @@ func TestStorageOldestTimestampIsChronological(t *testing.T) {
 		{"2026-10-23T12:00:00.1Z", "2026-10-23T12:00:00.100000001Z"},
 		{"2026-10-23T13:00:00+01:00", "2026-10-23T12:00:00.1Z"},
 		{"2026-10-23T12:00:00Z", "2026-10-23 12:00:00.000000001"},
+		// The raw minimum's UTC day is October 23, but the chronological
+		// minimum's local day is October 25. An exclusive +2-day ceiling
+		// would wrongly exclude it; +3 includes it for the exact sort.
+		{"2026-10-25T00:00:00+24:60", "2026-10-22T22:30:00-24:60"},
+		{"2026-10-25T00:00:00+24:00", "2026-10-23T00:00:00.000000001-24:00"},
+		{"0000-01-02T00:00:00+24:60", "0000-01-01T00:00:00Z"},
+		{"0000-01-01T00:00:00+24:60", "0000-01-01T00:00:00Z"},
+		{"9999-12-31T23:59:59-24:60", "9999-12-31T23:59:59.000000001-24:60"},
+		{"9999-12-31T23:59:59Z", "9999-12-31T23:59:59-24:60"},
 	} {
 		t.Run(test.oldest+"/"+test.later, func(t *testing.T) {
 			db := openTestStore(t)
@@ -205,7 +214,7 @@ func TestSQLTimestampKeyPrecisionAndRange(t *testing.T) {
 			}
 		})
 	}
-	for _, fn := range []string{"goclick_time_key", "goclick_utc_date"} {
+	for _, fn := range []string{"goclick_time_key", "goclick_utc_date", "goclick_date_ceiling"} {
 		var value any
 		if err := db.db.QueryRow(`SELECT ` + fn + `(NULL)`).Scan(&value); err != nil || value != nil {
 			t.Fatalf("%s(NULL)=%v, %v", fn, value, err)
