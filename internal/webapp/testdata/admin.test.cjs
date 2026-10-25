@@ -191,6 +191,56 @@ test("an obsolete search failure does not become an unhandled current-page error
   await assert.doesNotReject(first);
 });
 
+for (const status of [401, 403]) {
+  test(`an obsolete ${status} search cannot deny access after a newer successful read`, async () => {
+    const pending = [];
+    const { context, element } = harness(() => {
+      const request = deferred();
+      pending.push(request);
+      return request.promise;
+    });
+    const first = context.loadPlayers();
+    const second = context.loadPlayers();
+    pending[1].resolve(response({ items: [], total: 0 }));
+    await second;
+    pending[0].resolve(response({ error: "Administrator access required" }, status));
+    await first;
+    assert.equal(element("#dashboard-body").hidden, false);
+  });
+
+  test(`a current ${status} search still hides the administrator dashboard`, async () => {
+    const { context, element } = harness(async () =>
+      response({ error: "Administrator access required" }, status),
+    );
+    await assert.rejects(context.loadPlayers());
+    assert.equal(element("#dashboard-body").hidden, true);
+  });
+}
+
+test("admin dates agree for equivalent native timestamp formats", async () => {
+  const raw = [
+    "2026-10-23 00:00:00.123456789",
+    "2026-10-23   00:00:00.123456789",
+    "2026-10-23T0:00:00.123456789Z",
+    "2026-10-23T00:00:00,123456789Z",
+    "2026-10-24T01:00:00.123456789+24:60",
+  ];
+  const { context, element } = harness(async () =>
+    response({
+      items: raw.map((timestamp, index) => ({
+        id: String(index + 1),
+        username: `date_${index}`,
+        last_clicked_at: timestamp,
+      })),
+      total: raw.length,
+    }),
+  );
+  await context.loadPlayers();
+  const expected = new Date("2026-10-23T00:00:00.123Z").toLocaleString();
+  for (const row of element("#players-rows").children)
+    assert.equal(row.children[3].textContent, expected);
+});
+
 test("a current search failure is still reported, and superseded requests are aborted", async () => {
   const pending = [];
   const { context } = harness((url, options) => {

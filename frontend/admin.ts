@@ -3,6 +3,7 @@ import "./interaction.js";
 import { request as sendRequest, requestError, jsonOptions } from "./http.js";
 import type { RequestOptions } from "./http.js";
 import { required as $ } from "./dom.js";
+import { parseStoredTimestamp } from "./timestamp.js";
 import type {
   User,
   Page,
@@ -15,7 +16,8 @@ import type {
   RecoveryResult,
 } from "./types.js";
 const number = (value: number | null | undefined) => new Intl.NumberFormat().format(value ?? 0);
-const date = (value: string | null | undefined) => (value ? new Date(value).toLocaleString() : "—");
+const date = (value: string | null | undefined) =>
+  value ? parseStoredTimestamp(value).toLocaleString() : "—";
 function bytes(value: number) {
   if (!Number.isFinite(value) || value < 0) return "Unavailable";
   const units = ["B", "KiB", "MiB", "GiB", "TiB"];
@@ -92,8 +94,9 @@ async function request<T>(
   } catch (caught) {
     const error = requestError(caught);
     if (
-      error.status === 401 ||
-      (error.status === 403 && error.message === "Administrator access required")
+      !options.signal?.aborted &&
+      (error.status === 401 ||
+        (error.status === 403 && error.message === "Administrator access required"))
     )
       denyAccess();
     if (error.status === 429 && error.retryAfter)

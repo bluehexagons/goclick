@@ -70,6 +70,9 @@ pagination, and sorting by last click, clicks, or username. A player detail
 panel shows account timestamps, email, current counters, streaks, last recorded
 sign-in, recorded activity, and paginated historical Rails entities from either
 archive format. JSON archive rows identify their source and show omitted row timestamps as unavailable.
+The panel displays timestamps in your browser's timezone. Legacy timestamps
+without an offset are interpreted as UTC, matching the server's native backup
+parser.
 
 Signup, sign-in, and click activity is recorded transactionally with the related
 operation. Activity history starts with this release; earlier clicks are still

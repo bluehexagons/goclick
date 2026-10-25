@@ -107,7 +107,8 @@ async function harness(options = {}) {
     hidden: false,
     querySelector: element,
     createElement: () => new Element(),
-    querySelectorAll: () => [],
+    querySelectorAll: (selector) =>
+      selector === "[data-play-local]" ? [element("#play-local")] : [],
   });
   const timers = new Map();
   let timerID = 0;
@@ -614,6 +615,30 @@ test("an old account read cannot interrupt the new snapshot when returning from 
   assert.equal(h.element("#click-count").textContent, "24");
   assert.equal(h.element("#click-button").disabled, false);
   assert.equal(h.element("#refresh-counter").attributes.get("aria-busy"), "false");
+});
+
+test("returning online after session expiry clears cached account copying and preserves local progress", async () => {
+  const h = await harness({ production: true });
+  await h.element("#play-local").fire("click");
+  await h.element("#click-button").fire("click");
+  const localSave = h.storage.get("goclick.local.v1");
+  assert.equal(JSON.parse(localSave).counters.click_count.count, 1);
+  const pending = deferred();
+  h.fetch(() => pending.promise);
+  const returning = h.element("#leave-local").fire("click");
+  h.element("#options-button").fire("click");
+  h.element("#replace-local").checked = true;
+  pending.resolve(response({ error: "Sign in required" }, 401));
+  await returning;
+  assert.equal(h.element("#home-view").hidden, false);
+  assert.equal(h.element("#nav-username").textContent, "");
+  assert.equal(h.element("#copy-online-local").disabled, true);
+  assert.doesNotMatch(h.element("#copy-online-note").textContent, /for player/);
+  assert.equal(h.element("#replace-local").checked, false);
+  assert.equal(h.storage.get("goclick.local.v1"), localSave);
+  h.element("#replace-local").checked = true;
+  await h.element("#copy-online-local").fire("click");
+  assert.equal(h.storage.get("goclick.local.v1"), localSave);
 });
 
 for (const kind of ["username", "email"]) {

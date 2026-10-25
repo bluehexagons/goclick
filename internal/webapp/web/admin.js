@@ -146,9 +146,28 @@
     };
   }
 
+  // frontend/timestamp.ts
+  function parseStoredTimestamp(value) {
+    const parts = value.match(
+      /^(?<day>\d{4}-\d{2}-\d{2})(?<separator>T| +)(?<hour>\d{1,2}):(?<minute>\d{2}):(?<second>\d{2})(?:[.,](?<fraction>\d+))?(?<zone>Z|[+-]\d{2}:\d{2})?$/
+    )?.groups;
+    if (!parts || parts.separator === "T" !== Boolean(parts.zone)) return /* @__PURE__ */ new Date(NaN);
+    const normalized = `${parts.day}T${parts.hour?.padStart(2, "0")}:${parts.minute}:${parts.second}.${(parts.fraction ?? "").padEnd(3, "0").slice(0, 3)}Z`;
+    const instant = new Date(normalized);
+    if (Number.isNaN(instant.getTime()) || instant.toISOString() !== normalized) return /* @__PURE__ */ new Date(NaN);
+    let offset = 0;
+    if (parts.zone && parts.zone !== "Z") {
+      const hours = Number(parts.zone.slice(1, 3));
+      const minutes = Number(parts.zone.slice(4, 6));
+      if (hours > 24 || minutes > 60) return /* @__PURE__ */ new Date(NaN);
+      offset = (hours * 60 + minutes) * 6e4 * (parts.zone[0] === "+" ? 1 : -1);
+    }
+    return new Date(instant.getTime() - offset);
+  }
+
   // frontend/admin.ts
   var number = (value) => new Intl.NumberFormat().format(value ?? 0);
-  var date = (value) => value ? new Date(value).toLocaleString() : "\u2014";
+  var date = (value) => value ? parseStoredTimestamp(value).toLocaleString() : "\u2014";
   function bytes(value) {
     if (!Number.isFinite(value) || value < 0) return "Unavailable";
     const units = ["B", "KiB", "MiB", "GiB", "TiB"];
@@ -212,7 +231,7 @@
       return binary ? await request(url, options, true) : await request(url, options);
     } catch (caught) {
       const error = requestError(caught);
-      if (error.status === 401 || error.status === 403 && error.message === "Administrator access required")
+      if (!options.signal?.aborted && (error.status === 401 || error.status === 403 && error.message === "Administrator access required"))
         denyAccess();
       if (error.status === 429 && error.retryAfter)
         error.message = `Try again in ${error.retryAfter} seconds.`;

@@ -103,6 +103,8 @@ shared session changed in another tab, the server returns HTTP 409 with code
 `account_changed` without adding a click. The browser then refreshes the account
 without replaying the rejected click. API clients may send this header for the
 same protection; clients that omit it use the current session's account.
+Returning online with an expired session clears cached account progress while
+preserving the independent local save.
 
 JSON request bodies are limited to 8 KiB. Legacy Rails paths (`/auth/login`,
 `/auth/signup`, `/me`, and `/entities/*`) are retained as transition aliases,

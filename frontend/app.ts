@@ -675,6 +675,7 @@ async function boot() {
     const error = requestError(caught);
     if (generation !== clickGeneration || localMode) return;
     if (error.status === 401) {
+      setUser(null);
       show("home");
       return;
     }
