@@ -76,7 +76,7 @@ func (s *Store) SetAdmin(ctx context.Context, userID int64, admin bool, now time
 }
 
 type AdminPlayer struct {
-	ID            int64   `json:"id"`
+	ID            int64   `json:"id,string"`
 	Username      string  `json:"username"`
 	Email         *string `json:"email"`
 	Admin         bool    `json:"admin"`
@@ -91,8 +91,8 @@ type AdminPlayer struct {
 }
 
 type Activity struct {
-	ID         int64  `json:"id"`
-	UserID     int64  `json:"user_id"`
+	ID         int64  `json:"id,string"`
+	UserID     int64  `json:"user_id,string"`
 	Username   string `json:"username"`
 	Action     string `json:"action"`
 	OccurredAt string `json:"occurred_at"`
@@ -236,8 +236,8 @@ func (s *Store) Activity(ctx context.Context, userID int64, limit, offset int) (
 }
 
 type ArchivedEntity struct {
-	ID           int64   `json:"id"`
-	UserID       int64   `json:"user_id"`
+	ID           int64   `json:"id,string"`
+	UserID       int64   `json:"user_id,string"`
 	Kind         *string `json:"kind"`
 	Count        *int64  `json:"count"`
 	CreatedTime  *string `json:"created_time"`
@@ -280,7 +280,7 @@ func (s *Store) RecordAdminAudit(ctx context.Context, actor User, action, result
 }
 
 type AuditEvent struct {
-	ID            int64  `json:"id"`
+	ID            int64  `json:"id,string"`
 	ActorUsername string `json:"actor_username"`
 	Action        string `json:"action"`
 	Result        string `json:"result"`

@@ -1,11 +1,74 @@
 package webapp
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
+
+func TestClickRejectsReplacedAccountBeforeConsumingAccountBudget(t *testing.T) {
+	app, db, client, originalID := adminTestApp(t)
+	app.clicksPerMinute = 1
+	response := jsonRequest(t, client, "POST", "http://goclick.test/api/auth/signup", map[string]string{
+		"username": "replacement_player", "password": "password123",
+	}, nil)
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("replacement signup = %d: %s", response.StatusCode, readBody(t, response))
+	}
+	var replacement struct{ User publicUserResponse }
+	decodeResponse(t, response, &replacement)
+	response = jsonRequest(t, client, "POST", "http://goclick.test/api/clicks", nil, map[string]string{
+		"X-GoClick-User-ID": strconv.FormatInt(originalID, 10),
+	})
+	if response.StatusCode != http.StatusConflict {
+		t.Fatalf("stale account click = %d: %s", response.StatusCode, readBody(t, response))
+	}
+	var conflict map[string]string
+	decodeResponse(t, response, &conflict)
+	if conflict["code"] != "account_changed" {
+		t.Fatalf("conflict = %v", conflict)
+	}
+	for _, invalid := range []string{"0", "-1", "01", "1.0", "9223372036854775808"} {
+		response = jsonRequest(t, client, "POST", "http://goclick.test/api/clicks", nil, map[string]string{"X-GoClick-User-ID": invalid})
+		if response.StatusCode != http.StatusBadRequest {
+			t.Fatalf("invalid account %q = %d", invalid, response.StatusCode)
+		}
+		response.Body.Close()
+	}
+	for _, id := range []int64{originalID, replacement.User.ID} {
+		counters, err := db.CurrentCounters(context.Background(), id)
+		if err != nil || counters.Exists {
+			t.Fatalf("rejected clicks changed account %d: %+v, %v", id, counters, err)
+		}
+	}
+	response = jsonRequest(t, client, "POST", "http://goclick.test/api/clicks", nil, map[string]string{
+		"X-GoClick-User-ID": strconv.FormatInt(replacement.User.ID, 10),
+	})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("matching account click = %d: %s", response.StatusCode, readBody(t, response))
+	}
+	var clicked entitiesResponse
+	decodeResponse(t, response, &clicked)
+	if clicked.ClickCount == nil || clicked.ClickCount.Count != 1 {
+		t.Fatalf("matching account counters = %+v", clicked)
+	}
+	// Existing API clients can still use the session without the optional header.
+	response = jsonRequest(t, client, "POST", "http://goclick.test/api/auth/login", map[string]string{
+		"username": "test_admin", "password": "password123",
+	}, nil)
+	if response.StatusCode != http.StatusOK {
+		t.Fatal("could not return to original account")
+	}
+	response.Body.Close()
+	response = jsonRequest(t, client, "POST", "http://goclick.test/api/clicks", nil, nil)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("click without header = %d: %s", response.StatusCode, readBody(t, response))
+	}
+	response.Body.Close()
+}
 
 func TestCrossOriginProtection(t *testing.T) {
 	app := &App{}

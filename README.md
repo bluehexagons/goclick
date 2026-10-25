@@ -80,6 +80,10 @@ For a remaining legacy installation, use the pinned intermediate release in
 Authentication uses a random, hashed server-side session in an `HttpOnly`,
 `SameSite=Strict` cookie.
 
+JSON identifiers (`id` and `user_id`) are decimal strings so clients preserve
+the full positive 64-bit range, including IDs from restored databases. Counters
+and aggregate statistics remain JSON numbers.
+
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | `POST` | `/api/auth/signup` | Create an account and session |
@@ -89,6 +93,13 @@ Authentication uses a random, hashed server-side session in an `HttpOnly`,
 | `GET` | `/api/clicks` | Read click and streak counters |
 | `POST` | `/api/clicks` | Add one click and update streaks |
 | `GET` | `/up` | Health check |
+
+The browser rechecks identity and counters when the game regains focus. Click
+requests include `X-GoClick-User-ID` with the displayed account's ID; if the
+shared session changed in another tab, the server returns HTTP 409 with code
+`account_changed` without adding a click. The browser then refreshes the account
+without replaying the rejected click. API clients may send this header for the
+same protection; clients that omit it use the current session's account.
 
 JSON request bodies are limited to 8 KiB. Legacy Rails paths (`/auth/login`,
 `/auth/signup`, `/me`, and `/entities/*`) are retained as transition aliases,

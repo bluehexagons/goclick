@@ -4,7 +4,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
 
-const player = { id: 1, username: "player", admin: false };
+const player = { id: "1", username: "player", admin: false };
 const counters = (count) => ({ click_count: { count } });
 const response = (body, status = 200) => ({
   ok: status < 400,
@@ -209,23 +209,50 @@ async function harness(options = {}) {
   };
 }
 
-test("focus and visibility refresh stale progress without interrupting brief tab switches", async () => {
+test("even brief tab switches recheck identity and coalesce focus with visibility", async () => {
   const h = await harness();
-  h.window.fire("focus");
-  h.document.fire("visibilitychange");
-  assert.equal(h.requests.length, 0);
-  h.advance(16000);
+  const identity = deferred(),
+    progress = deferred();
+  h.fetch((url) => (url === "/api/me" ? identity.promise : progress.promise));
   h.document.hidden = true;
   h.document.fire("visibilitychange");
   assert.equal(h.requests.length, 0);
   h.document.hidden = false;
   h.document.fire("visibilitychange");
   h.window.fire("focus");
+  assert.equal(h.element("#click-button").disabled, true);
+  identity.resolve(response({ id: "2", username: "other_player", admin: false }));
+  progress.resolve(response(counters(3)));
   await settle();
   assert.deepEqual(
     h.requests.map((r) => r.url),
     ["/api/me", "/api/clicks"],
   );
+  assert.equal(h.element("#nav-username").textContent, "other_player");
+  assert.equal(h.element("#click-count").textContent, "3");
+  assert.equal(h.element("#click-button").disabled, false);
+});
+
+test("a session replaced before a click refreshes identity without replaying the rejected write", async () => {
+  const h = await harness();
+  h.fetch((url, options) => {
+    if (options.method === "POST") {
+      assert.equal(options.headers.get("X-GoClick-User-ID"), "1");
+      return response({ error: "Account changed", code: "account_changed" }, 409);
+    }
+    return response(url === "/api/me" ? { id: "2", username: "other_player" } : counters(3));
+  });
+  await h.element("#click-button").fire("click");
+  await settle();
+  assert.deepEqual(
+    h.requests.map((request) => request.method),
+    ["POST", "GET", "GET"],
+  );
+  assert.equal(h.feedback[0].failed, true);
+  assert.equal(h.feedback[0].uncertain, false);
+  assert.equal(h.element("#nav-username").textContent, "other_player");
+  assert.equal(h.element("#click-count").textContent, "3");
+  assert.equal(h.element("#click-button").disabled, false);
 });
 
 test("returning to the game coalesces refreshes and updates a switched account", async () => {
@@ -238,7 +265,7 @@ test("returning to the game coalesces refreshes and updates a switched account",
   assert.equal(h.element("#click-button").disabled, true);
   assert.equal(h.element("#refresh-counter").attributes.get("aria-busy"), "true");
   assert.equal(h.element("#counter-card").attributes.get("aria-busy"), "false");
-  identity.resolve(response({ id: 2, username: "other_player", admin: true }));
+  identity.resolve(response({ id: "2", username: "other_player", admin: true }));
   progress.resolve(response(counters(3)));
   await first;
   assert.equal(h.element("#nav-username").textContent, "other_player");
@@ -558,7 +585,7 @@ for (const kind of ["login", "signup"]) {
     assert.equal(h.element("#leave-local").disabled, true);
     await h.element("#leave-local").fire("click");
     await h.element("#click-button").fire("click");
-    auth.resolve(response({ user: { ...player, id: 2 } }));
+    auth.resolve(response({ user: { ...player, id: "2" } }));
     await signingIn;
     assert.equal(h.element("#click-count").textContent, "1");
     assert.equal(h.element("#local-nav").hidden, false);

@@ -394,6 +394,20 @@ func (a *App) current(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
+	// A browser tab may still display an account whose cookie was replaced in
+	// another tab. Bind its write to the displayed identity before consuming
+	// per-account budgets or changing counters. Older clients may omit this.
+	if expected := r.Header.Get("X-GoClick-User-ID"); expected != "" {
+		id, err := strconv.ParseInt(expected, 10, 64)
+		if err != nil || id <= 0 || expected != strconv.FormatInt(id, 10) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid expected account ID"})
+			return
+		}
+		if id != user.ID {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "Your account changed in another tab. Refresh before clicking.", "code": "account_changed"})
+			return
+		}
+	}
 	if ok, retry := a.limiter.allow("click:"+strconv.FormatInt(user.ID, 10), a.clicksPerMinute, time.Minute); !ok {
 		rateLimited(w, retry)
 		return
@@ -414,7 +428,7 @@ func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 }
 
 type publicUserResponse struct {
-	ID        int64   `json:"id"`
+	ID        int64   `json:"id,string"`
 	Username  string  `json:"username"`
 	Email     *string `json:"email"`
 	Admin     bool    `json:"admin"`

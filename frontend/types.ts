@@ -1,5 +1,5 @@
 export interface User {
-  id: number;
+  id: string;
   username: string;
   email: string | null;
   admin: boolean;
@@ -59,23 +59,23 @@ export interface AdminPlayer extends User {
   last_sign_in_at: string | null;
 }
 export interface Activity {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   username: string;
   action: string;
   occurred_at: string;
   click_count: number | null;
 }
 export interface Audit {
-  id: number;
+  id: string;
   actor_username: string;
   action: string;
   result: string;
   occurred_at: string;
 }
 export interface ArchivedEntity {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   kind: string | null;
   count: number | null;
   created_time: string | null;

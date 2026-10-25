@@ -113,20 +113,47 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+test("adjacent 64-bit player IDs retain exact detail, activity, and archive URLs", async () => {
+  const players = JSON.parse(
+    '[{"id":"9007199254740992","username":"first_player"},{"id":"9007199254740993","username":"second_player"}]',
+  );
+  const requests = [];
+  const { context, element } = harness(async (url) => {
+    requests.push(url);
+    if (url.startsWith("/api/admin/players?")) return response({ items: players, total: 2 });
+    const player = players.find((player) => url === `/api/admin/players/${player.id}`);
+    return response(player ?? { items: [], total: 0 });
+  });
+  await context.loadPlayers();
+  for (const [index, player] of players.entries()) {
+    requests.length = 0;
+    const button = element("#players-rows").children[index].children[0].children[0];
+    await button.events.get("click")();
+    assert.deepEqual(requests, [
+      `/api/admin/players/${player.id}`,
+      `/api/admin/activity?user_id=${player.id}&page=1`,
+      `/api/admin/players/${player.id}/entities?page=1`,
+    ]);
+    assert.equal(element("#detail-title").textContent, player.username);
+    assert.match(element("#detail-profile").textContent, new RegExp(`Player ID ${player.id}`));
+    assert.equal(element("#detail-content").hidden, false);
+  }
+});
+
 for (const [load, control, rows, initial, latest] of [
   [
     "loadPlayers",
     "#search",
     "#players-rows",
-    { items: [{ id: 1, username: "old_search", clicks: 1 }], total: 1 },
-    { items: [{ id: 2, username: "new_search", clicks: 2 }], total: 1 },
+    { items: [{ id: "1", username: "old_search", clicks: 1 }], total: 1 },
+    { items: [{ id: "2", username: "new_search", clicks: 2 }], total: 1 },
   ],
   [
     "loadActivity",
     "#activity-user",
     "#activity-rows",
-    { items: [{ user_id: 1, username: "old_player", action: "click" }], total: 1 },
-    { items: [{ user_id: 2, username: "new_player", action: "click" }], total: 1 },
+    { items: [{ user_id: "1", username: "old_player", action: "click" }], total: 1 },
+    { items: [{ user_id: "2", username: "new_player", action: "click" }], total: 1 },
   ],
 ]) {
   test(`${load} keeps the newest filter when responses arrive out of order`, async () => {

@@ -135,6 +135,105 @@ func TestAdminPlayerStatsResponsesAndFilters(t *testing.T) {
 	response.Body.Close()
 }
 
+func TestAPIIdentifiersPreserveAdjacent64BitIDs(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "large-ids.db")
+	db, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	hash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const timestamp = "2026-10-24T12:00:00Z"
+	const first, second = int64(9007199254740992), int64(9007199254740993)
+	for _, player := range []struct {
+		id       int64
+		username string
+	}{{first, "first_large_player"}, {second, "second_large_player"}} {
+		if _, err := raw.Exec(`INSERT INTO users(id,username,password_hash,admin,created_at,updated_at) VALUES (?,?,?,1,?,?)`, player.id, player.username, string(hash), timestamp, timestamp); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := raw.Exec(`INSERT INTO player_activity(id,user_id,action,occurred_at) VALUES (?,?,'click',?)`, second, second, timestamp); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec(`INSERT INTO rails_entities(id,user_id,kind,created_at,updated_at) VALUES (?,?,'custom_archive',?,?)`, second, second, timestamp, timestamp); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec(`INSERT INTO admin_audit(id,actor_id,actor_username,action,result,details,occurred_at) VALUES (?,?,'second_large_player','admin_granted','success','',?)`, second, second, timestamp); err != nil {
+		t.Fatal(err)
+	}
+	app, err := New(db, Config{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), passwordCost: bcrypt.MinCost, BackupDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Jar: jar, Transport: handlerTransport{handler: app.Handler()}}
+	response := jsonRequest(t, client, "POST", "http://goclick.test/api/auth/login", map[string]string{"username": "second_large_player", "password": "password123"}, nil)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("large ID login = %d: %s", response.StatusCode, readBody(t, response))
+	}
+	var signedIn struct{ User map[string]any }
+	decodeResponse(t, response, &signedIn)
+	if signedIn.User["id"] != "9007199254740993" {
+		t.Fatalf("sign-in ID = %#v", signedIn.User["id"])
+	}
+	for _, test := range []struct {
+		path, id, username string
+	}{
+		{"/api/me", "9007199254740993", "second_large_player"},
+		{"/api/admin/players/9007199254740992", "9007199254740992", "first_large_player"},
+		{"/api/admin/players/9007199254740993", "9007199254740993", "second_large_player"},
+	} {
+		response := jsonRequest(t, client, "GET", "http://goclick.test"+test.path, nil, nil)
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("%s = %d: %s", test.path, response.StatusCode, readBody(t, response))
+		}
+		var player map[string]any
+		decodeResponse(t, response, &player)
+		if player["id"] != test.id || player["username"] != test.username {
+			t.Fatalf("%s = %+v", test.path, player)
+		}
+	}
+	for _, test := range []struct {
+		path, field string
+	}{
+		{"/api/admin/players?sort=username", "id"},
+		{"/api/admin/activity?user_id=9007199254740993", "user_id"},
+		{"/api/admin/players/9007199254740993/entities", "user_id"},
+		{"/api/admin/audit", "id"},
+	} {
+		response := jsonRequest(t, client, "GET", "http://goclick.test"+test.path, nil, nil)
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("%s = %d: %s", test.path, response.StatusCode, readBody(t, response))
+		}
+		var page struct{ Items []map[string]any }
+		decodeResponse(t, response, &page)
+		found := false
+		for _, item := range page.Items {
+			if item[test.field] == "9007199254740993" {
+				found = true
+			}
+			if _, ok := item["id"].(string); !ok {
+				t.Fatalf("%s returned inexact identifier: %+v", test.path, item)
+			}
+		}
+		if !found {
+			t.Fatalf("%s lost large ID: %+v", test.path, page.Items)
+		}
+	}
+}
+
 func multipartRestore(t *testing.T, client *http.Client, backup []byte, password, confirmation string) *http.Response {
 	return multipartDatabase(t, client, "/api/admin/backups/restore", backup, password, confirmation)
 }

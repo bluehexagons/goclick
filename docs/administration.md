@@ -146,6 +146,9 @@ not automatically deleted. Plan retention and off-host backups separately.
 
 All endpoints below require admin authentication. Read endpoints accept
 `page` (starting at 1) and `limit` (1–100, default 25) where paginated.
+Identifiers in JSON responses (`id` and `user_id`) are exact decimal strings;
+keep them as strings in clients and pass them unchanged in paths and filters.
+The database and native backup formats retain their existing integer IDs.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |

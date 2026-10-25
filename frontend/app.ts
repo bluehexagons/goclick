@@ -59,7 +59,6 @@ let counterLoad: Promise<void> | null = null;
 let counterLoadOwner: object | null = null;
 let refreshQueued = false;
 let offline = navigator.onLine === false;
-let lastCounterSync = -Infinity;
 const maxPendingClicks = 6;
 let cooldownUntil = 0,
   cooldownTimer = 0;
@@ -360,7 +359,6 @@ function openGame(
       }
       lastOnlineCounters = data;
       renderCounters(data, true);
-      lastCounterSync = performance.now();
       gameReady = true;
       updateGameControls();
       if (focusButton && !clickButton.disabled) clickButton.focus();
@@ -411,9 +409,8 @@ window.addEventListener("online", () => {
 });
 function resumeGame() {
   if (cooldownUntil) paintCooldown();
-  // Visibility and focus often arrive together. A brief switch away should not
-  // interrupt the button or repeatedly fetch data we just loaded.
-  if (gameReady && performance.now() - lastCounterSync < 15000) return;
+  // Cookies are shared across tabs. Even a brief switch can change accounts;
+  // openGame coalesces the paired visibility/focus events into one refresh.
   refreshGame();
 }
 document.addEventListener("visibilitychange", () => {
@@ -562,6 +559,7 @@ clickButton.addEventListener("click", async (event) => {
     return;
   }
   if (
+    !user ||
     !gameReady ||
     (offline && !localMode) ||
     signingOut ||
@@ -586,7 +584,10 @@ clickButton.addEventListener("click", async (event) => {
   setConnection(null, "loading");
   let saved = false;
   try {
-    const data = await api<Counters>("/api/clicks", { method: "POST" });
+    const data = await api<Counters>("/api/clicks", {
+      method: "POST",
+      headers: { "X-GoClick-User-ID": user.id },
+    });
     if (generation !== clickGeneration) return;
     renderCounters(data);
     if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
@@ -599,6 +600,11 @@ clickButton.addEventListener("click", async (event) => {
     feedback.fail(error.uncertain, error.status === 429);
     if (error.status === 401) {
       if (user && !signingOut) handleExpiredSession();
+      return;
+    }
+    if (error.code === "account_changed") {
+      gameReady = false;
+      refreshQueued = true;
       return;
     }
     if (error.status === 429) {

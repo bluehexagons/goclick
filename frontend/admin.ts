@@ -44,7 +44,7 @@ let playersPage = 1,
   auditPage = 1,
   detailActivityPage = 1,
   detailEntityPage = 1;
-let selectedPlayer: number | null = null;
+let selectedPlayer: string | null = null;
 let detailGeneration = 0,
   restoring = false;
 const pendingReads = new Map<string, AbortController>();
@@ -410,7 +410,7 @@ async function detailEntities(generation: number) {
     await detailEntities(generation);
   });
 }
-async function openPlayer(id: number) {
+async function openPlayer(id: string) {
   selectedPlayer = id;
   detailActivityPage = detailEntityPage = 1;
   const generation = ++detailGeneration;
