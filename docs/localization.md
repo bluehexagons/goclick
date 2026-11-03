@@ -2,7 +2,12 @@
 
 The header language selector translates the main game: account/local navigation,
 click totals, streaks, timestamps, pending/save/cooldown feedback, icon tooltips
-and accessible names, control instructions, and the Share dialog and copied text.
+and accessible names, floating click feedback, control instructions, and the
+Share dialog and copied text. Pending and lingering feedback follows language
+changes without replaying animations or save acknowledgements. Local ping
+feedback explicitly identifies simulated timings. If the share preview changes
+during a clipboard write or after a successful copy, the dialog asks for another
+copy rather than claiming the updated text is already on the clipboard.
 The landing page, sign-in/signup forms, Options/storage tools and technical notes,
 and administration remain English in this first pass. The Options dialog has an
 explicit English language/direction; the translated gameplay instructions carry

@@ -162,9 +162,12 @@ function showGameError(key: MessageKey, focus = false) {
 }
 
 function paintButtonLanguage(code: Language) {
-  buttonLabel.textContent = t("click", {}, code);
-  buttonLabel.lang = code;
-  buttonLabel.dir = languageDirection(code);
+  const text = t("click", {}, code),
+    direction = languageDirection(code);
+  // Unchanged labels should not trigger the renderer's mutation observer.
+  if (buttonLabel.textContent !== text) buttonLabel.textContent = text;
+  if (buttonLabel.lang !== code) buttonLabel.lang = code;
+  if (buttonLabel.dir !== direction) buttonLabel.dir = direction;
 }
 
 function setConnection(milliseconds: number | null = null, state: "" | "loading" | "error" = "") {
@@ -375,9 +378,10 @@ function renderCounters(data: Counters, allowDecrease = false) {
     ["year-streak", data.streak_counter_year?.count ?? 0],
   ] as const) {
     const element = $(`#${id}`),
-      changed = element.textContent !== formatNumber(count);
-    element.textContent = formatNumber(count);
-    if (changed && !allowDecrease) animateNumber(element);
+      formatted = formatNumber(count);
+    if (element.textContent === formatted) continue;
+    element.textContent = formatted;
+    if (!allowDecrease) animateNumber(element);
   }
   $("#last-click").textContent = clicks?.modified_time
     ? t("lastClick", {

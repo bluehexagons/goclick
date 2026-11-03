@@ -51,8 +51,16 @@ export function message(
     Object.hasOwn(parameters, name) ? String(parameters[name]) : token,
   );
 }
+// Number formatting is on the click path. Keep the small, supported-locale cache
+// instead of constructing formatters repeatedly for every counter and popup.
+const numberFormats = new Map<Language, Intl.NumberFormat>();
 export function formatNumber(value: number, code = language): string {
-  return new Intl.NumberFormat(code).format(value);
+  let formatter = numberFormats.get(code);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(code);
+    numberFormats.set(code, formatter);
+  }
+  return formatter.format(value);
 }
 export function formatUnit(value: number, unit: "day" | "month" | "year", code = language) {
   return new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" }).format(value);

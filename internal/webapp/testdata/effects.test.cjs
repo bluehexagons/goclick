@@ -101,6 +101,7 @@ function effects() {
   };
   return {
     feedback: runtime.load("click-feedback").clickFeedback,
+    setLanguage: runtime.load("i18n").setLanguage,
     button,
     layer,
     timers,
@@ -164,4 +165,57 @@ test("a rejected rate-limited click gets a cooldown response rather than a save 
   assert.equal(popup.dataset.state, "limited");
   assert.equal(popup.children[1].textContent, "cooldown");
   assert.deepEqual(h.responses, [["pending"], ["limited"]]);
+});
+
+test("click feedback and tooltips follow language changes throughout the save lifecycle", () => {
+  const h = effects();
+  const handle = h.feedback.start(h.button, { detail: 0 });
+  const popup = h.layer.children[0];
+  const pendingTimer = [...h.timers.values()][0];
+  h.setLanguage("es");
+  assert.equal(popup.lang, "es");
+  assert.match(popup.title, /Esperando guardado/);
+  pendingTimer.callback();
+  assert.equal(popup.children[1].textContent, "esperando");
+  assert.equal(popup.animations.length, 0);
+  h.setLanguage("ar");
+  assert.equal(popup.dir, "rtl");
+  assert.equal(popup.children[0].textContent, `+${new Intl.NumberFormat("ar").format(1)}`);
+  assert.equal(popup.children[1].textContent, "قيد الانتظار");
+  handle.success(80);
+  assert.match(popup.title, /تم الحفظ/);
+  const timerCount = h.timers.size;
+  const responseCount = h.responses.length;
+  const animationCount = popup.animations.length;
+  h.setLanguage("de");
+  assert.equal(popup.dir, "ltr");
+  assert.match(popup.title, /Gespeichert/);
+  assert.equal(popup.children[1].textContent, "✓ 80 ms");
+  assert.equal(h.timers.size, timerCount);
+  assert.equal(h.responses.length, responseCount);
+  assert.equal(popup.animations.length, animationCount);
+});
+
+test("failure and simulated-ping feedback use translated status text and accurate tooltips", () => {
+  const h = effects();
+  h.setLanguage("fr");
+  for (const [uncertain, limited, expected] of [
+    [false, false, "non enregistré"],
+    [true, false, "non confirmé"],
+    [false, true, "pause"],
+  ]) {
+    const handle = h.feedback.start(h.button, { detail: 0 });
+    const popup = h.layer.children.at(-1);
+    handle.fail(uncertain, limited);
+    assert.equal(popup.children[1].textContent, expected);
+    assert.equal(popup.title, expected);
+  }
+  const local = h.feedback.start(h.button, { detail: 0 }, true);
+  const popup = h.layer.children.at(-1);
+  local.success(250);
+  assert.match(popup.title, /Réponse simulée/);
+  assert.match(popup.children[1].textContent, /simulée/);
+  h.feedback.reset();
+  h.setLanguage("ja");
+  assert.equal(popup.lang, "fr"); // Removed effects no longer receive locale updates.
 });

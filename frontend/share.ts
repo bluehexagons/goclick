@@ -91,8 +91,11 @@ export const statsShare = (() => {
 
   function updatePreview() {
     text.lang = currentLanguage();
-    if (currentStats)
-      text.value = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
+    if (!currentStats) return;
+    const preview = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
+    const changed = text.value !== preview;
+    text.value = preview;
+    if (changed && announcement === "copied") announce("copyChanged");
   }
 
   async function copyCurrent(openDialog: boolean) {
@@ -118,12 +121,14 @@ export const statsShare = (() => {
 
     try {
       await clipboardWrite;
-      if (current === generation) announce("copied");
+      if (current === generation) announce(summary === text.value ? "copied" : "copyChanged");
     } catch {
       if (current !== generation) return;
       announce("clipboardUnavailable");
-      text.focus();
-      text.select();
+      if (dialog.open && summary === text.value) {
+        text.focus();
+        text.select();
+      }
     } finally {
       if (current === generation) {
         busy = false;

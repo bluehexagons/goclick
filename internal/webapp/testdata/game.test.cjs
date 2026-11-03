@@ -1062,3 +1062,76 @@ test("share preview and errors follow language changes without losing the curren
   assert.equal(h.element("#game-error").hidden, false);
   assert.equal(h.requests.length, 1);
 });
+
+for (const change of ["language", "options"]) {
+  test(`a delayed clipboard success requires copying again after changing ${change}`, async () => {
+    const pending = deferred();
+    const copies = [];
+    const h = await harness({
+      clipboard: {
+        writeText: (text) => {
+          copies.push(text);
+          return pending.promise;
+        },
+      },
+    });
+    const copy = h.element("#share-stats").fire("click");
+    if (change === "language") {
+      // A second tab can change the locale while this tab has a modal open.
+      h.storage.set("goclick.language.v1", "es");
+      h.window.fire("storage", { key: "goclick.language.v1" });
+    } else {
+      h.element("#include-share-clicks").checked = false;
+      h.element("#include-share-clicks").fire("change");
+    }
+    assert.notEqual(h.element("#share-text").value, copies[0]);
+    pending.resolve();
+    await copy;
+    assert.match(
+      h.element("#share-status").textContent,
+      change === "language" ? /vista previa cambió/ : /Preview changed/,
+    );
+    assert.equal(h.element("#copy-share-text").attributes.get("aria-busy"), "false");
+    assert.equal(copies.length, 1);
+    await h.element("#copy-share-text").fire("click");
+    await settle();
+    assert.equal(copies.length, 2);
+    assert.equal(copies[1], h.element("#share-text").value);
+    assert.equal(
+      h.element("#share-status").textContent,
+      change === "language" ? "Estadísticas copiadas." : "Stats copied.",
+    );
+    assert.deepEqual(h.requests, []);
+  });
+}
+
+test("changing a previously copied preview clears its stale copied confirmation", async () => {
+  const h = await harness({ clipboard: { writeText: async () => {} } });
+  await h.element("#share-stats").fire("click");
+  assert.equal(h.element("#share-status").textContent, "Stats copied.");
+  h.element("#include-share-link").checked = false;
+  h.element("#include-share-link").fire("change");
+  assert.match(h.element("#share-status").textContent, /Preview changed/);
+});
+
+test("a stale clipboard failure preserves focus on changed share options", async () => {
+  const pending = deferred();
+  const h = await harness({
+    clipboard: {
+      writeText: () =>
+        pending.promise.then(() => {
+          throw new Error("Denied");
+        }),
+    },
+  });
+  const copy = h.element("#share-stats").fire("click");
+  const option = h.element("#include-share-clicks");
+  option.focus();
+  option.checked = false;
+  option.fire("change");
+  pending.resolve();
+  await copy;
+  assert.equal(h.document.activeElement, option);
+  assert.equal(h.element("#share-text").selected, undefined);
+  assert.match(h.element("#share-status").textContent, /Clipboard unavailable/);
+});

@@ -1,14 +1,28 @@
 import { motionPreference } from "./preferences.js";
 import { tactileButtons } from "./button.js";
 import { required } from "./dom.js";
+import {
+  currentLanguage,
+  languageDirection,
+  message as t,
+  formatNumber,
+  onLanguageChange,
+} from "./i18n.js";
 import type { Activation, ResponseState } from "./types.js";
 
 interface Feedback {
   remove(): void;
   reduce(): void;
+  translate(): void;
   success(milliseconds: number): void;
   fail(uncertain?: boolean, limited?: boolean): void;
 }
+const feedbackLabels = {
+  waiting: "feedbackWaiting",
+  limited: "feedbackCooldown",
+  unconfirmed: "feedbackUnconfirmed",
+  unsaved: "feedbackUnsaved",
+} as const;
 const clickFeedback = (() => {
   const samples: number[] = [],
     live = new Set<Feedback>();
@@ -36,12 +50,40 @@ const clickFeedback = (() => {
     popup.setAttribute("aria-hidden", "true");
     popup.style.left = `${x}px`;
     popup.style.top = `${y}px`;
-    score.textContent = "+1";
-    timing.textContent = "…";
     popup.append(score, timing);
     required(".score-effects", stage).append(popup);
     tactileButtons.get(button)?.respond("pending");
     const baseline = average();
+    let phase: "pending" | "waiting" | "saved" | "limited" | "unconfirmed" | "unsaved" = "pending";
+    let measured = 0;
+    function translate() {
+      popup.lang = currentLanguage();
+      popup.dir = languageDirection();
+      score.textContent =
+        phase === "limited"
+          ? "…"
+          : phase === "unconfirmed"
+            ? "?"
+            : phase === "unsaved"
+              ? "×"
+              : `+${formatNumber(1)}`;
+      const average = formatNumber(Math.round(baseline));
+      if (phase === "saved") {
+        const time = formatNumber(Math.round(measured));
+        timing.textContent = t(simulated ? "feedbackSimulatedTime" : "feedbackSavedTime", { time });
+        popup.title = t(simulated ? "feedbackSimulatedHint" : "feedbackSavedHint", {
+          time,
+          average,
+        });
+      } else {
+        timing.textContent = phase === "pending" ? "…" : t(feedbackLabels[phase]);
+        popup.title =
+          phase === "pending" || phase === "waiting"
+            ? t("feedbackAwaitingHint", { average })
+            : timing.textContent;
+      }
+    }
+    translate();
     let animation: Animation | null = null;
     let removal = 0,
       settled = false;
@@ -49,7 +91,8 @@ const clickFeedback = (() => {
       () => {
         if (!settled) {
           popup.dataset.state = "slow";
-          timing.textContent = "waiting";
+          phase = "waiting";
+          translate();
         }
       },
       Math.max(250, baseline * 1.6),
@@ -64,6 +107,7 @@ const clickFeedback = (() => {
     }
     const handle: Feedback = {
       remove,
+      translate,
       reduce() {
         animation?.cancel();
         animation = null;
@@ -76,8 +120,9 @@ const clickFeedback = (() => {
         popup.dataset.state =
           ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
         tactileButtons.get(button)?.respond(popup.dataset.state as ResponseState, ms);
-        timing.textContent = `✓ ${Math.round(ms)} ms${simulated ? " · sim" : ""}`;
-        popup.title = `Saved · ${Math.round(ms)} ms · recent average ${Math.round(baseline)} ms`;
+        phase = "saved";
+        measured = ms;
+        translate();
         samples.push(ms);
         if (samples.length > 20) samples.shift();
         finish();
@@ -88,8 +133,8 @@ const clickFeedback = (() => {
         window.clearTimeout(slow);
         popup.dataset.state = limited ? "limited" : "error";
         tactileButtons.get(button)?.respond(limited ? "limited" : "error");
-        score.textContent = limited ? "…" : uncertain ? "?" : "×";
-        timing.textContent = limited ? "cooldown" : uncertain ? "unconfirmed" : "not saved";
+        phase = limited ? "limited" : uncertain ? "unconfirmed" : "unsaved";
+        translate();
         finish();
       },
     };
@@ -106,11 +151,13 @@ const clickFeedback = (() => {
       removal = window.setTimeout(remove, motionPreference.matches ? 800 : 950);
     }
     // Pending +1s stay anchored until confirmed, including on a slow connection.
-    popup.title = `Awaiting save · recent average ${Math.round(baseline)} ms`;
     live.add(handle);
     while (live.size > 32) live.values().next().value?.remove();
     return handle;
   }
+  onLanguageChange(() => {
+    for (const handle of live) handle.translate();
+  });
   motionPreference.addEventListener("change", () => {
     if (motionPreference.matches) for (const handle of live) handle.reduce();
   });

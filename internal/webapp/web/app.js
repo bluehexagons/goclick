@@ -1280,114 +1280,6 @@
   var activateRelease;
   var endPointer;
 
-  // frontend/click-feedback.ts
-  var clickFeedback = (() => {
-    const samples = [], live = /* @__PURE__ */ new Set();
-    const average = () => samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : 150;
-    function start(button, event, simulated = false) {
-      const stage = button.closest(".button-stage");
-      if (!stage) throw new Error("Click feedback needs a stage");
-      const rect = stage.getBoundingClientRect();
-      const face = button.getBoundingClientRect();
-      const pointer = event.detail > 0;
-      const x = Math.max(
-        40,
-        Math.min(rect.width - 40, (pointer ? event.clientX : face.left + face.width / 2) - rect.left)
-      );
-      const y = Math.max(
-        24,
-        Math.min(rect.height - 16, (pointer ? event.clientY : face.top + face.height / 2) - rect.top)
-      );
-      const popup = document.createElement("span"), score = document.createElement("strong"), timing = document.createElement("small");
-      popup.className = "click-bonus";
-      popup.dataset.state = "pending";
-      popup.setAttribute("aria-hidden", "true");
-      popup.style.left = `${x}px`;
-      popup.style.top = `${y}px`;
-      score.textContent = "+1";
-      timing.textContent = "\u2026";
-      popup.append(score, timing);
-      required(".score-effects", stage).append(popup);
-      tactileButtons.get(button)?.respond("pending");
-      const baseline = average();
-      let animation = null;
-      let removal = 0, settled = false;
-      const slow = window.setTimeout(
-        () => {
-          if (!settled) {
-            popup.dataset.state = "slow";
-            timing.textContent = "waiting";
-          }
-        },
-        Math.max(250, baseline * 1.6)
-      );
-      function remove() {
-        settled = true;
-        window.clearTimeout(slow);
-        window.clearTimeout(removal);
-        animation?.cancel();
-        popup.remove();
-        live.delete(handle);
-      }
-      const handle = {
-        remove,
-        reduce() {
-          animation?.cancel();
-          animation = null;
-        },
-        success(milliseconds) {
-          if (settled) return;
-          settled = true;
-          window.clearTimeout(slow);
-          const ms = Math.max(0, milliseconds);
-          popup.dataset.state = ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
-          tactileButtons.get(button)?.respond(popup.dataset.state, ms);
-          timing.textContent = `\u2713 ${Math.round(ms)} ms${simulated ? " \xB7 sim" : ""}`;
-          popup.title = `Saved \xB7 ${Math.round(ms)} ms \xB7 recent average ${Math.round(baseline)} ms`;
-          samples.push(ms);
-          if (samples.length > 20) samples.shift();
-          finish();
-        },
-        fail(uncertain = false, limited = false) {
-          if (settled) return;
-          settled = true;
-          window.clearTimeout(slow);
-          popup.dataset.state = limited ? "limited" : "error";
-          tactileButtons.get(button)?.respond(limited ? "limited" : "error");
-          score.textContent = limited ? "\u2026" : uncertain ? "?" : "\xD7";
-          timing.textContent = limited ? "cooldown" : uncertain ? "unconfirmed" : "not saved";
-          finish();
-        }
-      };
-      function finish() {
-        if (!motionPreference.matches)
-          animation = popup.animate(
-            [
-              { transform: "translate(-50%, -115%) scale(1)", opacity: 0.85 },
-              { transform: "translate(-50%, -135%) scale(1.06)", opacity: 0.85, offset: 0.18 },
-              { transform: "translate(-50%, -220%) scale(.95)", opacity: 0 }
-            ],
-            { duration: 900, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" }
-          );
-        removal = window.setTimeout(remove, motionPreference.matches ? 800 : 950);
-      }
-      popup.title = `Awaiting save \xB7 recent average ${Math.round(baseline)} ms`;
-      live.add(handle);
-      while (live.size > 32) live.values().next().value?.remove();
-      return handle;
-    }
-    motionPreference.addEventListener("change", () => {
-      if (motionPreference.matches) for (const handle of live) handle.reduce();
-    });
-    return {
-      start,
-      reset() {
-        for (const handle of live) handle.remove();
-        samples.length = 0;
-      }
-    };
-  })();
-
   // frontend/messages.ts
   var english = {
     language: "Language",
@@ -1401,6 +1293,16 @@
     localClicks: "Local clicks",
     click: "Click!",
     clickAction: "Click to increment score",
+    feedbackWaiting: "waiting",
+    feedbackUnconfirmed: "unconfirmed",
+    feedbackUnsaved: "not saved",
+    feedbackCooldown: "cooldown",
+    feedbackSavedTime: "\u2713 {time} ms",
+    feedbackSimulatedTime: "\u2713 {time} ms \xB7 sim",
+    feedbackAwaitingHint: "Awaiting save \xB7 recent average {average} ms",
+    feedbackSavedHint: "Saved \xB7 {time} ms \xB7 recent average {average} ms",
+    feedbackSimulatedHint: "Simulated response \xB7 {time} ms \xB7 recent average {average} ms",
+    copyChanged: "Preview changed. Copy again to share the updated text.",
     lastClick: "Last click {time}",
     noClicks: "No saved clicks yet.",
     timezone: "Shown in your local time zone",
@@ -1471,6 +1373,16 @@
       localClicks: "\u672C\u5730\u70B9\u51FB",
       click: "\u70B9\u51FB\uFF01",
       clickAction: "\u70B9\u51FB\u589E\u52A0\u5206\u6570",
+      feedbackWaiting: "\u7B49\u5F85\u4E2D",
+      feedbackUnconfirmed: "\u672A\u786E\u8BA4",
+      feedbackUnsaved: "\u672A\u4FDD\u5B58",
+      feedbackCooldown: "\u51B7\u5374\u4E2D",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u6A21\u62DF",
+      feedbackAwaitingHint: "\u7B49\u5F85\u4FDD\u5B58 \xB7 \u8FD1\u671F\u5E73\u5747 {average} ms",
+      feedbackSavedHint: "\u5DF2\u4FDD\u5B58 \xB7 {time} ms \xB7 \u8FD1\u671F\u5E73\u5747 {average} ms",
+      feedbackSimulatedHint: "\u6A21\u62DF\u54CD\u5E94 \xB7 {time} ms \xB7 \u8FD1\u671F\u5E73\u5747 {average} ms",
+      copyChanged: "\u9884\u89C8\u5DF2\u66F4\u6539\u3002\u8BF7\u518D\u6B21\u590D\u5236\u4EE5\u5206\u4EAB\u66F4\u65B0\u540E\u7684\u6587\u672C\u3002",
       lastClick: "\u4E0A\u6B21\u70B9\u51FB\uFF1A{time}",
       noClicks: "\u5C1A\u65E0\u5DF2\u4FDD\u5B58\u7684\u70B9\u51FB\u3002",
       timezone: "\u6309\u60A8\u7684\u672C\u5730\u65F6\u533A\u663E\u793A",
@@ -1540,6 +1452,16 @@
       localClicks: "Clics locales",
       click: "\xA1Clic!",
       clickAction: "Haz clic para sumar un punto",
+      feedbackWaiting: "esperando",
+      feedbackUnconfirmed: "sin confirmar",
+      feedbackUnsaved: "no guardado",
+      feedbackCooldown: "pausa",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 sim.",
+      feedbackAwaitingHint: "Esperando guardado \xB7 media reciente {average} ms",
+      feedbackSavedHint: "Guardado \xB7 {time} ms \xB7 media reciente {average} ms",
+      feedbackSimulatedHint: "Respuesta simulada \xB7 {time} ms \xB7 media reciente {average} ms",
+      copyChanged: "La vista previa cambi\xF3. Copia de nuevo para compartir el texto actualizado.",
       lastClick: "\xDAltimo clic: {time}",
       noClicks: "A\xFAn no hay clics guardados.",
       timezone: "Se muestra en tu zona horaria local",
@@ -1609,6 +1531,16 @@
       localClicks: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0644\u064A\u0629",
       click: "\u0627\u0646\u0642\u0631!",
       clickAction: "\u0627\u0646\u0642\u0631 \u0644\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0637\u0629",
+      feedbackWaiting: "\u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631",
+      feedbackUnconfirmed: "\u063A\u064A\u0631 \u0645\u0624\u0643\u062F\u0629",
+      feedbackUnsaved: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638",
+      feedbackCooldown: "\u0641\u062A\u0631\u0629 \u0627\u0646\u062A\u0638\u0627\u0631",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u0645\u062D\u0627\u0643\u0627\u0629",
+      feedbackAwaitingHint: "\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u062D\u0641\u0638 \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average} ms",
+      feedbackSavedHint: "\u062A\u0645 \u0627\u0644\u062D\u0641\u0638 \xB7 {time} ms \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average} ms",
+      feedbackSimulatedHint: "\u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0627\u0629 \xB7 {time} ms \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average} ms",
+      copyChanged: "\u062A\u063A\u064A\u0651\u0631\u062A \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629. \u0627\u0646\u0633\u062E \u0645\u062C\u062F\u062F\u064B\u0627 \u0644\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0646\u0635 \u0627\u0644\u0645\u062D\u062F\u0651\u062B.",
       lastClick: "\u0622\u062E\u0631 \u0646\u0642\u0631\u0629: {time}",
       noClicks: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0646\u0642\u0631\u0627\u062A \u0645\u062D\u0641\u0648\u0638\u0629 \u0628\u0639\u062F.",
       timezone: "\u064A\u064F\u0639\u0631\u0636 \u0628\u062A\u0648\u0642\u064A\u062A\u0643 \u0627\u0644\u0645\u062D\u0644\u064A",
@@ -1678,6 +1610,16 @@
       localClicks: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0915\u094D\u0932\u093F\u0915",
       click: "\u0915\u094D\u0932\u093F\u0915!",
       clickAction: "\u0905\u0902\u0915 \u092C\u0922\u093C\u093E\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902",
+      feedbackWaiting: "\u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \u091C\u093E\u0930\u0940",
+      feedbackUnconfirmed: "\u0905\u092A\u0941\u0937\u094D\u091F",
+      feedbackUnsaved: "\u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E",
+      feedbackCooldown: "\u0935\u093F\u0930\u093E\u092E",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921",
+      feedbackAwaitingHint: "\u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average} ms",
+      feedbackSavedHint: "\u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \xB7 {time} ms \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average} ms",
+      feedbackSimulatedHint: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \xB7 {time} ms \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average} ms",
+      copyChanged: "\u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u092C\u0926\u0932 \u0917\u092F\u093E \u0939\u0948\u0964 \u0928\u092F\u093E \u091F\u0947\u0915\u094D\u0938\u094D\u091F \u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092B\u093F\u0930 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
       lastClick: "\u092A\u093F\u091B\u0932\u093E \u0915\u094D\u0932\u093F\u0915: {time}",
       noClicks: "\u0905\u092D\u0940 \u0915\u094B\u0908 \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E \u0939\u0948\u0964",
       timezone: "\u0906\u092A\u0915\u0947 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u092E\u092F \u0915\u094D\u0937\u0947\u0924\u094D\u0930 \u092E\u0947\u0902 \u0926\u093F\u0916\u093E\u092F\u093E \u0917\u092F\u093E \u0939\u0948",
@@ -1747,6 +1689,16 @@
       localClicks: "Klik lokal",
       click: "Klik!",
       clickAction: "Klik untuk menambah skor",
+      feedbackWaiting: "menunggu",
+      feedbackUnconfirmed: "belum terkonfirmasi",
+      feedbackUnsaved: "tidak tersimpan",
+      feedbackCooldown: "jeda",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 simulasi",
+      feedbackAwaitingHint: "Menunggu penyimpanan \xB7 rata-rata terkini {average} ms",
+      feedbackSavedHint: "Tersimpan \xB7 {time} ms \xB7 rata-rata terkini {average} ms",
+      feedbackSimulatedHint: "Respons simulasi \xB7 {time} ms \xB7 rata-rata terkini {average} ms",
+      copyChanged: "Pratinjau berubah. Salin lagi untuk membagikan teks terbaru.",
       lastClick: "Klik terakhir: {time}",
       noClicks: "Belum ada klik tersimpan.",
       timezone: "Ditampilkan dalam zona waktu lokal Anda",
@@ -1816,6 +1768,16 @@
       localClicks: "Cliques locais",
       click: "Clique!",
       clickAction: "Clique para aumentar a pontua\xE7\xE3o",
+      feedbackWaiting: "aguardando",
+      feedbackUnconfirmed: "n\xE3o confirmado",
+      feedbackUnsaved: "n\xE3o salvo",
+      feedbackCooldown: "pausa",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 sim.",
+      feedbackAwaitingHint: "Aguardando salvamento \xB7 m\xE9dia recente {average} ms",
+      feedbackSavedHint: "Salvo \xB7 {time} ms \xB7 m\xE9dia recente {average} ms",
+      feedbackSimulatedHint: "Resposta simulada \xB7 {time} ms \xB7 m\xE9dia recente {average} ms",
+      copyChanged: "A pr\xE9via mudou. Copie novamente para compartilhar o texto atualizado.",
       lastClick: "\xDAltimo clique: {time}",
       noClicks: "Nenhum clique salvo ainda.",
       timezone: "Exibido no seu fuso hor\xE1rio local",
@@ -1885,6 +1847,16 @@
       localClicks: "Clics locaux",
       click: "Cliquez !",
       clickAction: "Cliquer pour ajouter un point",
+      feedbackWaiting: "en attente",
+      feedbackUnconfirmed: "non confirm\xE9",
+      feedbackUnsaved: "non enregistr\xE9",
+      feedbackCooldown: "pause",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 simul\xE9e",
+      feedbackAwaitingHint: "En attente d\u2019enregistrement \xB7 moyenne r\xE9cente {average} ms",
+      feedbackSavedHint: "Enregistr\xE9 \xB7 {time} ms \xB7 moyenne r\xE9cente {average} ms",
+      feedbackSimulatedHint: "R\xE9ponse simul\xE9e \xB7 {time} ms \xB7 moyenne r\xE9cente {average} ms",
+      copyChanged: "L\u2019aper\xE7u a chang\xE9. Copiez \xE0 nouveau pour partager le texte actualis\xE9.",
       lastClick: "Dernier clic : {time}",
       noClicks: "Aucun clic enregistr\xE9 pour le moment.",
       timezone: "Affich\xE9 dans votre fuseau horaire local",
@@ -1954,6 +1926,16 @@
       localClicks: "\u30ED\u30FC\u30AB\u30EB\u30AF\u30EA\u30C3\u30AF",
       click: "\u30AF\u30EA\u30C3\u30AF\uFF01",
       clickAction: "\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u30B9\u30B3\u30A2\u3092\u5897\u3084\u3059",
+      feedbackWaiting: "\u5F85\u6A5F\u4E2D",
+      feedbackUnconfirmed: "\u672A\u78BA\u8A8D",
+      feedbackUnsaved: "\u672A\u4FDD\u5B58",
+      feedbackCooldown: "\u5F85\u6A5F\u4E2D",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u6A21\u64EC",
+      feedbackAwaitingHint: "\u4FDD\u5B58\u5F85\u3061 \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average} ms",
+      feedbackSavedHint: "\u4FDD\u5B58\u6E08\u307F \xB7 {time} ms \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average} ms",
+      feedbackSimulatedHint: "\u6A21\u64EC\u5FDC\u7B54 \xB7 {time} ms \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average} ms",
+      copyChanged: "\u30D7\u30EC\u30D3\u30E5\u30FC\u304C\u5909\u308F\u308A\u307E\u3057\u305F\u3002\u66F4\u65B0\u3055\u308C\u305F\u30C6\u30AD\u30B9\u30C8\u3092\u5171\u6709\u3059\u308B\u306B\u306F\u3001\u3082\u3046\u4E00\u5EA6\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       lastClick: "\u6700\u5F8C\u306E\u30AF\u30EA\u30C3\u30AF\uFF1A{time}",
       noClicks: "\u4FDD\u5B58\u6E08\u307F\u30AF\u30EA\u30C3\u30AF\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002",
       timezone: "\u304A\u4F4F\u307E\u3044\u306E\u30BF\u30A4\u30E0\u30BE\u30FC\u30F3\u3067\u8868\u793A",
@@ -2023,6 +2005,16 @@
       localClicks: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043A\u043B\u0438\u043A\u0438",
       click: "\u0416\u043C\u0438!",
       clickAction: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0447\u043A\u043E",
+      feedbackWaiting: "\u043E\u0436\u0438\u0434\u0430\u043D\u0438\u0435",
+      feedbackUnconfirmed: "\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
+      feedbackUnsaved: "\u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E",
+      feedbackCooldown: "\u043F\u0430\u0443\u0437\u0430",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u0441\u0438\u043C.",
+      feedbackAwaitingHint: "\u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average} \u043C\u0441",
+      feedbackSavedHint: "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \xB7 {time} \u043C\u0441 \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average} \u043C\u0441",
+      feedbackSimulatedHint: "\u0421\u0438\u043C\u0443\u043B\u044F\u0446\u0438\u044F \u043E\u0442\u0432\u0435\u0442\u0430 \xB7 {time} \u043C\u0441 \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average} \u043C\u0441",
+      copyChanged: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0438\u0437\u043C\u0435\u043D\u0438\u043B\u0441\u044F. \u0421\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043D\u043E\u0432\u043E \u043F\u0435\u0440\u0435\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u043E\u0439.",
       lastClick: "\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043A\u043B\u0438\u043A: {time}",
       noClicks: "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0445 \u043A\u043B\u0438\u043A\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442.",
       timezone: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E \u0432 \u0432\u0430\u0448\u0435\u043C \u0447\u0430\u0441\u043E\u0432\u043E\u043C \u043F\u043E\u044F\u0441\u0435",
@@ -2092,6 +2084,16 @@
       localClicks: "Lokale Klicks",
       click: "Klick!",
       clickAction: "Klicken, um den Punktestand zu erh\xF6hen",
+      feedbackWaiting: "wartet",
+      feedbackUnconfirmed: "unbest\xE4tigt",
+      feedbackUnsaved: "nicht gespeichert",
+      feedbackCooldown: "Pause",
+      feedbackSavedTime: "\u2713 {time} ms",
+      feedbackSimulatedTime: "\u2713 {time} ms \xB7 simuliert",
+      feedbackAwaitingHint: "Warten auf Speicherung \xB7 letzter Durchschnitt {average} ms",
+      feedbackSavedHint: "Gespeichert \xB7 {time} ms \xB7 letzter Durchschnitt {average} ms",
+      feedbackSimulatedHint: "Simulierte Antwort \xB7 {time} ms \xB7 letzter Durchschnitt {average} ms",
+      copyChanged: "Die Vorschau wurde ge\xE4ndert. Kopiere den aktualisierten Text erneut zum Teilen.",
       lastClick: "Letzter Klick: {time}",
       noClicks: "Noch keine Klicks gespeichert.",
       timezone: "Anzeige in deiner lokalen Zeitzone",
@@ -2194,8 +2196,14 @@
       (token, name) => Object.hasOwn(parameters, name) ? String(parameters[name]) : token
     );
   }
+  var numberFormats = /* @__PURE__ */ new Map();
   function formatNumber(value, code = language) {
-    return new Intl.NumberFormat(code).format(value);
+    let formatter = numberFormats.get(code);
+    if (!formatter) {
+      formatter = new Intl.NumberFormat(code);
+      numberFormats.set(code, formatter);
+    }
+    return formatter.format(value);
   }
   function formatUnit(value, unit, code = language) {
     return new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" }).format(value);
@@ -2268,6 +2276,143 @@
     };
   }
 
+  // frontend/click-feedback.ts
+  var feedbackLabels = {
+    waiting: "feedbackWaiting",
+    limited: "feedbackCooldown",
+    unconfirmed: "feedbackUnconfirmed",
+    unsaved: "feedbackUnsaved"
+  };
+  var clickFeedback = (() => {
+    const samples = [], live = /* @__PURE__ */ new Set();
+    const average = () => samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : 150;
+    function start(button, event, simulated = false) {
+      const stage = button.closest(".button-stage");
+      if (!stage) throw new Error("Click feedback needs a stage");
+      const rect = stage.getBoundingClientRect();
+      const face = button.getBoundingClientRect();
+      const pointer = event.detail > 0;
+      const x = Math.max(
+        40,
+        Math.min(rect.width - 40, (pointer ? event.clientX : face.left + face.width / 2) - rect.left)
+      );
+      const y = Math.max(
+        24,
+        Math.min(rect.height - 16, (pointer ? event.clientY : face.top + face.height / 2) - rect.top)
+      );
+      const popup = document.createElement("span"), score = document.createElement("strong"), timing = document.createElement("small");
+      popup.className = "click-bonus";
+      popup.dataset.state = "pending";
+      popup.setAttribute("aria-hidden", "true");
+      popup.style.left = `${x}px`;
+      popup.style.top = `${y}px`;
+      popup.append(score, timing);
+      required(".score-effects", stage).append(popup);
+      tactileButtons.get(button)?.respond("pending");
+      const baseline = average();
+      let phase = "pending";
+      let measured = 0;
+      function translate() {
+        popup.lang = currentLanguage();
+        popup.dir = languageDirection();
+        score.textContent = phase === "limited" ? "\u2026" : phase === "unconfirmed" ? "?" : phase === "unsaved" ? "\xD7" : `+${formatNumber(1)}`;
+        const average2 = formatNumber(Math.round(baseline));
+        if (phase === "saved") {
+          const time = formatNumber(Math.round(measured));
+          timing.textContent = message2(simulated ? "feedbackSimulatedTime" : "feedbackSavedTime", { time });
+          popup.title = message2(simulated ? "feedbackSimulatedHint" : "feedbackSavedHint", {
+            time,
+            average: average2
+          });
+        } else {
+          timing.textContent = phase === "pending" ? "\u2026" : message2(feedbackLabels[phase]);
+          popup.title = phase === "pending" || phase === "waiting" ? message2("feedbackAwaitingHint", { average: average2 }) : timing.textContent;
+        }
+      }
+      translate();
+      let animation = null;
+      let removal = 0, settled = false;
+      const slow = window.setTimeout(
+        () => {
+          if (!settled) {
+            popup.dataset.state = "slow";
+            phase = "waiting";
+            translate();
+          }
+        },
+        Math.max(250, baseline * 1.6)
+      );
+      function remove() {
+        settled = true;
+        window.clearTimeout(slow);
+        window.clearTimeout(removal);
+        animation?.cancel();
+        popup.remove();
+        live.delete(handle);
+      }
+      const handle = {
+        remove,
+        translate,
+        reduce() {
+          animation?.cancel();
+          animation = null;
+        },
+        success(milliseconds) {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(slow);
+          const ms = Math.max(0, milliseconds);
+          popup.dataset.state = ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
+          tactileButtons.get(button)?.respond(popup.dataset.state, ms);
+          phase = "saved";
+          measured = ms;
+          translate();
+          samples.push(ms);
+          if (samples.length > 20) samples.shift();
+          finish();
+        },
+        fail(uncertain = false, limited = false) {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(slow);
+          popup.dataset.state = limited ? "limited" : "error";
+          tactileButtons.get(button)?.respond(limited ? "limited" : "error");
+          phase = limited ? "limited" : uncertain ? "unconfirmed" : "unsaved";
+          translate();
+          finish();
+        }
+      };
+      function finish() {
+        if (!motionPreference.matches)
+          animation = popup.animate(
+            [
+              { transform: "translate(-50%, -115%) scale(1)", opacity: 0.85 },
+              { transform: "translate(-50%, -135%) scale(1.06)", opacity: 0.85, offset: 0.18 },
+              { transform: "translate(-50%, -220%) scale(.95)", opacity: 0 }
+            ],
+            { duration: 900, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" }
+          );
+        removal = window.setTimeout(remove, motionPreference.matches ? 800 : 950);
+      }
+      live.add(handle);
+      while (live.size > 32) live.values().next().value?.remove();
+      return handle;
+    }
+    onLanguageChange(() => {
+      for (const handle of live) handle.translate();
+    });
+    motionPreference.addEventListener("change", () => {
+      if (motionPreference.matches) for (const handle of live) handle.reduce();
+    });
+    return {
+      start,
+      reset() {
+        for (const handle of live) handle.remove();
+        samples.length = 0;
+      }
+    };
+  })();
+
   // frontend/share.ts
   function formatShareText(counters, local, options, siteUrl = typeof window === "undefined" ? "" : window.location?.origin ?? "") {
     const lines = [`Go Click${local ? ` \xB7 ${message2("offline")}` : ""}`];
@@ -2328,8 +2473,11 @@
     }
     function updatePreview() {
       text.lang = currentLanguage();
-      if (currentStats)
-        text.value = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
+      if (!currentStats) return;
+      const preview = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
+      const changed = text.value !== preview;
+      text.value = preview;
+      if (changed && announcement === "copied") announce("copyChanged");
     }
     async function copyCurrent(openDialog) {
       if (busy || !currentStats) return;
@@ -2350,12 +2498,14 @@
       if (openDialog && !dialog.open) dialog.showModal();
       try {
         await clipboardWrite;
-        if (current === generation) announce("copied");
+        if (current === generation) announce(summary === text.value ? "copied" : "copyChanged");
       } catch {
         if (current !== generation) return;
         announce("clipboardUnavailable");
-        text.focus();
-        text.select();
+        if (dialog.open && summary === text.value) {
+          text.focus();
+          text.select();
+        }
       } finally {
         if (current === generation) {
           busy = false;
@@ -2543,9 +2693,10 @@
     lastGameError = key;
   }
   function paintButtonLanguage(code) {
-    buttonLabel.textContent = message2("click", {}, code);
-    buttonLabel.lang = code;
-    buttonLabel.dir = languageDirection(code);
+    const text = message2("click", {}, code), direction = languageDirection(code);
+    if (buttonLabel.textContent !== text) buttonLabel.textContent = text;
+    if (buttonLabel.lang !== code) buttonLabel.lang = code;
+    if (buttonLabel.dir !== direction) buttonLabel.dir = direction;
   }
   function setConnection(milliseconds = null, state = "") {
     connectionState = state;
@@ -2710,9 +2861,10 @@
       ["month-streak", data.streak_counter_month?.count ?? 0],
       ["year-streak", data.streak_counter_year?.count ?? 0]
     ]) {
-      const element = required(`#${id}`), changed = element.textContent !== formatNumber(count);
-      element.textContent = formatNumber(count);
-      if (changed && !allowDecrease) animateNumber(element);
+      const element = required(`#${id}`), formatted = formatNumber(count);
+      if (element.textContent === formatted) continue;
+      element.textContent = formatted;
+      if (!allowDecrease) animateNumber(element);
     }
     required("#last-click").textContent = clicks?.modified_time ? message2("lastClick", {
       time: parseStoredTimestamp(clicks.modified_time).toLocaleString(currentLanguage())
