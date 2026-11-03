@@ -55,7 +55,7 @@ module.exports = async function checkInteraction(page, baseURL) {
   const copied = await page.evaluate(() => window.copiedStats);
   ensure(
     copied ===
-      `Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year\nPlay: ${origin}`,
+      `Go Click · Offline\nLocal clicks: 1\nUTC streaks: 1 day · 1 month · 1 year\nPlay: ${origin}`,
     "Share must copy the displayed local stats",
   );
   await page.locator("#close-share").click();

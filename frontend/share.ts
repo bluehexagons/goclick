@@ -1,4 +1,12 @@
 import { required as $ } from "./dom.js";
+import {
+  currentLanguage,
+  message as t,
+  formatNumber,
+  formatUnit,
+  onLanguageChange,
+} from "./i18n.js";
+import type { MessageKey } from "./messages.js";
 import type { Counters } from "./types.js";
 
 interface ShareOptions {
@@ -8,34 +16,33 @@ interface ShareOptions {
 }
 
 export function formatStats(counters: Counters, local: boolean): string {
-  const number = new Intl.NumberFormat("en-US");
-  const quantity = (count: number, unit: string) =>
-    `${number.format(count)} ${unit}${count === 1 ? "" : "s"}`;
-  return [
-    `Go Click${local ? " · offline" : ""}`,
-    quantity(counters.click_count?.count ?? 0, local ? "local click" : "saved click"),
-    `UTC streaks: ${quantity(counters.streak_counter_day?.count ?? 0, "day")} · ${quantity(counters.streak_counter_month?.count ?? 0, "month")} · ${quantity(counters.streak_counter_year?.count ?? 0, "year")}`,
-  ].join("\n");
+  return formatShareText(counters, local, { siteLink: false, clicks: true, streaks: true });
 }
 
 export function formatShareText(
   counters: Counters,
   local: boolean,
   options: ShareOptions,
-  siteUrl = window.location?.origin ?? "",
+  siteUrl = typeof window === "undefined" ? "" : (window.location?.origin ?? ""),
 ): string {
-  const number = new Intl.NumberFormat("en-US");
-  const quantity = (count: number, unit: string) =>
-    `${number.format(count)} ${unit}${count === 1 ? "" : "s"}`;
-  const lines = [`Go Click${local ? " · offline" : ""}`];
+  const lines = [`Go Click${local ? ` · ${t("offline")}` : ""}`];
   if (options.clicks)
-    lines.push(quantity(counters.click_count?.count ?? 0, local ? "local click" : "saved click"));
+    lines.push(
+      t("statsClicks", {
+        label: t(local ? "localClicks" : "savedClicks"),
+        count: formatNumber(counters.click_count?.count ?? 0),
+      }),
+    );
   if (options.streaks) {
     lines.push(
-      `UTC streaks: ${quantity(counters.streak_counter_day?.count ?? 0, "day")} · ${quantity(counters.streak_counter_month?.count ?? 0, "month")} · ${quantity(counters.streak_counter_year?.count ?? 0, "year")}`,
+      t("statsStreaks", {
+        day: formatUnit(counters.streak_counter_day?.count ?? 0, "day"),
+        month: formatUnit(counters.streak_counter_month?.count ?? 0, "month"),
+        year: formatUnit(counters.streak_counter_year?.count ?? 0, "year"),
+      }),
     );
   }
-  if (options.siteLink && siteUrl) lines.push(`Play: ${siteUrl}`);
+  if (options.siteLink && siteUrl) lines.push(t("playLink", { url: siteUrl }));
   return lines.join("\n");
 }
 
@@ -55,8 +62,11 @@ export const statsShare = (() => {
     clearTimer = 0,
     busy = false,
     currentStats: { counters: Counters; local: boolean } | null = null;
+  let announcement: MessageKey | null = null;
 
-  function announce(message: string) {
+  function announce(key: MessageKey | null) {
+    announcement = key;
+    const message = key ? t(key) : "";
     window.clearTimeout(feedbackTimer);
     window.clearTimeout(clearTimer);
     status.textContent = message;
@@ -66,6 +76,7 @@ export const statsShare = (() => {
       status.setAttribute("data-visible", "false");
       clearTimer = window.setTimeout(() => {
         status.textContent = "";
+        announcement = null;
       }, 400);
     }, 2200);
   }
@@ -79,6 +90,7 @@ export const statsShare = (() => {
   }
 
   function updatePreview() {
+    text.lang = currentLanguage();
     if (currentStats)
       text.value = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
   }
@@ -89,9 +101,10 @@ export const statsShare = (() => {
     const current = generation;
     const summary = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
     text.value = summary;
+    text.lang = currentLanguage();
     button.setAttribute("aria-busy", "true");
     copyButton.setAttribute("aria-busy", "true");
-    announce("");
+    announce(null);
 
     // Start the clipboard write during the button activation, before opening a
     // modal can consume the browser's transient user activation.
@@ -105,10 +118,10 @@ export const statsShare = (() => {
 
     try {
       await clipboardWrite;
-      if (current === generation) announce("Stats copied.");
+      if (current === generation) announce("copied");
     } catch {
       if (current !== generation) return;
-      announce("Clipboard unavailable. Select and copy the preview text.");
+      announce("clipboardUnavailable");
       text.focus();
       text.select();
     } finally {
@@ -119,6 +132,11 @@ export const statsShare = (() => {
       }
     }
   }
+
+  onLanguageChange(() => {
+    updatePreview();
+    if (announcement) status.textContent = t(announcement);
+  });
 
   $<HTMLButtonElement>("#close-share").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (event) => {
@@ -143,7 +161,7 @@ export const statsShare = (() => {
       window.clearTimeout(clearTimer);
       button.setAttribute("aria-busy", "false");
       copyButton.setAttribute("aria-busy", "false");
-      announce("");
+      announce(null);
       text.value = "";
       if (dialog.open) dialog.close();
     },

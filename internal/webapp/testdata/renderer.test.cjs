@@ -61,13 +61,18 @@ function renderer(failure) {
     querySelector: (selector) => (selector === ".button-scene" ? canvas : { style }),
     classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name) },
   };
-  const button = { offsetWidth: 260, querySelector: () => ({ textContent: "Click!" }) };
+  const lettering = { textContent: "Click!", dir: "ltr" };
+  const paintedText = [];
+  const button = { offsetWidth: 260, querySelector: () => lettering };
   const runtime = frontend({
     document: {
       documentElement: { clientWidth: 800, clientHeight: 700 },
       createElement: () => ({
         getContext: () => ({
-          fillText() {},
+          measureText: (text) => ({ width: text.length * 70 }),
+          fillText(text) {
+            paintedText.push({ text, direction: this.direction, font: this.font });
+          },
           clearRect() {},
           fillRect() {},
           drawImage(image) {
@@ -88,6 +93,8 @@ function renderer(failure) {
     view,
     images,
     paintedImages,
+    lettering,
+    paintedText,
     uploads: () => uploads,
     events,
     allocated,
@@ -189,4 +196,38 @@ test("material and glow assets can arrive in either order without losing a layer
     assert.equal(h.uploads(), 3);
     assert.equal(h.classes.has("is-rendered"), true);
   }
+});
+
+test("changing lettering refreshes the GPU atlas with direction and fitted text", () => {
+  const h = renderer();
+  const before = h.uploads();
+  h.lettering.textContent = "Long translated label";
+  h.lettering.dir = "rtl";
+  h.view.draw();
+  assert.equal(h.uploads(), before + 1);
+  const painted = h.paintedText.at(-1);
+  assert.equal(painted.text, h.lettering.textContent);
+  assert.equal(painted.direction, "rtl");
+  assert.ok(parseFloat(painted.font.split(" ")[1]) < 114);
+  h.view.draw();
+  assert.equal(h.uploads(), before + 1);
+});
+
+test("lettering changes during context loss are uploaded on recovery", () => {
+  const h = renderer();
+  h.events.get("webglcontextlost")({ preventDefault() {} });
+  h.lettering.textContent = "クリック！";
+  h.view.draw();
+  h.events.get("webglcontextrestored")();
+  assert.equal(h.paintedText.at(-1).text, "クリック！");
+  assert.equal(h.classes.has("is-rendered"), true);
+});
+
+test("a failed lettering upload restores the CSS button with its current label", () => {
+  const h = renderer();
+  h.fail("upload");
+  h.lettering.textContent = "انقر!";
+  h.view.draw();
+  assert.equal(h.classes.has("is-rendered"), false);
+  assert.equal(h.lettering.textContent, "انقر!");
 });

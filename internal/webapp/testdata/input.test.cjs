@@ -82,6 +82,7 @@ function harness(reducedMotion = true) {
     stage = new Element(),
     rig = new Element();
   button.closest = () => stage;
+  button.querySelector = () => ({ textContent: "Click!", dir: "ltr" });
   stage.querySelector = () => rig;
   const document = Object.assign(new Element(), {
     hidden: false,

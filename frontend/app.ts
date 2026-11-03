@@ -7,6 +7,24 @@ import { localGame } from "./local-game.js";
 import { tactileButtons } from "./button.js";
 import { clickFeedback } from "./click-feedback.js";
 import { statsShare } from "./share.js";
+import {
+  languages,
+  languageStorageKey,
+  currentLanguage,
+  languageDirection,
+  message as t,
+  formatNumber,
+  readLanguage,
+  rememberLanguage,
+  supportedLanguage,
+  setLanguage,
+  onLanguageChange,
+  translatePage,
+  createButtonLanguage,
+} from "./i18n.js";
+import type { Language } from "./i18n.js";
+import type { MessageKey } from "./messages.js";
+import { parseStoredTimestamp } from "./timestamp.js";
 import type { User, Counters, GameState, Activation } from "./types.js";
 
 const views = {
@@ -18,6 +36,8 @@ const views = {
 const loginForm = $<HTMLFormElement>("#login-form");
 const signupForm = $<HTMLFormElement>("#signup-form");
 const clickButton = $<HTMLButtonElement>("#click-button");
+const buttonLanguage = createButtonLanguage(currentLanguage());
+const buttonLabel = $(".button-label", clickButton);
 const counterCard = $("#counter-card");
 const retryGameButton = $<HTMLButtonElement>("#retry-game-button");
 const retryBootButton = $<HTMLButtonElement>("#retry-boot-button");
@@ -27,6 +47,9 @@ const connection = $("#connection");
 const pendingIndicator = $("#pending-clicks");
 type View = "loading" | "home" | "login" | "signup" | "game";
 let currentView: View | "" = "";
+let lastGameError: MessageKey | null = null;
+let connectionState: "" | "loading" | "error" = "";
+let lastPing: number | null = null;
 let viewAnimation: Animation | null = null;
 let pingStateTimer = 0,
   pendingIndicatorTimer = 0;
@@ -70,7 +93,9 @@ function paintCooldown() {
   const remaining = cooldownUntil - performance.now();
   const active = !localMode && remaining > 0;
   $("#play-status").hidden = !active;
-  $("#cooldown-time").textContent = active ? `· ${Math.ceil(remaining / 1000)}s` : "";
+  $("#cooldown-time").textContent = active
+    ? `· ${t("seconds", { count: formatNumber(Math.ceil(remaining / 1000)) })}`
+    : "";
   if (active) cooldownTimer = window.setTimeout(paintCooldown, Math.min(1000, remaining));
   else cooldownUntil = 0;
   updateGameControls();
@@ -89,6 +114,7 @@ function show(view: View) {
     viewAnimation?.cancel();
   }
   currentView = view;
+  document.documentElement.lang = view === "game" ? currentLanguage() : "en";
   if (changed) window.scrollTo(0, 0);
   const authenticated = view === "game";
   views.loading.hidden = view !== "loading";
@@ -123,16 +149,29 @@ function show(view: View) {
 }
 
 function showError(id: string, message: string, focus = false) {
+  if (id === "#game-error") lastGameError = null;
   const element = $(id);
   element.textContent = message;
   element.hidden = !message;
   if (message && focus) element.focus();
 }
 
+function showGameError(key: MessageKey, focus = false) {
+  showError("#game-error", t(key), focus);
+  lastGameError = key;
+}
+
+function paintButtonLanguage(code: Language) {
+  buttonLabel.textContent = t("click", {}, code);
+  buttonLabel.lang = code;
+  buttonLabel.dir = languageDirection(code);
+}
+
 function setConnection(milliseconds: number | null = null, state: "" | "loading" | "error" = "") {
+  connectionState = state;
   window.clearTimeout(pingStateTimer);
-  if (Number.isFinite(milliseconds) && milliseconds !== null)
-    $("#ping").textContent = `${Math.round(milliseconds)} ms`;
+  if (Number.isFinite(milliseconds) && milliseconds !== null) lastPing = Math.round(milliseconds);
+  $("#ping").textContent = lastPing === null ? "— ms" : `${formatNumber(lastPing)} ms`;
   const paintState = () => {
     const cooling = coolingDown();
     connection.classList.toggle("is-limited", cooling);
@@ -145,15 +184,21 @@ function setConnection(milliseconds: number | null = null, state: "" | "loading"
       !cooling && (state === "error" || (offline && !localMode)),
     );
     const status = cooling
-      ? "Server cooldown. Clicking paused"
+      ? t("coolingStatus")
       : offline && !localMode
-        ? "Offline. Clicking paused"
+        ? t("offlineStatus")
         : state === "loading"
-          ? "Request in progress"
+          ? t("loadingStatus")
           : state === "error"
-            ? "Last request failed"
-            : "No requests pending";
-    connection.setAttribute("aria-label", `Ping ${$("#ping").textContent}. ${status}.`);
+            ? t("failedStatus")
+            : t("idleStatus");
+    connection.setAttribute(
+      "aria-label",
+      t("pingStatus", {
+        ping: `${t(localMode ? "simPing" : "ping")} ${$("#ping").textContent}`,
+        status,
+      }),
+    );
   };
   // Keep the last measurement visible. Brief gaps between clicks should not
   // flash the indicator back to idle or shift the badge's width.
@@ -231,9 +276,11 @@ function resetClickState() {
   clickBatchFailed = false;
   refreshQueued = false;
   window.clearTimeout(pingStateTimer);
+  lastPing = null;
+  connectionState = "";
   $("#ping").textContent = "— ms";
   connection.classList.remove("is-loading", "is-error", "is-limited");
-  connection.setAttribute("aria-label", "Ping: no click measured yet");
+  connection.setAttribute("aria-label", t("noPing"));
   tactileButtons.get(clickButton)?.reset();
   clickFeedback.reset();
   statsShare.reset();
@@ -264,8 +311,8 @@ function updateGameControls() {
     !gameReady || signingOut || pendingClicks > 0 || !!counterLoad || localSaveReplacing;
   $("#network-notice").hidden = !offline || localMode;
   $("#local-mode-note").hidden = !localMode;
-  $("#counter-label").textContent = localMode ? "Local clicks" : "Saved clicks";
-  $(".connection-label").textContent = localMode ? "Sim ping" : "Ping";
+  $("#counter-label").textContent = t(localMode ? "localClicks" : "savedClicks");
+  $(".connection-label").textContent = t(localMode ? "simPing" : "ping");
   document.querySelectorAll<HTMLButtonElement>("[data-play-local]").forEach((button) => {
     button.hidden = localMode;
     button.disabled = pendingClicks > 0 || signingOut || localSaveReplacing;
@@ -286,7 +333,7 @@ function updatePendingIndicator() {
     pendingIndicator.textContent = "";
     return;
   }
-  pendingIndicator.textContent = `+${pendingClicks} pending`;
+  pendingIndicator.textContent = t("pending", { count: formatNumber(pendingClicks) });
   if (pendingIndicator.hidden && !pendingIndicatorTimer)
     pendingIndicatorTimer = window.setTimeout(() => {
       pendingIndicatorTimer = 0;
@@ -312,7 +359,7 @@ function animateNumber(element: HTMLElement) {
 
 function renderCounters(data: Counters, allowDecrease = false) {
   const clicks = data.click_count;
-  const displayedClicks = Number($("#click-count").textContent);
+  const displayedClicks = displayedCounters.click_count?.count ?? 0;
   if (
     !allowDecrease &&
     clicks &&
@@ -328,13 +375,15 @@ function renderCounters(data: Counters, allowDecrease = false) {
     ["year-streak", data.streak_counter_year?.count ?? 0],
   ] as const) {
     const element = $(`#${id}`),
-      changed = element.textContent !== String(count);
-    element.textContent = String(count);
+      changed = element.textContent !== formatNumber(count);
+    element.textContent = formatNumber(count);
     if (changed && !allowDecrease) animateNumber(element);
   }
   $("#last-click").textContent = clicks?.modified_time
-    ? `Last click ${new Date(clicks.modified_time).toLocaleString()}`
-    : "No saved clicks yet.";
+    ? t("lastClick", {
+        time: parseStoredTimestamp(clicks.modified_time).toLocaleString(currentLanguage()),
+      })
+    : t("noClicks");
 }
 
 function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<void> {
@@ -382,11 +431,7 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
       if (error.status === 401) {
         if (user && !signingOut) handleExpiredSession();
       } else {
-        showError(
-          "#game-error",
-          `Couldn’t load your counter. ${error.message}`,
-          !backgroundRefresh,
-        );
+        showGameError("loadError", !backgroundRefresh);
         retryGameButton.hidden = false;
         setConnection(null, "error");
       }
@@ -561,10 +606,9 @@ logoutButton.addEventListener("click", async () => {
     await api("/api/auth/logout", { method: "DELETE" });
     setUser(null);
     show("home");
-  } catch (caught) {
-    const error = requestError(caught);
+  } catch {
     gameReady = true;
-    showError("#game-error", `Could not sign out: ${error.message}`, true);
+    showGameError("signOutError", true);
   } finally {
     signingOut = false;
     logoutButton.disabled = false;
@@ -573,6 +617,8 @@ logoutButton.addEventListener("click", async () => {
 });
 
 clickButton.addEventListener("click", async (event) => {
+  if (clickButton.disabled) return;
+  paintButtonLanguage(buttonLanguage.click(performance.now(), currentLanguage()));
   if (localMode) {
     await clickLocal(event);
     return;
@@ -631,13 +677,7 @@ clickButton.addEventListener("click", async (event) => {
       return;
     }
     clickBatchFailed = true;
-    showError(
-      "#game-error",
-      error.uncertain
-        ? `Couldn’t confirm your click. Reload your counter to check whether it saved. ${error.message}`
-        : `Your click wasn’t saved. ${error.message}`,
-      true,
-    );
+    showGameError(error.uncertain ? "unconfirmedClick" : "unsavedClick", true);
     if (error.uncertain) retryGameButton.hidden = false;
     setConnection(null, "error");
   } finally {
@@ -763,15 +803,10 @@ function openLocalGame(data?: Counters) {
     counterCard.setAttribute("aria-busy", "false");
     updateGameControls();
     setConnection();
-  } catch (caught) {
-    const error = requestError(caught);
+  } catch {
     gameReady = false;
     updateGameControls();
-    showError(
-      "#game-error",
-      `Couldn’t load your local save. ${error.message} Open Options to import a copy or restart the local save.`,
-      true,
-    );
+    showGameError("localLoadError", true);
   }
 }
 function startLocalGame() {
@@ -839,16 +874,11 @@ async function clickLocal(event: Activation) {
       feedback.success(simulated);
       if (acknowledgement === localAcknowledgement) setConnection(simulated);
     }, simulated);
-  } catch (caught) {
-    const error = requestError(caught);
+  } catch {
     if (generation !== clickGeneration) return;
     feedback.fail(false);
     setConnection(null, "error");
-    showError(
-      "#game-error",
-      `Your local click wasn’t saved. Browser storage may be full or unavailable. ${error.message}`,
-      true,
-    );
+    showGameError("localClickError", true);
   } finally {
     if (generation === clickGeneration) {
       pendingClicks--;
@@ -944,6 +974,39 @@ function synchronizeLocalSave() {
 }
 window.addEventListener("storage", (event) => {
   if (event.key === localGame.key || event.key === null) synchronizeLocalSave();
+});
+
+const languageSetting = $<HTMLSelectElement>("#language-setting");
+for (const language of languages) {
+  const option = document.createElement("option");
+  option.value = language.code;
+  option.textContent = language.name;
+  option.lang = language.code;
+  option.dir = language.dir;
+  languageSetting.append(option);
+}
+function applyLanguage() {
+  translatePage();
+  languageSetting.value = currentLanguage();
+  document.documentElement.lang = currentView === "game" ? currentLanguage() : "en";
+  buttonLanguage.reset(currentLanguage());
+  paintButtonLanguage(currentLanguage());
+  renderCounters(displayedCounters, true);
+  updatePendingIndicator();
+  updateGameControls();
+  if (lastGameError) showGameError(lastGameError);
+  if (cooldownUntil) paintCooldown();
+  else setConnection(null, connectionState);
+}
+onLanguageChange(applyLanguage);
+setLanguage(readLanguage());
+applyLanguage();
+languageSetting.addEventListener("change", () => {
+  const language = supportedLanguage(languageSetting.value);
+  if (language && !rememberLanguage(language)) languageSetting.title = t("languageVisit");
+});
+window.addEventListener("storage", (event) => {
+  if (event.key === languageStorageKey || event.key === null) setLanguage(readLanguage());
 });
 
 boot();

@@ -189,7 +189,7 @@
   var gameSettings = (() => {
     const key = "goclick.settings.v1";
     const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const listeners = /* @__PURE__ */ new Set();
+    const listeners2 = /* @__PURE__ */ new Set();
     let value = { motion: "auto", simulatedPing: 80 };
     function parse(raw) {
       const decoded = JSON.parse(raw || "{}");
@@ -208,7 +208,7 @@
         return value.motion === "on" || value.motion === "auto" && browser.matches;
       },
       addEventListener(type, callback) {
-        if (type === "change") listeners.add(callback);
+        if (type === "change") listeners2.add(callback);
       }
     };
     let appliedMotion;
@@ -217,7 +217,7 @@
       document.documentElement.dataset.reducedMotion = String(matches);
       if (matches === appliedMotion) return;
       appliedMotion = matches;
-      for (const callback of listeners) callback({ matches });
+      for (const callback of listeners2) callback({ matches });
     }
     browser.addEventListener("change", apply);
     window.addEventListener("storage", (event) => {
@@ -673,17 +673,25 @@
     } };
     const labelContext = context;
     const layers = [null, null];
+    const lettering = required(".button-label", button);
+    let paintedText = "";
+    let paintedDirection = "ltr";
     function paintAtlas() {
       labelContext.clearRect(0, 0, 780, 1296);
       labelContext.fillStyle = "#808080";
       labelContext.fillRect(0, 0, 780, 432);
       if (layers[0]) labelContext.drawImage(layers[0], 0, 0, 780, 432);
       if (layers[1]) labelContext.drawImage(layers[1], 0, 432, 780, 432);
+      paintedText = lettering.textContent;
+      paintedDirection = lettering.dir === "rtl" ? "rtl" : "ltr";
+      labelContext.direction = paintedDirection;
       labelContext.font = "700 114px system-ui, sans-serif";
+      const width = labelContext.measureText(paintedText).width;
+      if (width > 560) labelContext.font = `700 ${114 * 560 / width}px system-ui, sans-serif`;
       labelContext.textAlign = "center";
       labelContext.textBaseline = "middle";
       labelContext.fillStyle = "#fff";
-      labelContext.fillText(required(".button-label", button).textContent, 390, 1086);
+      labelContext.fillText(paintedText, 390, 1086);
     }
     paintAtlas();
     let atlasTexture = null;
@@ -764,6 +772,19 @@
       state = { ...next };
       if (lost) return;
       if (!stage.clientWidth || !stage.clientHeight) return;
+      const direction = lettering.dir === "rtl" ? "rtl" : "ltr";
+      if (paintedText !== lettering.textContent || paintedDirection !== direction) {
+        try {
+          paintAtlas();
+          gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
+          if (gl.getError() !== gl.NO_ERROR) throw new Error("Lettering upload failed");
+        } catch {
+          lost = true;
+          stage.classList.remove("is-rendered");
+          return;
+        }
+      }
       const bounds = stage.getBoundingClientRect();
       const scene = projectButtonScene(state, button.offsetWidth, bounds, {
         width: document.documentElement.clientWidth,
@@ -818,6 +839,7 @@
       stage.classList.remove("is-rendered");
     });
     canvas.addEventListener("webglcontextrestored", () => {
+      paintAtlas();
       lost = !initialize();
       if (!lost) draw(state);
     });
@@ -1212,6 +1234,13 @@
     new MutationObserver(() => {
       if (button.disabled) reset2();
     }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
+    new MutationObserver(() => paint2()).observe(required(".button-label", button), {
+      childList: true,
+      characterData: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["lang", "dir"]
+    });
     reducedMotion.addEventListener("change", () => {
       reset2();
       if (reducedMotion.matches) {
@@ -1359,19 +1388,906 @@
     };
   })();
 
+  // frontend/messages.ts
+  var english = {
+    language: "Language",
+    account: "Account",
+    localGame: "Local game",
+    languageHint: "Game language \xB7 remembered in this browser",
+    languageVisit: "Game language \xB7 applied for this visit; browser storage is unavailable",
+    skip: "Skip to content",
+    game: "Play Go Click",
+    savedClicks: "Saved clicks",
+    localClicks: "Local clicks",
+    click: "Click!",
+    clickAction: "Click to increment score",
+    lastClick: "Last click {time}",
+    noClicks: "No saved clicks yet.",
+    timezone: "Shown in your local time zone",
+    refresh: "Refresh counter",
+    share: "Share",
+    shareHint: "Copy stats for sharing",
+    ping: "Ping",
+    simPing: "Sim ping",
+    pingHint: "Round-trip time of the last successful click request. The border indicates pending requests or a save error.",
+    pingStatus: "{ping}. {status}.",
+    noPing: "Ping: no click measured yet",
+    coolingStatus: "Server cooldown. Clicking paused",
+    offlineStatus: "Offline. Clicking paused",
+    loadingStatus: "Request in progress",
+    failedStatus: "Last request failed",
+    idleStatus: "No requests pending",
+    pending: "+{count} pending",
+    cooldown: "Cooling down",
+    seconds: "{count}s",
+    streaks: "Streaks",
+    streakLabel: "Click streaks",
+    days: "days",
+    months: "months",
+    years: "years",
+    networkNotice: "You\u2019re offline. Clicking is paused. Your saved progress will refresh when you reconnect.",
+    localMode: "Offline \xB7 local save",
+    offline: "Offline",
+    backOnline: "Back online",
+    signOut: "Sign out",
+    admin: "Admin",
+    options: "Options",
+    motion: "Turn on motion effects",
+    motionHint: "Reduced motion is on. Turn on motion effects.",
+    reload: "Reload counter",
+    controls: "Press with a mouse or touch, then release inside the button. Each finger counts separately. With the button focused, Space or Enter adds one click on release. Holding never adds extra clicks.",
+    loadError: "Couldn\u2019t load your counter. Try reloading it.",
+    unconfirmedClick: "Couldn\u2019t confirm your click. Reload your counter to check whether it saved.",
+    unsavedClick: "Your click wasn\u2019t saved. Check your connection and try again.",
+    localLoadError: "Couldn\u2019t load your local save. Open Options to import a copy or restart the local save.",
+    localClickError: "Your local click wasn\u2019t saved. Browser storage may be full or unavailable.",
+    signOutError: "Could not sign out. Please try again.",
+    shareTitle: "Share stats",
+    done: "Done",
+    shareInstructions: "Choose what to include. Changing an option updates the preview; copy again to share the customized text.",
+    include: "Include",
+    siteLink: "Site link",
+    clickTotal: "Click total",
+    shareDataNote: "Click totals are cumulative. Daily and weekly totals are not part of the current counter summary.",
+    preview: "Preview",
+    statsToShare: "Stats to share",
+    copyText: "Copy text",
+    copied: "Stats copied.",
+    clipboardUnavailable: "Clipboard unavailable. Select and copy the preview text.",
+    statsClicks: "{label}: {count}",
+    statsStreaks: "UTC streaks: {day} \xB7 {month} \xB7 {year}",
+    playLink: "Play: {url}"
+  };
+  var translations = {
+    "zh-Hans": {
+      language: "\u8BED\u8A00",
+      account: "\u8D26\u6237",
+      localGame: "\u672C\u5730\u6E38\u620F",
+      languageHint: "\u6E38\u620F\u8BED\u8A00 \xB7 \u4FDD\u5B58\u5728\u6B64\u6D4F\u89C8\u5668\u4E2D",
+      languageVisit: "\u6E38\u620F\u8BED\u8A00 \xB7 \u4EC5\u672C\u6B21\u8BBF\u95EE\u6709\u6548\uFF1B\u6D4F\u89C8\u5668\u5B58\u50A8\u4E0D\u53EF\u7528",
+      skip: "\u8DF3\u8F6C\u5230\u5185\u5BB9",
+      game: "\u73A9 Go Click",
+      savedClicks: "\u5DF2\u4FDD\u5B58\u7684\u70B9\u51FB",
+      localClicks: "\u672C\u5730\u70B9\u51FB",
+      click: "\u70B9\u51FB\uFF01",
+      clickAction: "\u70B9\u51FB\u589E\u52A0\u5206\u6570",
+      lastClick: "\u4E0A\u6B21\u70B9\u51FB\uFF1A{time}",
+      noClicks: "\u5C1A\u65E0\u5DF2\u4FDD\u5B58\u7684\u70B9\u51FB\u3002",
+      timezone: "\u6309\u60A8\u7684\u672C\u5730\u65F6\u533A\u663E\u793A",
+      refresh: "\u5237\u65B0\u8BA1\u6570",
+      share: "\u5206\u4EAB",
+      shareHint: "\u590D\u5236\u7EDF\u8BA1\u4EE5\u5206\u4EAB",
+      ping: "\u5EF6\u8FDF",
+      simPing: "\u6A21\u62DF\u5EF6\u8FDF",
+      pingHint: "\u4E0A\u6B21\u6210\u529F\u70B9\u51FB\u8BF7\u6C42\u7684\u5F80\u8FD4\u65F6\u95F4\u3002\u8FB9\u6846\u8868\u793A\u5F85\u5904\u7406\u8BF7\u6C42\u6216\u4FDD\u5B58\u9519\u8BEF\u3002",
+      pingStatus: "{ping}\u3002{status}\u3002",
+      noPing: "\u5EF6\u8FDF\uFF1A\u5C1A\u672A\u6D4B\u91CF\u70B9\u51FB",
+      coolingStatus: "\u670D\u52A1\u5668\u51B7\u5374\u4E2D\u3002\u70B9\u51FB\u5DF2\u6682\u505C",
+      offlineStatus: "\u7F51\u7EDC\u5DF2\u65AD\u5F00\u3002\u70B9\u51FB\u5DF2\u6682\u505C",
+      loadingStatus: "\u8BF7\u6C42\u5904\u7406\u4E2D",
+      failedStatus: "\u4E0A\u6B21\u8BF7\u6C42\u5931\u8D25",
+      idleStatus: "\u65E0\u5F85\u5904\u7406\u8BF7\u6C42",
+      pending: "+{count} \u5F85\u4FDD\u5B58",
+      cooldown: "\u51B7\u5374\u4E2D",
+      seconds: "{count}\u79D2",
+      streaks: "\u8FDE\u7EED\u8BB0\u5F55",
+      streakLabel: "\u8FDE\u7EED\u70B9\u51FB\u8BB0\u5F55",
+      days: "\u5929",
+      months: "\u4E2A\u6708",
+      years: "\u5E74",
+      networkNotice: "\u7F51\u7EDC\u5DF2\u65AD\u5F00\uFF0C\u70B9\u51FB\u5DF2\u6682\u505C\u3002\u91CD\u65B0\u8FDE\u63A5\u540E\u5C06\u5237\u65B0\u5DF2\u4FDD\u5B58\u7684\u8FDB\u5EA6\u3002",
+      localMode: "\u79BB\u7EBF \xB7 \u672C\u5730\u5B58\u6863",
+      offline: "\u79BB\u7EBF",
+      backOnline: "\u8FD4\u56DE\u5728\u7EBF\u6A21\u5F0F",
+      signOut: "\u9000\u51FA\u767B\u5F55",
+      admin: "\u7BA1\u7406",
+      options: "\u9009\u9879",
+      motion: "\u5F00\u542F\u52A8\u753B\u6548\u679C",
+      motionHint: "\u5DF2\u5F00\u542F\u51CF\u5C11\u52A8\u6001\u6548\u679C\u3002\u70B9\u51FB\u5F00\u542F\u52A8\u753B\u3002",
+      reload: "\u91CD\u65B0\u52A0\u8F7D\u8BA1\u6570",
+      controls: "\u7528\u9F20\u6807\u6216\u89E6\u6478\u6309\u4E0B\uFF0C\u7136\u540E\u5728\u6309\u94AE\u5185\u677E\u5F00\u3002\u6BCF\u6839\u624B\u6307\u5355\u72EC\u8BA1\u6570\u3002\u6309\u94AE\u83B7\u5F97\u7126\u70B9\u540E\uFF0C\u677E\u5F00\u7A7A\u683C\u952E\u6216\u56DE\u8F66\u952E\u53EF\u589E\u52A0\u4E00\u6B21\u70B9\u51FB\u3002\u6309\u4F4F\u4E0D\u4F1A\u589E\u52A0\u989D\u5916\u70B9\u51FB\u3002",
+      loadError: "\u65E0\u6CD5\u52A0\u8F7D\u8BA1\u6570\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+      unconfirmedClick: "\u65E0\u6CD5\u786E\u8BA4\u70B9\u51FB\u3002\u8BF7\u91CD\u65B0\u52A0\u8F7D\u8BA1\u6570\u4EE5\u68C0\u67E5\u662F\u5426\u5DF2\u4FDD\u5B58\u3002",
+      unsavedClick: "\u70B9\u51FB\u672A\u4FDD\u5B58\u3002\u8BF7\u68C0\u67E5\u7F51\u7EDC\u540E\u91CD\u8BD5\u3002",
+      localLoadError: "\u65E0\u6CD5\u52A0\u8F7D\u672C\u5730\u5B58\u6863\u3002\u8BF7\u5728\u9009\u9879\u4E2D\u5BFC\u5165\u526F\u672C\u6216\u91CD\u65B0\u5F00\u59CB\u3002",
+      localClickError: "\u672C\u5730\u70B9\u51FB\u672A\u4FDD\u5B58\u3002\u6D4F\u89C8\u5668\u5B58\u50A8\u53EF\u80FD\u5DF2\u6EE1\u6216\u4E0D\u53EF\u7528\u3002",
+      signOutError: "\u65E0\u6CD5\u9000\u51FA\u767B\u5F55\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+      shareTitle: "\u5206\u4EAB\u7EDF\u8BA1",
+      done: "\u5B8C\u6210",
+      shareInstructions: "\u9009\u62E9\u8981\u5305\u542B\u7684\u5185\u5BB9\u3002\u66F4\u6539\u9009\u9879\u5C06\u66F4\u65B0\u9884\u89C8\uFF1B\u8BF7\u518D\u6B21\u590D\u5236\u4EE5\u5206\u4EAB\u4FEE\u6539\u540E\u7684\u6587\u672C\u3002",
+      include: "\u5305\u542B",
+      siteLink: "\u7F51\u7AD9\u94FE\u63A5",
+      clickTotal: "\u70B9\u51FB\u603B\u6570",
+      shareDataNote: "\u70B9\u51FB\u603B\u6570\u4E3A\u7D2F\u8BA1\u503C\u3002\u5F53\u524D\u6458\u8981\u4E0D\u5305\u542B\u6BCF\u65E5\u548C\u6BCF\u5468\u603B\u6570\u3002",
+      preview: "\u9884\u89C8",
+      statsToShare: "\u8981\u5206\u4EAB\u7684\u7EDF\u8BA1",
+      copyText: "\u590D\u5236\u6587\u672C",
+      copied: "\u7EDF\u8BA1\u5DF2\u590D\u5236\u3002",
+      clipboardUnavailable: "\u526A\u8D34\u677F\u4E0D\u53EF\u7528\u3002\u8BF7\u9009\u62E9\u5E76\u590D\u5236\u9884\u89C8\u6587\u672C\u3002",
+      statsClicks: "{label}\uFF1A{count}",
+      statsStreaks: "UTC \u8FDE\u7EED\u8BB0\u5F55\uFF1A{day} \xB7 {month} \xB7 {year}",
+      playLink: "\u5F00\u59CB\u6E38\u620F\uFF1A{url}"
+    },
+    es: {
+      language: "Idioma",
+      account: "Cuenta",
+      localGame: "Juego local",
+      languageHint: "Idioma del juego \xB7 se guarda en este navegador",
+      languageVisit: "Idioma del juego \xB7 aplicado en esta visita; almacenamiento no disponible",
+      skip: "Saltar al contenido",
+      game: "Jugar a Go Click",
+      savedClicks: "Clics guardados",
+      localClicks: "Clics locales",
+      click: "\xA1Clic!",
+      clickAction: "Haz clic para sumar un punto",
+      lastClick: "\xDAltimo clic: {time}",
+      noClicks: "A\xFAn no hay clics guardados.",
+      timezone: "Se muestra en tu zona horaria local",
+      refresh: "Actualizar contador",
+      share: "Compartir",
+      shareHint: "Copiar estad\xEDsticas para compartir",
+      ping: "Latencia",
+      simPing: "Latencia simulada",
+      pingHint: "Tiempo de ida y vuelta del \xFAltimo clic guardado. El borde indica solicitudes pendientes o un error al guardar.",
+      pingStatus: "{ping}. {status}.",
+      noPing: "Latencia: a\xFAn no se ha medido ning\xFAn clic",
+      coolingStatus: "Pausa del servidor. Clics en pausa",
+      offlineStatus: "Sin conexi\xF3n. Clics en pausa",
+      loadingStatus: "Solicitud en curso",
+      failedStatus: "La \xFAltima solicitud fall\xF3",
+      idleStatus: "No hay solicitudes pendientes",
+      pending: "+{count} pendientes",
+      cooldown: "En pausa",
+      seconds: "{count} s",
+      streaks: "Rachas",
+      streakLabel: "Rachas de clics",
+      days: "d\xEDas",
+      months: "meses",
+      years: "a\xF1os",
+      networkNotice: "No tienes conexi\xF3n. Los clics est\xE1n en pausa. Tu progreso guardado se actualizar\xE1 al reconectarte.",
+      localMode: "Sin conexi\xF3n \xB7 guardado local",
+      offline: "Sin conexi\xF3n",
+      backOnline: "Volver al modo en l\xEDnea",
+      signOut: "Cerrar sesi\xF3n",
+      admin: "Administraci\xF3n",
+      options: "Opciones",
+      motion: "Activar efectos de movimiento",
+      motionHint: "El movimiento reducido est\xE1 activado. Activar efectos de movimiento.",
+      reload: "Recargar contador",
+      controls: "Pulsa con el rat\xF3n o el dedo y suelta dentro del bot\xF3n. Cada dedo cuenta por separado. Con el bot\xF3n enfocado, Espacio o Intro a\xF1ade un clic al soltar. Mantener pulsado no a\xF1ade clics.",
+      loadError: "No se pudo cargar el contador. Intenta recargarlo.",
+      unconfirmedClick: "No se pudo confirmar el clic. Recarga el contador para comprobar si se guard\xF3.",
+      unsavedClick: "Tu clic no se guard\xF3. Comprueba tu conexi\xF3n e int\xE9ntalo de nuevo.",
+      localLoadError: "No se pudo cargar el guardado local. Abre Opciones para importar una copia o reiniciarlo.",
+      localClickError: "Tu clic local no se guard\xF3. El almacenamiento del navegador puede estar lleno o no disponible.",
+      signOutError: "No se pudo cerrar sesi\xF3n. Int\xE9ntalo de nuevo.",
+      shareTitle: "Compartir estad\xEDsticas",
+      done: "Listo",
+      shareInstructions: "Elige qu\xE9 incluir. Al cambiar una opci\xF3n se actualiza la vista previa; vuelve a copiar para compartir el texto personalizado.",
+      include: "Incluir",
+      siteLink: "Enlace al sitio",
+      clickTotal: "Total de clics",
+      shareDataNote: "Los totales de clics son acumulativos. El resumen actual no incluye totales diarios ni semanales.",
+      preview: "Vista previa",
+      statsToShare: "Estad\xEDsticas para compartir",
+      copyText: "Copiar texto",
+      copied: "Estad\xEDsticas copiadas.",
+      clipboardUnavailable: "Portapapeles no disponible. Selecciona y copia el texto de la vista previa.",
+      statsClicks: "{label}: {count}",
+      statsStreaks: "Rachas UTC: {day} \xB7 {month} \xB7 {year}",
+      playLink: "Jugar: {url}"
+    },
+    ar: {
+      language: "\u0627\u0644\u0644\u063A\u0629",
+      account: "\u0627\u0644\u062D\u0633\u0627\u0628",
+      localGame: "\u0644\u0639\u0628\u0629 \u0645\u062D\u0644\u064A\u0629",
+      languageHint: "\u0644\u063A\u0629 \u0627\u0644\u0644\u0639\u0628\u0629 \xB7 \u062A\u064F\u062D\u0641\u0638 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0645\u062A\u0635\u0641\u062D",
+      languageVisit: "\u0644\u063A\u0629 \u0627\u0644\u0644\u0639\u0628\u0629 \xB7 \u0645\u0637\u0628\u0651\u0642\u0629 \u0644\u0647\u0630\u0647 \u0627\u0644\u0632\u064A\u0627\u0631\u0629\u061B \u062A\u062E\u0632\u064A\u0646 \u0627\u0644\u0645\u062A\u0635\u0641\u062D \u063A\u064A\u0631 \u0645\u062A\u0627\u062D",
+      skip: "\u0627\u0646\u062A\u0642\u0644 \u0625\u0644\u0649 \u0627\u0644\u0645\u062D\u062A\u0648\u0649",
+      game: "\u0627\u0644\u0639\u0628 Go Click",
+      savedClicks: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0641\u0648\u0638\u0629",
+      localClicks: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0644\u064A\u0629",
+      click: "\u0627\u0646\u0642\u0631!",
+      clickAction: "\u0627\u0646\u0642\u0631 \u0644\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0637\u0629",
+      lastClick: "\u0622\u062E\u0631 \u0646\u0642\u0631\u0629: {time}",
+      noClicks: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0646\u0642\u0631\u0627\u062A \u0645\u062D\u0641\u0648\u0638\u0629 \u0628\u0639\u062F.",
+      timezone: "\u064A\u064F\u0639\u0631\u0636 \u0628\u062A\u0648\u0642\u064A\u062A\u0643 \u0627\u0644\u0645\u062D\u0644\u064A",
+      refresh: "\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0639\u062F\u0627\u062F",
+      share: "\u0645\u0634\u0627\u0631\u0643\u0629",
+      shareHint: "\u0646\u0633\u062E \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A \u0644\u0645\u0634\u0627\u0631\u0643\u062A\u0647\u0627",
+      ping: "\u0632\u0645\u0646 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629",
+      simPing: "\u0632\u0645\u0646 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0649",
+      pingHint: "\u0645\u062F\u0629 \u0622\u062E\u0631 \u0637\u0644\u0628 \u0646\u0642\u0631\u0629 \u0646\u0627\u062C\u062D \u0630\u0647\u0627\u0628\u064B\u0627 \u0648\u0625\u064A\u0627\u0628\u064B\u0627. \u064A\u0634\u064A\u0631 \u0627\u0644\u0625\u0637\u0627\u0631 \u0625\u0644\u0649 \u0637\u0644\u0628\u0627\u062A \u0645\u0639\u0644\u0651\u0642\u0629 \u0623\u0648 \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062D\u0641\u0638.",
+      pingStatus: "{ping}. {status}.",
+      noPing: "\u0632\u0645\u0646 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629: \u0644\u0645 \u062A\u064F\u0642\u064E\u0633 \u0623\u064A \u0646\u0642\u0631\u0629 \u0628\u0639\u062F",
+      coolingStatus: "\u0627\u0644\u062E\u0627\u062F\u0645 \u0641\u064A \u0641\u062A\u0631\u0629 \u0627\u0646\u062A\u0638\u0627\u0631. \u0627\u0644\u0646\u0642\u0631 \u0645\u062A\u0648\u0642\u0641 \u0645\u0624\u0642\u062A\u064B\u0627",
+      offlineStatus: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644. \u0627\u0644\u0646\u0642\u0631 \u0645\u062A\u0648\u0642\u0641 \u0645\u0624\u0642\u062A\u064B\u0627",
+      loadingStatus: "\u062C\u0627\u0631\u064D \u062A\u0646\u0641\u064A\u0630 \u0627\u0644\u0637\u0644\u0628",
+      failedStatus: "\u0641\u0634\u0644 \u0627\u0644\u0637\u0644\u0628 \u0627\u0644\u0623\u062E\u064A\u0631",
+      idleStatus: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0637\u0644\u0628\u0627\u062A \u0645\u0639\u0644\u0651\u0642\u0629",
+      pending: "+{count} \u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631",
+      cooldown: "\u0641\u062A\u0631\u0629 \u0627\u0646\u062A\u0638\u0627\u0631",
+      seconds: "{count} \u062B",
+      streaks: "\u0633\u0644\u0627\u0633\u0644 \u0645\u062A\u062A\u0627\u0644\u064A\u0629",
+      streakLabel: "\u0633\u0644\u0627\u0633\u0644 \u0627\u0644\u0646\u0642\u0631 \u0627\u0644\u0645\u062A\u062A\u0627\u0644\u064A\u0629",
+      days: "\u0623\u064A\u0627\u0645",
+      months: "\u0623\u0634\u0647\u0631",
+      years: "\u0633\u0646\u0648\u0627\u062A",
+      networkNotice: "\u0623\u0646\u062A \u063A\u064A\u0631 \u0645\u062A\u0635\u0644. \u0627\u0644\u0646\u0642\u0631 \u0645\u062A\u0648\u0642\u0641 \u0645\u0624\u0642\u062A\u064B\u0627. \u0633\u064A\u064F\u062D\u062F\u064E\u0651\u062B \u062A\u0642\u062F\u0645\u0643 \u0627\u0644\u0645\u062D\u0641\u0648\u0638 \u0639\u0646\u062F \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0627\u062A\u0635\u0627\u0644.",
+      localMode: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644 \xB7 \u062D\u0641\u0638 \u0645\u062D\u0644\u064A",
+      offline: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644",
+      backOnline: "\u0627\u0644\u0639\u0648\u062F\u0629 \u0644\u0644\u0627\u062A\u0635\u0627\u0644",
+      signOut: "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C",
+      admin: "\u0627\u0644\u0625\u062F\u0627\u0631\u0629",
+      options: "\u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A",
+      motion: "\u062A\u0641\u0639\u064A\u0644 \u062A\u0623\u062B\u064A\u0631\u0627\u062A \u0627\u0644\u062D\u0631\u0643\u0629",
+      motionHint: "\u062A\u0642\u0644\u064A\u0644 \u0627\u0644\u062D\u0631\u0643\u0629 \u0645\u0641\u0639\u0651\u0644. \u062A\u0641\u0639\u064A\u0644 \u062A\u0623\u062B\u064A\u0631\u0627\u062A \u0627\u0644\u062D\u0631\u0643\u0629.",
+      reload: "\u0625\u0639\u0627\u062F\u0629 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F",
+      controls: "\u0627\u0636\u063A\u0637 \u0628\u0627\u0644\u0641\u0623\u0631\u0629 \u0623\u0648 \u0628\u0627\u0644\u0644\u0645\u0633\u060C \u062B\u0645 \u0623\u0641\u0644\u062A \u062F\u0627\u062E\u0644 \u0627\u0644\u0632\u0631. \u064A\u064F\u062D\u0633\u0628 \u0643\u0644 \u0625\u0635\u0628\u0639 \u0639\u0644\u0649 \u062D\u062F\u0629. \u0639\u0646\u062F \u062A\u0631\u0643\u064A\u0632 \u0627\u0644\u0632\u0631\u060C \u062A\u0636\u064A\u0641 \u0645\u0633\u0627\u0641\u0629 \u0623\u0648 \u0625\u062F\u062E\u0627\u0644 \u0646\u0642\u0631\u0629 \u0639\u0646\u062F \u0627\u0644\u0625\u0641\u0644\u0627\u062A. \u0627\u0644\u0636\u063A\u0637 \u0627\u0644\u0645\u0637\u0648\u0651\u0644 \u0644\u0627 \u064A\u0636\u064A\u0641 \u0646\u0642\u0631\u0627\u062A.",
+      loadError: "\u062A\u0639\u0630\u0651\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F. \u062D\u0627\u0648\u0644 \u0625\u0639\u0627\u062F\u0629 \u062A\u062D\u0645\u064A\u0644\u0647.",
+      unconfirmedClick: "\u062A\u0639\u0630\u0651\u0631 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0646\u0642\u0631\u0629. \u0623\u0639\u062F \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F \u0644\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u062D\u0641\u0638\u0647\u0627.",
+      unsavedClick: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638 \u0627\u0644\u0646\u0642\u0631\u0629. \u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u062A\u0635\u0627\u0644\u0643 \u0648\u062D\u0627\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627.",
+      localLoadError: "\u062A\u0639\u0630\u0651\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A. \u0627\u0641\u062A\u062D \u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A \u0644\u0627\u0633\u062A\u064A\u0631\u0627\u062F \u0646\u0633\u062E\u0629 \u0623\u0648 \u0628\u062F\u0621 \u062D\u0641\u0638 \u062C\u062F\u064A\u062F.",
+      localClickError: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638 \u0627\u0644\u0646\u0642\u0631\u0629 \u0645\u062D\u0644\u064A\u064B\u0627. \u0642\u062F \u062A\u0643\u0648\u0646 \u0645\u0633\u0627\u062D\u0629 \u0627\u0644\u0645\u062A\u0635\u0641\u062D \u0645\u0645\u062A\u0644\u0626\u0629 \u0623\u0648 \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629.",
+      signOutError: "\u062A\u0639\u0630\u0651\u0631 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C. \u062D\u0627\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627.",
+      shareTitle: "\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A",
+      done: "\u062A\u0645",
+      shareInstructions: "\u0627\u062E\u062A\u0631 \u0645\u0627 \u062A\u0631\u064A\u062F \u062A\u0636\u0645\u064A\u0646\u0647. \u064A\u0624\u062F\u064A \u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u062E\u064A\u0627\u0631 \u0625\u0644\u0649 \u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629\u061B \u0627\u0646\u0633\u062E \u0645\u062C\u062F\u062F\u064B\u0627 \u0644\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0646\u0635 \u0627\u0644\u0645\u062E\u0635\u0651\u0635.",
+      include: "\u062A\u0636\u0645\u064A\u0646",
+      siteLink: "\u0631\u0627\u0628\u0637 \u0627\u0644\u0645\u0648\u0642\u0639",
+      clickTotal: "\u0645\u062C\u0645\u0648\u0639 \u0627\u0644\u0646\u0642\u0631\u0627\u062A",
+      shareDataNote: "\u0645\u062C\u0645\u0648\u0639 \u0627\u0644\u0646\u0642\u0631\u0627\u062A \u062A\u0631\u0627\u0643\u0645\u064A. \u0644\u0627 \u064A\u062A\u0636\u0645\u0646 \u0627\u0644\u0645\u0644\u062E\u0635 \u0627\u0644\u062D\u0627\u0644\u064A \u0645\u062C\u0627\u0645\u064A\u0639 \u064A\u0648\u0645\u064A\u0629 \u0623\u0648 \u0623\u0633\u0628\u0648\u0639\u064A\u0629.",
+      preview: "\u0645\u0639\u0627\u064A\u0646\u0629",
+      statsToShare: "\u0625\u062D\u0635\u0627\u0621\u0627\u062A \u0644\u0644\u0645\u0634\u0627\u0631\u0643\u0629",
+      copyText: "\u0646\u0633\u062E \u0627\u0644\u0646\u0635",
+      copied: "\u062A\u0645 \u0646\u0633\u062E \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A.",
+      clipboardUnavailable: "\u0627\u0644\u062D\u0627\u0641\u0638\u0629 \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629. \u062D\u062F\u0651\u062F \u0646\u0635 \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629 \u0648\u0627\u0646\u0633\u062E\u0647.",
+      statsClicks: "{label}: {count}",
+      statsStreaks: "\u0627\u0644\u0633\u0644\u0627\u0633\u0644 \u0628\u062A\u0648\u0642\u064A\u062A UTC: {day} \xB7 {month} \xB7 {year}",
+      playLink: "\u0627\u0644\u0639\u0628: {url}"
+    },
+    hi: {
+      language: "\u092D\u093E\u0937\u093E",
+      account: "\u0916\u093E\u0924\u093E",
+      localGame: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0916\u0947\u0932",
+      languageHint: "\u0916\u0947\u0932 \u0915\u0940 \u092D\u093E\u0937\u093E \xB7 \u0907\u0938 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u092E\u0947\u0902 \u092F\u093E\u0926 \u0930\u0916\u0940 \u091C\u093E\u090F\u0917\u0940",
+      languageVisit: "\u0916\u0947\u0932 \u0915\u0940 \u092D\u093E\u0937\u093E \xB7 \u0907\u0938 \u092C\u093E\u0930 \u0932\u093E\u0917\u0942; \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u0938\u094D\u091F\u094B\u0930\u0947\u091C \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948",
+      skip: "\u0938\u093E\u092E\u0917\u094D\u0930\u0940 \u092A\u0930 \u091C\u093E\u090F\u0901",
+      game: "Go Click \u0916\u0947\u0932\u0947\u0902",
+      savedClicks: "\u0938\u0939\u0947\u091C\u0947 \u0917\u090F \u0915\u094D\u0932\u093F\u0915",
+      localClicks: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0915\u094D\u0932\u093F\u0915",
+      click: "\u0915\u094D\u0932\u093F\u0915!",
+      clickAction: "\u0905\u0902\u0915 \u092C\u0922\u093C\u093E\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902",
+      lastClick: "\u092A\u093F\u091B\u0932\u093E \u0915\u094D\u0932\u093F\u0915: {time}",
+      noClicks: "\u0905\u092D\u0940 \u0915\u094B\u0908 \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E \u0939\u0948\u0964",
+      timezone: "\u0906\u092A\u0915\u0947 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u092E\u092F \u0915\u094D\u0937\u0947\u0924\u094D\u0930 \u092E\u0947\u0902 \u0926\u093F\u0916\u093E\u092F\u093E \u0917\u092F\u093E \u0939\u0948",
+      refresh: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0915\u0930\u0947\u0902",
+      share: "\u0938\u093E\u091D\u093E \u0915\u0930\u0947\u0902",
+      shareHint: "\u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0906\u0901\u0915\u0921\u093C\u0947 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902",
+      ping: "\u092A\u093F\u0902\u0917",
+      simPing: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u093F\u0902\u0917",
+      pingHint: "\u092A\u093F\u091B\u0932\u0947 \u0938\u092B\u0932 \u0915\u094D\u0932\u093F\u0915 \u0905\u0928\u0941\u0930\u094B\u0927 \u0915\u093E \u0906\u0928\u0947-\u091C\u093E\u0928\u0947 \u0915\u093E \u0938\u092E\u092F\u0964 \u092C\u0949\u0930\u094D\u0921\u0930 \u0932\u0902\u092C\u093F\u0924 \u0905\u0928\u0941\u0930\u094B\u0927 \u092F\u093E \u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u0924\u094D\u0930\u0941\u091F\u093F \u0926\u093F\u0916\u093E\u0924\u093E \u0939\u0948\u0964",
+      pingStatus: "{ping}\u0964 {status}\u0964",
+      noPing: "\u092A\u093F\u0902\u0917: \u0905\u092D\u0940 \u0915\u093F\u0938\u0940 \u0915\u094D\u0932\u093F\u0915 \u0915\u093E \u0938\u092E\u092F \u0928\u0939\u0940\u0902 \u092E\u093E\u092A\u093E \u0917\u092F\u093E",
+      coolingStatus: "\u0938\u0930\u094D\u0935\u0930 \u0935\u093F\u0930\u093E\u092E\u0964 \u0915\u094D\u0932\u093F\u0915 \u0930\u0941\u0915\u0947 \u0939\u0941\u090F \u0939\u0948\u0902",
+      offlineStatus: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928\u0964 \u0915\u094D\u0932\u093F\u0915 \u0930\u0941\u0915\u0947 \u0939\u0941\u090F \u0939\u0948\u0902",
+      loadingStatus: "\u0905\u0928\u0941\u0930\u094B\u0927 \u091C\u093E\u0930\u0940 \u0939\u0948",
+      failedStatus: "\u092A\u093F\u091B\u0932\u093E \u0905\u0928\u0941\u0930\u094B\u0927 \u0935\u093F\u092B\u0932 \u0939\u0941\u0906",
+      idleStatus: "\u0915\u094B\u0908 \u0932\u0902\u092C\u093F\u0924 \u0905\u0928\u0941\u0930\u094B\u0927 \u0928\u0939\u0940\u0902",
+      pending: "+{count} \u0932\u0902\u092C\u093F\u0924",
+      cooldown: "\u0935\u093F\u0930\u093E\u092E \u091C\u093E\u0930\u0940",
+      seconds: "{count} \u0938\u0947\u0915\u0902\u0921",
+      streaks: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u093E \u0915\u094D\u0930\u092E",
+      streakLabel: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0915\u094D\u0932\u093F\u0915 \u0915\u0947 \u0915\u094D\u0930\u092E",
+      days: "\u0926\u093F\u0928",
+      months: "\u092E\u0939\u0940\u0928\u0947",
+      years: "\u0935\u0930\u094D\u0937",
+      networkNotice: "\u0906\u092A \u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0939\u0948\u0902\u0964 \u0915\u094D\u0932\u093F\u0915 \u0930\u0941\u0915\u0947 \u0939\u0941\u090F \u0939\u0948\u0902\u0964 \u0926\u094B\u092C\u093E\u0930\u093E \u091C\u0941\u0921\u093C\u0928\u0947 \u092A\u0930 \u0938\u0939\u0947\u091C\u0940 \u0917\u0908 \u092A\u094D\u0930\u0917\u0924\u093F \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0939\u094B\u0917\u0940\u0964",
+      localMode: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \xB7 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935",
+      offline: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928",
+      backOnline: "\u0911\u0928\u0932\u093E\u0907\u0928 \u0932\u094C\u091F\u0947\u0902",
+      signOut: "\u0938\u093E\u0907\u0928 \u0906\u0909\u091F \u0915\u0930\u0947\u0902",
+      admin: "\u0935\u094D\u092F\u0935\u0938\u094D\u0925\u093E\u092A\u0928",
+      options: "\u0935\u093F\u0915\u0932\u094D\u092A",
+      motion: "\u092E\u094B\u0936\u0928 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902",
+      motionHint: "\u0915\u092E \u0917\u0924\u093F \u091A\u093E\u0932\u0942 \u0939\u0948\u0964 \u092E\u094B\u0936\u0928 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902\u0964",
+      reload: "\u0915\u093E\u0909\u0902\u091F\u0930 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902",
+      controls: "\u092E\u093E\u0909\u0938 \u092F\u093E \u0938\u094D\u092A\u0930\u094D\u0936 \u0938\u0947 \u0926\u092C\u093E\u090F\u0901, \u092B\u093F\u0930 \u092C\u091F\u0928 \u0915\u0947 \u0905\u0902\u0926\u0930 \u091B\u094B\u0921\u093C\u0947\u0902\u0964 \u0939\u0930 \u0909\u0901\u0917\u0932\u0940 \u0905\u0932\u0917 \u0917\u093F\u0928\u0940 \u091C\u093E\u0924\u0940 \u0939\u0948\u0964 \u092C\u091F\u0928 \u092A\u0930 \u092B\u093C\u094B\u0915\u0938 \u0939\u094B\u0928\u0947 \u092A\u0930 \u0938\u094D\u092A\u0947\u0938 \u092F\u093E \u090F\u0902\u091F\u0930 \u091B\u094B\u0921\u093C\u0928\u0947 \u0938\u0947 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u091C\u0941\u0921\u093C\u0924\u093E \u0939\u0948\u0964 \u0926\u092C\u093E\u090F \u0930\u0916\u0928\u0947 \u0938\u0947 \u0905\u0924\u093F\u0930\u093F\u0915\u094D\u0924 \u0915\u094D\u0932\u093F\u0915 \u0928\u0939\u0940\u0902 \u091C\u0941\u0921\u093C\u0924\u0947\u0964",
+      loadError: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0932\u094B\u0921 \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902\u0964",
+      unconfirmedClick: "\u0915\u094D\u0932\u093F\u0915 \u0915\u0940 \u092A\u0941\u0937\u094D\u091F\u093F \u0928\u0939\u0940\u0902 \u0939\u0941\u0908\u0964 \u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \u092F\u093E \u0928\u0939\u0940\u0902, \u091C\u093E\u0901\u091A\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u093E\u0909\u0902\u091F\u0930 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902\u0964",
+      unsavedClick: "\u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E\u0964 \u0915\u0928\u0947\u0915\u094D\u0936\u0928 \u091C\u093E\u0901\u091A\u0947\u0902 \u0914\u0930 \u092B\u093F\u0930 \u0915\u094B\u0936\u093F\u0936 \u0915\u0930\u0947\u0902\u0964",
+      localLoadError: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0932\u094B\u0921 \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964 \u0935\u093F\u0915\u0932\u094D\u092A \u0916\u094B\u0932\u0915\u0930 \u092A\u094D\u0930\u0924\u093F \u0906\u092F\u093E\u0924 \u0915\u0930\u0947\u0902 \u092F\u093E \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0926\u094B\u092C\u093E\u0930\u093E \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902\u0964",
+      localClickError: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E\u0964 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u0938\u094D\u091F\u094B\u0930\u0947\u091C \u092D\u0930\u093E \u092F\u093E \u0905\u0928\u0941\u092A\u0932\u092C\u094D\u0927 \u0939\u094B \u0938\u0915\u0924\u093E \u0939\u0948\u0964",
+      signOutError: "\u0938\u093E\u0907\u0928 \u0906\u0909\u091F \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964 \u092B\u093F\u0930 \u0915\u094B\u0936\u093F\u0936 \u0915\u0930\u0947\u0902\u0964",
+      shareTitle: "\u0906\u0901\u0915\u0921\u093C\u0947 \u0938\u093E\u091D\u093E \u0915\u0930\u0947\u0902",
+      done: "\u0939\u094B \u0917\u092F\u093E",
+      shareInstructions: "\u091A\u0941\u0928\u0947\u0902 \u0915\u093F \u0915\u094D\u092F\u093E \u0936\u093E\u092E\u093F\u0932 \u0915\u0930\u0928\u093E \u0939\u0948\u0964 \u0935\u093F\u0915\u0932\u094D\u092A \u092C\u0926\u0932\u0928\u0947 \u092A\u0930 \u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u092C\u0926\u0932\u0947\u0917\u093E; \u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092B\u093F\u0930 \u0938\u0947 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
+      include: "\u0936\u093E\u092E\u093F\u0932 \u0915\u0930\u0947\u0902",
+      siteLink: "\u0938\u093E\u0907\u091F \u0932\u093F\u0902\u0915",
+      clickTotal: "\u0915\u0941\u0932 \u0915\u094D\u0932\u093F\u0915",
+      shareDataNote: "\u0915\u0941\u0932 \u0915\u094D\u0932\u093F\u0915 \u0938\u0902\u091A\u092F\u0940 \u0939\u0948\u0902\u0964 \u092E\u094C\u091C\u0942\u0926\u093E \u0938\u093E\u0930\u093E\u0902\u0936 \u092E\u0947\u0902 \u0926\u0948\u0928\u093F\u0915 \u0914\u0930 \u0938\u093E\u092A\u094D\u0924\u093E\u0939\u093F\u0915 \u0915\u0941\u0932 \u0936\u093E\u092E\u093F\u0932 \u0928\u0939\u0940\u0902 \u0939\u0948\u0902\u0964",
+      preview: "\u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928",
+      statsToShare: "\u0938\u093E\u091D\u093E \u0915\u093F\u090F \u091C\u093E\u0928\u0947 \u0935\u093E\u0932\u0947 \u0906\u0901\u0915\u0921\u093C\u0947",
+      copyText: "\u091F\u0947\u0915\u094D\u0938\u094D\u091F \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902",
+      copied: "\u0906\u0901\u0915\u0921\u093C\u0947 \u0915\u0949\u092A\u0940 \u0939\u094B \u0917\u090F\u0964",
+      clipboardUnavailable: "\u0915\u094D\u0932\u093F\u092A\u092C\u094B\u0930\u094D\u0921 \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964 \u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u0915\u093E \u091F\u0947\u0915\u094D\u0938\u094D\u091F \u091A\u0941\u0928\u0915\u0930 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
+      statsClicks: "{label}: {count}",
+      statsStreaks: "UTC \u0915\u094D\u0930\u092E: {day} \xB7 {month} \xB7 {year}",
+      playLink: "\u0916\u0947\u0932\u0947\u0902: {url}"
+    },
+    id: {
+      language: "Bahasa",
+      account: "Akun",
+      localGame: "Permainan lokal",
+      languageHint: "Bahasa permainan \xB7 disimpan di peramban ini",
+      languageVisit: "Bahasa permainan \xB7 berlaku untuk kunjungan ini; penyimpanan tidak tersedia",
+      skip: "Lewati ke konten",
+      game: "Main Go Click",
+      savedClicks: "Klik tersimpan",
+      localClicks: "Klik lokal",
+      click: "Klik!",
+      clickAction: "Klik untuk menambah skor",
+      lastClick: "Klik terakhir: {time}",
+      noClicks: "Belum ada klik tersimpan.",
+      timezone: "Ditampilkan dalam zona waktu lokal Anda",
+      refresh: "Muat ulang penghitung",
+      share: "Bagikan",
+      shareHint: "Salin statistik untuk dibagikan",
+      ping: "Ping",
+      simPing: "Ping simulasi",
+      pingHint: "Waktu pulang pergi permintaan klik terakhir yang berhasil. Bingkai menunjukkan permintaan tertunda atau kesalahan penyimpanan.",
+      pingStatus: "{ping}. {status}.",
+      noPing: "Ping: belum ada klik yang diukur",
+      coolingStatus: "Jeda server. Klik dijeda",
+      offlineStatus: "Luring. Klik dijeda",
+      loadingStatus: "Permintaan sedang diproses",
+      failedStatus: "Permintaan terakhir gagal",
+      idleStatus: "Tidak ada permintaan tertunda",
+      pending: "+{count} tertunda",
+      cooldown: "Sedang jeda",
+      seconds: "{count} dtk",
+      streaks: "Rentetan",
+      streakLabel: "Rentetan klik",
+      days: "hari",
+      months: "bulan",
+      years: "tahun",
+      networkNotice: "Anda sedang luring. Klik dijeda. Progres tersimpan akan diperbarui saat tersambung kembali.",
+      localMode: "Luring \xB7 simpanan lokal",
+      offline: "Luring",
+      backOnline: "Kembali daring",
+      signOut: "Keluar",
+      admin: "Admin",
+      options: "Opsi",
+      motion: "Aktifkan efek gerakan",
+      motionHint: "Gerakan terbatas aktif. Aktifkan efek gerakan.",
+      reload: "Muat ulang penghitung",
+      controls: "Tekan dengan tetikus atau sentuhan, lalu lepaskan di dalam tombol. Setiap jari dihitung terpisah. Saat tombol terfokus, melepas Spasi atau Enter menambah satu klik. Menahan tidak menambah klik.",
+      loadError: "Penghitung tidak dapat dimuat. Coba muat ulang.",
+      unconfirmedClick: "Klik tidak dapat dikonfirmasi. Muat ulang penghitung untuk memeriksa apakah tersimpan.",
+      unsavedClick: "Klik Anda tidak tersimpan. Periksa koneksi dan coba lagi.",
+      localLoadError: "Simpanan lokal tidak dapat dimuat. Buka Opsi untuk mengimpor salinan atau memulai ulang.",
+      localClickError: "Klik lokal tidak tersimpan. Penyimpanan peramban mungkin penuh atau tidak tersedia.",
+      signOutError: "Tidak dapat keluar. Silakan coba lagi.",
+      shareTitle: "Bagikan statistik",
+      done: "Selesai",
+      shareInstructions: "Pilih yang ingin disertakan. Mengubah opsi memperbarui pratinjau; salin lagi untuk membagikan teks yang disesuaikan.",
+      include: "Sertakan",
+      siteLink: "Tautan situs",
+      clickTotal: "Total klik",
+      shareDataNote: "Total klik bersifat kumulatif. Total harian dan mingguan tidak termasuk dalam ringkasan saat ini.",
+      preview: "Pratinjau",
+      statsToShare: "Statistik untuk dibagikan",
+      copyText: "Salin teks",
+      copied: "Statistik disalin.",
+      clipboardUnavailable: "Papan klip tidak tersedia. Pilih dan salin teks pratinjau.",
+      statsClicks: "{label}: {count}",
+      statsStreaks: "Rentetan UTC: {day} \xB7 {month} \xB7 {year}",
+      playLink: "Main: {url}"
+    },
+    "pt-BR": {
+      language: "Idioma",
+      account: "Conta",
+      localGame: "Jogo local",
+      languageHint: "Idioma do jogo \xB7 salvo neste navegador",
+      languageVisit: "Idioma do jogo \xB7 aplicado nesta visita; armazenamento indispon\xEDvel",
+      skip: "Pular para o conte\xFAdo",
+      game: "Jogar Go Click",
+      savedClicks: "Cliques salvos",
+      localClicks: "Cliques locais",
+      click: "Clique!",
+      clickAction: "Clique para aumentar a pontua\xE7\xE3o",
+      lastClick: "\xDAltimo clique: {time}",
+      noClicks: "Nenhum clique salvo ainda.",
+      timezone: "Exibido no seu fuso hor\xE1rio local",
+      refresh: "Atualizar contador",
+      share: "Compartilhar",
+      shareHint: "Copiar estat\xEDsticas para compartilhar",
+      ping: "Ping",
+      simPing: "Ping simulado",
+      pingHint: "Tempo de ida e volta da \xFAltima solicita\xE7\xE3o de clique bem-sucedida. A borda indica solicita\xE7\xF5es pendentes ou erro ao salvar.",
+      pingStatus: "{ping}. {status}.",
+      noPing: "Ping: nenhum clique medido ainda",
+      coolingStatus: "Pausa do servidor. Cliques pausados",
+      offlineStatus: "Sem conex\xE3o. Cliques pausados",
+      loadingStatus: "Solicita\xE7\xE3o em andamento",
+      failedStatus: "A \xFAltima solicita\xE7\xE3o falhou",
+      idleStatus: "Nenhuma solicita\xE7\xE3o pendente",
+      pending: "+{count} pendentes",
+      cooldown: "Em pausa",
+      seconds: "{count} s",
+      streaks: "Sequ\xEAncias",
+      streakLabel: "Sequ\xEAncias de cliques",
+      days: "dias",
+      months: "meses",
+      years: "anos",
+      networkNotice: "Voc\xEA est\xE1 sem conex\xE3o. Os cliques est\xE3o pausados. Seu progresso salvo ser\xE1 atualizado ao reconectar.",
+      localMode: "Offline \xB7 save local",
+      offline: "Offline",
+      backOnline: "Voltar ao modo online",
+      signOut: "Sair",
+      admin: "Administra\xE7\xE3o",
+      options: "Op\xE7\xF5es",
+      motion: "Ativar efeitos de movimento",
+      motionHint: "Movimento reduzido ativado. Ativar efeitos de movimento.",
+      reload: "Recarregar contador",
+      controls: "Pressione com o mouse ou toque e solte dentro do bot\xE3o. Cada dedo conta separadamente. Com o bot\xE3o em foco, soltar Espa\xE7o ou Enter adiciona um clique. Segurar n\xE3o adiciona cliques.",
+      loadError: "N\xE3o foi poss\xEDvel carregar o contador. Tente recarregar.",
+      unconfirmedClick: "N\xE3o foi poss\xEDvel confirmar seu clique. Recarregue o contador para verificar se foi salvo.",
+      unsavedClick: "Seu clique n\xE3o foi salvo. Verifique sua conex\xE3o e tente novamente.",
+      localLoadError: "N\xE3o foi poss\xEDvel carregar o save local. Abra Op\xE7\xF5es para importar uma c\xF3pia ou reiniciar.",
+      localClickError: "Seu clique local n\xE3o foi salvo. O armazenamento do navegador pode estar cheio ou indispon\xEDvel.",
+      signOutError: "N\xE3o foi poss\xEDvel sair. Tente novamente.",
+      shareTitle: "Compartilhar estat\xEDsticas",
+      done: "Conclu\xEDdo",
+      shareInstructions: "Escolha o que incluir. Alterar uma op\xE7\xE3o atualiza a pr\xE9via; copie novamente para compartilhar o texto personalizado.",
+      include: "Incluir",
+      siteLink: "Link do site",
+      clickTotal: "Total de cliques",
+      shareDataNote: "O total de cliques \xE9 acumulativo. Totais di\xE1rios e semanais n\xE3o fazem parte do resumo atual.",
+      preview: "Pr\xE9via",
+      statsToShare: "Estat\xEDsticas para compartilhar",
+      copyText: "Copiar texto",
+      copied: "Estat\xEDsticas copiadas.",
+      clipboardUnavailable: "\xC1rea de transfer\xEAncia indispon\xEDvel. Selecione e copie o texto da pr\xE9via.",
+      statsClicks: "{label}: {count}",
+      statsStreaks: "Sequ\xEAncias UTC: {day} \xB7 {month} \xB7 {year}",
+      playLink: "Jogar: {url}"
+    },
+    fr: {
+      language: "Langue",
+      account: "Compte",
+      localGame: "Partie locale",
+      languageHint: "Langue du jeu \xB7 m\xE9moris\xE9e dans ce navigateur",
+      languageVisit: "Langue du jeu \xB7 appliqu\xE9e pour cette visite ; stockage indisponible",
+      skip: "Aller au contenu",
+      game: "Jouer \xE0 Go Click",
+      savedClicks: "Clics enregistr\xE9s",
+      localClicks: "Clics locaux",
+      click: "Cliquez !",
+      clickAction: "Cliquer pour ajouter un point",
+      lastClick: "Dernier clic : {time}",
+      noClicks: "Aucun clic enregistr\xE9 pour le moment.",
+      timezone: "Affich\xE9 dans votre fuseau horaire local",
+      refresh: "Actualiser le compteur",
+      share: "Partager",
+      shareHint: "Copier les statistiques \xE0 partager",
+      ping: "Latence",
+      simPing: "Latence simul\xE9e",
+      pingHint: "Dur\xE9e aller-retour de la derni\xE8re requ\xEAte de clic r\xE9ussie. La bordure indique les requ\xEAtes en attente ou une erreur de sauvegarde.",
+      pingStatus: "{ping}. {status}.",
+      noPing: "Latence : aucun clic mesur\xE9",
+      coolingStatus: "Pause du serveur. Clics suspendus",
+      offlineStatus: "Hors ligne. Clics suspendus",
+      loadingStatus: "Requ\xEAte en cours",
+      failedStatus: "La derni\xE8re requ\xEAte a \xE9chou\xE9",
+      idleStatus: "Aucune requ\xEAte en attente",
+      pending: "+{count} en attente",
+      cooldown: "En pause",
+      seconds: "{count} s",
+      streaks: "S\xE9ries",
+      streakLabel: "S\xE9ries de clics",
+      days: "jours",
+      months: "mois",
+      years: "ans",
+      networkNotice: "Vous \xEAtes hors ligne. Les clics sont suspendus. Votre progression sera actualis\xE9e \xE0 la reconnexion.",
+      localMode: "Hors ligne \xB7 sauvegarde locale",
+      offline: "Hors ligne",
+      backOnline: "Revenir en ligne",
+      signOut: "Se d\xE9connecter",
+      admin: "Administration",
+      options: "Options",
+      motion: "Activer les effets de mouvement",
+      motionHint: "Les animations sont r\xE9duites. Activer les effets de mouvement.",
+      reload: "Recharger le compteur",
+      controls: "Appuyez avec la souris ou le doigt, puis rel\xE2chez dans le bouton. Chaque doigt compte s\xE9par\xE9ment. Quand le bouton a le focus, rel\xE2cher Espace ou Entr\xE9e ajoute un clic. Maintenir n\u2019ajoute pas de clics.",
+      loadError: "Impossible de charger le compteur. R\xE9essayez.",
+      unconfirmedClick: "Impossible de confirmer le clic. Rechargez le compteur pour v\xE9rifier son enregistrement.",
+      unsavedClick: "Votre clic n\u2019a pas \xE9t\xE9 enregistr\xE9. V\xE9rifiez votre connexion et r\xE9essayez.",
+      localLoadError: "Impossible de charger la sauvegarde locale. Ouvrez Options pour importer une copie ou recommencer.",
+      localClickError: "Votre clic local n\u2019a pas \xE9t\xE9 enregistr\xE9. Le stockage du navigateur est peut-\xEAtre plein ou indisponible.",
+      signOutError: "Impossible de se d\xE9connecter. R\xE9essayez.",
+      shareTitle: "Partager les statistiques",
+      done: "Termin\xE9",
+      shareInstructions: "Choisissez les \xE9l\xE9ments \xE0 inclure. Modifier une option actualise l\u2019aper\xE7u ; copiez \xE0 nouveau pour partager le texte personnalis\xE9.",
+      include: "Inclure",
+      siteLink: "Lien du site",
+      clickTotal: "Total des clics",
+      shareDataNote: "Le total des clics est cumulatif. Le r\xE9sum\xE9 actuel n\u2019inclut pas de totaux quotidiens ou hebdomadaires.",
+      preview: "Aper\xE7u",
+      statsToShare: "Statistiques \xE0 partager",
+      copyText: "Copier le texte",
+      copied: "Statistiques copi\xE9es.",
+      clipboardUnavailable: "Presse-papiers indisponible. S\xE9lectionnez et copiez le texte de l\u2019aper\xE7u.",
+      statsClicks: "{label} : {count}",
+      statsStreaks: "S\xE9ries UTC : {day} \xB7 {month} \xB7 {year}",
+      playLink: "Jouer : {url}"
+    },
+    ja: {
+      language: "\u8A00\u8A9E",
+      account: "\u30A2\u30AB\u30A6\u30F3\u30C8",
+      localGame: "\u30ED\u30FC\u30AB\u30EB\u30B2\u30FC\u30E0",
+      languageHint: "\u30B2\u30FC\u30E0\u306E\u8A00\u8A9E \xB7 \u3053\u306E\u30D6\u30E9\u30A6\u30B6\u30FC\u306B\u4FDD\u5B58",
+      languageVisit: "\u30B2\u30FC\u30E0\u306E\u8A00\u8A9E \xB7 \u4ECA\u56DE\u306E\u307F\u9069\u7528\u3002\u30D6\u30E9\u30A6\u30B6\u30FC\u306B\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093",
+      skip: "\u672C\u6587\u3078\u79FB\u52D5",
+      game: "Go Click \u3092\u30D7\u30EC\u30A4",
+      savedClicks: "\u4FDD\u5B58\u6E08\u307F\u30AF\u30EA\u30C3\u30AF",
+      localClicks: "\u30ED\u30FC\u30AB\u30EB\u30AF\u30EA\u30C3\u30AF",
+      click: "\u30AF\u30EA\u30C3\u30AF\uFF01",
+      clickAction: "\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u30B9\u30B3\u30A2\u3092\u5897\u3084\u3059",
+      lastClick: "\u6700\u5F8C\u306E\u30AF\u30EA\u30C3\u30AF\uFF1A{time}",
+      noClicks: "\u4FDD\u5B58\u6E08\u307F\u30AF\u30EA\u30C3\u30AF\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002",
+      timezone: "\u304A\u4F4F\u307E\u3044\u306E\u30BF\u30A4\u30E0\u30BE\u30FC\u30F3\u3067\u8868\u793A",
+      refresh: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u66F4\u65B0",
+      share: "\u5171\u6709",
+      shareHint: "\u5171\u6709\u7528\u306B\u8A18\u9332\u3092\u30B3\u30D4\u30FC",
+      ping: "\u5FDC\u7B54\u6642\u9593",
+      simPing: "\u6A21\u64EC\u5FDC\u7B54\u6642\u9593",
+      pingHint: "\u6700\u5F8C\u306B\u6210\u529F\u3057\u305F\u30AF\u30EA\u30C3\u30AF\u8981\u6C42\u306E\u5F80\u5FA9\u6642\u9593\u3002\u67A0\u306F\u51E6\u7406\u4E2D\u306E\u8981\u6C42\u3084\u4FDD\u5B58\u30A8\u30E9\u30FC\u3092\u793A\u3057\u307E\u3059\u3002",
+      pingStatus: "{ping}\u3002{status}\u3002",
+      noPing: "\u5FDC\u7B54\u6642\u9593\uFF1A\u307E\u3060\u8A08\u6E2C\u3057\u3066\u3044\u307E\u305B\u3093",
+      coolingStatus: "\u30B5\u30FC\u30D0\u30FC\u306E\u5F85\u6A5F\u6642\u9593\u4E2D\u3002\u30AF\u30EA\u30C3\u30AF\u3092\u4E00\u6642\u505C\u6B62",
+      offlineStatus: "\u672A\u63A5\u7D9A\u3002\u30AF\u30EA\u30C3\u30AF\u3092\u4E00\u6642\u505C\u6B62",
+      loadingStatus: "\u30EA\u30AF\u30A8\u30B9\u30C8\u51E6\u7406\u4E2D",
+      failedStatus: "\u6700\u5F8C\u306E\u30EA\u30AF\u30A8\u30B9\u30C8\u306B\u5931\u6557",
+      idleStatus: "\u51E6\u7406\u4E2D\u306E\u30EA\u30AF\u30A8\u30B9\u30C8\u306F\u3042\u308A\u307E\u305B\u3093",
+      pending: "+{count} \u4FDD\u5B58\u5F85\u3061",
+      cooldown: "\u5F85\u6A5F\u4E2D",
+      seconds: "{count}\u79D2",
+      streaks: "\u9023\u7D9A\u8A18\u9332",
+      streakLabel: "\u30AF\u30EA\u30C3\u30AF\u306E\u9023\u7D9A\u8A18\u9332",
+      days: "\u65E5",
+      months: "\u304B\u6708",
+      years: "\u5E74",
+      networkNotice: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u3059\u3002\u30AF\u30EA\u30C3\u30AF\u306F\u4E00\u6642\u505C\u6B62\u4E2D\u3067\u3059\u3002\u518D\u63A5\u7D9A\u3059\u308B\u3068\u4FDD\u5B58\u6E08\u307F\u306E\u9032\u884C\u72B6\u6CC1\u3092\u66F4\u65B0\u3057\u307E\u3059\u3002",
+      localMode: "\u30AA\u30D5\u30E9\u30A4\u30F3 \xB7 \u30ED\u30FC\u30AB\u30EB\u4FDD\u5B58",
+      offline: "\u30AA\u30D5\u30E9\u30A4\u30F3",
+      backOnline: "\u30AA\u30F3\u30E9\u30A4\u30F3\u306B\u623B\u308B",
+      signOut: "\u30ED\u30B0\u30A2\u30A6\u30C8",
+      admin: "\u7BA1\u7406",
+      options: "\u8A2D\u5B9A",
+      motion: "\u52D5\u304D\u306E\u52B9\u679C\u3092\u6709\u52B9\u306B\u3059\u308B",
+      motionHint: "\u52D5\u304D\u3092\u6291\u3048\u308B\u8A2D\u5B9A\u3067\u3059\u3002\u52D5\u304D\u306E\u52B9\u679C\u3092\u6709\u52B9\u306B\u3057\u307E\u3059\u3002",
+      reload: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u518D\u8AAD\u307F\u8FBC\u307F",
+      controls: "\u30DE\u30A6\u30B9\u3084\u30BF\u30C3\u30C1\u3067\u62BC\u3057\u3001\u30DC\u30BF\u30F3\u306E\u5185\u5074\u3067\u96E2\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u6307\u3054\u3068\u306B\u6570\u3048\u307E\u3059\u3002\u30DC\u30BF\u30F3\u306B\u30D5\u30A9\u30FC\u30AB\u30B9\u304C\u3042\u308B\u3068\u304D\u306F\u3001\u30B9\u30DA\u30FC\u30B9\u307E\u305F\u306F Enter \u3092\u96E2\u3059\u30681\u30AF\u30EA\u30C3\u30AF\u52A0\u7B97\u3057\u307E\u3059\u3002\u9577\u62BC\u3057\u3067\u306F\u5897\u3048\u307E\u305B\u3093\u3002",
+      loadError: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      unconfirmedClick: "\u30AF\u30EA\u30C3\u30AF\u3092\u78BA\u8A8D\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u4FDD\u5B58\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      unsavedClick: "\u30AF\u30EA\u30C3\u30AF\u306F\u4FDD\u5B58\u3055\u308C\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u63A5\u7D9A\u3092\u78BA\u8A8D\u3057\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      localLoadError: "\u30ED\u30FC\u30AB\u30EB\u4FDD\u5B58\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u8A2D\u5B9A\u3067\u30B3\u30D4\u30FC\u3092\u30A4\u30F3\u30DD\u30FC\u30C8\u3059\u308B\u304B\u3001\u4FDD\u5B58\u3092\u30EA\u30BB\u30C3\u30C8\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      localClickError: "\u30ED\u30FC\u30AB\u30EB\u30AF\u30EA\u30C3\u30AF\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u30D6\u30E9\u30A6\u30B6\u30FC\u306E\u4FDD\u5B58\u9818\u57DF\u304C\u3044\u3063\u3071\u3044\u304B\u3001\u5229\u7528\u3067\u304D\u306A\u3044\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\u3002",
+      signOutError: "\u30ED\u30B0\u30A2\u30A6\u30C8\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      shareTitle: "\u8A18\u9332\u3092\u5171\u6709",
+      done: "\u5B8C\u4E86",
+      shareInstructions: "\u542B\u3081\u308B\u5185\u5BB9\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044\u3002\u8A2D\u5B9A\u3092\u5909\u3048\u308B\u3068\u30D7\u30EC\u30D3\u30E5\u30FC\u304C\u66F4\u65B0\u3055\u308C\u307E\u3059\u3002\u5171\u6709\u3059\u308B\u524D\u306B\u518D\u5EA6\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      include: "\u542B\u3081\u308B\u5185\u5BB9",
+      siteLink: "\u30B5\u30A4\u30C8\u306E\u30EA\u30F3\u30AF",
+      clickTotal: "\u5408\u8A08\u30AF\u30EA\u30C3\u30AF\u6570",
+      shareDataNote: "\u30AF\u30EA\u30C3\u30AF\u6570\u306F\u7D2F\u8A08\u3067\u3059\u3002\u73FE\u5728\u306E\u6982\u8981\u306B\u306F\u65E5\u5225\u30FB\u9031\u5225\u306E\u5408\u8A08\u306F\u542B\u307E\u308C\u307E\u305B\u3093\u3002",
+      preview: "\u30D7\u30EC\u30D3\u30E5\u30FC",
+      statsToShare: "\u5171\u6709\u3059\u308B\u8A18\u9332",
+      copyText: "\u30C6\u30AD\u30B9\u30C8\u3092\u30B3\u30D4\u30FC",
+      copied: "\u8A18\u9332\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F\u3002",
+      clipboardUnavailable: "\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002\u30D7\u30EC\u30D3\u30E5\u30FC\u306E\u30C6\u30AD\u30B9\u30C8\u3092\u9078\u629E\u3057\u3066\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      statsClicks: "{label}\uFF1A{count}",
+      statsStreaks: "UTC \u9023\u7D9A\u8A18\u9332\uFF1A{day} \xB7 {month} \xB7 {year}",
+      playLink: "\u30D7\u30EC\u30A4\uFF1A{url}"
+    },
+    ru: {
+      language: "\u042F\u0437\u044B\u043A",
+      account: "\u0410\u043A\u043A\u0430\u0443\u043D\u0442",
+      localGame: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u0430\u044F \u0438\u0433\u0440\u0430",
+      languageHint: "\u042F\u0437\u044B\u043A \u0438\u0433\u0440\u044B \xB7 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435",
+      languageVisit: "\u042F\u0437\u044B\u043A \u0438\u0433\u0440\u044B \xB7 \u043F\u0440\u0438\u043C\u0435\u043D\u0451\u043D \u043D\u0430 \u044D\u0442\u043E\u0442 \u0440\u0430\u0437; \u0445\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E",
+      skip: "\u041F\u0435\u0440\u0435\u0439\u0442\u0438 \u043A \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u043C\u0443",
+      game: "\u0418\u0433\u0440\u0430\u0442\u044C \u0432 Go Click",
+      savedClicks: "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0435 \u043A\u043B\u0438\u043A\u0438",
+      localClicks: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043A\u043B\u0438\u043A\u0438",
+      click: "\u0416\u043C\u0438!",
+      clickAction: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0447\u043A\u043E",
+      lastClick: "\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043A\u043B\u0438\u043A: {time}",
+      noClicks: "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0445 \u043A\u043B\u0438\u043A\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442.",
+      timezone: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E \u0432 \u0432\u0430\u0448\u0435\u043C \u0447\u0430\u0441\u043E\u0432\u043E\u043C \u043F\u043E\u044F\u0441\u0435",
+      refresh: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A",
+      share: "\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F",
+      shareHint: "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0443 \u0434\u043B\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
+      ping: "\u041F\u0438\u043D\u0433",
+      simPing: "\u0421\u0438\u043C\u0443\u043B\u044F\u0446\u0438\u044F \u043F\u0438\u043D\u0433\u0430",
+      pingHint: "\u0412\u0440\u0435\u043C\u044F \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0433\u043E \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u043A\u043B\u0438\u043A\u0430. \u0420\u0430\u043C\u043A\u0430 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442 \u043E\u0436\u0438\u0434\u0430\u044E\u0449\u0438\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0438\u043B\u0438 \u043E\u0448\u0438\u0431\u043A\u0443 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F.",
+      pingStatus: "{ping}. {status}.",
+      noPing: "\u041F\u0438\u043D\u0433: \u043A\u043B\u0438\u043A\u043E\u0432 \u0435\u0449\u0451 \u043D\u0435 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u043E",
+      coolingStatus: "\u0421\u0435\u0440\u0432\u0435\u0440\u043D\u0430\u044F \u043F\u0430\u0443\u0437\u0430. \u041A\u043B\u0438\u043A\u0438 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B",
+      offlineStatus: "\u041D\u0435\u0442 \u0441\u0435\u0442\u0438. \u041A\u043B\u0438\u043A\u0438 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B",
+      loadingStatus: "\u0417\u0430\u043F\u0440\u043E\u0441 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u0435\u0442\u0441\u044F",
+      failedStatus: "\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u0437\u0430\u043F\u0440\u043E\u0441 \u043D\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D",
+      idleStatus: "\u041D\u0435\u0442 \u043E\u0436\u0438\u0434\u0430\u044E\u0449\u0438\u0445 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432",
+      pending: "+{count} \u043E\u0436\u0438\u0434\u0430\u044E\u0442",
+      cooldown: "\u041F\u0430\u0443\u0437\u0430",
+      seconds: "{count} \u0441",
+      streaks: "\u0421\u0435\u0440\u0438\u0438",
+      streakLabel: "\u0421\u0435\u0440\u0438\u0438 \u043A\u043B\u0438\u043A\u043E\u0432",
+      days: "\u0434\u043D\u0438",
+      months: "\u043C\u0435\u0441\u044F\u0446\u044B",
+      years: "\u0433\u043E\u0434\u044B",
+      networkNotice: "\u041D\u0435\u0442 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u044F. \u041A\u043B\u0438\u043A\u0438 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B. \u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043E\u0431\u043D\u043E\u0432\u0438\u0442\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u044F.",
+      localMode: "\u041E\u0444\u043B\u0430\u0439\u043D \xB7 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435",
+      offline: "\u041E\u0444\u043B\u0430\u0439\u043D",
+      backOnline: "\u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043E\u043D\u043B\u0430\u0439\u043D",
+      signOut: "\u0412\u044B\u0439\u0442\u0438",
+      admin: "\u0423\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435",
+      options: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438",
+      motion: "\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0444\u0444\u0435\u043A\u0442\u044B \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F",
+      motionHint: "\u0414\u0432\u0438\u0436\u0435\u043D\u0438\u0435 \u0443\u043C\u0435\u043D\u044C\u0448\u0435\u043D\u043E. \u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0444\u0444\u0435\u043A\u0442\u044B \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F.",
+      reload: "\u041F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A",
+      controls: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u043C\u044B\u0448\u044C\u044E \u0438\u043B\u0438 \u043F\u0430\u043B\u044C\u0446\u0435\u043C \u0438 \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0432\u043D\u0443\u0442\u0440\u0438 \u043A\u043D\u043E\u043F\u043A\u0438. \u041A\u0430\u0436\u0434\u044B\u0439 \u043F\u0430\u043B\u0435\u0446 \u0441\u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E. \u041F\u0440\u0438 \u0444\u043E\u043A\u0443\u0441\u0435 \u043D\u0430 \u043A\u043D\u043E\u043F\u043A\u0435 \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u041F\u0440\u043E\u0431\u0435\u043B \u0438\u043B\u0438 Enter \u0434\u043B\u044F \u043E\u0434\u043D\u043E\u0433\u043E \u043A\u043B\u0438\u043A\u0430. \u0423\u0434\u0435\u0440\u0436\u0430\u043D\u0438\u0435 \u043D\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0435\u0442 \u043A\u043B\u0438\u043A\u043E\u0432.",
+      loadError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.",
+      unconfirmedClick: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u043A\u043B\u0438\u043A. \u041F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0441\u0447\u0451\u0442\u0447\u0438\u043A, \u0447\u0442\u043E\u0431\u044B \u043F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435.",
+      unsavedClick: "\u041A\u043B\u0438\u043A \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435 \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+      localLoadError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u043C\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u043A\u043E\u043F\u0438\u044E \u0438\u043B\u0438 \u043D\u0430\u0447\u0430\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E.",
+      localClickError: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u043A\u043B\u0438\u043A \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u0425\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043C\u043E\u0436\u0435\u0442 \u0431\u044B\u0442\u044C \u0437\u0430\u043F\u043E\u043B\u043D\u0435\u043D\u043E \u0438\u043B\u0438 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E.",
+      signOutError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0432\u044B\u0439\u0442\u0438. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.",
+      shareTitle: "\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u043E\u0439",
+      done: "\u0413\u043E\u0442\u043E\u0432\u043E",
+      shareInstructions: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435, \u0447\u0442\u043E \u0432\u043A\u043B\u044E\u0447\u0438\u0442\u044C. \u0418\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u0435 \u043F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u0435\u0442 \u043F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440; \u0441\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043D\u043E\u0432\u043E \u043F\u0435\u0440\u0435\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u043E\u0439.",
+      include: "\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C",
+      siteLink: "\u0421\u0441\u044B\u043B\u043A\u0430 \u043D\u0430 \u0441\u0430\u0439\u0442",
+      clickTotal: "\u0412\u0441\u0435\u0433\u043E \u043A\u043B\u0438\u043A\u043E\u0432",
+      shareDataNote: "\u0427\u0438\u0441\u043B\u043E \u043A\u043B\u0438\u043A\u043E\u0432 \u043D\u0430\u043A\u043E\u043F\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0435. \u0418\u0442\u043E\u0433\u0438 \u0437\u0430 \u0434\u0435\u043D\u044C \u0438 \u043D\u0435\u0434\u0435\u043B\u044E \u043D\u0435 \u0432\u0445\u043E\u0434\u044F\u0442 \u0432 \u0442\u0435\u043A\u0443\u0449\u0443\u044E \u0441\u0432\u043E\u0434\u043A\u0443.",
+      preview: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440",
+      statsToShare: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0434\u043B\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
+      copyText: "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0442\u0435\u043A\u0441\u0442",
+      copied: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u0430.",
+      clipboardUnavailable: "\u0411\u0443\u0444\u0435\u0440 \u043E\u0431\u043C\u0435\u043D\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D. \u0412\u044B\u0434\u0435\u043B\u0438\u0442\u0435 \u0438 \u0441\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u043F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0430.",
+      statsClicks: "{label}: {count}",
+      statsStreaks: "\u0421\u0435\u0440\u0438\u0438 UTC: {day} \xB7 {month} \xB7 {year}",
+      playLink: "\u0418\u0433\u0440\u0430\u0442\u044C: {url}"
+    },
+    de: {
+      language: "Sprache",
+      account: "Konto",
+      localGame: "Lokales Spiel",
+      languageHint: "Spielsprache \xB7 wird in diesem Browser gespeichert",
+      languageVisit: "Spielsprache \xB7 f\xFCr diesen Besuch \xFCbernommen; Browserspeicher nicht verf\xFCgbar",
+      skip: "Zum Inhalt springen",
+      game: "Go Click spielen",
+      savedClicks: "Gespeicherte Klicks",
+      localClicks: "Lokale Klicks",
+      click: "Klick!",
+      clickAction: "Klicken, um den Punktestand zu erh\xF6hen",
+      lastClick: "Letzter Klick: {time}",
+      noClicks: "Noch keine Klicks gespeichert.",
+      timezone: "Anzeige in deiner lokalen Zeitzone",
+      refresh: "Z\xE4hler aktualisieren",
+      share: "Teilen",
+      shareHint: "Statistik zum Teilen kopieren",
+      ping: "Ping",
+      simPing: "Simulierter Ping",
+      pingHint: "Umlaufzeit der letzten erfolgreichen Klickanfrage. Der Rand zeigt ausstehende Anfragen oder einen Speicherfehler an.",
+      pingStatus: "{ping}. {status}.",
+      noPing: "Ping: noch kein Klick gemessen",
+      coolingStatus: "Serverpause. Klicken pausiert",
+      offlineStatus: "Offline. Klicken pausiert",
+      loadingStatus: "Anfrage l\xE4uft",
+      failedStatus: "Letzte Anfrage fehlgeschlagen",
+      idleStatus: "Keine ausstehenden Anfragen",
+      pending: "+{count} ausstehend",
+      cooldown: "Pause",
+      seconds: "{count} s",
+      streaks: "Serien",
+      streakLabel: "Klickserien",
+      days: "Tage",
+      months: "Monate",
+      years: "Jahre",
+      networkNotice: "Du bist offline. Klicken ist pausiert. Dein gespeicherter Fortschritt wird beim Verbinden aktualisiert.",
+      localMode: "Offline \xB7 lokaler Spielstand",
+      offline: "Offline",
+      backOnline: "Zur\xFCck zum Onlinespiel",
+      signOut: "Abmelden",
+      admin: "Verwaltung",
+      options: "Optionen",
+      motion: "Bewegungseffekte aktivieren",
+      motionHint: "Reduzierte Bewegung ist aktiv. Bewegungseffekte aktivieren.",
+      reload: "Z\xE4hler neu laden",
+      controls: "Mit Maus oder Finger dr\xFCcken und innerhalb des Buttons loslassen. Jeder Finger z\xE4hlt einzeln. Bei fokussiertem Button z\xE4hlt das Loslassen von Leertaste oder Enter als Klick. Halten erzeugt keine weiteren Klicks.",
+      loadError: "Der Z\xE4hler konnte nicht geladen werden. Lade ihn erneut.",
+      unconfirmedClick: "Der Klick konnte nicht best\xE4tigt werden. Lade den Z\xE4hler neu, um die Speicherung zu pr\xFCfen.",
+      unsavedClick: "Dein Klick wurde nicht gespeichert. Pr\xFCfe deine Verbindung und versuche es erneut.",
+      localLoadError: "Der lokale Spielstand konnte nicht geladen werden. \xD6ffne die Optionen, um eine Kopie zu importieren oder neu zu beginnen.",
+      localClickError: "Dein lokaler Klick wurde nicht gespeichert. Der Browserspeicher ist m\xF6glicherweise voll oder nicht verf\xFCgbar.",
+      signOutError: "Abmelden fehlgeschlagen. Versuche es erneut.",
+      shareTitle: "Statistik teilen",
+      done: "Fertig",
+      shareInstructions: "W\xE4hle aus, was enthalten sein soll. \xC4nderungen aktualisieren die Vorschau. Kopiere den angepassten Text erneut zum Teilen.",
+      include: "Einbeziehen",
+      siteLink: "Link zur Website",
+      clickTotal: "Klickzahl",
+      shareDataNote: "Die Klickzahl ist kumulativ. Tages- und Wochensummen sind in der aktuellen \xDCbersicht nicht enthalten.",
+      preview: "Vorschau",
+      statsToShare: "Statistik zum Teilen",
+      copyText: "Text kopieren",
+      copied: "Statistik kopiert.",
+      clipboardUnavailable: "Zwischenablage nicht verf\xFCgbar. Markiere und kopiere den Vorschautext.",
+      statsClicks: "{label}: {count}",
+      statsStreaks: "UTC-Serien: {day} \xB7 {month} \xB7 {year}",
+      playLink: "Spielen: {url}"
+    }
+  };
+
+  // frontend/i18n.ts
+  var languages = [
+    { code: "en", name: "English", dir: "ltr" },
+    { code: "zh-Hans", name: "\u7B80\u4F53\u4E2D\u6587", dir: "ltr" },
+    { code: "es", name: "Espa\xF1ol", dir: "ltr" },
+    { code: "ar", name: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629", dir: "rtl" },
+    { code: "hi", name: "\u0939\u093F\u0928\u094D\u0926\u0940", dir: "ltr" },
+    { code: "id", name: "Bahasa Indonesia", dir: "ltr" },
+    { code: "pt-BR", name: "Portugu\xEAs", dir: "ltr" },
+    { code: "fr", name: "Fran\xE7ais", dir: "ltr" },
+    { code: "ja", name: "\u65E5\u672C\u8A9E", dir: "ltr" },
+    { code: "ru", name: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439", dir: "ltr" },
+    { code: "de", name: "Deutsch", dir: "ltr" }
+  ];
+  var languageStorageKey = "goclick.language.v1";
+  var language = "en";
+  var listeners = /* @__PURE__ */ new Set();
+  function supportedLanguage(value) {
+    return languages.find((item) => item.code === value)?.code;
+  }
+  function preferredLanguage(saved, preferences) {
+    const explicit = supportedLanguage(saved);
+    if (explicit) return explicit;
+    for (const preference of preferences) {
+      const base = preference.toLowerCase().split("-")[0];
+      const match = languages.find((item) => item.code.toLowerCase().split("-")[0] === base);
+      if (match) return match.code;
+    }
+    return "en";
+  }
+  function currentLanguage() {
+    return language;
+  }
+  function languageDirection(code = language) {
+    return languages.find((item) => item.code === code)?.dir ?? "ltr";
+  }
+  function message2(key, parameters = {}, code = language) {
+    const messages = code === "en" ? english : translations[code];
+    return messages[key].replace(
+      /\{(\w+)\}/g,
+      (token, name) => Object.hasOwn(parameters, name) ? String(parameters[name]) : token
+    );
+  }
+  function formatNumber(value, code = language) {
+    return new Intl.NumberFormat(code).format(value);
+  }
+  function formatUnit(value, unit, code = language) {
+    return new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" }).format(value);
+  }
+  function onLanguageChange(listener) {
+    listeners.add(listener);
+  }
+  function setLanguage(code) {
+    if (language === code) return;
+    language = code;
+    for (const listener of listeners) listener();
+  }
+  function rememberLanguage(code) {
+    setLanguage(code);
+    try {
+      localStorage.setItem(languageStorageKey, code);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function readLanguage() {
+    let saved = null;
+    try {
+      saved = localStorage.getItem(languageStorageKey);
+    } catch {
+    }
+    return preferredLanguage(saved, navigator.languages ?? []);
+  }
+  function translatePage() {
+    for (const attribute of ["text", "title", "aria-label"]) {
+      const selector = attribute === "text" ? "data-i18n" : `data-i18n-${attribute}`;
+      for (const element of document.querySelectorAll(`[${selector}]`)) {
+        const key = element.getAttribute(selector);
+        if (!key || !Object.hasOwn(english, key)) continue;
+        const text = message2(key);
+        if (attribute === "text") element.textContent = text;
+        else element.setAttribute(attribute, text);
+        element.lang = language;
+      }
+    }
+    for (const element of document.querySelectorAll("[data-game-language]")) {
+      element.lang = language;
+      element.dir = languageDirection();
+    }
+  }
+  function createButtonLanguage(initial) {
+    let current = initial;
+    let previous = null;
+    let heat = 0;
+    return {
+      reset(code) {
+        current = code;
+        previous = null;
+        heat = 0;
+      },
+      click(now, selected, random = Math.random) {
+        if (previous !== null) {
+          const gap = Math.max(0, now - previous);
+          heat *= Math.exp(-gap / 900);
+          if (gap < 350) heat = Math.min(1, heat + 0.12);
+        }
+        previous = now;
+        if (random() < 0.02 + 0.06 * heat) {
+          const choices = languages.filter((item) => item.code !== current && item.code !== selected);
+          current = choices[Math.min(choices.length - 1, Math.floor(random() * choices.length))].code;
+        }
+        return current;
+      }
+    };
+  }
+
   // frontend/share.ts
-  function formatShareText(counters, local, options, siteUrl = window.location?.origin ?? "") {
-    const number = new Intl.NumberFormat("en-US");
-    const quantity = (count, unit) => `${number.format(count)} ${unit}${count === 1 ? "" : "s"}`;
-    const lines = [`Go Click${local ? " \xB7 offline" : ""}`];
+  function formatShareText(counters, local, options, siteUrl = typeof window === "undefined" ? "" : window.location?.origin ?? "") {
+    const lines = [`Go Click${local ? ` \xB7 ${message2("offline")}` : ""}`];
     if (options.clicks)
-      lines.push(quantity(counters.click_count?.count ?? 0, local ? "local click" : "saved click"));
+      lines.push(
+        message2("statsClicks", {
+          label: message2(local ? "localClicks" : "savedClicks"),
+          count: formatNumber(counters.click_count?.count ?? 0)
+        })
+      );
     if (options.streaks) {
       lines.push(
-        `UTC streaks: ${quantity(counters.streak_counter_day?.count ?? 0, "day")} \xB7 ${quantity(counters.streak_counter_month?.count ?? 0, "month")} \xB7 ${quantity(counters.streak_counter_year?.count ?? 0, "year")}`
+        message2("statsStreaks", {
+          day: formatUnit(counters.streak_counter_day?.count ?? 0, "day"),
+          month: formatUnit(counters.streak_counter_month?.count ?? 0, "month"),
+          year: formatUnit(counters.streak_counter_year?.count ?? 0, "year")
+        })
       );
     }
-    if (options.siteLink && siteUrl) lines.push(`Play: ${siteUrl}`);
+    if (options.siteLink && siteUrl) lines.push(message2("playLink", { url: siteUrl }));
     return lines.join("\n");
   }
   var statsShare = (() => {
@@ -1386,16 +2302,20 @@
       streaks: required("#include-share-streaks")
     };
     let generation = 0, feedbackTimer = 0, clearTimer = 0, busy = false, currentStats = null;
-    function announce(message2) {
+    let announcement = null;
+    function announce(key) {
+      announcement = key;
+      const message3 = key ? message2(key) : "";
       window.clearTimeout(feedbackTimer);
       window.clearTimeout(clearTimer);
-      status.textContent = message2;
-      status.setAttribute("data-visible", String(!!message2));
-      if (!message2) return;
+      status.textContent = message3;
+      status.setAttribute("data-visible", String(!!message3));
+      if (!message3) return;
       feedbackTimer = window.setTimeout(() => {
         status.setAttribute("data-visible", "false");
         clearTimer = window.setTimeout(() => {
           status.textContent = "";
+          announcement = null;
         }, 400);
       }, 2200);
     }
@@ -1407,6 +2327,7 @@
       };
     }
     function updatePreview() {
+      text.lang = currentLanguage();
       if (currentStats)
         text.value = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
     }
@@ -1416,9 +2337,10 @@
       const current = generation;
       const summary = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
       text.value = summary;
+      text.lang = currentLanguage();
       button.setAttribute("aria-busy", "true");
       copyButton.setAttribute("aria-busy", "true");
-      announce("");
+      announce(null);
       let clipboardWrite;
       try {
         clipboardWrite = navigator.clipboard.writeText(summary);
@@ -1428,10 +2350,10 @@
       if (openDialog && !dialog.open) dialog.showModal();
       try {
         await clipboardWrite;
-        if (current === generation) announce("Stats copied.");
+        if (current === generation) announce("copied");
       } catch {
         if (current !== generation) return;
-        announce("Clipboard unavailable. Select and copy the preview text.");
+        announce("clipboardUnavailable");
         text.focus();
         text.select();
       } finally {
@@ -1442,6 +2364,10 @@
         }
       }
     }
+    onLanguageChange(() => {
+      updatePreview();
+      if (announcement) status.textContent = message2(announcement);
+    });
     required("#close-share").addEventListener("click", () => dialog.close());
     dialog.addEventListener("click", (event) => {
       if (event.target !== dialog) return;
@@ -1460,7 +2386,7 @@
         window.clearTimeout(clearTimer);
         button.setAttribute("aria-busy", "false");
         copyButton.setAttribute("aria-busy", "false");
-        announce("");
+        announce(null);
         text.value = "";
         if (dialog.open) dialog.close();
       },
@@ -1470,6 +2396,25 @@
       }
     };
   })();
+
+  // frontend/timestamp.ts
+  function parseStoredTimestamp(value) {
+    const parts = value.match(
+      /^(?<day>\d{4}-\d{2}-\d{2})(?<separator>T| +)(?<hour>\d{1,2}):(?<minute>\d{2}):(?<second>\d{2})(?:[.,](?<fraction>\d+))?(?<zone>Z|[+-]\d{2}:\d{2})?$/
+    )?.groups;
+    if (!parts || parts.separator === "T" !== Boolean(parts.zone)) return /* @__PURE__ */ new Date(NaN);
+    const normalized = `${parts.day}T${parts.hour?.padStart(2, "0")}:${parts.minute}:${parts.second}.${(parts.fraction ?? "").padEnd(3, "0").slice(0, 3)}Z`;
+    const instant = new Date(normalized);
+    if (Number.isNaN(instant.getTime()) || instant.toISOString() !== normalized) return /* @__PURE__ */ new Date(NaN);
+    let offset = 0;
+    if (parts.zone && parts.zone !== "Z") {
+      const hours = Number(parts.zone.slice(1, 3));
+      const minutes = Number(parts.zone.slice(4, 6));
+      if (hours > 24 || minutes > 60) return /* @__PURE__ */ new Date(NaN);
+      offset = (hours * 60 + minutes) * 6e4 * (parts.zone[0] === "+" ? 1 : -1);
+    }
+    return new Date(instant.getTime() - offset);
+  }
 
   // frontend/app.ts
   var views = {
@@ -1481,6 +2426,8 @@
   var loginForm = required("#login-form");
   var signupForm = required("#signup-form");
   var clickButton = required("#click-button");
+  var buttonLanguage = createButtonLanguage(currentLanguage());
+  var buttonLabel = required(".button-label", clickButton);
   var counterCard = required("#counter-card");
   var retryGameButton = required("#retry-game-button");
   var retryBootButton = required("#retry-boot-button");
@@ -1489,6 +2436,9 @@
   var connection = required("#connection");
   var pendingIndicator = required("#pending-clicks");
   var currentView = "";
+  var lastGameError = null;
+  var connectionState = "";
+  var lastPing = null;
   var viewAnimation = null;
   var pingStateTimer = 0;
   var pendingIndicatorTimer = 0;
@@ -1531,7 +2481,7 @@
     const remaining = cooldownUntil - performance.now();
     const active = !localMode && remaining > 0;
     required("#play-status").hidden = !active;
-    required("#cooldown-time").textContent = active ? `\xB7 ${Math.ceil(remaining / 1e3)}s` : "";
+    required("#cooldown-time").textContent = active ? `\xB7 ${message2("seconds", { count: formatNumber(Math.ceil(remaining / 1e3)) })}` : "";
     if (active) cooldownTimer = window.setTimeout(paintCooldown, Math.min(1e3, remaining));
     else cooldownUntil = 0;
     updateGameControls();
@@ -1548,6 +2498,7 @@
       viewAnimation?.cancel();
     }
     currentView = view;
+    document.documentElement.lang = view === "game" ? currentLanguage() : "en";
     if (changed) window.scrollTo(0, 0);
     const authenticated = view === "game";
     views.loading.hidden = view !== "loading";
@@ -1580,16 +2531,27 @@
       required("#signup-username").focus();
     }
   }
-  function showError(id, message2, focus = false) {
+  function showError(id, message3, focus = false) {
+    if (id === "#game-error") lastGameError = null;
     const element = required(id);
-    element.textContent = message2;
-    element.hidden = !message2;
-    if (message2 && focus) element.focus();
+    element.textContent = message3;
+    element.hidden = !message3;
+    if (message3 && focus) element.focus();
+  }
+  function showGameError(key, focus = false) {
+    showError("#game-error", message2(key), focus);
+    lastGameError = key;
+  }
+  function paintButtonLanguage(code) {
+    buttonLabel.textContent = message2("click", {}, code);
+    buttonLabel.lang = code;
+    buttonLabel.dir = languageDirection(code);
   }
   function setConnection(milliseconds = null, state = "") {
+    connectionState = state;
     window.clearTimeout(pingStateTimer);
-    if (Number.isFinite(milliseconds) && milliseconds !== null)
-      required("#ping").textContent = `${Math.round(milliseconds)} ms`;
+    if (Number.isFinite(milliseconds) && milliseconds !== null) lastPing = Math.round(milliseconds);
+    required("#ping").textContent = lastPing === null ? "\u2014 ms" : `${formatNumber(lastPing)} ms`;
     const paintState = () => {
       const cooling = coolingDown();
       connection.classList.toggle("is-limited", cooling);
@@ -1601,8 +2563,14 @@
         "is-error",
         !cooling && (state === "error" || offline && !localMode)
       );
-      const status = cooling ? "Server cooldown. Clicking paused" : offline && !localMode ? "Offline. Clicking paused" : state === "loading" ? "Request in progress" : state === "error" ? "Last request failed" : "No requests pending";
-      connection.setAttribute("aria-label", `Ping ${required("#ping").textContent}. ${status}.`);
+      const status = cooling ? message2("coolingStatus") : offline && !localMode ? message2("offlineStatus") : state === "loading" ? message2("loadingStatus") : state === "error" ? message2("failedStatus") : message2("idleStatus");
+      connection.setAttribute(
+        "aria-label",
+        message2("pingStatus", {
+          ping: `${message2(localMode ? "simPing" : "ping")} ${required("#ping").textContent}`,
+          status
+        })
+      );
     };
     if (!state && connection.classList.contains("is-loading"))
       pingStateTimer = window.setTimeout(paintState, 220);
@@ -1667,9 +2635,11 @@
     clickBatchFailed = false;
     refreshQueued = false;
     window.clearTimeout(pingStateTimer);
+    lastPing = null;
+    connectionState = "";
     required("#ping").textContent = "\u2014 ms";
     connection.classList.remove("is-loading", "is-error", "is-limited");
-    connection.setAttribute("aria-label", "Ping: no click measured yet");
+    connection.setAttribute("aria-label", message2("noPing"));
     tactileButtons.get(clickButton)?.reset();
     clickFeedback.reset();
     statsShare.reset();
@@ -1687,8 +2657,8 @@
     required("#share-stats").disabled = !gameReady || signingOut || pendingClicks > 0 || !!counterLoad || localSaveReplacing;
     required("#network-notice").hidden = !offline || localMode;
     required("#local-mode-note").hidden = !localMode;
-    required("#counter-label").textContent = localMode ? "Local clicks" : "Saved clicks";
-    required(".connection-label").textContent = localMode ? "Sim ping" : "Ping";
+    required("#counter-label").textContent = message2(localMode ? "localClicks" : "savedClicks");
+    required(".connection-label").textContent = message2(localMode ? "simPing" : "ping");
     document.querySelectorAll("[data-play-local]").forEach((button) => {
       button.hidden = localMode;
       button.disabled = pendingClicks > 0 || signingOut || localSaveReplacing;
@@ -1706,7 +2676,7 @@
       pendingIndicator.textContent = "";
       return;
     }
-    pendingIndicator.textContent = `+${pendingClicks} pending`;
+    pendingIndicator.textContent = message2("pending", { count: formatNumber(pendingClicks) });
     if (pendingIndicator.hidden && !pendingIndicatorTimer)
       pendingIndicatorTimer = window.setTimeout(() => {
         pendingIndicatorTimer = 0;
@@ -1730,7 +2700,7 @@
   }
   function renderCounters(data, allowDecrease = false) {
     const clicks = data.click_count;
-    const displayedClicks = Number(required("#click-count").textContent);
+    const displayedClicks = displayedCounters.click_count?.count ?? 0;
     if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks)
       return;
     displayedCounters = data;
@@ -1740,11 +2710,13 @@
       ["month-streak", data.streak_counter_month?.count ?? 0],
       ["year-streak", data.streak_counter_year?.count ?? 0]
     ]) {
-      const element = required(`#${id}`), changed = element.textContent !== String(count);
-      element.textContent = String(count);
+      const element = required(`#${id}`), changed = element.textContent !== formatNumber(count);
+      element.textContent = formatNumber(count);
       if (changed && !allowDecrease) animateNumber(element);
     }
-    required("#last-click").textContent = clicks?.modified_time ? `Last click ${new Date(clicks.modified_time).toLocaleString()}` : "No saved clicks yet.";
+    required("#last-click").textContent = clicks?.modified_time ? message2("lastClick", {
+      time: parseStoredTimestamp(clicks.modified_time).toLocaleString(currentLanguage())
+    }) : message2("noClicks");
   }
   function openGame(initialGame, backgroundRefresh = false) {
     if (localMode) {
@@ -1789,11 +2761,7 @@
         if (error.status === 401) {
           if (user && !signingOut) handleExpiredSession();
         } else {
-          showError(
-            "#game-error",
-            `Couldn\u2019t load your counter. ${error.message}`,
-            !backgroundRefresh
-          );
+          showGameError("loadError", !backgroundRefresh);
           retryGameButton.hidden = false;
           setConnection(null, "error");
         }
@@ -1957,10 +2925,9 @@
       await api("/api/auth/logout", { method: "DELETE" });
       setUser(null);
       show("home");
-    } catch (caught) {
-      const error = requestError(caught);
+    } catch {
       gameReady = true;
-      showError("#game-error", `Could not sign out: ${error.message}`, true);
+      showGameError("signOutError", true);
     } finally {
       signingOut = false;
       logoutButton.disabled = false;
@@ -1968,6 +2935,8 @@
     }
   });
   clickButton.addEventListener("click", async (event) => {
+    if (clickButton.disabled) return;
+    paintButtonLanguage(buttonLanguage.click(performance.now(), currentLanguage()));
     if (localMode) {
       await clickLocal(event);
       return;
@@ -2019,11 +2988,7 @@
         return;
       }
       clickBatchFailed = true;
-      showError(
-        "#game-error",
-        error.uncertain ? `Couldn\u2019t confirm your click. Reload your counter to check whether it saved. ${error.message}` : `Your click wasn\u2019t saved. ${error.message}`,
-        true
-      );
+      showGameError(error.uncertain ? "unconfirmedClick" : "unsavedClick", true);
       if (error.uncertain) retryGameButton.hidden = false;
       setConnection(null, "error");
     } finally {
@@ -2079,10 +3044,10 @@
   });
   retryBootButton.addEventListener("click", () => boot());
   var optionsDialog = required("#options-dialog");
-  function optionsNotice(message2, error = false) {
+  function optionsNotice(message3, error = false) {
     const notice = required("#options-status");
-    notice.textContent = message2;
-    notice.hidden = !message2;
+    notice.textContent = message3;
+    notice.hidden = !message3;
     notice.classList.toggle("notice-error", error);
   }
   function updateOptions() {
@@ -2141,15 +3106,10 @@
       counterCard.setAttribute("aria-busy", "false");
       updateGameControls();
       setConnection();
-    } catch (caught) {
-      const error = requestError(caught);
+    } catch {
       gameReady = false;
       updateGameControls();
-      showError(
-        "#game-error",
-        `Couldn\u2019t load your local save. ${error.message} Open Options to import a copy or restart the local save.`,
-        true
-      );
+      showGameError("localLoadError", true);
     }
   }
   function startLocalGame() {
@@ -2212,16 +3172,11 @@
         feedback.success(simulated);
         if (acknowledgement === localAcknowledgement) setConnection(simulated);
       }, simulated);
-    } catch (caught) {
-      const error = requestError(caught);
+    } catch {
       if (generation !== clickGeneration) return;
       feedback.fail(false);
       setConnection(null, "error");
-      showError(
-        "#game-error",
-        `Your local click wasn\u2019t saved. Browser storage may be full or unavailable. ${error.message}`,
-        true
-      );
+      showGameError("localClickError", true);
     } finally {
       if (generation === clickGeneration) {
         pendingClicks--;
@@ -2230,7 +3185,7 @@
       }
     }
   }
-  async function replaceLocalSave(operation, message2) {
+  async function replaceLocalSave(operation, message3) {
     if (localSaveReplacing) return;
     if (!required("#replace-local").checked) {
       optionsNotice("Check \u201CAllow replacing my local save\u201D first.", true);
@@ -2252,7 +3207,7 @@
         openLocalGame();
       }
       updateOptions();
-      optionsNotice(message2);
+      optionsNotice(message3);
     } catch (caught) {
       const error = requestError(caught);
       optionsNotice(`Local save was not replaced. ${error.message}`, true);
@@ -2318,6 +3273,38 @@
   }
   window.addEventListener("storage", (event) => {
     if (event.key === localGame.key || event.key === null) synchronizeLocalSave();
+  });
+  var languageSetting = required("#language-setting");
+  for (const language2 of languages) {
+    const option = document.createElement("option");
+    option.value = language2.code;
+    option.textContent = language2.name;
+    option.lang = language2.code;
+    option.dir = language2.dir;
+    languageSetting.append(option);
+  }
+  function applyLanguage() {
+    translatePage();
+    languageSetting.value = currentLanguage();
+    document.documentElement.lang = currentView === "game" ? currentLanguage() : "en";
+    buttonLanguage.reset(currentLanguage());
+    paintButtonLanguage(currentLanguage());
+    renderCounters(displayedCounters, true);
+    updatePendingIndicator();
+    updateGameControls();
+    if (lastGameError) showGameError(lastGameError);
+    if (cooldownUntil) paintCooldown();
+    else setConnection(null, connectionState);
+  }
+  onLanguageChange(applyLanguage);
+  setLanguage(readLanguage());
+  applyLanguage();
+  languageSetting.addEventListener("change", () => {
+    const language2 = supportedLanguage(languageSetting.value);
+    if (language2 && !rememberLanguage(language2)) languageSetting.title = message2("languageVisit");
+  });
+  window.addEventListener("storage", (event) => {
+    if (event.key === languageStorageKey || event.key === null) setLanguage(readLanguage());
   });
   boot();
 })();

@@ -234,17 +234,26 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
   if (!context) return { draw() {} };
   const labelContext: CanvasRenderingContext2D = context;
   const layers: [HTMLImageElement | null, HTMLImageElement | null] = [null, null];
+  const lettering = required(".button-label", button);
+  let paintedText = "";
+  let paintedDirection: CanvasDirection = "ltr";
   function paintAtlas() {
     labelContext.clearRect(0, 0, 780, 1296);
     labelContext.fillStyle = "#808080";
     labelContext.fillRect(0, 0, 780, 432);
     if (layers[0]) labelContext.drawImage(layers[0], 0, 0, 780, 432);
     if (layers[1]) labelContext.drawImage(layers[1], 0, 432, 780, 432);
+    paintedText = lettering.textContent;
+    paintedDirection = lettering.dir === "rtl" ? "rtl" : "ltr";
+    labelContext.direction = paintedDirection;
     labelContext.font = "700 114px system-ui, sans-serif";
+    const width = labelContext.measureText(paintedText).width;
+    // Keep long translations inside the flat face rather than the bevel.
+    if (width > 560) labelContext.font = `700 ${(114 * 560) / width}px system-ui, sans-serif`;
     labelContext.textAlign = "center";
     labelContext.textBaseline = "middle";
     labelContext.fillStyle = "#fff";
-    labelContext.fillText(required(".button-label", button).textContent, 390, 1086);
+    labelContext.fillText(paintedText, 390, 1086);
   }
   paintAtlas();
   let atlasTexture: WebGLTexture | null = null;
@@ -330,6 +339,19 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     state = { ...next };
     if (lost) return;
     if (!stage.clientWidth || !stage.clientHeight) return;
+    const direction = lettering.dir === "rtl" ? "rtl" : "ltr";
+    if (paintedText !== lettering.textContent || paintedDirection !== direction) {
+      try {
+        paintAtlas();
+        gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
+        if (gl.getError() !== gl.NO_ERROR) throw new Error("Lettering upload failed");
+      } catch {
+        lost = true;
+        stage.classList.remove("is-rendered");
+        return;
+      }
+    }
     const bounds = stage.getBoundingClientRect();
     const scene = projectButtonScene(state, button.offsetWidth, bounds, {
       width: document.documentElement.clientWidth,
@@ -387,6 +409,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     stage.classList.remove("is-rendered");
   });
   canvas.addEventListener("webglcontextrestored", () => {
+    paintAtlas();
     lost = !initialize();
     if (!lost) draw(state);
   });

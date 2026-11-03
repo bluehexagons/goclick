@@ -39,6 +39,15 @@ survives reloads, so a local-mode startup skips session checks.
 The page must be loaded to play; this does not install a service worker. Keep a
 downloaded save before clearing browser data or moving to another device.
 
+The header **Language** selector offers eleven game languages, remembers your
+choice, and initially follows your browser language. Game labels, feedback,
+icon tooltips and shared stats are translated, including right-to-left Arabic.
+The button occasionally changes its own label to another supported language;
+rapid clicking slightly increases the chance, from 2% up to 8%. Your selected UI
+language stays in place. Account forms, storage options and administration remain
+English for now. See [`docs/localization.md`](docs/localization.md) for the
+language research, scope and extension guide.
+
 ## Run it
 
 Go 1.27.3 or newer is required.

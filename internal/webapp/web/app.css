@@ -1322,3 +1322,98 @@ select {
 .click-bonus[data-state="saved"] {
   color: #59abf0;
 }
+
+/* Native selector keeps every language discoverable by its own name. */
+.language-selector {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.language-selector select {
+  width: 136px;
+  max-width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+}
+.site-header,
+.header-actions {
+  flex-wrap: wrap;
+}
+.site-header {
+  padding-block: 12px;
+}
+.header-actions {
+  justify-content: flex-end;
+  flex: 1 1 auto;
+}
+.game .button-label:lang(ja) {
+  /* Keep the longest translation inside the CSS fallback face. */
+  font-size: clamp(26px, 4vw, 48px);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.button-label:lang(ar) {
+  letter-spacing: normal;
+}
+#ping {
+  direction: ltr;
+  unicode-bidi: isolate;
+  width: 9ch;
+  min-width: 9ch;
+}
+.counter-total,
+.nav-username {
+  unicode-bidi: isolate;
+}
+.counter-actions {
+  flex-wrap: wrap;
+}
+[dir="rtl"] .streak-heading .time-zone {
+  margin-left: 0;
+  margin-inline-start: auto;
+}
+.share-dialog[dir="rtl"] textarea {
+  text-align: start;
+}
+.nav-icon {
+  display: none;
+}
+[lang="ar"] .counter-label,
+[lang="ar"] .last-click,
+[lang="ar"] .local-mode-note,
+[lang="ar"] .streak-heading h2 {
+  letter-spacing: normal;
+}
+@media (max-width: 600px) {
+  .site-header {
+    align-items: flex-start;
+  }
+  .header-actions {
+    flex-basis: 100%;
+  }
+  .language-selector {
+    margin-inline-end: auto;
+  }
+  .connection-label {
+    max-width: 18ch;
+    white-space: normal;
+  }
+  .nav-actions .nav-icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+  }
+  .nav-actions .button:has(.nav-icon) {
+    padding: 10px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .nav-actions .nav-label {
+    display: none;
+  }
+}

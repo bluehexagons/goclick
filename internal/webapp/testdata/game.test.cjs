@@ -191,7 +191,9 @@ async function harness(options = {}) {
     element("#click-count").textContent,
     options.storage?.some(([key, value]) => key === "goclick.mode" && value === "local")
       ? "0"
-      : String(options.expectedCount ?? 10),
+      : new Intl.NumberFormat(
+          options.storage?.find(([key]) => key === "goclick.language.v1")?.[1] ?? "en",
+        ).format(options.expectedCount ?? 10),
   );
   const startupRequests = requests.slice();
   requests.length = 0;
@@ -352,7 +354,7 @@ test("an initial snapshot also rechecks identity after returning to the loading 
   const initial = deferred();
   const h = await harness({
     production: true,
-    expectedCount: "",
+    expectedCount: 0,
     initialFetch: () => initial.promise,
   });
   h.fetch(async () => response(game(3, { id: "2", username: "other_player" })));
@@ -849,7 +851,7 @@ test("a timed-out click releases pending controls without replaying an uncertain
   assert.equal(h.element("#refresh-counter").disabled, false);
   assert.equal(h.element("#click-button").disabled, false);
   assert.equal(h.element("#retry-game-button").hidden, false);
-  assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*took too long/);
+  assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*Reload your counter/);
   assert.equal(h.feedback[0].uncertain, true);
   assert.equal(h.requests.length, 1);
 });
@@ -860,7 +862,7 @@ test("Share copies confirmed progress without account requests or private identi
   assert.equal(h.element("#share-stats").disabled, false);
   await h.element("#share-stats").fire("click");
   assert.equal(copies.length, 1);
-  assert.match(copies[0], /Go Click\n10 saved clicks\nUTC streaks: 0 days · 0 months · 0 years/);
+  assert.match(copies[0], /Go Click\nSaved clicks: 10\nUTC streaks: 0 days · 0 months · 0 years/);
   assert.match(copies[0], /Play: https:\/\/goclick\.example/);
   assert.equal(copies[0].includes(player.username), false);
   assert.equal(h.element("#share-status").textContent, "Stats copied.");
@@ -874,7 +876,7 @@ test("Share copies confirmed progress without account requests or private identi
   save.resolve(response(counters(11)));
   await clicking;
   await h.element("#share-stats").fire("click");
-  assert.match(copies[1], /11 saved clicks/);
+  assert.match(copies[1], /Saved clicks: 11/);
 });
 
 test("local Share uses the displayed local save and labels its separate progress", async () => {
@@ -885,7 +887,7 @@ test("local Share uses the displayed local save and labels its separate progress
   await h.element("#share-stats").fire("click");
   assert.equal(
     copies[0],
-    "Go Click · offline\n1 local click\nUTC streaks: 1 day · 1 month · 1 year\nPlay: https://goclick.example",
+    "Go Click · Offline\nLocal clicks: 1\nUTC streaks: 1 day · 1 month · 1 year\nPlay: https://goclick.example",
   );
   assert.deepEqual(h.requests, []);
 });
@@ -902,7 +904,7 @@ for (const clipboard of [
     const h = await harness({ clipboard });
     await h.element("#share-stats").fire("click");
     assert.equal(h.element("#share-dialog").open, true);
-    assert.match(h.element("#share-text").value, /10 saved clicks/);
+    assert.match(h.element("#share-text").value, /Saved clicks: 10/);
     assert.equal(h.element("#share-text").selected, true);
     assert.equal(h.document.activeElement, h.element("#share-text"));
     assert.equal(h.element("#share-stats").attributes.get("aria-busy"), "false");
@@ -997,4 +999,66 @@ test("accepted clicks already in flight still count when another request starts 
   assert.equal(h.element("#click-button").attributes.get("aria-disabled"), "true");
   assert.equal(h.element("#pending-clicks").hidden, true);
   assert.equal(h.element("#game-error").hidden, true);
+});
+
+test("changing game language preserves pending clicks, ordering and account identity", async () => {
+  const h = await harness({
+    expectedCount: 12345,
+    initialFetch: async () => response(game(12345)),
+  });
+  const save = deferred();
+  h.fetch(() => save.promise);
+  const click = h.element("#click-button").fire("click");
+  const selector = h.element("#language-setting");
+  selector.value = "ar";
+  selector.fire("change");
+  assert.equal(h.storage.get("goclick.language.v1"), "ar");
+  assert.equal(h.document.documentElement.lang, "ar");
+  assert.equal(h.element("#click-count").textContent, new Intl.NumberFormat("ar").format(12345));
+  assert.equal(h.element("#refresh-counter").disabled, true);
+  assert.equal(h.element("#nav-username").textContent, player.username);
+  save.resolve(response(counters(12346)));
+  await click;
+  assert.equal(h.element("#click-count").textContent, new Intl.NumberFormat("ar").format(12346));
+  assert.equal(h.element("#refresh-counter").disabled, false);
+  // A stale server reply must not reduce a count represented by localized digits.
+  h.fetch(async () => response(counters(12340)));
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, new Intl.NumberFormat("ar").format(12346));
+  assert.equal(h.requests.length, 2);
+});
+
+test("saved game language applies on boot and cross-tab updates do not make account requests", async () => {
+  const h = await harness({ storage: [["goclick.language.v1", "de"]] });
+  assert.equal(h.element("#counter-label").textContent, "Gespeicherte Klicks");
+  h.storage.set("goclick.language.v1", "ja");
+  h.window.fire("storage", { key: "goclick.language.v1" });
+  assert.equal(h.element("#counter-label").textContent, "保存済みクリック");
+  assert.equal(h.element("#language-setting").value, "ja");
+  assert.deepEqual(h.requests, []);
+  h.failStorage();
+  h.element("#language-setting").value = "fr";
+  h.element("#language-setting").fire("change");
+  assert.equal(h.element("#counter-label").textContent, "Clics enregistrés");
+  assert.equal(h.element("#click-count").textContent, "10");
+  assert.deepEqual(h.requests, []);
+});
+
+test("share preview and errors follow language changes without losing the current state", async () => {
+  const h = await harness();
+  await h.element("#share-stats").fire("click");
+  assert.equal(h.element("#share-dialog").open, true);
+  h.element("#language-setting").value = "es";
+  h.element("#language-setting").fire("change");
+  assert.match(h.element("#share-text").value, /Clics guardados: 10/);
+  assert.match(h.element("#share-status").textContent, /Portapapeles/);
+  assert.equal(h.element("#share-dialog").open, true);
+  h.fetch(async () => response({ error: "Synthetic failure" }, 400));
+  await h.element("#click-button").fire("click");
+  assert.match(h.element("#game-error").textContent, /Tu clic no se guardó/);
+  h.element("#language-setting").value = "de";
+  h.element("#language-setting").fire("change");
+  assert.match(h.element("#game-error").textContent, /Dein Klick wurde nicht gespeichert/);
+  assert.equal(h.element("#game-error").hidden, false);
+  assert.equal(h.requests.length, 1);
 });

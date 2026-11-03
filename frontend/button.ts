@@ -460,6 +460,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   new MutationObserver(() => {
     if (button.disabled) reset();
   }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
+  // Lettering changes also need a redraw when reduced motion has no active frame.
+  new MutationObserver(() => paint()).observe(required(".button-label", button), {
+    childList: true,
+    characterData: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["lang", "dir"],
+  });
   reducedMotion.addEventListener("change", () => {
     reset();
     if (reducedMotion.matches) {

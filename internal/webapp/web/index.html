@@ -10,7 +10,7 @@
     <script src="/app.js" defer></script>
   </head>
   <body>
-    <a draggable="false" class="skip-link" href="#main-content">Skip to content</a>
+    <a draggable="false" class="skip-link" href="#main-content" data-i18n="skip">Skip to content</a>
     <div class="shell">
       <header class="site-header">
         <a draggable="false" class="brand" href="/" aria-label="Go Click home">
@@ -25,29 +25,85 @@
           <span>Go Click</span>
         </a>
         <div class="header-actions">
+          <label class="language-selector" data-game-language>
+            <span data-i18n="language">Language</span>
+            <select
+              id="language-setting"
+              aria-label="Language"
+              data-i18n-aria-label="language"
+              title="Game language · remembered in this browser"
+              data-i18n-title="languageHint"
+            ></select>
+          </label>
           <nav id="guest-nav" class="nav-actions" aria-label="Account" hidden>
             <button class="button button-quiet" type="button" data-view="login">Sign in</button>
             <button class="button button-small" type="button" data-view="signup">
               Create account
             </button>
           </nav>
-          <nav id="user-nav" class="nav-actions" aria-label="Account" hidden>
-            <span id="nav-username" class="nav-username"></span>
-            <a draggable="false" id="admin-link" class="button button-quiet" href="/admin" hidden
+          <nav
+            id="user-nav"
+            data-game-language
+            class="nav-actions"
+            aria-label="Account"
+            data-i18n-aria-label="account"
+            hidden
+          >
+            <span id="nav-username" class="nav-username" dir="auto"></span>
+            <a
+              draggable="false"
+              id="admin-link"
+              class="button button-quiet"
+              href="/admin"
+              data-i18n="admin"
+              hidden
               >Admin</a
             >
-            <button id="logout-button" class="button button-quiet" type="button">Sign out</button>
+            <button
+              id="logout-button"
+              class="button button-quiet"
+              type="button"
+              aria-label="Sign out"
+              data-i18n-aria-label="signOut"
+              title="Sign out"
+              data-i18n-title="signOut"
+            >
+              <svg class="icon nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons.svg#logout" /></svg
+              ><span class="nav-label" data-i18n="signOut">Sign out</span>
+            </button>
           </nav>
-          <nav id="local-nav" class="nav-actions" aria-label="Local game" hidden>
-            <span class="local-badge">Offline</span>
-            <button id="leave-local" class="button button-quiet" type="button">Back online</button>
+          <nav
+            id="local-nav"
+            data-game-language
+            class="nav-actions"
+            aria-label="Local game"
+            data-i18n-aria-label="localGame"
+            hidden
+          >
+            <span class="local-badge" data-i18n="offline">Offline</span>
+            <button
+              id="leave-local"
+              class="button button-quiet"
+              type="button"
+              aria-label="Back online"
+              data-i18n-aria-label="backOnline"
+              title="Back online"
+              data-i18n-title="backOnline"
+            >
+              <svg class="icon nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons.svg#arrow" /></svg
+              ><span class="nav-label" data-i18n="backOnline">Back online</span>
+            </button>
           </nav>
           <button
             id="motion-shortcut"
             class="button button-quiet motion-shortcut"
             type="button"
             aria-label="Turn on motion effects"
+            data-i18n-aria-label="motion"
             title="Reduced motion is on. Turn on motion effects."
+            data-i18n-title="motionHint"
             hidden
           >
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -59,7 +115,9 @@
             class="button button-quiet options-button"
             type="button"
             aria-label="Options"
+            data-i18n-aria-label="options"
             title="Options"
+            data-i18n-title="options"
           >
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
               <use href="/icons.svg#settings" />
@@ -279,8 +337,21 @@
           </div>
         </section>
 
-        <section id="game-view" class="game" aria-label="Play Go Click" hidden>
-          <p id="network-notice" class="notice notice-offline" role="status" hidden>
+        <section
+          id="game-view"
+          data-game-language
+          class="game"
+          aria-label="Play Go Click"
+          data-i18n-aria-label="game"
+          hidden
+        >
+          <p
+            id="network-notice"
+            data-i18n="networkNotice"
+            class="notice notice-offline"
+            role="status"
+            hidden
+          >
             You’re offline. Clicking is paused. Your saved progress will refresh when you reconnect.
           </p>
           <div id="game-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
@@ -289,10 +360,13 @@
             class="button button-quiet retry-game"
             type="button"
             hidden
+            data-i18n="reload"
           >
             Reload counter
           </button>
-          <p id="local-mode-note" class="local-mode-note" hidden>Offline · local save</p>
+          <p id="local-mode-note" class="local-mode-note" hidden data-i18n="localMode">
+            Offline · local save
+          </p>
           <div class="play-layout">
             <div id="counter-card" class="counter-card">
               <p id="counter-label" class="counter-label">Saved clicks</p>
@@ -310,13 +384,19 @@
                     type="button"
                     data-tactile-button
                     aria-label="Click to increment score"
+                    data-i18n-aria-label="clickAction"
                     aria-describedby="button-hint"
                   >
                     <span class="button-label">Click!</span>
                   </button>
                 </div>
               </div>
-              <p id="last-click" class="last-click" title="Shown in your local time zone">
+              <p
+                id="last-click"
+                class="last-click"
+                title="Shown in your local time zone"
+                data-i18n-title="timezone"
+              >
                 No saved clicks yet.
               </p>
               <div class="counter-actions">
@@ -325,7 +405,9 @@
                   class="counter-action-button refresh-counter"
                   type="button"
                   aria-label="Refresh counter"
+                  data-i18n-aria-label="refresh"
                   title="Refresh counter"
+                  data-i18n-title="refresh"
                 >
                   <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons.svg#refresh" />
@@ -336,12 +418,13 @@
                   class="counter-action-button share-stats"
                   type="button"
                   title="Copy stats for sharing"
+                  data-i18n-title="shareHint"
                   disabled
                 >
                   <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons.svg#share" />
                   </svg>
-                  Share
+                  <span data-i18n="share">Share</span>
                 </button>
                 <div
                   id="connection"
@@ -350,6 +433,7 @@
                   aria-live="off"
                   aria-label="Ping: no click measured yet"
                   title="Round-trip time of the last successful click request. The border indicates pending requests or a save error."
+                  data-i18n-title="pingHint"
                 >
                   <span class="connection-dot" aria-hidden="true"></span>
                   <span class="connection-label">Ping</span>
@@ -357,33 +441,44 @@
                 </div>
               </div>
               <p id="play-status" class="play-status" role="status" hidden>
-                Cooling down <span id="cooldown-time" aria-hidden="true"></span>
+                <span data-i18n="cooldown">Cooling down</span>
+                <span id="cooldown-time" aria-hidden="true"></span>
               </p>
             </div>
 
-            <aside class="streak-panel" aria-label="Click streaks">
+            <aside
+              class="streak-panel"
+              aria-label="Click streaks"
+              data-i18n-aria-label="streakLabel"
+            >
               <div class="streak-heading">
-                <h2>Streaks</h2>
+                <h2 data-i18n="streaks">Streaks</h2>
                 <span class="time-zone">UTC</span>
               </div>
-              <div class="streak-grid" aria-label="Click streaks">
+              <div
+                class="streak-grid"
+                aria-label="Click streaks"
+                data-i18n-aria-label="streakLabel"
+              >
                 <article class="streak-card">
                   <span class="streak-icon" aria-hidden="true"
                     ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day" /></svg
                   ></span>
-                  <div><strong id="day-streak">0</strong><span>days</span></div>
+                  <div><strong id="day-streak">0</strong><span data-i18n="days">days</span></div>
                 </article>
                 <article class="streak-card">
                   <span class="streak-icon" aria-hidden="true"
                     ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month" /></svg
                   ></span>
-                  <div><strong id="month-streak">0</strong><span>months</span></div>
+                  <div>
+                    <strong id="month-streak">0</strong><span data-i18n="months">months</span>
+                  </div>
                 </article>
                 <article class="streak-card">
                   <span class="streak-icon" aria-hidden="true"
                     ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#year" /></svg
                   ></span>
-                  <div><strong id="year-streak">0</strong><span>years</span></div>
+                  <div><strong id="year-streak">0</strong><span data-i18n="years">years</span></div>
                 </article>
               </div>
             </aside>
@@ -391,7 +486,7 @@
         </section>
       </main>
 
-      <footer>
+      <footer lang="en">
         <span>© bluehexagons</span>
         <a
           draggable="false"
@@ -401,7 +496,13 @@
         >
       </footer>
     </div>
-    <dialog id="options-dialog" class="options-dialog" aria-labelledby="options-title">
+    <dialog
+      lang="en"
+      dir="ltr"
+      id="options-dialog"
+      class="options-dialog"
+      aria-labelledby="options-title"
+    >
       <div class="options-heading">
         <h1 id="options-title">Options</h1>
         <button id="close-options" class="button button-quiet" type="button">Done</button>
@@ -465,7 +566,7 @@
       </div>
       <details class="controls-help">
         <summary>Controls</summary>
-        <p id="button-hint">
+        <p id="button-hint" data-game-language data-i18n="controls">
           Press with a mouse or touch, then release inside the button. Each finger counts
           separately. With the button focused, Space or Enter adds one click on release. Holding
           never adds extra clicks.
@@ -547,38 +648,53 @@
     </dialog>
     <dialog
       id="share-dialog"
+      data-game-language
       class="options-dialog share-dialog"
       aria-labelledby="share-title"
       aria-describedby="share-hint"
     >
       <div class="options-heading">
-        <h1 id="share-title">Share stats</h1>
-        <button id="close-share" class="button button-quiet" type="button">Done</button>
+        <h1 id="share-title" data-i18n="shareTitle">Share stats</h1>
+        <button id="close-share" data-i18n="done" class="button button-quiet" type="button">
+          Done
+        </button>
       </div>
-      <p id="share-hint" class="muted">
+      <p id="share-hint" data-i18n="shareInstructions" class="muted">
         Choose what to include. Changing an option updates the preview; copy again to share the
         customized text.
       </p>
       <fieldset class="share-options">
-        <legend>Include</legend>
-        <label><input id="include-share-link" type="checkbox" checked /> Site link</label>
-        <label><input id="include-share-clicks" type="checkbox" checked /> Click total</label>
-        <label><input id="include-share-streaks" type="checkbox" checked /> Streaks</label>
+        <legend data-i18n="include">Include</legend>
+        <label
+          ><input id="include-share-link" type="checkbox" checked />
+          <span data-i18n="siteLink">Site link</span></label
+        >
+        <label
+          ><input id="include-share-clicks" type="checkbox" checked />
+          <span data-i18n="clickTotal">Click total</span></label
+        >
+        <label
+          ><input id="include-share-streaks" type="checkbox" checked />
+          <span data-i18n="streaks">Streaks</span></label
+        >
       </fieldset>
-      <p class="field-hint share-data-note">
+      <p class="field-hint share-data-note" data-i18n="shareDataNote">
         Click totals are cumulative. Daily and weekly totals are not part of the current counter
         summary.
       </p>
-      <label class="share-preview-label" for="share-text">Preview</label>
+      <label class="share-preview-label" for="share-text" data-i18n="preview">Preview</label>
       <textarea
         id="share-text"
         rows="4"
         readonly
         aria-label="Stats to share"
+        data-i18n-aria-label="statsToShare"
         spellcheck="false"
       ></textarea>
       <div class="share-dialog-actions">
-        <button id="copy-share-text" class="button button-quiet" type="button">Copy text</button>
+        <button id="copy-share-text" class="button button-quiet" type="button" data-i18n="copyText">
+          Copy text
+        </button>
       </div>
       <p id="share-status" class="share-status" role="status" aria-live="polite"></p>
     </dialog>
