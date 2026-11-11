@@ -30,6 +30,9 @@ export interface Activation {
   clientY: number;
 }
 export interface ButtonState {
+  reducedMotion?: boolean;
+  labelCharge?: number;
+  labelPhase?: number;
   x: number;
   y: number;
   rx: number;

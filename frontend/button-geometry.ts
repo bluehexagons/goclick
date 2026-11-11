@@ -34,6 +34,42 @@ export function projectButtonPose(state: ButtonState, buttonWidth: number) {
   };
 }
 
+// The wall plug stays fixed. The other end attaches to the rear of the solid,
+// using the same camera as its hit surface, including tilt and press depth.
+export function projectButtonPower(state: ButtonState, buttonWidth: number) {
+  const pose = projectButtonPose(state, buttonWidth);
+  const { scale, recession, lift, cx, sx, cy, sy } = pose;
+  const x = -35 * scale,
+    y = 10 * scale,
+    z = -16 - recession;
+  const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
+  const endX = (cy * x + sy * z + pose.x) * factor;
+  const endY = (sx * sy * x + cx * y - sx * cy * z + pose.y) * factor;
+  // Tuck the entire outlet and relaxed cable beneath the resting face. Only
+  // the button moves: dragging reveals the fixed outlet without a visibility toggle.
+  const outletX = 0,
+    outletY = -12;
+  // The cable exits the front-face grommet, above the plug body in SVG order.
+  const startY = outletY + 12;
+  const dx = endX - outletX,
+    dy = endY - startY;
+  const distance = Math.hypot(dx, dy);
+  const length = Math.max(90, buttonWidth * 0.42);
+  // Slack vanishes smoothly at the cable's natural length. Further pulling
+  // extends the taut cable and narrows its jacket like stretched rubber.
+  const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
+  const thickness = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
+  return {
+    outletX,
+    outletY,
+    cord: `M ${outletX} ${startY} C ${outletX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
+    endX,
+    endY,
+    sag,
+    thickness,
+  };
+}
+
 // Match the native button's 850px perspective. Fit the full projected solid and
 // soft shadow; the layout stage is not a painting or dragging boundary.
 export function projectButtonScene(
@@ -98,5 +134,29 @@ export function projectButtonScene(
     frame,
     originX: originX - frame.left - frame.width / 2,
     originY: originY - frame.top - frame.height / 2,
+  };
+}
+
+// Shared lettering pose keeps the DOM fallback and GPU atlas in step. Motion
+// comes from the existing press/rebound, so repeated clicks never queue effects.
+export function projectButtonLettering(state: ButtonState) {
+  const charge = state.reducedMotion
+    ? 0
+    : Math.max(0, Math.min(1, state.labelCharge ?? state.press));
+  return {
+    scaleX: 1 + charge * 0.22,
+    scaleY: 1 + charge * 0.22,
+    shiftY: charge ? -charge * 0.01 : 0,
+    ink: Math.min(
+      0.55,
+      state.response * 0.45 + charge * 0.25 + (state.reducedMotion ? 0 : state.flash * 0.18),
+    ),
+    light: state.reducedMotion
+      ? Math.min(0.3, state.press * 0.3 + state.response * 0.25)
+      : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
+    charge,
+    sheen: state.reducedMotion
+      ? 1.35
+      : 0.35 + Math.sin((state.labelPhase ?? 0) * 8.8) * 0.5 + (1 - charge),
   };
 }

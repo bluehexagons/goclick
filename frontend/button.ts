@@ -1,17 +1,26 @@
 import { motionPreference } from "./preferences.js";
-import { projectButtonPose } from "./button-geometry.js";
+import {
+  projectButtonLettering,
+  projectButtonPose,
+  projectButtonPower,
+} from "./button-geometry.js";
 import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
 import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
 
 // Press and release depth are immediate; dragging and rebound use springs.
 // Holds never auto-score; cancelled/outside releases never activate the button.
+const QUICK_TAP_MS = 90;
+const TAP_RELEASE_MS = 70;
+const HOLD_RELEASE_MS = 110;
 const tactileButtons = new Map<HTMLButtonElement, ButtonController>();
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile-button]")) {
   const maybeStage = button.closest<HTMLElement>(".button-stage");
   if (!maybeStage) throw new Error("Tactile button needs a stage");
   const stage: HTMLElement = maybeStage;
   const rig = required(".button-rig", stage);
+  const power = stage.querySelector<SVGSVGElement>(".button-power");
+  const cords = power?.querySelectorAll<SVGPathElement>(".power-cord");
   const effects = document.createElement("div");
   effects.className = "button-effects";
   effects.setAttribute("aria-hidden", "true");
@@ -24,6 +33,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     rx: 0,
     ry: 0,
     press: 0,
+    labelCharge: 0,
+    labelPhase: 0,
     copper: 0,
     pop: 0,
     flash: 0,
@@ -59,7 +70,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let pressedAt = 0,
     releasedAt: number | null = null,
     releaseCopper = 0,
-    releaseDuration = 70,
+    releaseDuration = TAP_RELEASE_MS,
     holdTimer = 0,
     phase: "idle" | "pressed" | "held" = "idle";
   let responseStarted: number | null = null;
@@ -67,6 +78,28 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
   function paint() {
+    if (power && stage.clientWidth && stage.clientHeight) {
+      const cable = projectButtonPower(current, button.offsetWidth);
+      power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
+      power.setAttribute(
+        "viewBox",
+        `${-stage.clientWidth / 2} ${-stage.clientHeight / 2} ${stage.clientWidth} ${stage.clientHeight}`,
+      );
+      for (const cord of cords ?? []) cord.setAttribute("d", cable.cord);
+      for (const part of power.querySelectorAll(".power-outlet, .power-plug"))
+        part.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
+    }
+    current.reducedMotion = reducedMotion.matches;
+    const lettering = projectButtonLettering(current);
+    rig.style.setProperty("--label-scale-x", lettering.scaleX.toFixed(3));
+    rig.style.setProperty("--label-scale-y", lettering.scaleY.toFixed(3));
+    rig.style.setProperty(
+      "--label-shift",
+      `${(lettering.shiftY * button.offsetHeight).toFixed(3)}px`,
+    );
+    rig.style.setProperty("--label-ink", lettering.ink.toFixed(3));
+    rig.style.setProperty("--label-charge", lettering.charge.toFixed(3));
+    rig.style.setProperty("--label-light", lettering.light.toFixed(3));
     const pose = projectButtonPose(current, button.offsetWidth);
     rig.style.setProperty("--shift-x", `${pose.x.toFixed(3)}px`);
     rig.style.setProperty("--shift-y", `${pose.y.toFixed(3)}px`);
@@ -123,9 +156,15 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
     if (releasedAt !== null) {
       const progress = clamp((time - releasedAt) / releaseDuration, 0, 1);
-      current.copper = releaseCopper * Math.pow(1 - progress, 2);
+      const returnAmount = Math.pow(1 - progress, 2);
+      current.copper = releaseCopper * returnAmount;
+      current.labelCharge = returnAmount;
       if (progress < 1) moving = true;
       else releasedAt = null;
+    }
+    if (current.press && !reducedMotion.matches) {
+      current.labelPhase = (time - pressedAt) / 1000;
+      moving = true;
     }
     current.flash *= Math.pow(0.68, dt);
     if (current.flash > 0.005) moving = true;
@@ -147,6 +186,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         velocity[key] = 0;
       }
       current.flash = 0;
+      current.labelCharge = 0;
       paint();
       return;
     }
@@ -167,6 +207,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     pressedAt = performance.now();
     releasedAt = null;
     current.press = current.copper = 1;
+    current.labelCharge = reducedMotion.matches ? 0 : 1;
+    current.labelPhase = 0;
     target.pop = reducedMotion.matches ? 0 : -0.045;
     current.pop = target.pop;
     velocity.pop = 0;
@@ -201,12 +243,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     activeKey = null;
     window.clearTimeout(holdTimer);
     const wasPressed = phase !== "idle";
-    const quick = performance.now() - pressedAt < 90;
+    const quick = performance.now() - pressedAt < QUICK_TAP_MS;
     current.press = 0;
+    if (cancelled) current.labelCharge = 0;
     target.pop = current.pop = velocity.pop = 0;
     // Even a tap between frames gets a brief copper trace, without holding the
     // button down. A new press replaces this fade synchronously.
-    releaseDuration = quick ? 70 : 110;
+    releaseDuration = quick ? TAP_RELEASE_MS : HOLD_RELEASE_MS;
     releaseCopper = wasPressed && !cancelled && !reducedMotion.matches ? (quick ? 0.72 : 1) : 0;
     current.copper = releaseCopper;
     releasedAt = releaseCopper ? performance.now() : null;
@@ -224,6 +267,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     releasedAt = null;
     coastUntil = 0;
     current.copper = 0;
+    // Reset also interrupts an in-progress release after the pointer leaves.
+    // Its lettering must return to rest when that release clock is cancelled.
+    current.labelCharge = 0;
+    current.labelPhase = 0;
     for (const key of keys) target[key] = 0;
     animate();
   }
@@ -266,7 +313,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   }
   function burst(press = false) {
     if (reducedMotion.matches) return;
-    const quick = press || releaseDuration === 70;
+    const quick = press || releaseDuration === TAP_RELEASE_MS;
     current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
     if (!press) {
       current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);

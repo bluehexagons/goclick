@@ -3,7 +3,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
 
-function harness(reducedMotion = true) {
+function harness(reducedMotion = true, withPower = false) {
   class Event {
     constructor(type, values = {}) {
       Object.assign(this, { type, detail: 0, button: 0 }, values);
@@ -55,7 +55,10 @@ function harness(reducedMotion = true) {
       child.parent = this;
       this.children.push(child);
     }
-    setAttribute() {}
+    attributes = new Map();
+    setAttribute(name, value) {
+      this.attributes.set(name, value);
+    }
     animate(keyframes, options) {
       this.animations.push({ keyframes, options });
       return { finished: new Promise(() => {}) };
@@ -83,7 +86,14 @@ function harness(reducedMotion = true) {
     rig = new Element();
   button.closest = () => stage;
   button.querySelector = () => ({ textContent: "Click!", dir: "ltr" });
-  stage.querySelector = () => rig;
+  const power = new Element();
+  const cords = [new Element(), new Element(), new Element()];
+  const outlet = [new Element(), new Element()];
+  power.querySelectorAll = (selector) => (selector === ".power-cord" ? cords : outlet);
+  stage.clientWidth = 680;
+  stage.clientHeight = 290;
+  stage.querySelector = (selector) =>
+    selector === ".button-rig" ? rig : selector === ".button-power" && withPower ? power : null;
   const document = Object.assign(new Element(), {
     hidden: false,
     querySelectorAll: () => [button],
@@ -140,6 +150,9 @@ function harness(reducedMotion = true) {
     stage,
     rig,
     controller,
+    power,
+    cords,
+    outlet,
     // Project the native hit surface's face center back to screen pixels.
     // Raw CSS translation alone is magnified by the 850px perspective.
     position: () => {
@@ -492,4 +505,89 @@ test("grabbing an offset button keeps its position, without adding hover movemen
     assert.ok(h.position().y - before.y <= 10.003);
   }
   assert.ok(Math.abs(h.position().x - before.x - 20) < 0.003);
+});
+
+test("text stays enlarged throughout a hold and shrinks smoothly only after release", () => {
+  const h = harness(false);
+  const size = () => parseFloat(h.rig.props.get("--label-scale-x"));
+  h.button.fire("keydown", { key: "Enter" });
+  const held = size();
+  assert.ok(held > 1.2);
+  for (const time of [50, 200, 500, 1000]) {
+    h.frame(time);
+    assert.equal(size(), held);
+    assert.equal(h.hasFrame(), true, "Held lighting must continue after the press flash fades");
+  }
+  h.setTime(1000);
+  h.button.fire("keyup", { key: "Enter" });
+  assert.equal(size(), held);
+  let previous = held;
+  for (let time = 1016; time <= 1112; time += 16) {
+    h.frame(time);
+    assert.ok(size() >= 1 && size() <= previous);
+    previous = size();
+  }
+  assert.equal(size(), 1);
+  assert.equal(h.clicks.length, 1);
+});
+
+test("lettering returns on the same 70/110 ms clock as the press material, even across dropped frames", () => {
+  for (const [hold, duration] of [
+    [20, 70],
+    [500, 110],
+  ]) {
+    const h = harness(false);
+    const size = () => parseFloat(h.rig.props.get("--label-scale-x"));
+    h.button.fire("keydown", { key: "Enter" });
+    h.setTime(hold);
+    h.button.fire("keyup", { key: "Enter" });
+    assert.ok(size() > 1.2);
+    h.frame(hold + duration / 2);
+    assert.ok(size() > 1 && size() < 1.1, "Most of the return should happen immediately");
+    h.frame(hold + duration);
+    assert.equal(size(), 1);
+    assert.equal(h.rig.props.get("--copper"), "0.000");
+    assert.equal(h.clicks.length, 1);
+  }
+});
+
+test("leaving the stage during a release resets the lettering instead of freezing it enlarged", () => {
+  const h = harness(false);
+  h.pointer("pointerdown", 1, { pointerType: "mouse" });
+  h.setTime(20);
+  h.pointer("pointerup", 1, { pointerType: "mouse" });
+  assert.ok(parseFloat(h.rig.props.get("--label-scale-x")) > 1.2);
+  h.stage.fire("pointerleave");
+  h.frame(200);
+  assert.equal(h.rig.props.get("--label-scale-x"), "1.000");
+  assert.equal(h.rig.props.get("--label-charge"), "0.000");
+  assert.equal(h.rig.props.get("--label-light"), "0.000");
+  assert.equal(h.rig.props.get("--copper"), "0.000");
+  assert.equal(h.clicks.length, 1);
+});
+
+test("the cable SVG follows dragging and resizing while the wall outlet stays fixed", () => {
+  const h = harness(false, true);
+  h.controller.reset();
+  h.frame(0);
+  const rest = h.cords[0].attributes.get("d");
+  const outlet = h.outlet.map((part) => part.attributes.get("transform"));
+  assert.ok(rest?.startsWith("M "));
+  assert.equal(h.power.attributes.get("viewBox"), "-340 -145 680 290");
+  h.pointer("pointerdown", 1);
+  h.pointer("pointermove", 1, { clientX: 500, clientY: 240 });
+  for (let time = 16; time <= 320; time += 16) h.frame(time);
+  const dragged = h.cords[0].attributes.get("d");
+  assert.notEqual(dragged, rest);
+  assert.ok(h.cords.every((cord) => cord.attributes.get("d") === dragged));
+  assert.deepEqual(
+    h.outlet.map((part) => part.attributes.get("transform")),
+    outlet,
+  );
+  h.stage.clientWidth = 320;
+  h.stage.clientHeight = 240;
+  h.window.fire("resize");
+  h.frame(336);
+  assert.equal(h.power.attributes.get("viewBox"), "-160 -120 320 240");
+  assert.ok(Number.isFinite(Number(h.power.props.get("--cord-scale"))));
 });

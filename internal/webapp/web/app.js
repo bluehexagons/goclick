@@ -400,6 +400,30 @@
       rotation: [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy]
     };
   }
+  function projectButtonPower(state, buttonWidth) {
+    const pose = projectButtonPose(state, buttonWidth);
+    const { scale, recession, lift, cx, sx, cy, sy } = pose;
+    const x = -35 * scale, y = 10 * scale, z = -16 - recession;
+    const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
+    const endX = (cy * x + sy * z + pose.x) * factor;
+    const endY = (sx * sy * x + cx * y - sx * cy * z + pose.y) * factor;
+    const outletX = 0, outletY = -12;
+    const startY = outletY + 12;
+    const dx = endX - outletX, dy = endY - startY;
+    const distance = Math.hypot(dx, dy);
+    const length = Math.max(90, buttonWidth * 0.42);
+    const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
+    const thickness = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
+    return {
+      outletX,
+      outletY,
+      cord: `M ${outletX} ${startY} C ${outletX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
+      endX,
+      endY,
+      sag,
+      thickness
+    };
+  }
   function projectButtonScene(state, buttonWidth, stage, viewport) {
     const pose = projectButtonPose(state, buttonWidth);
     const { scale, recession, lift, cx, sx, cy, sy } = pose;
@@ -452,8 +476,29 @@
       originY: originY - frame.top - frame.height / 2
     };
   }
+  function projectButtonLettering(state) {
+    const charge = state.reducedMotion ? 0 : Math.max(0, Math.min(1, state.labelCharge ?? state.press));
+    return {
+      scaleX: 1 + charge * 0.22,
+      scaleY: 1 + charge * 0.22,
+      shiftY: charge ? -charge * 0.01 : 0,
+      ink: Math.min(
+        0.55,
+        state.response * 0.45 + charge * 0.25 + (state.reducedMotion ? 0 : state.flash * 0.18)
+      ),
+      light: state.reducedMotion ? Math.min(0.3, state.press * 0.3 + state.response * 0.25) : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
+      charge,
+      sheen: state.reducedMotion ? 1.35 : 0.35 + Math.sin((state.labelPhase ?? 0) * 8.8) * 0.5 + (1 - charge)
+    };
+  }
 
   // frontend/button-3d.ts
+  var ATLAS_WIDTH = 780;
+  var LAYER_HEIGHT = 432;
+  var ATLAS_LAYERS = 3;
+  var ATLAS_HEIGHT = LAYER_HEIGHT * ATLAS_LAYERS;
+  var LABEL_FONT_SIZE = 114;
+  var LABEL_MAX_WIDTH = 560;
   function createButtonRenderer(stage, button) {
     const canvas = required(".button-scene", stage);
     const rig = required(".button-rig", stage);
@@ -516,6 +561,9 @@
     uniform float response;
     uniform float responseProgress;
     uniform vec3 responseColor;
+    uniform vec4 letteringPose;
+    uniform vec2 letteringAccent;
+    uniform float letteringLight;
     varying vec3 worldPosition;
     varying vec3 worldNormal;
     varying vec2 texCoord;
@@ -529,43 +577,71 @@
         return;
       }
       vec3 n = normalize(worldNormal);
-      vec3 light = normalize(vec3(-280., -350., 500.) - worldPosition);
-      vec3 view = normalize(vec3(0., 0., 850.) - worldPosition);
+      // Scale before normalization: squared pixel distances overflow the
+      // minimum mediump range on GPUs that use 16-bit fragment arithmetic.
+      vec3 light = normalize(vec3(-.28, -.35, .5) - worldPosition * .001);
+      vec3 view = normalize(vec3(0., 0., .85) - worldPosition * .001);
       float diffuse = max(dot(n, light), 0.);
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
       // A full-surface albedo and a separate authored emission mask share one
       // atlas with the lettering. Both are independent of the press material.
-      vec4 material = texture2D(surfaceAtlas, vec2(texCoord.x, texCoord.y / 3.));
-      float luminous = texture2D(surfaceAtlas, vec2(texCoord.x, (texCoord.y + 1.) / 3.)).a;
+      vec4 material = texture2D(surfaceAtlas, vec2(texCoord.x, texCoord.y / ${ATLAS_LAYERS}.));
+      float luminous = texture2D(surfaceAtlas, vec2(texCoord.x, (texCoord.y + 1.) / ${ATLAS_LAYERS}.)).a;
       vec3 copperMetal = vec3(.78, .36, .20);
       vec3 patina = vec3(.12, .26, .18);
       vec3 surface = mix(vec3(1., .77, .25), copperMetal, copper);
       surface *= .65 + .7 * material.r;
       vec3 gold = surface * (.52 + .70 * diffuse);
       vec3 reflected = reflect(-view, n);
-      float band = exp(-pow((reflected.y + reflected.x * .45 + .05) * 24., 2.));
+      // GLSL pow is undefined for negative bases, even with exponent 2.
+      float bandDistance = (reflected.y + reflected.x * .45 + .05) * 24.;
+      float band = exp(-bandDistance * bandDistance);
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
       // Etched channels glow locally; the metal receives no blanket color wash.
-      float pulse = .8 + .2 * exp(-pow((texCoord.x - responseProgress) * 5., 2.));
+      float pulseDistance = (texCoord.x - responseProgress) * 5.;
+      float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
       float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse);
       vec3 lightColor = response > 0. ? responseColor : vec3(.22, .72, .46);
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
       gold += lightColor * luminous * energy * .2 * frontFace;
-      vec2 textCoord = vec2(texCoord.x, (texCoord.y + 2.) / 3.);
+      // Move the inscription inside the face, independently of the solid.
+      vec2 labelUV = (texCoord - vec2(.5, .5 + letteringPose.z)) / letteringPose.xy + .5;
+      labelUV = clamp(labelUV, vec2(0.), vec2(1.));
+      vec2 textCoord = vec2(labelUV.x, (labelUV.y + 2.) / ${ATLAS_LAYERS}.);
       vec4 text = texture2D(surfaceAtlas, textCoord);
-      // The lettering is chemically darkened metal with a fine recessed edge,
-      // so its reflections move with the face instead of looking like flat ink.
-      vec3 inscription = mix(surface * .32, vec3(.055, .19, .12), copper);
-      inscription *= .72 + .28 * diffuse;
-      inscription += mix(vec3(.28, .19, .065), patina * .38, copper) * (specular * .38 + band * .24);
-      float above = texture2D(surfaceAtlas, textCoord - vec2(1. / 780., 1. / 1296.)).a;
-      float below = texture2D(surfaceAtlas, textCoord + vec2(1. / 780., 1. / 1296.)).a;
-      float engraving = below - above;
+      // Sample the mask's slope for a raised bevel, plus a short lower-right
+      // extrusion. Relief remains visible at rest and follows the scene light.
+      float left = texture2D(surfaceAtlas, textCoord - vec2(2. / ${ATLAS_WIDTH}., 0.)).a;
+      float right = texture2D(surfaceAtlas, textCoord + vec2(2. / ${ATLAS_WIDTH}., 0.)).a;
+      float above = texture2D(surfaceAtlas, textCoord - vec2(0., 2. / ${ATLAS_HEIGHT}.)).a;
+      float below = texture2D(surfaceAtlas, textCoord + vec2(0., 2. / ${ATLAS_HEIGHT}.)).a;
+      float extrusion = texture2D(surfaceAtlas, textCoord - vec2(4. / ${ATLAS_WIDTH}., 4. / ${ATLAS_HEIGHT}.)).a;
+      vec3 bevelNormal = normalize(n + vec3((left - right) * 1.8, (above - below) * 1.8, 0.));
+      float bevelLight = max(dot(bevelNormal, light), 0.);
+      float bevelGlint = pow(max(dot(bevelNormal, normalize(light + view)), 0.), 24.);
+      vec3 inscription = mix(surface * vec3(.36, .30, .22), patina * .62, copper);
+      inscription *= .55 + .65 * bevelLight;
+      inscription += vec3(.95, .75, .35) * bevelGlint * .32;
+      inscription = mix(inscription, lightColor * .55, letteringPose.w * .7);
+      // A soft, moving reflection rather than a white patch across the word.
+      float sheenDistance = (labelUV.x - letteringAccent.y) * 5.;
+      float sheen = exp(-sheenDistance * sheenDistance);
+      inscription += vec3(.55, .42, .2) * sheen * letteringAccent.x * .38;
+      // The core emits light on press, independently of the dark metal's
+      // diffuse lighting. A little bevel shading keeps the illuminated relief.
+      vec3 emissionColor = mix(vec3(1., .95, .72), mix(vec3(1.), lightColor, .3), min(response, 1.));
+      inscription = mix(inscription, emissionColor * (.83 + .17 * bevelLight), letteringLight);
+      float rim = max(max(left, right), max(above, below)) * (1. - text.a);
+      gold = mix(gold, vec3(.14, .085, .025), extrusion * (1. - text.a) * .9 * frontFace);
+      gold = mix(gold, vec3(.32, .21, .07), rim * .65 * frontFace);
+      gold += emissionColor * rim * letteringLight * .22 * frontFace;
       gold = mix(gold, inscription, text.a * frontFace);
-      gold += vec3(1., .84, .49) * max(engraving, 0.) * .25 * frontFace;
-      gold -= vec3(.14, .10, .04) * max(-engraving, 0.) * frontFace;
+      // Upper-left edge catches light, with a darker lower-right shoulder.
+      float edge = (below - above + right - left) * .5;
+      gold += vec3(.95, .77, .39) * max(edge, 0.) * .42 * text.a * frontFace;
+      gold -= vec3(.12, .09, .035) * max(-edge, 0.) * text.a * frontFace;
       gl_FragColor = vec4(gold, 1.);
     }`;
     function shader(type, source) {
@@ -595,7 +671,10 @@
       "flash",
       "response",
       "responseProgress",
-      "responseColor"
+      "responseColor",
+      "letteringPose",
+      "letteringAccent",
+      "letteringLight"
     ];
     let program = null;
     let uniforms;
@@ -666,8 +745,8 @@
       vertex(point, [0, 0, 1]);
     }
     const label = document.createElement("canvas");
-    label.width = 780;
-    label.height = 1296;
+    label.width = ATLAS_WIDTH;
+    label.height = ATLAS_HEIGHT;
     const context = label.getContext("2d");
     if (!context) return { draw() {
     } };
@@ -677,21 +756,22 @@
     let paintedText = "";
     let paintedDirection = "ltr";
     function paintAtlas() {
-      labelContext.clearRect(0, 0, 780, 1296);
+      labelContext.clearRect(0, 0, ATLAS_WIDTH, ATLAS_HEIGHT);
       labelContext.fillStyle = "#808080";
-      labelContext.fillRect(0, 0, 780, 432);
-      if (layers[0]) labelContext.drawImage(layers[0], 0, 0, 780, 432);
-      if (layers[1]) labelContext.drawImage(layers[1], 0, 432, 780, 432);
+      labelContext.fillRect(0, 0, ATLAS_WIDTH, LAYER_HEIGHT);
+      if (layers[0]) labelContext.drawImage(layers[0], 0, 0, ATLAS_WIDTH, LAYER_HEIGHT);
+      if (layers[1]) labelContext.drawImage(layers[1], 0, LAYER_HEIGHT, ATLAS_WIDTH, LAYER_HEIGHT);
       paintedText = lettering.textContent;
       paintedDirection = lettering.dir === "rtl" ? "rtl" : "ltr";
       labelContext.direction = paintedDirection;
-      labelContext.font = "700 114px system-ui, sans-serif";
+      labelContext.font = `700 ${LABEL_FONT_SIZE}px system-ui, sans-serif`;
       const width = labelContext.measureText(paintedText).width;
-      if (width > 560) labelContext.font = `700 ${114 * 560 / width}px system-ui, sans-serif`;
+      if (width > LABEL_MAX_WIDTH)
+        labelContext.font = `700 ${LABEL_FONT_SIZE * LABEL_MAX_WIDTH / width}px system-ui, sans-serif`;
       labelContext.textAlign = "center";
       labelContext.textBaseline = "middle";
       labelContext.fillStyle = "#fff";
-      labelContext.fillText(paintedText, 390, 1086);
+      labelContext.fillText(paintedText, ATLAS_WIDTH / 2, LAYER_HEIGHT * 2.5 + 6);
     }
     paintAtlas();
     let atlasTexture = null;
@@ -811,6 +891,16 @@
       gl.uniform1f(uniforms.response, state.response || 0);
       gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
       gl.uniform3f(uniforms.responseColor, ...state.responseColor || [0.38, 0.84, 0.8]);
+      const letterPose = projectButtonLettering(state);
+      gl.uniform4f(
+        uniforms.letteringPose,
+        letterPose.scaleX,
+        letterPose.scaleY,
+        letterPose.shiftY,
+        letterPose.ink
+      );
+      gl.uniform2f(uniforms.letteringAccent, letterPose.charge, letterPose.sheen);
+      gl.uniform1f(uniforms.letteringLight, letterPose.light);
       gl.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
       gl.uniform3f(uniforms.translation, 0, 0, 0);
       gl.uniform1f(uniforms.scale, 1);
@@ -869,9 +959,34 @@
   }
 
   // frontend/button.ts
+  var QUICK_TAP_MS = 90;
+  var TAP_RELEASE_MS = 70;
+  var HOLD_RELEASE_MS = 110;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let paint2 = function() {
+      if (power && stage.clientWidth && stage.clientHeight) {
+        const cable = projectButtonPower(current, button.offsetWidth);
+        power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
+        power.setAttribute(
+          "viewBox",
+          `${-stage.clientWidth / 2} ${-stage.clientHeight / 2} ${stage.clientWidth} ${stage.clientHeight}`
+        );
+        for (const cord of cords ?? []) cord.setAttribute("d", cable.cord);
+        for (const part of power.querySelectorAll(".power-outlet, .power-plug"))
+          part.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
+      }
+      current.reducedMotion = reducedMotion.matches;
+      const lettering = projectButtonLettering(current);
+      rig.style.setProperty("--label-scale-x", lettering.scaleX.toFixed(3));
+      rig.style.setProperty("--label-scale-y", lettering.scaleY.toFixed(3));
+      rig.style.setProperty(
+        "--label-shift",
+        `${(lettering.shiftY * button.offsetHeight).toFixed(3)}px`
+      );
+      rig.style.setProperty("--label-ink", lettering.ink.toFixed(3));
+      rig.style.setProperty("--label-charge", lettering.charge.toFixed(3));
+      rig.style.setProperty("--label-light", lettering.light.toFixed(3));
       const pose = projectButtonPose(current, button.offsetWidth);
       rig.style.setProperty("--shift-x", `${pose.x.toFixed(3)}px`);
       rig.style.setProperty("--shift-y", `${pose.y.toFixed(3)}px`);
@@ -921,9 +1036,15 @@
       }
       if (releasedAt !== null) {
         const progress = clamp((time - releasedAt) / releaseDuration, 0, 1);
-        current.copper = releaseCopper * Math.pow(1 - progress, 2);
+        const returnAmount = Math.pow(1 - progress, 2);
+        current.copper = releaseCopper * returnAmount;
+        current.labelCharge = returnAmount;
         if (progress < 1) moving = true;
         else releasedAt = null;
+      }
+      if (current.press && !reducedMotion.matches) {
+        current.labelPhase = (time - pressedAt) / 1e3;
+        moving = true;
       }
       current.flash *= Math.pow(0.68, dt);
       if (current.flash > 5e-3) moving = true;
@@ -944,6 +1065,7 @@
           velocity[key] = 0;
         }
         current.flash = 0;
+        current.labelCharge = 0;
         paint2();
         return;
       }
@@ -962,6 +1084,8 @@
       pressedAt = performance.now();
       releasedAt = null;
       current.press = current.copper = 1;
+      current.labelCharge = reducedMotion.matches ? 0 : 1;
+      current.labelPhase = 0;
       target.pop = reducedMotion.matches ? 0 : -0.045;
       current.pop = target.pop;
       velocity.pop = 0;
@@ -990,10 +1114,11 @@
       activeKey = null;
       window.clearTimeout(holdTimer);
       const wasPressed = phase !== "idle";
-      const quick = performance.now() - pressedAt < 90;
+      const quick = performance.now() - pressedAt < QUICK_TAP_MS;
       current.press = 0;
+      if (cancelled) current.labelCharge = 0;
       target.pop = current.pop = velocity.pop = 0;
-      releaseDuration = quick ? 70 : 110;
+      releaseDuration = quick ? TAP_RELEASE_MS : HOLD_RELEASE_MS;
       releaseCopper = wasPressed && !cancelled && !reducedMotion.matches ? quick ? 0.72 : 1 : 0;
       current.copper = releaseCopper;
       releasedAt = releaseCopper ? performance.now() : null;
@@ -1010,6 +1135,8 @@
       releasedAt = null;
       coastUntil = 0;
       current.copper = 0;
+      current.labelCharge = 0;
+      current.labelPhase = 0;
       for (const key of keys) target[key] = 0;
       animate2();
     }, clearResponse2 = function() {
@@ -1036,7 +1163,7 @@
       });
     }, burst2 = function(press = false) {
       if (reducedMotion.matches) return;
-      const quick = press || releaseDuration === 70;
+      const quick = press || releaseDuration === TAP_RELEASE_MS;
       current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
       if (!press) {
         current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
@@ -1122,6 +1249,8 @@
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
     const rig = required(".button-rig", stage);
+    const power = stage.querySelector(".button-power");
+    const cords = power?.querySelectorAll(".power-cord");
     const effects = document.createElement("div");
     effects.className = "button-effects";
     effects.setAttribute("aria-hidden", "true");
@@ -1134,6 +1263,8 @@
       rx: 0,
       ry: 0,
       press: 0,
+      labelCharge: 0,
+      labelPhase: 0,
       copper: 0,
       pop: 0,
       flash: 0,
@@ -1150,7 +1281,7 @@
     let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
     let activatingRelease = false;
-    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = 70, holdTimer = 0, phase = "idle";
+    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, phase = "idle";
     let responseStarted = null;
     let responseDuration = 500;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -1311,7 +1442,7 @@
     shareHint: "Copy stats for sharing",
     ping: "Ping",
     simPing: "Sim ping",
-    pingHint: "Round-trip time of the last successful click request. The border indicates pending requests or a save error.",
+    pingHint: "Round-trip time of the last successful click request. The status dot indicates pending requests or a save error.",
     pingStatus: "{ping}. {status}.",
     noPing: "Ping: no click measured yet",
     coolingStatus: "Server cooldown. Clicking paused",
@@ -1391,7 +1522,7 @@
       shareHint: "\u590D\u5236\u7EDF\u8BA1\u4EE5\u5206\u4EAB",
       ping: "\u5EF6\u8FDF",
       simPing: "\u6A21\u62DF\u5EF6\u8FDF",
-      pingHint: "\u4E0A\u6B21\u6210\u529F\u70B9\u51FB\u8BF7\u6C42\u7684\u5F80\u8FD4\u65F6\u95F4\u3002\u8FB9\u6846\u8868\u793A\u5F85\u5904\u7406\u8BF7\u6C42\u6216\u4FDD\u5B58\u9519\u8BEF\u3002",
+      pingHint: "\u4E0A\u6B21\u6210\u529F\u70B9\u51FB\u8BF7\u6C42\u7684\u5F80\u8FD4\u65F6\u95F4\u3002\u72B6\u6001\u5706\u70B9\u8868\u793A\u5F85\u5904\u7406\u8BF7\u6C42\u6216\u4FDD\u5B58\u9519\u8BEF\u3002",
       pingStatus: "{ping}\u3002{status}\u3002",
       noPing: "\u5EF6\u8FDF\uFF1A\u5C1A\u672A\u6D4B\u91CF\u70B9\u51FB",
       coolingStatus: "\u670D\u52A1\u5668\u51B7\u5374\u4E2D\u3002\u70B9\u51FB\u5DF2\u6682\u505C",
@@ -1470,7 +1601,7 @@
       shareHint: "Copiar estad\xEDsticas para compartir",
       ping: "Latencia",
       simPing: "Latencia simulada",
-      pingHint: "Tiempo de ida y vuelta del \xFAltimo clic guardado. El borde indica solicitudes pendientes o un error al guardar.",
+      pingHint: "Tiempo de ida y vuelta del \xFAltimo clic guardado. El punto de estado indica solicitudes pendientes o un error al guardar.",
       pingStatus: "{ping}. {status}.",
       noPing: "Latencia: a\xFAn no se ha medido ning\xFAn clic",
       coolingStatus: "Pausa del servidor. Clics en pausa",
@@ -1549,7 +1680,7 @@
       shareHint: "\u0646\u0633\u062E \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A \u0644\u0645\u0634\u0627\u0631\u0643\u062A\u0647\u0627",
       ping: "\u0632\u0645\u0646 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629",
       simPing: "\u0632\u0645\u0646 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0649",
-      pingHint: "\u0645\u062F\u0629 \u0622\u062E\u0631 \u0637\u0644\u0628 \u0646\u0642\u0631\u0629 \u0646\u0627\u062C\u062D \u0630\u0647\u0627\u0628\u064B\u0627 \u0648\u0625\u064A\u0627\u0628\u064B\u0627. \u064A\u0634\u064A\u0631 \u0627\u0644\u0625\u0637\u0627\u0631 \u0625\u0644\u0649 \u0637\u0644\u0628\u0627\u062A \u0645\u0639\u0644\u0651\u0642\u0629 \u0623\u0648 \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062D\u0641\u0638.",
+      pingHint: "\u0645\u062F\u0629 \u0622\u062E\u0631 \u0637\u0644\u0628 \u0646\u0642\u0631\u0629 \u0646\u0627\u062C\u062D \u0630\u0647\u0627\u0628\u064B\u0627 \u0648\u0625\u064A\u0627\u0628\u064B\u0627. \u062A\u0634\u064A\u0631 \u0646\u0642\u0637\u0629 \u0627\u0644\u062D\u0627\u0644\u0629 \u0625\u0644\u0649 \u0637\u0644\u0628\u0627\u062A \u0645\u0639\u0644\u0651\u0642\u0629 \u0623\u0648 \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062D\u0641\u0638.",
       pingStatus: "{ping}. {status}.",
       noPing: "\u0632\u0645\u0646 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629: \u0644\u0645 \u062A\u064F\u0642\u064E\u0633 \u0623\u064A \u0646\u0642\u0631\u0629 \u0628\u0639\u062F",
       coolingStatus: "\u0627\u0644\u062E\u0627\u062F\u0645 \u0641\u064A \u0641\u062A\u0631\u0629 \u0627\u0646\u062A\u0638\u0627\u0631. \u0627\u0644\u0646\u0642\u0631 \u0645\u062A\u0648\u0642\u0641 \u0645\u0624\u0642\u062A\u064B\u0627",
@@ -1628,7 +1759,7 @@
       shareHint: "\u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0906\u0901\u0915\u0921\u093C\u0947 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902",
       ping: "\u092A\u093F\u0902\u0917",
       simPing: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u093F\u0902\u0917",
-      pingHint: "\u092A\u093F\u091B\u0932\u0947 \u0938\u092B\u0932 \u0915\u094D\u0932\u093F\u0915 \u0905\u0928\u0941\u0930\u094B\u0927 \u0915\u093E \u0906\u0928\u0947-\u091C\u093E\u0928\u0947 \u0915\u093E \u0938\u092E\u092F\u0964 \u092C\u0949\u0930\u094D\u0921\u0930 \u0932\u0902\u092C\u093F\u0924 \u0905\u0928\u0941\u0930\u094B\u0927 \u092F\u093E \u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u0924\u094D\u0930\u0941\u091F\u093F \u0926\u093F\u0916\u093E\u0924\u093E \u0939\u0948\u0964",
+      pingHint: "\u092A\u093F\u091B\u0932\u0947 \u0938\u092B\u0932 \u0915\u094D\u0932\u093F\u0915 \u0905\u0928\u0941\u0930\u094B\u0927 \u0915\u093E \u0906\u0928\u0947-\u091C\u093E\u0928\u0947 \u0915\u093E \u0938\u092E\u092F\u0964 \u0938\u094D\u0925\u093F\u0924\u093F \u092C\u093F\u0902\u0926\u0941 \u0932\u0902\u092C\u093F\u0924 \u0905\u0928\u0941\u0930\u094B\u0927 \u092F\u093E \u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u0924\u094D\u0930\u0941\u091F\u093F \u0926\u093F\u0916\u093E\u0924\u093E \u0939\u0948\u0964",
       pingStatus: "{ping}\u0964 {status}\u0964",
       noPing: "\u092A\u093F\u0902\u0917: \u0905\u092D\u0940 \u0915\u093F\u0938\u0940 \u0915\u094D\u0932\u093F\u0915 \u0915\u093E \u0938\u092E\u092F \u0928\u0939\u0940\u0902 \u092E\u093E\u092A\u093E \u0917\u092F\u093E",
       coolingStatus: "\u0938\u0930\u094D\u0935\u0930 \u0935\u093F\u0930\u093E\u092E\u0964 \u0915\u094D\u0932\u093F\u0915 \u0930\u0941\u0915\u0947 \u0939\u0941\u090F \u0939\u0948\u0902",
@@ -1707,7 +1838,7 @@
       shareHint: "Salin statistik untuk dibagikan",
       ping: "Ping",
       simPing: "Ping simulasi",
-      pingHint: "Waktu pulang pergi permintaan klik terakhir yang berhasil. Bingkai menunjukkan permintaan tertunda atau kesalahan penyimpanan.",
+      pingHint: "Waktu pulang pergi permintaan klik terakhir yang berhasil. Titik status menunjukkan permintaan tertunda atau kesalahan penyimpanan.",
       pingStatus: "{ping}. {status}.",
       noPing: "Ping: belum ada klik yang diukur",
       coolingStatus: "Jeda server. Klik dijeda",
@@ -1786,7 +1917,7 @@
       shareHint: "Copiar estat\xEDsticas para compartilhar",
       ping: "Ping",
       simPing: "Ping simulado",
-      pingHint: "Tempo de ida e volta da \xFAltima solicita\xE7\xE3o de clique bem-sucedida. A borda indica solicita\xE7\xF5es pendentes ou erro ao salvar.",
+      pingHint: "Tempo de ida e volta da \xFAltima solicita\xE7\xE3o de clique bem-sucedida. O ponto de status indica solicita\xE7\xF5es pendentes ou erro ao salvar.",
       pingStatus: "{ping}. {status}.",
       noPing: "Ping: nenhum clique medido ainda",
       coolingStatus: "Pausa do servidor. Cliques pausados",
@@ -1865,7 +1996,7 @@
       shareHint: "Copier les statistiques \xE0 partager",
       ping: "Latence",
       simPing: "Latence simul\xE9e",
-      pingHint: "Dur\xE9e aller-retour de la derni\xE8re requ\xEAte de clic r\xE9ussie. La bordure indique les requ\xEAtes en attente ou une erreur de sauvegarde.",
+      pingHint: "Dur\xE9e aller-retour de la derni\xE8re requ\xEAte de clic r\xE9ussie. Le point de statut indique les requ\xEAtes en attente ou une erreur de sauvegarde.",
       pingStatus: "{ping}. {status}.",
       noPing: "Latence : aucun clic mesur\xE9",
       coolingStatus: "Pause du serveur. Clics suspendus",
@@ -1944,7 +2075,7 @@
       shareHint: "\u5171\u6709\u7528\u306B\u8A18\u9332\u3092\u30B3\u30D4\u30FC",
       ping: "\u5FDC\u7B54\u6642\u9593",
       simPing: "\u6A21\u64EC\u5FDC\u7B54\u6642\u9593",
-      pingHint: "\u6700\u5F8C\u306B\u6210\u529F\u3057\u305F\u30AF\u30EA\u30C3\u30AF\u8981\u6C42\u306E\u5F80\u5FA9\u6642\u9593\u3002\u67A0\u306F\u51E6\u7406\u4E2D\u306E\u8981\u6C42\u3084\u4FDD\u5B58\u30A8\u30E9\u30FC\u3092\u793A\u3057\u307E\u3059\u3002",
+      pingHint: "\u6700\u5F8C\u306B\u6210\u529F\u3057\u305F\u30AF\u30EA\u30C3\u30AF\u8981\u6C42\u306E\u5F80\u5FA9\u6642\u9593\u3002\u72B6\u614B\u3092\u793A\u3059\u70B9\u306F\u51E6\u7406\u4E2D\u306E\u8981\u6C42\u3084\u4FDD\u5B58\u30A8\u30E9\u30FC\u3092\u793A\u3057\u307E\u3059\u3002",
       pingStatus: "{ping}\u3002{status}\u3002",
       noPing: "\u5FDC\u7B54\u6642\u9593\uFF1A\u307E\u3060\u8A08\u6E2C\u3057\u3066\u3044\u307E\u305B\u3093",
       coolingStatus: "\u30B5\u30FC\u30D0\u30FC\u306E\u5F85\u6A5F\u6642\u9593\u4E2D\u3002\u30AF\u30EA\u30C3\u30AF\u3092\u4E00\u6642\u505C\u6B62",
@@ -2023,7 +2154,7 @@
       shareHint: "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0443 \u0434\u043B\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
       ping: "\u041F\u0438\u043D\u0433",
       simPing: "\u0421\u0438\u043C\u0443\u043B\u044F\u0446\u0438\u044F \u043F\u0438\u043D\u0433\u0430",
-      pingHint: "\u0412\u0440\u0435\u043C\u044F \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0433\u043E \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u043A\u043B\u0438\u043A\u0430. \u0420\u0430\u043C\u043A\u0430 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442 \u043E\u0436\u0438\u0434\u0430\u044E\u0449\u0438\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0438\u043B\u0438 \u043E\u0448\u0438\u0431\u043A\u0443 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F.",
+      pingHint: "\u0412\u0440\u0435\u043C\u044F \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0433\u043E \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u043A\u043B\u0438\u043A\u0430. \u0418\u043D\u0434\u0438\u043A\u0430\u0442\u043E\u0440 \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u044F \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442 \u043E\u0436\u0438\u0434\u0430\u044E\u0449\u0438\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0438\u043B\u0438 \u043E\u0448\u0438\u0431\u043A\u0443 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F.",
       pingStatus: "{ping}. {status}.",
       noPing: "\u041F\u0438\u043D\u0433: \u043A\u043B\u0438\u043A\u043E\u0432 \u0435\u0449\u0451 \u043D\u0435 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u043E",
       coolingStatus: "\u0421\u0435\u0440\u0432\u0435\u0440\u043D\u0430\u044F \u043F\u0430\u0443\u0437\u0430. \u041A\u043B\u0438\u043A\u0438 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B",
@@ -2102,7 +2233,7 @@
       shareHint: "Statistik zum Teilen kopieren",
       ping: "Ping",
       simPing: "Simulierter Ping",
-      pingHint: "Umlaufzeit der letzten erfolgreichen Klickanfrage. Der Rand zeigt ausstehende Anfragen oder einen Speicherfehler an.",
+      pingHint: "Umlaufzeit der letzten erfolgreichen Klickanfrage. Der Statuspunkt zeigt ausstehende Anfragen oder einen Speicherfehler an.",
       pingStatus: "{ping}. {status}.",
       noPing: "Ping: noch kein Klick gemessen",
       coolingStatus: "Serverpause. Klicken pausiert",
@@ -2267,6 +2398,10 @@
           if (gap < 350) heat = Math.min(1, heat + 0.12);
         }
         previous = now;
+        if (current !== selected) {
+          current = selected;
+          return current;
+        }
         if (random() < 0.02 + 0.06 * heat) {
           const choices = languages.filter((item) => item.code !== current && item.code !== selected);
           current = choices[Math.min(choices.length - 1, Math.floor(random() * choices.length))].code;
@@ -2762,7 +2897,8 @@
     const identityChanged = user?.id !== nextUser?.id;
     user = nextUser;
     if (identityChanged) lastOnlineCounters = null;
-    required("#nav-username").textContent = user?.username ?? "";
+    const username = required("#nav-username");
+    username.textContent = username.title = user?.username ?? "";
     required("#admin-link").hidden = !user?.admin;
     if (identityChanged) {
       required("#replace-local").checked = false;

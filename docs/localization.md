@@ -9,15 +9,18 @@ feedback explicitly identifies simulated timings. If the share preview changes
 during a clipboard write or after a successful copy, the dialog asks for another
 copy rather than claiming the updated text is already on the clipboard.
 The landing page, sign-in/signup forms, Options/storage tools and technical notes,
-and administration remain English in this first pass. The Options dialog has an
-explicit English language/direction; the translated gameplay instructions carry
-their own language/direction.
+and administration remain English. The Options dialog has an explicit English
+language/direction; the translated gameplay instructions carry their own
+language/direction.
 
-The initial languages are English, Simplified Chinese, Spanish, Arabic, Hindi,
+The supported languages are English, Simplified Chinese, Spanish, Arabic, Hindi,
 Indonesian, Brazilian Portuguese, French, Japanese, Russian, and German. The
-selector shows native language names, without flags. Chinese and Portuguese are
-initially represented by one written variant each, rather than all regional
-variants. Arabic uses right-to-left game/navigation/dialog layout.
+selector uses a compact globe control with native language names, without flags.
+Its translated accessible name identifies the action as Language; native options
+use explicit dark backgrounds and light text. The icon and arrow follow the
+selected language’s direction, and the header wraps on narrow screens. Chinese
+and Portuguese are represented by one written variant each, rather than all
+regional variants. Arabic uses right-to-left game/navigation/dialog layout.
 
 ## Why these languages
 
@@ -52,10 +55,11 @@ language. The choice applies immediately, synchronizes across tabs, and still
 works for the current visit when storage cannot be written. Changing language
 never sends an account request or changes the online/local save mode.
 
-Every enabled game-button activation rolls a 2% chance to change its visible
-label to a randomly selected supported language other than the UI language or
-current button label. The label remains until another surprise or a UI-language
-change. Rapid intervals under 350 ms add 0.12 to an activity value, capped at 1;
+When the button label matches the UI language, an enabled game-button activation
+rolls a 2% chance to change its visible label to another supported language.
+The next activation always restores the UI language, without rolling another
+surprise. A UI-language change also resets the label immediately.
+Rapid intervals under 350 ms add 0.12 to an activity value, capped at 1;
 the value decays exponentially with a 900 ms time constant. The chance is
 `2% + 6% × activity`, at most 8%, and drops back toward 2% after a pause.
 
@@ -84,6 +88,7 @@ when motion is reduced. The canvas fits long text inside the button face.
   grouping separators cannot affect request ordering or counter comparisons.
 - Add tests for catalog coverage, placeholders, fallback, state preservation and
   any new screen behavior. Rebuild and commit embedded JavaScript with its source
-  using the README frontend commands. The optional Playwright check in
-  `internal/webapp/testdata/language.browser.cjs` exports
-  `checkLanguage(page, baseURL)` and uses a fresh isolated context and local play.
+  using the [README verification commands](../README.md#test). The optional
+  [browser checks](frontend.md#browser-regressions) cover every language at
+  desktop/mobile sizes, Arabic sharing, preference persistence, and restoring
+  the button’s selected language on the next click.

@@ -26,7 +26,9 @@
         </a>
         <div class="header-actions">
           <label class="language-selector" data-game-language>
-            <span data-i18n="language">Language</span>
+            <svg class="icon language-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons.svg#globe" />
+            </svg>
             <select
               id="language-setting"
               aria-label="Language"
@@ -34,6 +36,9 @@
               title="Game language · remembered in this browser"
               data-i18n-title="languageHint"
             ></select>
+            <svg class="icon language-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
           </label>
           <nav id="guest-nav" class="nav-actions" aria-label="Account" hidden>
             <button class="button button-quiet" type="button" data-view="login">Sign in</button>
@@ -140,6 +145,27 @@
           <h1>Go Click.</h1>
           <p class="home-greeting">Save to your account, or play offline in this browser.</p>
           <div class="button-stage">
+            <svg class="button-power" aria-hidden="true" focusable="false">
+              <g class="power-outlet">
+                <rect class="outlet-shadow" x="-29" y="-42" width="58" height="84" rx="9" />
+                <rect class="outlet-plate" x="-27" y="-42" width="54" height="80" rx="8" />
+                <rect class="outlet-inset" x="-20" y="-34" width="40" height="64" rx="6" />
+                <circle class="outlet-screw" cy="-38" r="1.8" />
+                <path class="outlet-screw-slot" d="M-1-39 1-37" />
+                <rect class="outlet-socket" x="-13" y="-26" width="26" height="22" rx="7" />
+                <path class="outlet-slots" d="M-5-20v6m10-6v6" />
+                <path class="outlet-ground" d="M-3-10a3 3 0 0 1 6 0v1h-6Z" />
+                <circle class="outlet-led" cx="23.5" cy="-15" r="1.4" />
+              </g>
+              <g class="power-plug">
+                <rect class="plug-body" x="-15" y="-1" width="30" height="26" rx="7" />
+                <path class="plug-ridges" d="M-10 6h20m-20 5h20m-20 5h20" />
+                <circle class="plug-grommet" cy="12" r="5.5" />
+              </g>
+              <path class="power-cord cord-shadow" />
+              <path class="power-cord cord-body" />
+              <path class="power-cord cord-highlight" />
+            </svg>
             <canvas class="button-scene" aria-hidden="true"></canvas>
             <div class="button-rig">
               <button
@@ -375,6 +401,27 @@
                 <span id="pending-clicks" class="pending-count" hidden></span>
               </div>
               <div class="button-stage">
+                <svg class="button-power" aria-hidden="true" focusable="false">
+                  <g class="power-outlet">
+                    <rect class="outlet-shadow" x="-29" y="-42" width="58" height="84" rx="9" />
+                    <rect class="outlet-plate" x="-27" y="-42" width="54" height="80" rx="8" />
+                    <rect class="outlet-inset" x="-20" y="-34" width="40" height="64" rx="6" />
+                    <circle class="outlet-screw" cy="-38" r="1.8" />
+                    <path class="outlet-screw-slot" d="M-1-39 1-37" />
+                    <rect class="outlet-socket" x="-13" y="-26" width="26" height="22" rx="7" />
+                    <path class="outlet-slots" d="M-5-20v6m10-6v6" />
+                    <path class="outlet-ground" d="M-3-10a3 3 0 0 1 6 0v1h-6Z" />
+                    <circle class="outlet-led" cx="23.5" cy="-15" r="1.4" />
+                  </g>
+                  <g class="power-plug">
+                    <rect class="plug-body" x="-15" y="-1" width="30" height="26" rx="7" />
+                    <path class="plug-ridges" d="M-10 6h20m-20 5h20m-20 5h20" />
+                    <circle class="plug-grommet" cy="12" r="5.5" />
+                  </g>
+                  <path class="power-cord cord-shadow" />
+                  <path class="power-cord cord-body" />
+                  <path class="power-cord cord-highlight" />
+                </svg>
                 <div class="score-effects" aria-hidden="true"></div>
                 <canvas class="button-scene" aria-hidden="true"></canvas>
                 <div class="button-rig">
@@ -432,7 +479,7 @@
                   role="status"
                   aria-live="off"
                   aria-label="Ping: no click measured yet"
-                  title="Round-trip time of the last successful click request. The border indicates pending requests or a save error."
+                  title="Round-trip time of the last successful click request. The status dot indicates pending requests or a save error."
                   data-i18n-title="pingHint"
                 >
                   <span class="connection-dot" aria-hidden="true"></span>
@@ -572,9 +619,9 @@
           never adds extra clicks.
         </p>
         <p>
-          +1 stays amber while waiting. The button and lingering sparks turn mint for a fast
-          response, blue for confirmation, violet for a slower reply, and red for a failed or
-          unconfirmed save. Reduced motion uses a static tint.
+          +1 stays amber while waiting. The lettering, etched channels, and lingering sparks respond
+          in mint for a fast reply, blue for confirmation, violet for a slower reply, and red for a
+          failed or unconfirmed save. Reduced motion uses a static tint.
         </p>
       </details>
       <details class="technical-notes" id="technical-notes">

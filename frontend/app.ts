@@ -253,7 +253,8 @@ function setUser(nextUser: User | null) {
   const identityChanged = user?.id !== nextUser?.id;
   user = nextUser;
   if (identityChanged) lastOnlineCounters = null;
-  $("#nav-username").textContent = user?.username ?? "";
+  const username = $("#nav-username");
+  username.textContent = username.title = user?.username ?? "";
   $<HTMLAnchorElement>("#admin-link").hidden = !user?.admin;
   if (identityChanged) {
     $<HTMLInputElement>("#replace-local").checked = false;

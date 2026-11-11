@@ -8,45 +8,31 @@ Go server and a dependency-free browser frontend.
 The server uses SQLite, embeds the frontend in its binary, and has two direct
 dependencies: a pure-Go SQLite driver and Go's bcrypt implementation.
 
-The button responds immediately to presses, with a distinct held state, a
-spring return, a size pulse, and release bursts. Mouse, touch/pen, Space, and Enter
-activate once on release inside the button; each finger is tracked separately,
-and cancelled gestures do not score. Press-down immediately compresses the solid
-and deepens its amber face. Small, unboxed +1 labels wait for their save response
-and show its ping, with color compared to recent timings. The button itself
-sweeps teal on confirmation, violet for slow replies, and red on failure; sweep
-duration follows the measured or simulated ping. Pending
-clicks are shown separately from the server-confirmed total. **Options** offers
-Auto, Reduced, and Full motion; Reduced keeps static feedback without movement
-or flashes. Account identity and counters load in one authenticated snapshot, and
-graphics initialize only for a visible button, with a usable CSS fallback.
-The Ping readout retains its last successful request time while saving; its
-border indicates pending requests or errors. Short gaps between clicks do not
-reset the indicator. Expand **Game & storage notes** for UTC streak rules,
-request timing, and session/storage behavior.
+Press the textured metal button with a mouse, touch, pen, Space, or Enter.
+Each release inside the button adds one click; holding and cancelled gestures
+never add extra clicks. Raised lettering grows and lights up on press, then
+returns with the copper-to-gold finish on release. Etched channels and floating
++1 feedback show pending, saved, slow, and failed requests. **Options** includes
+Auto, Reduced, and Full motion; Reduced keeps quiet, static feedback.
 
-**Play offline** uses one local save slot in browser storage, with optional
-simulated ping and no account API requests or click rate limit. It can be opened
-from the guest page or an account session. Options can download/import a
-`goclick-local` version 1 JSON save, restart the slot, or explicitly replace it
-with the last loaded account counters. Local clicks never upload or change
-account progress. A replacement requires checking the confirmation box; invalid
-imports and failed browser writes preserve the existing save. Writes use Web
-Locks where available to serialize tabs, and tabs observe local save changes.
-Without Web Locks, IndexedDB transactions coordinate local writes between tabs;
-if neither is available, writes fail without changing the save. The chosen mode
-survives reloads, so a local-mode startup skips session checks.
-The page must be loaded to play; this does not install a service worker. Keep a
-downloaded save before clearing browser data or moving to another device.
+**Play offline** keeps a separate local save in this browser, without account
+requests or online click limits. Download/import a save or restart it from
+Options. Local clicks never upload or change account progress. The page must
+already be loaded to play; there is no service worker. Download a save before
+clearing browser data or moving to another device.
 
-The header **Language** selector offers eleven game languages, remembers your
-choice, and initially follows your browser language. Game labels, feedback,
-icon tooltips and shared stats are translated, including right-to-left Arabic.
-The button occasionally changes its own label to another supported language;
-rapid clicking slightly increases the chance, from 2% up to 8%. Your selected UI
-language stays in place. Account forms, storage options and administration remain
-English for now. See [`docs/localization.md`](docs/localization.md) for the
-language research, scope and extension guide.
+The compact header language selector offers eleven game languages, remembers
+your choice, and initially follows your browser language. Gameplay and shared
+stats support right-to-left Arabic. The button occasionally changes its label
+to another language until the next click. Account forms, storage options, and
+administration remain English.
+
+Documentation:
+
+- [Frontend development and browser checks](docs/frontend.md)
+- [Localization scope and translation guide](docs/localization.md)
+- [Administration](docs/administration.md) and [backup/recovery runbook](docs/backups.md)
+- [Retired Rails migration](docs/migration.md)
 
 ## Run it
 
@@ -232,6 +218,18 @@ deployments.
 
 ## Test
 
+For frontend changes, use Node.js 24.22.1+ within 24.x (LTS) or
+26.12.1+ within 26.x (Current). `.nvmrc` selects Node 24.22.1; tooling versions
+are locked in `package-lock.json`:
+
+```bash
+npm ci
+npm run build       # type-check and regenerate embedded app.js and admin.js
+npm run check       # types, lint, formatting, bundle freshness, regression tests
+```
+
+Then run the Go checks:
+
 ```bash
 go test -race ./...
 go vet ./...
@@ -240,73 +238,27 @@ go mod verify
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
-Frontend source lives in `frontend/` as strict TypeScript ES modules. Development
-uses Node.js 24.22.1+ within 24.x (LTS) or 26.12.1+ within 26.x (Current),
-with Node 24.22.1 selected by `.nvmrc` and exact tools in `package-lock.json`:
-
-```bash
-npm ci
-npm run build       # type-check and regenerate embedded app.js and admin.js
-npm run check       # types, oxlint, oxfmt, bundle freshness, and regression tests
-npm run fmt         # format TypeScript, tests, HTML, CSS, and tool configuration
-```
+Rebuild frontend assets **before Go tests or restarting the server** whenever
+the TypeScript changes: assets are embedded at Go compilation. Commit the
+regenerated JavaScript with its source. A Go-only build can use the committed
+bundles and does not require Node. `npm run fmt` formats frontend source,
+tests, HTML, CSS, and tool configuration.
 
 Basaltwater on Debian is the reference development environment, following the
 [shared project standards](https://github.com/bluehexagons/basaltwater/blob/main/docs/agents/project-standards.md).
-The commands above also work with ordinary Go, Node and npm. Use `nvm use` to
-select `.nvmrc`, or `basaltw node exec -- npm run check` on Basaltwater to select
-it without changing the host's default Node version. Install dependencies in
-each checkout with `npm ci`. A Go-only build uses the committed frontend bundles
-and does not need Node or Basaltwater.
+Ordinary Go, Node, and npm also work. Use `nvm use` to select `.nvmrc`, or
+`basaltw node exec -- npm run check` on Basaltwater without changing the host's
+default Node version. Install dependencies in each checkout with `npm ci`.
 
-TypeScript checks nulls, indexed access, DOM bindings, and API response contracts;
-oxlint rejects correctness issues and explicit `any`. Esbuild bundles the game
-and admin entry points separately. The two generated JavaScript files are
-committed, and CI rejects stale bundles, so an ordinary Go, container, or
-Basaltwater build still needs only Go and serves no runtime npm dependencies.
-Edit TypeScript source rather than the generated files. Rebuild before running
-Go tests or restarting the dev server: assets are embedded at Go compilation.
-The JavaScript tests load isolated modules compiled from that same source and
-cover request ordering, recovery feedback, local saves, motion, and pointer input.
-
-The real-browser focus regression check in
-`internal/webapp/testdata/focus.browser.cjs` exports `checkFocus(page, baseURL)`.
-Run it with a fresh, isolated Playwright page in Chromium and Firefox using an
-existing browser test environment. It covers skip navigation, pointer/keyboard
-switching, held keys, dialogs, and the hidden file picker using offline play;
-it does not create an account or submit online clicks. `npm run check` runs the
-unit regressions without requiring browser packages.
-The companion `interaction.browser.cjs` exports `checkInteraction(page, baseURL)`
-for selection, native drag prevention, gameplay dragging, and clipboard/manual
-sharing. It writes only its own test stats and never reads the clipboard.
-`local-save.browser.cjs` exports `checkLocalSave(page, baseURL, options)` to
-verify concurrent clicks, save replacement, and reloads across two tabs in a
-fresh isolated context. Run it once with the default Web Locks path and once
-with `{ withoutWebLocks: true }` for the IndexedDB fallback.
-
-The button material uses two editable Inkscape SVGs:
-[`button-material.svg`](internal/webapp/web/button-material.svg) covers the whole
-solid with neutral metal grain, worked facets, and engraved channels;
-[`button-glow.svg`](internal/webapp/web/button-glow.svg) marks only the regions
-that emit light. Both use a 260 × 144 viewBox and a 780 × 432 image size.
-Keep the material grayscale (#808080 is neutral) and the glow mask white on
-transparent. Match the channel coordinates between files. The game supplies
-gold/copper colors and press/ping illumination, so future material variants can
-replace the artwork without changing gameplay. Keep the lettering area legible.
-The 3D renderer packs both images and lettering into one atlas; the CSS fallback
-uses the same SVGs. Neither image blocks input, and no PNG export is required.
-
-The game's Share button copies the current click total, UTC streaks, and a site
-link by default, then opens options to customize the text. Daily and weekly click
-totals are not part of the current counter summary. Offline summaries are
-labeled separately. Clipboard access failures leave a selectable preview for
-manual copying. Interface text and page links or images do not select or drag;
-forms, errors, technical help, and administrator data retain useful copying and
-editing behavior.
+[Frontend development](docs/frontend.md) describes the source layout, optional
+isolated browser checks, and SVG material authoring. The regular checks require
+no browser installation. Keep development/test databases disposable; preserve
+existing `data/`, `backups/`, and SQLite sidecars.
 
 CI runs these checks and a deployment smoke test. Dependabot checks Go modules,
-frontend tooling, GitHub Actions, and container images weekly. Keep `modernc.org/libc` at the
-version required by the SQLite driver's `go.mod` when updating that driver.
+frontend tooling, GitHub Actions, and container images weekly. Keep
+`modernc.org/libc` at the version required by the SQLite driver's `go.mod` when
+updating that driver.
 
 ## Container
 

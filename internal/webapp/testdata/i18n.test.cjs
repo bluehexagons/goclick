@@ -114,18 +114,46 @@ test("button surprises choose another supported foreign language without changin
   const i = localization();
   i.setLanguage("fr");
   const button = i.createButtonLanguage("fr");
-  let previous = "fr";
   for (let n = 0; n < 100; n++) {
-    const next = button.click(n * 100, "fr", () => 0);
-    assert.notEqual(next, previous);
+    const next = button.click(n * 200, "fr", () => 0);
     assert.notEqual(next, "fr");
     assert.ok(i.supportedLanguage(next));
     assert.equal(i.currentLanguage(), "fr");
-    previous = next;
+    // Even another winning random draw must restore the chosen locale first.
+    assert.equal(
+      button.click(n * 200 + 100, "fr", () => 0),
+      "fr",
+    );
   }
   button.reset("ja");
   assert.equal(
     button.click(10000, "ja", () => 0.5),
+    "ja",
+  );
+});
+
+test("a surprise resets on the next click even after a long pause", () => {
+  const i = localization();
+  const button = i.createButtonLanguage("ar");
+  assert.notEqual(
+    button.click(0, "ar", () => 0),
+    "ar",
+  );
+  assert.equal(
+    button.click(60000, "ar", () => 0.5),
+    "ar",
+  );
+  assert.equal(
+    button.click(61000, "ar", () => 0.5),
+    "ar",
+  );
+  assert.notEqual(
+    button.click(62000, "ar", () => 0),
+    "ar",
+  );
+  button.reset("ja");
+  assert.equal(
+    button.click(63000, "ja", () => 0.5),
     "ja",
   );
 });

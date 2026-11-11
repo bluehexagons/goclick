@@ -30,7 +30,7 @@ export const english = {
   ping: "Ping",
   simPing: "Sim ping",
   pingHint:
-    "Round-trip time of the last successful click request. The border indicates pending requests or a save error.",
+    "Round-trip time of the last successful click request. The status dot indicates pending requests or a save error.",
   pingStatus: "{ping}. {status}.",
   noPing: "Ping: no click measured yet",
   coolingStatus: "Server cooldown. Clicking paused",
@@ -117,7 +117,7 @@ export const translations = {
     shareHint: "复制统计以分享",
     ping: "延迟",
     simPing: "模拟延迟",
-    pingHint: "上次成功点击请求的往返时间。边框表示待处理请求或保存错误。",
+    pingHint: "上次成功点击请求的往返时间。状态圆点表示待处理请求或保存错误。",
     pingStatus: "{ping}。{status}。",
     noPing: "延迟：尚未测量点击",
     coolingStatus: "服务器冷却中。点击已暂停",
@@ -198,7 +198,7 @@ export const translations = {
     ping: "Latencia",
     simPing: "Latencia simulada",
     pingHint:
-      "Tiempo de ida y vuelta del último clic guardado. El borde indica solicitudes pendientes o un error al guardar.",
+      "Tiempo de ida y vuelta del último clic guardado. El punto de estado indica solicitudes pendientes o un error al guardar.",
     pingStatus: "{ping}. {status}.",
     noPing: "Latencia: aún no se ha medido ningún clic",
     coolingStatus: "Pausa del servidor. Clics en pausa",
@@ -285,7 +285,8 @@ export const translations = {
     shareHint: "نسخ الإحصاءات لمشاركتها",
     ping: "زمن الاستجابة",
     simPing: "زمن استجابة محاكى",
-    pingHint: "مدة آخر طلب نقرة ناجح ذهابًا وإيابًا. يشير الإطار إلى طلبات معلّقة أو خطأ في الحفظ.",
+    pingHint:
+      "مدة آخر طلب نقرة ناجح ذهابًا وإيابًا. تشير نقطة الحالة إلى طلبات معلّقة أو خطأ في الحفظ.",
     pingStatus: "{ping}. {status}.",
     noPing: "زمن الاستجابة: لم تُقَس أي نقرة بعد",
     coolingStatus: "الخادم في فترة انتظار. النقر متوقف مؤقتًا",
@@ -366,7 +367,8 @@ export const translations = {
     shareHint: "साझा करने के लिए आँकड़े कॉपी करें",
     ping: "पिंग",
     simPing: "सिम्युलेटेड पिंग",
-    pingHint: "पिछले सफल क्लिक अनुरोध का आने-जाने का समय। बॉर्डर लंबित अनुरोध या सहेजने की त्रुटि दिखाता है।",
+    pingHint:
+      "पिछले सफल क्लिक अनुरोध का आने-जाने का समय। स्थिति बिंदु लंबित अनुरोध या सहेजने की त्रुटि दिखाता है।",
     pingStatus: "{ping}। {status}।",
     noPing: "पिंग: अभी किसी क्लिक का समय नहीं मापा गया",
     coolingStatus: "सर्वर विराम। क्लिक रुके हुए हैं",
@@ -448,7 +450,7 @@ export const translations = {
     ping: "Ping",
     simPing: "Ping simulasi",
     pingHint:
-      "Waktu pulang pergi permintaan klik terakhir yang berhasil. Bingkai menunjukkan permintaan tertunda atau kesalahan penyimpanan.",
+      "Waktu pulang pergi permintaan klik terakhir yang berhasil. Titik status menunjukkan permintaan tertunda atau kesalahan penyimpanan.",
     pingStatus: "{ping}. {status}.",
     noPing: "Ping: belum ada klik yang diukur",
     coolingStatus: "Jeda server. Klik dijeda",
@@ -535,7 +537,7 @@ export const translations = {
     ping: "Ping",
     simPing: "Ping simulado",
     pingHint:
-      "Tempo de ida e volta da última solicitação de clique bem-sucedida. A borda indica solicitações pendentes ou erro ao salvar.",
+      "Tempo de ida e volta da última solicitação de clique bem-sucedida. O ponto de status indica solicitações pendentes ou erro ao salvar.",
     pingStatus: "{ping}. {status}.",
     noPing: "Ping: nenhum clique medido ainda",
     coolingStatus: "Pausa do servidor. Cliques pausados",
@@ -623,7 +625,7 @@ export const translations = {
     ping: "Latence",
     simPing: "Latence simulée",
     pingHint:
-      "Durée aller-retour de la dernière requête de clic réussie. La bordure indique les requêtes en attente ou une erreur de sauvegarde.",
+      "Durée aller-retour de la dernière requête de clic réussie. Le point de statut indique les requêtes en attente ou une erreur de sauvegarde.",
     pingStatus: "{ping}. {status}.",
     noPing: "Latence : aucun clic mesuré",
     coolingStatus: "Pause du serveur. Clics suspendus",
@@ -711,7 +713,8 @@ export const translations = {
     shareHint: "共有用に記録をコピー",
     ping: "応答時間",
     simPing: "模擬応答時間",
-    pingHint: "最後に成功したクリック要求の往復時間。枠は処理中の要求や保存エラーを示します。",
+    pingHint:
+      "最後に成功したクリック要求の往復時間。状態を示す点は処理中の要求や保存エラーを示します。",
     pingStatus: "{ping}。{status}。",
     noPing: "応答時間：まだ計測していません",
     coolingStatus: "サーバーの待機時間中。クリックを一時停止",
@@ -798,7 +801,7 @@ export const translations = {
     ping: "Пинг",
     simPing: "Симуляция пинга",
     pingHint:
-      "Время последнего успешного запроса клика. Рамка показывает ожидающие запросы или ошибку сохранения.",
+      "Время последнего успешного запроса клика. Индикатор состояния показывает ожидающие запросы или ошибку сохранения.",
     pingStatus: "{ping}. {status}.",
     noPing: "Пинг: кликов ещё не измерено",
     coolingStatus: "Серверная пауза. Клики приостановлены",
@@ -884,7 +887,7 @@ export const translations = {
     ping: "Ping",
     simPing: "Simulierter Ping",
     pingHint:
-      "Umlaufzeit der letzten erfolgreichen Klickanfrage. Der Rand zeigt ausstehende Anfragen oder einen Speicherfehler an.",
+      "Umlaufzeit der letzten erfolgreichen Klickanfrage. Der Statuspunkt zeigt ausstehende Anfragen oder einen Speicherfehler an.",
     pingStatus: "{ping}. {status}.",
     noPing: "Ping: noch kein Klick gemessen",
     coolingStatus: "Serverpause. Klicken pausiert",

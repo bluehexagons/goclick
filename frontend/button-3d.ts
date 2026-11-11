@@ -1,6 +1,15 @@
-import { projectButtonScene } from "./button-geometry.js";
+import { projectButtonLettering, projectButtonScene } from "./button-geometry.js";
 import { required } from "./dom.js";
 import type { ButtonState, Renderer } from "./types.js";
+
+// Three stacked atlas layers: authored albedo, emission mask, then lettering.
+// Keep canvas painting and shader texel offsets tied to the same dimensions.
+const ATLAS_WIDTH = 780;
+const LAYER_HEIGHT = 432;
+const ATLAS_LAYERS = 3;
+const ATLAS_HEIGHT = LAYER_HEIGHT * ATLAS_LAYERS;
+const LABEL_FONT_SIZE = 114;
+const LABEL_MAX_WIDTH = 560;
 
 // A closed, beveled solid, rather than offset copies of the front face.
 // World units match CSS pixels; projection matches the native button's
@@ -67,6 +76,9 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     uniform float response;
     uniform float responseProgress;
     uniform vec3 responseColor;
+    uniform vec4 letteringPose;
+    uniform vec2 letteringAccent;
+    uniform float letteringLight;
     varying vec3 worldPosition;
     varying vec3 worldNormal;
     varying vec2 texCoord;
@@ -80,43 +92,71 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
         return;
       }
       vec3 n = normalize(worldNormal);
-      vec3 light = normalize(vec3(-280., -350., 500.) - worldPosition);
-      vec3 view = normalize(vec3(0., 0., 850.) - worldPosition);
+      // Scale before normalization: squared pixel distances overflow the
+      // minimum mediump range on GPUs that use 16-bit fragment arithmetic.
+      vec3 light = normalize(vec3(-.28, -.35, .5) - worldPosition * .001);
+      vec3 view = normalize(vec3(0., 0., .85) - worldPosition * .001);
       float diffuse = max(dot(n, light), 0.);
       float specular = pow(max(dot(n, normalize(light + view)), 0.), 64.);
       // A full-surface albedo and a separate authored emission mask share one
       // atlas with the lettering. Both are independent of the press material.
-      vec4 material = texture2D(surfaceAtlas, vec2(texCoord.x, texCoord.y / 3.));
-      float luminous = texture2D(surfaceAtlas, vec2(texCoord.x, (texCoord.y + 1.) / 3.)).a;
+      vec4 material = texture2D(surfaceAtlas, vec2(texCoord.x, texCoord.y / ${ATLAS_LAYERS}.));
+      float luminous = texture2D(surfaceAtlas, vec2(texCoord.x, (texCoord.y + 1.) / ${ATLAS_LAYERS}.)).a;
       vec3 copperMetal = vec3(.78, .36, .20);
       vec3 patina = vec3(.12, .26, .18);
       vec3 surface = mix(vec3(1., .77, .25), copperMetal, copper);
       surface *= .65 + .7 * material.r;
       vec3 gold = surface * (.52 + .70 * diffuse);
       vec3 reflected = reflect(-view, n);
-      float band = exp(-pow((reflected.y + reflected.x * .45 + .05) * 24., 2.));
+      // GLSL pow is undefined for negative bases, even with exponent 2.
+      float bandDistance = (reflected.y + reflected.x * .45 + .05) * 24.;
+      float band = exp(-bandDistance * bandDistance);
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
       // Etched channels glow locally; the metal receives no blanket color wash.
-      float pulse = .8 + .2 * exp(-pow((texCoord.x - responseProgress) * 5., 2.));
+      float pulseDistance = (texCoord.x - responseProgress) * 5.;
+      float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
       float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse);
       vec3 lightColor = response > 0. ? responseColor : vec3(.22, .72, .46);
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
       gold += lightColor * luminous * energy * .2 * frontFace;
-      vec2 textCoord = vec2(texCoord.x, (texCoord.y + 2.) / 3.);
+      // Move the inscription inside the face, independently of the solid.
+      vec2 labelUV = (texCoord - vec2(.5, .5 + letteringPose.z)) / letteringPose.xy + .5;
+      labelUV = clamp(labelUV, vec2(0.), vec2(1.));
+      vec2 textCoord = vec2(labelUV.x, (labelUV.y + 2.) / ${ATLAS_LAYERS}.);
       vec4 text = texture2D(surfaceAtlas, textCoord);
-      // The lettering is chemically darkened metal with a fine recessed edge,
-      // so its reflections move with the face instead of looking like flat ink.
-      vec3 inscription = mix(surface * .32, vec3(.055, .19, .12), copper);
-      inscription *= .72 + .28 * diffuse;
-      inscription += mix(vec3(.28, .19, .065), patina * .38, copper) * (specular * .38 + band * .24);
-      float above = texture2D(surfaceAtlas, textCoord - vec2(1. / 780., 1. / 1296.)).a;
-      float below = texture2D(surfaceAtlas, textCoord + vec2(1. / 780., 1. / 1296.)).a;
-      float engraving = below - above;
+      // Sample the mask's slope for a raised bevel, plus a short lower-right
+      // extrusion. Relief remains visible at rest and follows the scene light.
+      float left = texture2D(surfaceAtlas, textCoord - vec2(2. / ${ATLAS_WIDTH}., 0.)).a;
+      float right = texture2D(surfaceAtlas, textCoord + vec2(2. / ${ATLAS_WIDTH}., 0.)).a;
+      float above = texture2D(surfaceAtlas, textCoord - vec2(0., 2. / ${ATLAS_HEIGHT}.)).a;
+      float below = texture2D(surfaceAtlas, textCoord + vec2(0., 2. / ${ATLAS_HEIGHT}.)).a;
+      float extrusion = texture2D(surfaceAtlas, textCoord - vec2(4. / ${ATLAS_WIDTH}., 4. / ${ATLAS_HEIGHT}.)).a;
+      vec3 bevelNormal = normalize(n + vec3((left - right) * 1.8, (above - below) * 1.8, 0.));
+      float bevelLight = max(dot(bevelNormal, light), 0.);
+      float bevelGlint = pow(max(dot(bevelNormal, normalize(light + view)), 0.), 24.);
+      vec3 inscription = mix(surface * vec3(.36, .30, .22), patina * .62, copper);
+      inscription *= .55 + .65 * bevelLight;
+      inscription += vec3(.95, .75, .35) * bevelGlint * .32;
+      inscription = mix(inscription, lightColor * .55, letteringPose.w * .7);
+      // A soft, moving reflection rather than a white patch across the word.
+      float sheenDistance = (labelUV.x - letteringAccent.y) * 5.;
+      float sheen = exp(-sheenDistance * sheenDistance);
+      inscription += vec3(.55, .42, .2) * sheen * letteringAccent.x * .38;
+      // The core emits light on press, independently of the dark metal's
+      // diffuse lighting. A little bevel shading keeps the illuminated relief.
+      vec3 emissionColor = mix(vec3(1., .95, .72), mix(vec3(1.), lightColor, .3), min(response, 1.));
+      inscription = mix(inscription, emissionColor * (.83 + .17 * bevelLight), letteringLight);
+      float rim = max(max(left, right), max(above, below)) * (1. - text.a);
+      gold = mix(gold, vec3(.14, .085, .025), extrusion * (1. - text.a) * .9 * frontFace);
+      gold = mix(gold, vec3(.32, .21, .07), rim * .65 * frontFace);
+      gold += emissionColor * rim * letteringLight * .22 * frontFace;
       gold = mix(gold, inscription, text.a * frontFace);
-      gold += vec3(1., .84, .49) * max(engraving, 0.) * .25 * frontFace;
-      gold -= vec3(.14, .10, .04) * max(-engraving, 0.) * frontFace;
+      // Upper-left edge catches light, with a darker lower-right shoulder.
+      float edge = (below - above + right - left) * .5;
+      gold += vec3(.95, .77, .39) * max(edge, 0.) * .42 * text.a * frontFace;
+      gold -= vec3(.12, .09, .035) * max(-edge, 0.) * text.a * frontFace;
       gl_FragColor = vec4(gold, 1.);
     }`;
 
@@ -148,6 +188,9 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     "response",
     "responseProgress",
     "responseColor",
+    "letteringPose",
+    "letteringAccent",
+    "letteringLight",
   ] as const;
   let program: WebGLProgram | null = null;
   let uniforms: Record<(typeof uniformNames)[number], WebGLUniformLocation | null>;
@@ -226,10 +269,10 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     vertex(point, [0, 0, 1]);
   }
   const label = document.createElement("canvas");
-  label.width = 780;
+  label.width = ATLAS_WIDTH;
   // Albedo, emission mask, then lettering. Neutral metal and an unlit mask
   // keep input and rendering usable before either image finishes loading.
-  label.height = 1296;
+  label.height = ATLAS_HEIGHT;
   const context = label.getContext("2d");
   if (!context) return { draw() {} };
   const labelContext: CanvasRenderingContext2D = context;
@@ -238,22 +281,23 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
   let paintedText = "";
   let paintedDirection: CanvasDirection = "ltr";
   function paintAtlas() {
-    labelContext.clearRect(0, 0, 780, 1296);
+    labelContext.clearRect(0, 0, ATLAS_WIDTH, ATLAS_HEIGHT);
     labelContext.fillStyle = "#808080";
-    labelContext.fillRect(0, 0, 780, 432);
-    if (layers[0]) labelContext.drawImage(layers[0], 0, 0, 780, 432);
-    if (layers[1]) labelContext.drawImage(layers[1], 0, 432, 780, 432);
+    labelContext.fillRect(0, 0, ATLAS_WIDTH, LAYER_HEIGHT);
+    if (layers[0]) labelContext.drawImage(layers[0], 0, 0, ATLAS_WIDTH, LAYER_HEIGHT);
+    if (layers[1]) labelContext.drawImage(layers[1], 0, LAYER_HEIGHT, ATLAS_WIDTH, LAYER_HEIGHT);
     paintedText = lettering.textContent;
     paintedDirection = lettering.dir === "rtl" ? "rtl" : "ltr";
     labelContext.direction = paintedDirection;
-    labelContext.font = "700 114px system-ui, sans-serif";
+    labelContext.font = `700 ${LABEL_FONT_SIZE}px system-ui, sans-serif`;
     const width = labelContext.measureText(paintedText).width;
     // Keep long translations inside the flat face rather than the bevel.
-    if (width > 560) labelContext.font = `700 ${(114 * 560) / width}px system-ui, sans-serif`;
+    if (width > LABEL_MAX_WIDTH)
+      labelContext.font = `700 ${(LABEL_FONT_SIZE * LABEL_MAX_WIDTH) / width}px system-ui, sans-serif`;
     labelContext.textAlign = "center";
     labelContext.textBaseline = "middle";
     labelContext.fillStyle = "#fff";
-    labelContext.fillText(paintedText, 390, 1086);
+    labelContext.fillText(paintedText, ATLAS_WIDTH / 2, LAYER_HEIGHT * 2.5 + 6);
   }
   paintAtlas();
   let atlasTexture: WebGLTexture | null = null;
@@ -380,6 +424,16 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     gl.uniform1f(uniforms.response, state.response || 0);
     gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
     gl.uniform3f(uniforms.responseColor, ...(state.responseColor || [0.38, 0.84, 0.8]));
+    const letterPose = projectButtonLettering(state);
+    gl.uniform4f(
+      uniforms.letteringPose,
+      letterPose.scaleX,
+      letterPose.scaleY,
+      letterPose.shiftY,
+      letterPose.ink,
+    );
+    gl.uniform2f(uniforms.letteringAccent, letterPose.charge, letterPose.sheen);
+    gl.uniform1f(uniforms.letteringLight, letterPose.light);
     gl.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
     gl.uniform3f(uniforms.translation, 0, 0, 0);
     gl.uniform1f(uniforms.scale, 1);

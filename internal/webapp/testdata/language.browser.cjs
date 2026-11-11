@@ -60,6 +60,10 @@ async function checkLanguage(page, baseURL) {
     }
   }
   await selector.selectOption("ar");
+  await page.evaluate(() => {
+    window.originalRandom = Math.random;
+    Math.random = () => 0.99;
+  });
   await page.locator("#click-button").focus();
   await page.keyboard.press("Space");
   await page.waitForFunction(
@@ -68,7 +72,6 @@ async function checkLanguage(page, baseURL) {
   );
   // Force the surprise branch while keeping the scoring/input path unchanged.
   await page.evaluate(() => {
-    window.originalRandom = Math.random;
     Math.random = () => 0;
   });
   await page.keyboard.press("Enter");
@@ -81,12 +84,18 @@ async function checkLanguage(page, baseURL) {
     (await page.locator("#click-button").getAttribute("lang")) === "ar",
     "Accessible action lost its UI language",
   );
+  // Even another forced surprise must restore the chosen language on this click.
+  await page.keyboard.press("Enter");
+  ensure(
+    (await page.locator(".game .button-label").getAttribute("lang")) === "ar",
+    "The next click did not restore the selected language",
+  );
   await page.evaluate(() => {
     Math.random = window.originalRandom;
   });
   await page.waitForFunction(
     () =>
-      document.querySelector("#click-count").textContent === new Intl.NumberFormat("ar").format(2),
+      document.querySelector("#click-count").textContent === new Intl.NumberFormat("ar").format(3),
   );
   await page.locator("#share-stats").click();
   await page.locator("#share-dialog").waitFor({ state: "visible" });
@@ -104,7 +113,7 @@ async function checkLanguage(page, baseURL) {
   await page.locator("#game-view").waitFor({ state: "visible" });
   ensure((await selector.inputValue()) === "ar", "Language did not survive reload");
   ensure(
-    (await page.locator("#click-count").textContent()) === new Intl.NumberFormat("ar").format(2),
+    (await page.locator("#click-count").textContent()) === new Intl.NumberFormat("ar").format(3),
     "Save changed on reload",
   );
   ensure(requests.length === 0, "Language changes or local play sent account requests");
@@ -112,7 +121,7 @@ async function checkLanguage(page, baseURL) {
   return {
     languages: codes.length,
     widths: [1280, 320],
-    localClicks: 2,
+    localClicks: 3,
     accountRequests: requests.length,
     errors,
   };

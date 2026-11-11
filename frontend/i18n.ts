@@ -131,6 +131,12 @@ export function createButtonLanguage(initial: Language) {
         if (gap < 350) heat = Math.min(1, heat + 0.12);
       }
       previous = now;
+      // A surprise lasts for one click interval. Restore the selected language
+      // before allowing another surprise on a later click.
+      if (current !== selected) {
+        current = selected;
+        return current;
+      }
       if (random() < 0.02 + 0.06 * heat) {
         const choices = languages.filter((item) => item.code !== current && item.code !== selected);
         current =
