@@ -36,7 +36,7 @@ Documentation:
 
 ## Run it
 
-Go 1.27.3 or newer is required.
+Go 1.27.4 or newer is required.
 
 ```bash
 go run ./cmd/server
