@@ -255,7 +255,13 @@ isolated browser checks, and SVG material authoring. The regular checks require
 no browser installation. Keep development/test databases disposable; preserve
 existing `data/`, `backups/`, and SQLite sidecars.
 
-CI runs these checks and a deployment smoke test. Dependabot checks Go modules,
+CI runs these checks, a deployment smoke test, and a container build/runtime check.
+Run the container check locally with `bash scripts/smoke-container.sh` (Docker),
+or `CONTAINER_ENGINE=podman bash scripts/smoke-container.sh`. It uses disposable
+storage and checks nonroot startup with a read-only root filesystem, public
+assets, authentication guards, and graceful shutdown.
+
+Dependabot checks Go modules,
 frontend tooling, GitHub Actions, and container images weekly. Keep
 `modernc.org/libc` at the version required by the SQLite driver's `go.mod` when
 updating that driver.

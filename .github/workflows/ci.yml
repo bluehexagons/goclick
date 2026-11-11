@@ -43,7 +43,10 @@ jobs:
           smoke_dir="$(mktemp -d)"
           server_pid=""
           cleanup() {
-            if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi
+            if [[ -n "$server_pid" ]]; then
+              kill "$server_pid" 2>/dev/null || true
+              wait "$server_pid" 2>/dev/null || true
+            fi
             rm -rf "$smoke_dir"
           }
           trap cleanup EXIT
@@ -65,3 +68,11 @@ jobs:
           done
           cat "$smoke_dir/server.log"
           exit 1
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and smoke-test the published container
+        run: bash scripts/smoke-container.sh
