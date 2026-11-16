@@ -979,13 +979,27 @@
   var generation = 0;
   var voices = /* @__PURE__ */ new Set();
   var maxVoices = 8;
-  function stop() {
+  var maxUnlockDelay = 150;
+  function cancelPending() {
     generation++;
-    for (const voice of voices) {
-      voice.stop();
-      voice.disconnect();
+  }
+  function removeVoice(voice, stop2 = false) {
+    voices.delete(voice);
+    voice.onended = null;
+    if (stop2) {
+      try {
+        voice.stop();
+      } catch {
+      }
     }
-    voices.clear();
+    try {
+      voice.disconnect();
+    } catch {
+    }
+  }
+  function stop() {
+    cancelPending();
+    for (const voice of voices) removeVoice(voice, true);
   }
   function synthesize(audio, kind) {
     const profile = profiles[kind];
@@ -1008,19 +1022,19 @@
     }
     if (voices.size >= maxVoices) {
       const oldest = voices.values().next().value;
-      oldest.stop();
-      oldest.disconnect();
-      voices.delete(oldest);
+      removeVoice(oldest, true);
     }
     const voice = audio.createBufferSource();
-    voice.buffer = buffer;
-    voice.connect(output);
-    voice.onended = () => {
-      voices.delete(voice);
-      voice.disconnect();
-    };
-    voices.add(voice);
-    voice.start();
+    try {
+      voice.buffer = buffer;
+      voice.connect(output);
+      voice.onended = () => removeVoice(voice);
+      voices.add(voice);
+      voice.start();
+    } catch (error) {
+      removeVoice(voice, true);
+      throw error;
+    }
   }
   function play(kind) {
     if (!enabled || document.hidden) return;
@@ -1029,16 +1043,25 @@
     try {
       if (!context || context.state === "closed") {
         if (!gesture || typeof window.AudioContext !== "function") return;
-        context = new window.AudioContext({ latencyHint: "interactive" });
-        output = context.createGain();
-        output.gain.value = 0.12;
-        output.connect(context.destination);
+        const next = new window.AudioContext({ latencyHint: "interactive" });
+        try {
+          const gain = next.createGain();
+          gain.gain.value = 0.12;
+          gain.connect(next.destination);
+          output = gain;
+          context = next;
+        } catch (error) {
+          void next.close().catch(() => {
+          });
+          throw error;
+        }
       }
       const audio = context;
       if (audio.state === "running") synthesize(audio, kind);
       else if (gesture) {
+        const requestedAt = performance.now();
         void audio.resume().then(() => {
-          if (enabled && !document.hidden && current === generation && audio.state === "running")
+          if (enabled && !document.hidden && current === generation && audio.state === "running" && performance.now() - requestedAt <= maxUnlockDelay)
             synthesize(audio, kind);
         }).catch(() => {
         });
@@ -1051,6 +1074,7 @@
   });
   var clickSound = {
     play,
+    cancelPending,
     setEnabled(value) {
       if (enabled === value) return;
       enabled = value;
@@ -1212,6 +1236,7 @@
       }
       animate2();
     }, release2 = function(cancelled = false) {
+      if (cancelled && button.id === "click-button") clickSound.cancelPending();
       activeKey = null;
       window.clearTimeout(holdTimer);
       const wasPressed = phase !== "idle";
@@ -1325,6 +1350,8 @@
       const rect = button.getBoundingClientRect();
       const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
       const point = pointers.get(event.pointerId);
+      if ((cancelled || !inside) && pointers.size > 1 && button.id === "click-button")
+        clickSound.cancelPending();
       pointers.delete(event.pointerId);
       if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
       if (!pointers.size) release2(cancelled || !inside);

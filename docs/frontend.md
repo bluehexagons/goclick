@@ -60,6 +60,9 @@ follow the simulated ping timing. Cancelled/outside releases, repeated keydowns,
 and suppressed native clicks produce no release sound. Audio initializes only
 on an enabled press/release, never on page load or a network response. Muting
 or hiding the page stops active voices and discards sounds awaiting audio unlock.
+Cancelling a gesture or losing focus also discards its pending audio; an unlock
+delayed more than 150 ms never replays the old sound. Partial audio setup and
+playback failures clean up their resources so a later gesture can retry.
 Eight bounded voices keep rapid multi-touch play from building an audio queue.
 Unsupported or blocked audio leaves clicking usable. Motion preferences do not
 mute sound.

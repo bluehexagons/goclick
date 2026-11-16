@@ -115,6 +115,7 @@ function harness(reducedMotion = true, withPower = false) {
   let frameCallback = null,
     now = 0;
   const sounds = [];
+  let soundCancellations = 0;
   const runtime = frontend(
     {
       document,
@@ -135,7 +136,14 @@ function harness(reducedMotion = true, withPower = false) {
     },
     {
       preferences: { motionPreference: { matches: reducedMotion, addEventListener() {} } },
-      sound: { clickSound: { play: (kind) => sounds.push(kind) } },
+      sound: {
+        clickSound: {
+          play: (kind) => sounds.push(kind),
+          cancelPending: () => {
+            soundCancellations++;
+          },
+        },
+      },
     },
   );
   const controller = runtime.load("button").tactileButtons.get(button);
@@ -182,6 +190,7 @@ function harness(reducedMotion = true, withPower = false) {
     hasFrame: () => !!frameCallback,
     clicks,
     sounds,
+    soundCancellations: () => soundCancellations,
     pointer,
     window,
     selectionCleared: () => clearedSelections,
@@ -212,11 +221,14 @@ test("cancelling one finger keeps the other held; outside releases never count",
   h.pointer("pointerdown", 1);
   h.pointer("pointerdown", 2);
   h.pointer("pointercancel", 2);
+  assert.ok(h.soundCancellations() > 0);
+  const cancelled = h.soundCancellations();
   assert.equal(h.stage.classes.has("is-pressed"), true);
   h.pointer("pointerup", 1, { clientX: 500 });
   assert.equal(h.clicks.length, 0);
   assert.equal(h.stage.classes.has("is-pressed"), false);
   assert.deepEqual(h.sounds, ["press", "press"]);
+  assert.ok(h.soundCancellations() > cancelled);
 });
 
 test("mouse release plus its native click counts only once", () => {
@@ -254,6 +266,7 @@ test("losing focus cancels every captured pointer without ghost clicks", () => {
   assert.equal(h.clicks.length, 0);
   assert.equal(h.button.captures.size, 0);
   assert.equal(h.stage.classes.has("is-pressed"), false);
+  assert.ok(h.soundCancellations() > 0);
 });
 
 test("press-down compresses immediately before any animation frame or saved click", () => {

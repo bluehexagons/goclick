@@ -242,6 +242,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     animate();
   }
   function release(cancelled = false) {
+    if (cancelled && button.id === "click-button") clickSound.cancelPending();
     activeKey = null;
     window.clearTimeout(holdTimer);
     const wasPressed = phase !== "idle";
@@ -438,6 +439,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       event.clientY >= rect.top &&
       event.clientY <= rect.bottom;
     const point = pointers.get(event.pointerId)!;
+    // A cancelled finger can be independent of another one still holding the
+    // button. Neither cancellation nor an outside release may replay its press
+    // after a delayed audio unlock.
+    if ((cancelled || !inside) && pointers.size > 1 && button.id === "click-button")
+      clickSound.cancelPending();
     pointers.delete(event.pointerId);
     if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
     if (!pointers.size) release(cancelled || !inside);

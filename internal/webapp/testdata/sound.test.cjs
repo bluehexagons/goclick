@@ -11,6 +11,7 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
     sources = [];
   let resume;
   let resumes = 0;
+  let now = 0;
   const pendingResumes = [];
   class AudioContext {
     constructor() {
@@ -20,7 +21,13 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
       contexts.push(this);
     }
     createGain() {
-      return (this.output = { gain: { value: 1 }, connect() {} });
+      if (fail === "gain") throw new Error("Gain unavailable");
+      return (this.output = {
+        gain: { value: 1 },
+        connect() {
+          if (fail === "output-connect") throw new Error("Output unavailable");
+        },
+      });
     }
     createBuffer(channels, length, rate) {
       if (fail === "buffer") throw new Error("Allocation failed");
@@ -33,14 +40,19 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
     }
     createBufferSource() {
       const source = {
-        connect() {},
+        connect() {
+          if (fail === "source-connect") throw new Error("Connection unavailable");
+        },
         disconnect() {
           this.disconnected = true;
         },
         start() {
+          if (fail === "start") throw new Error("Source unavailable");
           this.started = true;
         },
         stop() {
+          if (fail === "stop" || (fail === "start" && !this.started))
+            throw new Error("Source cannot stop");
           this.stopped = true;
         },
       };
@@ -58,6 +70,10 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
         };
       });
     }
+    close() {
+      this.state = "closed";
+      return Promise.resolve();
+    }
   }
   const document = {
     hidden: false,
@@ -66,6 +82,7 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
   const sound = frontend({
     document,
     window: { AudioContext: unavailable ? undefined : AudioContext },
+    performance: { now: () => now },
   }).load("sound").clickSound;
   return {
     sound,
@@ -74,6 +91,12 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
     sources,
     resume: () => resume(),
     resumes: () => resumes,
+    advance: (milliseconds) => {
+      now += milliseconds;
+    },
+    fail: (value) => {
+      fail = value;
+    },
     hide() {
       document.hidden = true;
       events.get("visibilitychange")();
@@ -193,4 +216,64 @@ test("missing, failed and blocked audio remain harmless and retryable", async ()
     assert.equal(h.sources.length, 0);
     if (options.fail === "resume") assert.equal(h.resumes(), 2);
   }
+});
+
+test("a delayed unlock never replays an old gesture", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  h.advance(2000);
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 0);
+  h.sound.play("release");
+  assert.equal(h.sources.length, 1);
+});
+
+test("cancelled gestures discard pending audio without cutting off a saved-response cue", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  h.sound.cancelPending();
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 0);
+  h.sound.play("saved");
+  h.sound.cancelPending();
+  assert.equal(h.sources.length, 1);
+  assert.equal(h.sources[0].stopped, undefined);
+});
+
+test("a newer running gesture supersedes a still-pending unlock callback", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  h.resume();
+  h.sound.play("release");
+  await settle();
+  assert.equal(h.sources.length, 1);
+});
+
+for (const failure of ["gain", "output-connect", "source-connect", "start"])
+  test(`partial ${failure} failure cleans up and the next gesture retries`, () => {
+    const h = harness({ fail: failure });
+    h.sound.setEnabled(true);
+    assert.doesNotThrow(() => h.sound.play("press"));
+    if (failure === "gain" || failure === "output-connect")
+      assert.equal(h.contexts[0].state, "closed");
+    else assert.equal(h.sources[0].disconnected, true);
+    assert.doesNotThrow(() => h.sound.setEnabled(false));
+    h.fail("");
+    h.sound.setEnabled(true);
+    h.sound.play("release");
+    assert.equal(h.sources.at(-1).started, true);
+  });
+
+test("a failed source stop cannot interrupt muting or leave the other voices connected", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  for (let i = 0; i < 3; i++) h.sound.play("press");
+  h.fail("stop");
+  assert.doesNotThrow(() => h.sound.setEnabled(false));
+  assert.ok(h.sources.every((source) => source.disconnected));
 });
