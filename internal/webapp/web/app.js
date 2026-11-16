@@ -1153,6 +1153,7 @@
   var enabled = false;
   var context = null;
   var output = null;
+  var suspending = null;
   var generation = 0;
   var voices = /* @__PURE__ */ new Set();
   var previewVoices = /* @__PURE__ */ new Set();
@@ -1182,11 +1183,43 @@
     } catch {
     }
   }
-  function stop() {
-    cancelPending();
+  function clearVoices() {
     responseAt = -Infinity;
     responseWasFailure = false;
     for (const voice of voices) removeVoice(voice, true);
+  }
+  function stop() {
+    cancelPending();
+    clearVoices();
+  }
+  function discardContext() {
+    stop();
+    if (context) context.onstatechange = null;
+    context = null;
+    suspending = null;
+    try {
+      output?.disconnect();
+    } catch {
+    }
+    output = null;
+  }
+  function suspend() {
+    stop();
+    if (!context || context.state === "closed" || suspending) return;
+    try {
+      const pending = context.suspend();
+      suspending = pending;
+      const settled = () => {
+        if (suspending === pending) suspending = null;
+      };
+      void pending.then(settled, settled);
+    } catch {
+    }
+  }
+  function resume(audio) {
+    return audio.resume().then(() => {
+      if (audio === context && (!enabled || document.hidden)) suspend();
+    });
   }
   function synthesize(audio, kind, offset = 0, preview = false) {
     const variation = motion.sample(performance.now(), kind === "press");
@@ -1211,7 +1244,8 @@
     }
   }
   function audioContext(allowCreate) {
-    if (!context || context.state === "closed") {
+    if (context?.state === "closed") discardContext();
+    if (!context) {
       if (!allowCreate || typeof window.AudioContext !== "function") return null;
       const next = new window.AudioContext({ latencyHint: "interactive" });
       try {
@@ -1220,6 +1254,13 @@
         gain.connect(next.destination);
         output = gain;
         context = next;
+        next.onstatechange = () => {
+          if (context !== next) return;
+          if (next.state === "closed") discardContext();
+          else if (next.state !== "running") {
+            clearVoices();
+          } else if (!enabled || document.hidden) suspend();
+        };
       } catch (error) {
         void next.close().catch(() => {
         });
@@ -1232,27 +1273,27 @@
     if (!enabled || document.hidden) return;
     try {
       const audio = audioContext(true);
-      if (audio && audio.state !== "running")
-        void audio.resume().catch(() => {
+      if (audio && (audio.state !== "running" || suspending))
+        void resume(audio).catch(() => {
         });
     } catch {
     }
   }
   function withAudio(gesture, emit, preview = false) {
     if (!enabled || document.hidden) return;
-    if (gesture) {
-      cancelPending();
-      previewPending = preview;
-    }
-    const current = generation;
     try {
       const audio = audioContext(gesture);
       if (!audio) return;
-      if (audio.state === "running") emit(audio);
+      if (gesture) {
+        cancelPending();
+        previewPending = preview;
+      }
+      const current = generation;
+      if (audio.state === "running" && !suspending) emit(audio);
       else if (gesture) {
         const requestedAt = performance.now();
-        void audio.resume().then(() => {
-          if (enabled && !document.hidden && current === generation && audio.state === "running" && performance.now() - requestedAt <= maxUnlockDelay)
+        void resume(audio).then(() => {
+          if (enabled && !document.hidden && current === generation && audio === context && audio.state === "running" && performance.now() - requestedAt <= maxUnlockDelay)
             emit(audio);
         }).catch(() => {
         });
@@ -1261,7 +1302,7 @@
     }
   }
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stop();
+    if (document.hidden) suspend();
   });
   var clickSound = {
     play(kind) {
@@ -1303,7 +1344,7 @@
     setEnabled(value) {
       if (enabled === value) return;
       enabled = value;
-      if (!enabled) stop();
+      if (!enabled) suspend();
     }
   };
 

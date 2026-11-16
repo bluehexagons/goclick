@@ -80,7 +80,14 @@ and suppressed native clicks produce no release sound. Explicitly enabling sound
 prepares the audio device silently, so startup does not delay the first game
 press. A remembered preference stays allocation-free until a press/release;
 page load and network responses never initialize audio. Muting or hiding the
-page stops active voices and discards sounds awaiting audio unlock.
+page stops active voices, discards sounds awaiting audio unlock, and requests
+suspension of the existing audio context. Returning to the page does not resume
+the device automatically; explicit opt-in, preview, or a fresh press/release
+resumes it. A quick toggle during pending suspension still issues resume within
+the user gesture, and a late unlock while muted/hidden requests suspension again.
+Device suspension or interruption discards active and scheduled voices so a
+frozen audio clock cannot replay stale sounds on recovery. Closed contexts
+release their graph; only a new gesture or opt-in creates a replacement.
 Cancelling a gesture or losing focus also discards its pending audio; an unlock
 delayed more than 150 ms never replays the old sound. Partial audio setup and
 playback failures clean up their resources so a later gesture can retry.

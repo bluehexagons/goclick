@@ -4,21 +4,29 @@ const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
-function harness({ state = "running", sampleRate = 48000, unavailable = false, fail = "" } = {}) {
+function harness({
+  state = "running",
+  sampleRate = 48000,
+  unavailable = false,
+  fail = "",
+  delayedSuspend = false,
+} = {}) {
   const events = new Map(),
     contexts = [],
     buffers = [],
     sources = [];
   let resume;
   let resumes = 0;
+  let suspends = 0;
   let now = 0;
-  const pendingResumes = [];
+  const pendingSuspends = [];
   class AudioContext {
     constructor() {
       if (fail === "constructor") throw new Error("Audio unavailable");
       this.state = state;
       this.sampleRate = sampleRate;
       this.currentTime = 10;
+      this.pendingResumes = [];
       contexts.push(this);
     }
     createGain() {
@@ -27,6 +35,9 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
         gain: { value: 1 },
         connect() {
           if (fail === "output-connect") throw new Error("Output unavailable");
+        },
+        disconnect() {
+          this.disconnected = true;
         },
       });
     }
@@ -65,12 +76,32 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
       resumes++;
       if (fail === "resume") return Promise.reject(new Error("Blocked"));
       return new Promise((resolve) => {
-        pendingResumes.push(resolve);
+        this.pendingResumes.push(resolve);
         resume = () => {
           this.state = "running";
-          for (const finish of pendingResumes.splice(0)) finish();
+          this.onstatechange?.();
+          for (const finish of this.pendingResumes.splice(0)) finish();
         };
       });
+    }
+    suspend() {
+      suspends++;
+      if (fail === "suspend-throw") throw new Error("Suspend unavailable");
+      if (fail === "suspend") return Promise.reject(new Error("Suspend blocked"));
+      const finish = () => {
+        this.state = "suspended";
+        this.onstatechange?.();
+      };
+      if (!delayedSuspend) {
+        finish();
+        return Promise.resolve();
+      }
+      return new Promise((resolve) =>
+        pendingSuspends.push(() => {
+          finish();
+          resolve();
+        }),
+      );
     }
     close() {
       this.state = "closed";
@@ -92,7 +123,14 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
     buffers,
     sources,
     resume: () => resume(),
+    captureResume: () => resume,
     resumes: () => resumes,
+    suspends: () => suspends,
+    suspend: () => pendingSuspends.shift()(),
+    transition(value, audio = contexts.at(-1)) {
+      audio.state = value;
+      audio.onstatechange?.();
+    },
     advance: (milliseconds) => {
       now += milliseconds;
     },
@@ -301,7 +339,7 @@ test("a newer running gesture supersedes a still-pending unlock callback", async
 });
 
 for (const failure of ["gain", "output-connect", "source-connect", "start"])
-  test(`partial ${failure} failure cleans up and the next gesture retries`, () => {
+  test(`partial ${failure} failure cleans up and the next gesture retries`, async () => {
     const h = harness({ fail: failure });
     h.sound.setEnabled(true);
     assert.doesNotThrow(() => h.sound.play("press"));
@@ -312,6 +350,8 @@ for (const failure of ["gain", "output-connect", "source-connect", "start"])
     h.fail("");
     h.sound.setEnabled(true);
     h.sound.play("release");
+    if (h.resumes()) h.resume();
+    await settle();
     assert.equal(h.sources.at(-1).started, true);
   });
 
@@ -458,7 +498,7 @@ test("failure cues take priority over success bursts and briefly hold back succe
   assert.equal(h.sources.length, 4);
 });
 
-test("a muted, hidden, or failed response does not consume the next audible reply", () => {
+test("a muted, hidden, or failed response does not consume the next audible reply", async () => {
   const h = harness();
   h.sound.setEnabled(true);
   h.sound.prepare();
@@ -466,11 +506,17 @@ test("a muted, hidden, or failed response does not consume the next audible repl
   h.sound.setEnabled(false);
   h.sound.play("saved");
   h.sound.setEnabled(true);
+  h.sound.prepare();
+  h.resume();
+  await settle();
   h.sound.play("saved");
   assert.equal(h.sources.length, 2);
   h.hide();
   h.sound.play("saved");
   h.show();
+  h.sound.prepare();
+  h.resume();
+  await settle();
   h.sound.play("saved");
   assert.equal(h.sources.length, 3);
   h.advance(80);
@@ -478,5 +524,179 @@ test("a muted, hidden, or failed response does not consume the next audible repl
   h.sound.play("saved");
   h.fail("");
   h.sound.play("saved");
+  assert.equal(h.sources.length, 4);
+});
+
+for (const action of ["mute", "hide"])
+  test(`${action} suspends an existing device; returning waits for a fresh gesture`, async () => {
+    const h = harness();
+    h.sound.setEnabled(true);
+    h.sound.play("press");
+    if (action === "mute") h.sound.setEnabled(false);
+    else h.hide();
+    await settle();
+    assert.equal(h.contexts[0].state, "suspended");
+    assert.equal(h.suspends(), 1);
+    assert.ok(h.sources[0].stopped && h.sources[0].disconnected);
+    if (action === "mute") h.sound.setEnabled(true);
+    else h.show();
+    h.sound.play("saved");
+    assert.equal(h.resumes(), 0);
+    assert.equal(h.sources.length, 1);
+    h.sound.play("release");
+    h.resume();
+    await settle();
+    assert.equal(h.contexts.length, 1);
+    assert.equal(h.sources.length, 2);
+  });
+
+test("a quick opt-in during pending suspension resumes inside the gesture", async () => {
+  const h = harness({ delayedSuspend: true });
+  h.sound.setEnabled(true);
+  h.sound.prepare();
+  h.sound.setEnabled(false);
+  h.sound.setEnabled(true);
+  h.sound.play("saved");
+  assert.equal(h.resumes(), 0);
+  h.sound.prepare();
+  assert.equal(
+    h.resumes(),
+    1,
+    "A pending suspend needs resume even while state still says running",
+  );
+  h.suspend();
+  await settle();
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 0);
+  h.sound.play("press");
+  assert.equal(h.sources.length, 1);
+});
+
+test("suspension completing after a fresh press does not cancel that press's unlock", async () => {
+  const h = harness({ delayedSuspend: true });
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  h.hide();
+  h.show();
+  h.sound.play("press");
+  assert.equal(h.sources.length, 1);
+  h.suspend();
+  await settle();
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 2);
+});
+
+for (const state of ["suspended", "interrupted"])
+  test(`device ${state} discards active and scheduled sounds before recovery`, async () => {
+    const h = harness();
+    h.sound.setEnabled(true);
+    h.sound.preview();
+    const preview = h.sources.slice();
+    h.transition(state);
+    assert.ok(preview.every((voice) => voice.stopped && voice.disconnected));
+    h.sound.play("saved");
+    assert.equal(h.sources.length, 3);
+    assert.equal(h.resumes(), 0);
+    h.sound.play("press");
+    h.resume();
+    await settle();
+    assert.equal(h.sources.length, 4);
+  });
+
+test("a closed device releases its graph and only a gesture creates a replacement", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  const old = h.contexts[0];
+  const oldChange = old.onstatechange;
+  h.transition("closed");
+  assert.ok(h.sources.every((voice) => voice.stopped && voice.disconnected));
+  assert.equal(old.output.disconnected, true);
+  h.sound.play("saved");
+  assert.equal(h.contexts.length, 1);
+  h.sound.play("press");
+  assert.equal(h.contexts.length, 2);
+  oldChange();
+  assert.equal(h.sources.at(-1).stopped, undefined);
+});
+
+test("a late unlock for a closed context cannot sound through its replacement", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  const oldResume = h.captureResume();
+  const old = h.contexts[0];
+  h.transition("closed");
+  h.sound.play("press");
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 1);
+  assert.equal(old.state, "closed");
+  oldResume();
+  await settle();
+  assert.equal(h.sources.length, 1);
+});
+
+test("muting and hiding before first use never allocate an audio device", () => {
+  const h = harness();
+  h.hide();
+  h.show();
+  h.sound.setEnabled(true);
+  h.sound.setEnabled(false);
+  assert.equal(h.contexts.length, 0);
+  assert.equal(h.suspends(), 0);
+});
+
+for (const action of ["mute", "hide"])
+  test(`a late preparation resume after ${action} suspends the device again`, async () => {
+    const h = harness({ state: "suspended" });
+    h.sound.setEnabled(true);
+    h.sound.prepare();
+    if (action === "mute") h.sound.setEnabled(false);
+    else h.hide();
+    await settle();
+    h.resume();
+    await settle();
+    assert.equal(h.contexts[0].state, "suspended");
+    assert.ok(h.suspends() >= 2);
+    assert.equal(h.sources.length, 0);
+    if (action === "mute") h.sound.setEnabled(true);
+    else h.show();
+    h.sound.prepare();
+    h.resume();
+    await settle();
+    h.sound.play("press");
+    assert.equal(h.sources.length, 1);
+  });
+
+test("failed suspension still stops sounds and leaves controls and later playback usable", async () => {
+  for (const failure of ["suspend", "suspend-throw"]) {
+    const h = harness();
+    h.sound.setEnabled(true);
+    h.sound.play("press");
+    h.fail(failure);
+    assert.doesNotThrow(() => h.sound.setEnabled(false));
+    await settle();
+    assert.ok(h.sources[0].stopped && h.sources[0].disconnected);
+    h.fail("");
+    h.sound.setEnabled(true);
+    h.sound.play("press");
+    assert.equal(h.sources.length, 2);
+  }
+});
+
+test("closed-context cleanup also works before its state event arrives", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  h.contexts[0].state = "closed";
+  h.sound.play("saved");
+  assert.ok(h.sources.every((voice) => voice.stopped && voice.disconnected));
+  assert.equal(h.contexts[0].output.disconnected, true);
+  assert.equal(h.contexts.length, 1);
+  h.sound.play("press");
+  assert.equal(h.contexts.length, 2);
   assert.equal(h.sources.length, 4);
 });

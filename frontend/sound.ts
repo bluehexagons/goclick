@@ -8,6 +8,7 @@ let profile: SoundProfile = "classic";
 let enabled = false;
 let context: AudioContext | null = null;
 let output: GainNode | null = null;
+let suspending: Promise<void> | null = null;
 let generation = 0;
 const voices = new Set<AudioBufferSourceNode>();
 const previewVoices = new Set<AudioBufferSourceNode>();
@@ -42,11 +43,50 @@ function removeVoice(voice: AudioBufferSourceNode, stop = false) {
   }
 }
 
-function stop() {
-  cancelPending();
+function clearVoices() {
   responseAt = -Infinity;
   responseWasFailure = false;
   for (const voice of voices) removeVoice(voice, true);
+}
+
+function stop() {
+  cancelPending();
+  clearVoices();
+}
+
+function discardContext() {
+  stop();
+  if (context) context.onstatechange = null;
+  context = null;
+  suspending = null;
+  try {
+    output?.disconnect();
+  } catch {
+    // A device that has closed may already have torn down its graph.
+  }
+  output = null;
+}
+
+function suspend() {
+  stop();
+  if (!context || context.state === "closed" || suspending) return;
+  try {
+    const pending = context.suspend();
+    suspending = pending;
+    const settled = () => {
+      if (suspending === pending) suspending = null;
+    };
+    void pending.then(settled, settled);
+  } catch {
+    // Stopping sounds still works if the device cannot be suspended.
+  }
+}
+
+function resume(audio: AudioContext) {
+  return audio.resume().then(() => {
+    // A delayed unlock must not leave a muted/background device running.
+    if (audio === context && (!enabled || document.hidden)) suspend();
+  });
 }
 
 function synthesize(audio: AudioContext, kind: SoundCue, offset = 0, preview = false) {
@@ -75,7 +115,8 @@ function synthesize(audio: AudioContext, kind: SoundCue, offset = 0, preview = f
 }
 
 function audioContext(allowCreate: boolean) {
-  if (!context || context.state === "closed") {
+  if (context?.state === "closed") discardContext();
+  if (!context) {
     if (!allowCreate || typeof window.AudioContext !== "function") return null;
     const next = new window.AudioContext({ latencyHint: "interactive" });
     try {
@@ -84,6 +125,16 @@ function audioContext(allowCreate: boolean) {
       gain.connect(next.destination);
       output = gain;
       context = next;
+      next.onstatechange = () => {
+        if (context !== next) return;
+        if (next.state === "closed") discardContext();
+        else if (next.state !== "running") {
+          // The audio clock freezes during interruptions. Discard voices so
+          // their remaining press/release/ping cannot replay on recovery.
+          // Keep a fresh gesture's unlock: a prior suspend may finish later.
+          clearVoices();
+        } else if (!enabled || document.hidden) suspend();
+      };
     } catch (error) {
       void next.close().catch(() => {
         // A failed device may also reject closing its partial graph.
@@ -98,8 +149,8 @@ function prepare() {
   if (!enabled || document.hidden) return;
   try {
     const audio = audioContext(true);
-    if (audio && audio.state !== "running")
-      void audio.resume().catch(() => {
+    if (audio && (audio.state !== "running" || suspending))
+      void resume(audio).catch(() => {
         // A later press/release can retry if the toggle gesture was blocked.
       });
   } catch {
@@ -109,26 +160,26 @@ function prepare() {
 
 function withAudio(gesture: boolean, emit: (audio: AudioContext) => void, preview = false) {
   if (!enabled || document.hidden) return;
-  if (gesture) {
-    cancelPending();
-    previewPending = preview;
-  }
-  const current = generation;
   try {
     const audio = audioContext(gesture);
     if (!audio) return;
-    if (audio.state === "running") emit(audio);
+    if (gesture) {
+      cancelPending();
+      previewPending = preview;
+    }
+    const current = generation;
+    if (audio.state === "running" && !suspending) emit(audio);
     else if (gesture) {
       const requestedAt = performance.now();
       // Retry inside every gesture: touch browsers may allow audio only on
       // release. Only the latest gesture can sound after an async unlock.
-      void audio
-        .resume()
+      void resume(audio)
         .then(() => {
           if (
             enabled &&
             !document.hidden &&
             current === generation &&
+            audio === context &&
             audio.state === "running" &&
             performance.now() - requestedAt <= maxUnlockDelay
           )
@@ -144,7 +195,7 @@ function withAudio(gesture: boolean, emit: (audio: AudioContext) => void, previe
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) stop();
+  if (document.hidden) suspend();
 });
 
 export const clickSound = {
@@ -192,6 +243,6 @@ export const clickSound = {
   setEnabled(value: boolean) {
     if (enabled === value) return;
     enabled = value;
-    if (!enabled) stop();
+    if (!enabled) suspend();
   },
 };
