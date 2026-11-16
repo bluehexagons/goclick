@@ -72,7 +72,8 @@ function effects() {
       return animation;
     }
   }
-  const responses = [];
+  const responses = [],
+    sounds = [];
   const runtime = frontend(
     {
       document: { createElement: () => new Element() },
@@ -90,6 +91,7 @@ function effects() {
         tactileButtons: { get: () => ({ respond: (...response) => responses.push(response) }) },
       },
       preferences: { motionPreference: motion },
+      sound: { clickSound: { play: (kind) => sounds.push(kind) } },
     },
   );
   const button = {
@@ -107,6 +109,7 @@ function effects() {
     timers,
     motion,
     responses,
+    sounds,
   };
 }
 
@@ -140,6 +143,10 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
     ["pending"],
     ["error"],
   ]);
+  assert.deepEqual(h.sounds, ["saved", "slow", "error"]);
+  first.success(50);
+  failed.fail();
+  assert.deepEqual(h.sounds, ["saved", "slow", "error"]);
 });
 
 test("reduced motion uses static acknowledgement and resets clear every pending effect", () => {
@@ -156,6 +163,8 @@ test("reduced motion uses static acknowledgement and resets clear every pending 
     h.layer.children.every((popup) => popup.removed),
     true,
   );
+  saved.success(80);
+  assert.deepEqual(h.sounds, ["saved"]);
 });
 
 test("a rejected rate-limited click gets a cooldown response rather than a save error", () => {
@@ -165,6 +174,7 @@ test("a rejected rate-limited click gets a cooldown response rather than a save 
   assert.equal(popup.dataset.state, "limited");
   assert.equal(popup.children[1].textContent, "cooldown");
   assert.deepEqual(h.responses, [["pending"], ["limited"]]);
+  assert.deepEqual(h.sounds, ["limited"]);
 });
 
 test("click feedback and tooltips follow language changes throughout the save lifecycle", () => {

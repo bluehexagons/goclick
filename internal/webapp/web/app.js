@@ -190,11 +190,13 @@
     const key = "goclick.settings.v1";
     const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
     const listeners2 = /* @__PURE__ */ new Set();
-    let value = { motion: "auto", simulatedPing: 80 };
+    const settingListeners = /* @__PURE__ */ new Set();
+    let value = { motion: "auto", simulatedPing: 80, sound: false };
     function parse(raw) {
       const decoded = JSON.parse(raw || "{}");
       const saved = isRecord(decoded) ? decoded : {};
       return {
+        sound: saved.sound === true,
         motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "auto",
         simulatedPing: saved.simulatedPing === 0 || saved.simulatedPing === 250 || saved.simulatedPing === 800 ? saved.simulatedPing : 80
       };
@@ -215,13 +217,14 @@
     function apply() {
       const matches = motion.matches;
       document.documentElement.dataset.reducedMotion = String(matches);
+      for (const callback of settingListeners) callback();
       if (matches === appliedMotion) return;
       appliedMotion = matches;
       for (const callback of listeners2) callback({ matches });
     }
     browser.addEventListener("change", apply);
     window.addEventListener("storage", (event) => {
-      if (event.key !== key) return;
+      if (event.key !== key && event.key !== null) return;
       try {
         value = parse(event.newValue);
         apply();
@@ -231,6 +234,9 @@
     apply();
     return {
       motion,
+      onChange(callback) {
+        settingListeners.add(callback);
+      },
       get value() {
         return { ...value };
       },
@@ -747,10 +753,10 @@
     const label = document.createElement("canvas");
     label.width = ATLAS_WIDTH;
     label.height = ATLAS_HEIGHT;
-    const context = label.getContext("2d");
-    if (!context) return { draw() {
+    const context2 = label.getContext("2d");
+    if (!context2) return { draw() {
     } };
-    const labelContext = context;
+    const labelContext = context2;
     const layers = [null, null];
     const lettering = required(".button-label", button);
     let paintedText = "";
@@ -958,6 +964,100 @@
     return renderer;
   }
 
+  // frontend/sound.ts
+  var profiles = {
+    press: { pitch: 175, end: 65, metal: 1450, noise: 0.12, decay: 0.018, gain: 1 },
+    release: { pitch: 260, end: 125, metal: 1900, noise: 0.08, decay: 0.014, gain: 0.8 },
+    saved: { pitch: 1100, end: 1280, metal: 1650, noise: 0, decay: 0.025, gain: 0.2 },
+    slow: { pitch: 700, end: 850, metal: 1050, noise: 0, decay: 0.025, gain: 0.18 },
+    error: { pitch: 240, end: 150, metal: 360, noise: 0, decay: 0.025, gain: 0.22 },
+    limited: { pitch: 380, end: 300, metal: 570, noise: 0, decay: 0.025, gain: 0.18 }
+  };
+  var enabled = false;
+  var context = null;
+  var output = null;
+  var generation = 0;
+  var voices = /* @__PURE__ */ new Set();
+  var maxVoices = 8;
+  function stop() {
+    generation++;
+    for (const voice of voices) {
+      voice.stop();
+      voice.disconnect();
+    }
+    voices.clear();
+  }
+  function synthesize(audio, kind) {
+    const profile = profiles[kind];
+    const duration = 0.095 * (0.95 + Math.random() * 0.1);
+    const buffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * duration), audio.sampleRate);
+    const samples = buffer.getChannelData(0);
+    const pitch = 0.96 + Math.random() * 0.08;
+    const strength = profile.gain * (0.9 + Math.random() * 0.1);
+    let previousNoise = 0;
+    for (let i = 0; i < samples.length; i++) {
+      const time = i / audio.sampleRate;
+      const phase = 2 * Math.PI * pitch * (profile.end * time + (profile.pitch - profile.end) * 0.012 * (1 - Math.exp(-time / 0.012)));
+      const body = Math.sin(phase) * Math.exp(-time / profile.decay);
+      const overtone = Math.sin(2 * Math.PI * profile.metal * pitch * time) * Math.exp(-time / 8e-3);
+      const noise = Math.random() * 2 - 1;
+      const tick2 = (noise - previousNoise) * Math.exp(-time / 3e-3);
+      previousNoise = noise;
+      const fade = Math.min(1, time / 7e-4, (samples.length - 1 - i) / (audio.sampleRate * 8e-3));
+      samples[i] = (0.6 * body + 0.14 * overtone + profile.noise * tick2) * fade * strength;
+    }
+    if (voices.size >= maxVoices) {
+      const oldest = voices.values().next().value;
+      oldest.stop();
+      oldest.disconnect();
+      voices.delete(oldest);
+    }
+    const voice = audio.createBufferSource();
+    voice.buffer = buffer;
+    voice.connect(output);
+    voice.onended = () => {
+      voices.delete(voice);
+      voice.disconnect();
+    };
+    voices.add(voice);
+    voice.start();
+  }
+  function play(kind) {
+    if (!enabled || document.hidden) return;
+    const gesture = kind === "press" || kind === "release";
+    const current = gesture ? ++generation : generation;
+    try {
+      if (!context || context.state === "closed") {
+        if (!gesture || typeof window.AudioContext !== "function") return;
+        context = new window.AudioContext({ latencyHint: "interactive" });
+        output = context.createGain();
+        output.gain.value = 0.12;
+        output.connect(context.destination);
+      }
+      const audio = context;
+      if (audio.state === "running") synthesize(audio, kind);
+      else if (gesture) {
+        void audio.resume().then(() => {
+          if (enabled && !document.hidden && current === generation && audio.state === "running")
+            synthesize(audio, kind);
+        }).catch(() => {
+        });
+      }
+    } catch {
+    }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stop();
+  });
+  var clickSound = {
+    play,
+    setEnabled(value) {
+      if (enabled === value) return;
+      enabled = value;
+      if (!enabled) stop();
+    }
+  };
+
   // frontend/button.ts
   var QUICK_TAP_MS = 90;
   var TAP_RELEASE_MS = 70;
@@ -1078,6 +1178,7 @@
       stage.classList.toggle("is-held", phase === "held");
       button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
     }, begin2 = function() {
+      if (button.id === "click-button") clickSound.play("press");
       window.clearTimeout(holdTimer);
       clearResponse2();
       coastUntil = 0;
@@ -1322,7 +1423,7 @@
         dragFromY = current.y;
         velocity.x = velocity.y = 0;
         begin2();
-      }
+      } else if (button.id === "click-button") clickSound.play("press");
       button.setPointerCapture(event.pointerId);
       aimPointers2();
     });
@@ -1360,6 +1461,7 @@
         begin2();
         release2();
       }
+      if (button.id === "click-button") clickSound.play("release");
       burst2();
     });
     new MutationObserver(() => {
@@ -1465,6 +1567,9 @@
     signOut: "Sign out",
     admin: "Admin",
     options: "Options",
+    sound: "Sound effects",
+    soundOn: "Sound on \xB7 Turn off sound effects",
+    soundOff: "Sound off \xB7 Turn on sound effects",
     motion: "Turn on motion effects",
     motionHint: "Reduced motion is on. Turn on motion effects.",
     reload: "Reload counter",
@@ -1545,6 +1650,9 @@
       signOut: "\u9000\u51FA\u767B\u5F55",
       admin: "\u7BA1\u7406",
       options: "\u9009\u9879",
+      sound: "\u97F3\u6548",
+      soundOn: "\u97F3\u6548\u5DF2\u5F00\u542F \xB7 \u5173\u95ED\u97F3\u6548",
+      soundOff: "\u97F3\u6548\u5DF2\u5173\u95ED \xB7 \u5F00\u542F\u97F3\u6548",
       motion: "\u5F00\u542F\u52A8\u753B\u6548\u679C",
       motionHint: "\u5DF2\u5F00\u542F\u51CF\u5C11\u52A8\u6001\u6548\u679C\u3002\u70B9\u51FB\u5F00\u542F\u52A8\u753B\u3002",
       reload: "\u91CD\u65B0\u52A0\u8F7D\u8BA1\u6570",
@@ -1624,6 +1732,9 @@
       signOut: "Cerrar sesi\xF3n",
       admin: "Administraci\xF3n",
       options: "Opciones",
+      sound: "Efectos de sonido",
+      soundOn: "Sonido activado \xB7 Desactivar efectos de sonido",
+      soundOff: "Sonido desactivado \xB7 Activar efectos de sonido",
       motion: "Activar efectos de movimiento",
       motionHint: "El movimiento reducido est\xE1 activado. Activar efectos de movimiento.",
       reload: "Recargar contador",
@@ -1703,6 +1814,9 @@
       signOut: "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C",
       admin: "\u0627\u0644\u0625\u062F\u0627\u0631\u0629",
       options: "\u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A",
+      sound: "\u0627\u0644\u0645\u0624\u062B\u0631\u0627\u062A \u0627\u0644\u0635\u0648\u062A\u064A\u0629",
+      soundOn: "\u0627\u0644\u0635\u0648\u062A \u0645\u0641\u0639\u0651\u0644 \xB7 \u0625\u064A\u0642\u0627\u0641 \u0627\u0644\u0645\u0624\u062B\u0631\u0627\u062A \u0627\u0644\u0635\u0648\u062A\u064A\u0629",
+      soundOff: "\u0627\u0644\u0635\u0648\u062A \u0645\u062A\u0648\u0642\u0641 \xB7 \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0645\u0624\u062B\u0631\u0627\u062A \u0627\u0644\u0635\u0648\u062A\u064A\u0629",
       motion: "\u062A\u0641\u0639\u064A\u0644 \u062A\u0623\u062B\u064A\u0631\u0627\u062A \u0627\u0644\u062D\u0631\u0643\u0629",
       motionHint: "\u062A\u0642\u0644\u064A\u0644 \u0627\u0644\u062D\u0631\u0643\u0629 \u0645\u0641\u0639\u0651\u0644. \u062A\u0641\u0639\u064A\u0644 \u062A\u0623\u062B\u064A\u0631\u0627\u062A \u0627\u0644\u062D\u0631\u0643\u0629.",
       reload: "\u0625\u0639\u0627\u062F\u0629 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F",
@@ -1782,6 +1896,9 @@
       signOut: "\u0938\u093E\u0907\u0928 \u0906\u0909\u091F \u0915\u0930\u0947\u0902",
       admin: "\u0935\u094D\u092F\u0935\u0938\u094D\u0925\u093E\u092A\u0928",
       options: "\u0935\u093F\u0915\u0932\u094D\u092A",
+      sound: "\u0927\u094D\u0935\u0928\u093F \u092A\u094D\u0930\u092D\u093E\u0935",
+      soundOn: "\u0927\u094D\u0935\u0928\u093F \u091A\u093E\u0932\u0942 \xB7 \u0927\u094D\u0935\u0928\u093F \u092A\u094D\u0930\u092D\u093E\u0935 \u092C\u0902\u0926 \u0915\u0930\u0947\u0902",
+      soundOff: "\u0927\u094D\u0935\u0928\u093F \u092C\u0902\u0926 \xB7 \u0927\u094D\u0935\u0928\u093F \u092A\u094D\u0930\u092D\u093E\u0935 \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902",
       motion: "\u092E\u094B\u0936\u0928 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902",
       motionHint: "\u0915\u092E \u0917\u0924\u093F \u091A\u093E\u0932\u0942 \u0939\u0948\u0964 \u092E\u094B\u0936\u0928 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902\u0964",
       reload: "\u0915\u093E\u0909\u0902\u091F\u0930 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902",
@@ -1861,6 +1978,9 @@
       signOut: "Keluar",
       admin: "Admin",
       options: "Opsi",
+      sound: "Efek suara",
+      soundOn: "Suara aktif \xB7 Nonaktifkan efek suara",
+      soundOff: "Suara nonaktif \xB7 Aktifkan efek suara",
       motion: "Aktifkan efek gerakan",
       motionHint: "Gerakan terbatas aktif. Aktifkan efek gerakan.",
       reload: "Muat ulang penghitung",
@@ -1940,6 +2060,9 @@
       signOut: "Sair",
       admin: "Administra\xE7\xE3o",
       options: "Op\xE7\xF5es",
+      sound: "Efeitos sonoros",
+      soundOn: "Som ativado \xB7 Desativar efeitos sonoros",
+      soundOff: "Som desativado \xB7 Ativar efeitos sonoros",
       motion: "Ativar efeitos de movimento",
       motionHint: "Movimento reduzido ativado. Ativar efeitos de movimento.",
       reload: "Recarregar contador",
@@ -2019,6 +2142,9 @@
       signOut: "Se d\xE9connecter",
       admin: "Administration",
       options: "Options",
+      sound: "Effets sonores",
+      soundOn: "Son activ\xE9 \xB7 D\xE9sactiver les effets sonores",
+      soundOff: "Son d\xE9sactiv\xE9 \xB7 Activer les effets sonores",
       motion: "Activer les effets de mouvement",
       motionHint: "Les animations sont r\xE9duites. Activer les effets de mouvement.",
       reload: "Recharger le compteur",
@@ -2098,6 +2224,9 @@
       signOut: "\u30ED\u30B0\u30A2\u30A6\u30C8",
       admin: "\u7BA1\u7406",
       options: "\u8A2D\u5B9A",
+      sound: "\u52B9\u679C\u97F3",
+      soundOn: "\u52B9\u679C\u97F3\u30AA\u30F3 \xB7 \u52B9\u679C\u97F3\u3092\u30AA\u30D5\u306B\u3059\u308B",
+      soundOff: "\u52B9\u679C\u97F3\u30AA\u30D5 \xB7 \u52B9\u679C\u97F3\u3092\u30AA\u30F3\u306B\u3059\u308B",
       motion: "\u52D5\u304D\u306E\u52B9\u679C\u3092\u6709\u52B9\u306B\u3059\u308B",
       motionHint: "\u52D5\u304D\u3092\u6291\u3048\u308B\u8A2D\u5B9A\u3067\u3059\u3002\u52D5\u304D\u306E\u52B9\u679C\u3092\u6709\u52B9\u306B\u3057\u307E\u3059\u3002",
       reload: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u518D\u8AAD\u307F\u8FBC\u307F",
@@ -2177,6 +2306,9 @@
       signOut: "\u0412\u044B\u0439\u0442\u0438",
       admin: "\u0423\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435",
       options: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438",
+      sound: "\u0417\u0432\u0443\u043A\u043E\u0432\u044B\u0435 \u044D\u0444\u0444\u0435\u043A\u0442\u044B",
+      soundOn: "\u0417\u0432\u0443\u043A \u0432\u043A\u043B\u044E\u0447\u0451\u043D \xB7 \u0412\u044B\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0437\u0432\u0443\u043A\u043E\u0432\u044B\u0435 \u044D\u0444\u0444\u0435\u043A\u0442\u044B",
+      soundOff: "\u0417\u0432\u0443\u043A \u0432\u044B\u043A\u043B\u044E\u0447\u0435\u043D \xB7 \u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0437\u0432\u0443\u043A\u043E\u0432\u044B\u0435 \u044D\u0444\u0444\u0435\u043A\u0442\u044B",
       motion: "\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0444\u0444\u0435\u043A\u0442\u044B \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F",
       motionHint: "\u0414\u0432\u0438\u0436\u0435\u043D\u0438\u0435 \u0443\u043C\u0435\u043D\u044C\u0448\u0435\u043D\u043E. \u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0444\u0444\u0435\u043A\u0442\u044B \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F.",
       reload: "\u041F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A",
@@ -2256,6 +2388,9 @@
       signOut: "Abmelden",
       admin: "Verwaltung",
       options: "Optionen",
+      sound: "Soundeffekte",
+      soundOn: "Ton an \xB7 Soundeffekte ausschalten",
+      soundOff: "Ton aus \xB7 Soundeffekte einschalten",
       motion: "Bewegungseffekte aktivieren",
       motionHint: "Reduzierte Bewegung ist aktiv. Bewegungseffekte aktivieren.",
       reload: "Z\xE4hler neu laden",
@@ -2499,6 +2634,7 @@
           const ms = Math.max(0, milliseconds);
           popup.dataset.state = ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
           tactileButtons.get(button)?.respond(popup.dataset.state, ms);
+          clickSound.play(popup.dataset.state === "slow" ? "slow" : "saved");
           phase = "saved";
           measured = ms;
           translate();
@@ -2512,6 +2648,7 @@
           window.clearTimeout(slow);
           popup.dataset.state = limited ? "limited" : "error";
           tactileButtons.get(button)?.respond(limited ? "limited" : "error");
+          clickSound.play(limited ? "limited" : "error");
           phase = limited ? "limited" : uncertain ? "unconfirmed" : "unsaved";
           translate();
           finish();
@@ -2581,7 +2718,7 @@
       clicks: required("#include-share-clicks"),
       streaks: required("#include-share-streaks")
     };
-    let generation = 0, feedbackTimer = 0, clearTimer = 0, busy = false, currentStats = null;
+    let generation2 = 0, feedbackTimer = 0, clearTimer = 0, busy = false, currentStats = null;
     let announcement = null;
     function announce(key) {
       announcement = key;
@@ -2617,7 +2754,7 @@
     async function copyCurrent(openDialog) {
       if (busy || !currentStats) return;
       busy = true;
-      const current = generation;
+      const current = generation2;
       const summary = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
       text.value = summary;
       text.lang = currentLanguage();
@@ -2633,16 +2770,16 @@
       if (openDialog && !dialog.open) dialog.showModal();
       try {
         await clipboardWrite;
-        if (current === generation) announce(summary === text.value ? "copied" : "copyChanged");
+        if (current === generation2) announce(summary === text.value ? "copied" : "copyChanged");
       } catch {
-        if (current !== generation) return;
+        if (current !== generation2) return;
         announce("clipboardUnavailable");
         if (dialog.open && summary === text.value) {
           text.focus();
           text.select();
         }
       } finally {
-        if (current === generation) {
+        if (current === generation2) {
           busy = false;
           button.setAttribute("aria-busy", "false");
           copyButton.setAttribute("aria-busy", "false");
@@ -2664,7 +2801,7 @@
     for (const option of Object.values(options)) option.addEventListener("change", updatePreview);
     return {
       reset() {
-        generation++;
+        generation2++;
         busy = false;
         currentStats = null;
         window.clearTimeout(feedbackTimer);
@@ -2718,6 +2855,23 @@
   var retryBootButton = required("#retry-boot-button");
   var refreshCounterButton = required("#refresh-counter");
   var motionShortcut = required("#motion-shortcut");
+  var soundToggle = required("#sound-toggle");
+  function updateSoundToggle() {
+    const enabled2 = gameSettings.value.sound;
+    clickSound.setEnabled(enabled2);
+    soundToggle.setAttribute("aria-pressed", String(enabled2));
+    soundToggle.setAttribute("aria-label", message2("sound"));
+    soundToggle.title = message2(enabled2 ? "soundOn" : "soundOff");
+    soundToggle.lang = currentLanguage();
+  }
+  gameSettings.onChange(updateSoundToggle);
+  updateSoundToggle();
+  soundToggle.addEventListener("click", () => {
+    try {
+      gameSettings.update({ sound: !gameSettings.value.sound });
+    } catch {
+    }
+  });
   var connection = required("#connection");
   var pendingIndicator = required("#pending-clicks");
   var currentView = "";
@@ -2882,14 +3036,14 @@
     return request(url, { ...options, headers });
   }
   async function readGameState() {
-    const generation = clickGeneration;
+    const generation2 = clickGeneration;
     for (; ; ) {
       const epoch = identityEpoch;
       try {
         const state = await api("/api/game");
-        if (epoch === identityEpoch || generation !== clickGeneration) return state;
+        if (epoch === identityEpoch || generation2 !== clickGeneration) return state;
       } catch (error) {
-        if (epoch === identityEpoch || generation !== clickGeneration) throw error;
+        if (epoch === identityEpoch || generation2 !== clickGeneration) throw error;
       }
     }
   }
@@ -3016,7 +3170,7 @@
       refreshQueued = true;
       return Promise.resolve();
     }
-    let generation = clickGeneration;
+    let generation2 = clickGeneration;
     const focusButton = currentView === "login" || currentView === "signup";
     show("game");
     showError("#game-error", "");
@@ -3030,11 +3184,11 @@
     const load = (async () => {
       try {
         const state = await (initialGame ?? readGameState());
-        if (generation !== clickGeneration) return;
+        if (generation2 !== clickGeneration) return;
         const activeLoad = counterLoad;
         setUser(state.user);
         counterLoad = activeLoad;
-        generation = clickGeneration;
+        generation2 = clickGeneration;
         counterLoadOwner = owner;
         lastOnlineCounters = state.counters;
         renderCounters(state.counters, true);
@@ -3045,7 +3199,7 @@
         setConnection();
       } catch (caught) {
         const error = requestError(caught);
-        if (generation !== clickGeneration) return;
+        if (generation2 !== clickGeneration) return;
         if (error.status === 401) {
           if (user && !signingOut) handleExpiredSession();
         } else {
@@ -3054,7 +3208,7 @@
           setConnection(null, "error");
         }
       } finally {
-        if (generation === clickGeneration) counterCard.setAttribute("aria-busy", "false");
+        if (generation2 === clickGeneration) counterCard.setAttribute("aria-busy", "false");
         if (counterLoadOwner === owner) {
           counterLoad = null;
           counterLoadOwner = null;
@@ -3137,7 +3291,7 @@
     if (authenticating || signingOut) return;
     showError("#login-error", "");
     setAuthenticating(true, loginForm);
-    const generation = clickGeneration;
+    const generation2 = clickGeneration;
     let signedIn = false;
     try {
       const form = new FormData(loginForm);
@@ -3149,7 +3303,7 @@
           identifier_type: form.get("identifier_type") ?? "auto"
         })
       });
-      if (generation !== clickGeneration || currentView !== "login") {
+      if (generation2 !== clickGeneration || currentView !== "login") {
         if (!localMode) await boot();
         return;
       }
@@ -3159,7 +3313,7 @@
       await openGame();
     } catch (caught) {
       const error = requestError(caught);
-      if (generation === clickGeneration && currentView === "login")
+      if (generation2 === clickGeneration && currentView === "login")
         showError("#login-error", error.message, true);
     } finally {
       setAuthenticating(false, loginForm);
@@ -3177,14 +3331,14 @@
       return;
     }
     setAuthenticating(true, signupForm);
-    const generation = clickGeneration;
+    const generation2 = clickGeneration;
     let signedIn = false;
     try {
       const result = await api("/api/auth/signup", {
         method: "POST",
         body: JSON.stringify(Object.fromEntries(form.entries()))
       });
-      if (generation !== clickGeneration || currentView !== "signup") {
+      if (generation2 !== clickGeneration || currentView !== "signup") {
         if (!localMode) await boot();
         return;
       }
@@ -3194,7 +3348,7 @@
       await openGame();
     } catch (caught) {
       const error = requestError(caught);
-      if (generation === clickGeneration && currentView === "signup")
+      if (generation2 === clickGeneration && currentView === "signup")
         showError("#signup-error", error.message, true);
     } finally {
       setAuthenticating(false, signupForm);
@@ -3244,7 +3398,7 @@
     const feedback = clickFeedback.start(clickButton, event);
     updateGameControls();
     const started = performance.now();
-    const generation = clickGeneration;
+    const generation2 = clickGeneration;
     setConnection(null, "loading");
     let saved = false;
     try {
@@ -3252,7 +3406,7 @@
         method: "POST",
         headers: { "X-GoClick-User-ID": user.id }
       });
-      if (generation !== clickGeneration) return;
+      if (generation2 !== clickGeneration) return;
       renderCounters(data);
       if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
         lastOnlineCounters = data;
@@ -3260,7 +3414,7 @@
       saved = true;
     } catch (caught) {
       const error = requestError(caught);
-      if (generation !== clickGeneration) return;
+      if (generation2 !== clickGeneration) return;
       feedback.fail(error.uncertain, error.status === 429);
       if (error.status === 401) {
         if (user && !signingOut) handleExpiredSession();
@@ -3280,7 +3434,7 @@
       if (error.uncertain) retryGameButton.hidden = false;
       setConnection(null, "error");
     } finally {
-      if (generation === clickGeneration) {
+      if (generation2 === clickGeneration) {
         pendingClicks--;
         updatePendingIndicator();
         updateGameControls();
@@ -3298,7 +3452,7 @@
       openLocalGame();
       return;
     }
-    const generation = clickGeneration;
+    const generation2 = clickGeneration;
     show("loading");
     views.loading.setAttribute("aria-busy", "true");
     required(".loading-spinner").hidden = false;
@@ -3306,12 +3460,12 @@
     retryBootButton.hidden = true;
     try {
       const state = await readGameState();
-      if (generation !== clickGeneration || localMode) return;
+      if (generation2 !== clickGeneration || localMode) return;
       setUser(state.user);
       await openGame(state);
     } catch (caught) {
       const error = requestError(caught);
-      if (generation !== clickGeneration || localMode) return;
+      if (generation2 !== clickGeneration || localMode) return;
       if (error.status === 401) {
         setUser(null);
         show("home");
@@ -3444,7 +3598,7 @@
   });
   async function clickLocal(event) {
     if (!gameReady || localSaveReplacing) return;
-    const feedback = clickFeedback.start(clickButton, event, true), generation = clickGeneration, acknowledgement = ++localAcknowledgement;
+    const feedback = clickFeedback.start(clickButton, event, true), generation2 = clickGeneration, acknowledgement = ++localAcknowledgement;
     const base = gameSettings.value.simulatedPing;
     const simulated = Math.round(base * (0.7 + Math.random() * 0.6));
     pendingClicks++;
@@ -3452,21 +3606,21 @@
     setConnection(null, "loading");
     try {
       const data = await localGame.change(() => localGame.increment());
-      if (generation !== clickGeneration) return;
+      if (generation2 !== clickGeneration) return;
       renderCounters(data);
       showError("#game-error", "");
       window.setTimeout(() => {
-        if (generation !== clickGeneration) return;
+        if (generation2 !== clickGeneration) return;
         feedback.success(simulated);
         if (acknowledgement === localAcknowledgement) setConnection(simulated);
       }, simulated);
     } catch {
-      if (generation !== clickGeneration) return;
+      if (generation2 !== clickGeneration) return;
       feedback.fail(false);
       setConnection(null, "error");
       showGameError("localClickError", true);
     } finally {
-      if (generation === clickGeneration) {
+      if (generation2 === clickGeneration) {
         pendingClicks--;
         updateGameControls();
         if (pendingClicks === 0 && localRefreshQueued) synchronizeLocalSave();
@@ -3573,6 +3727,7 @@
   }
   function applyLanguage() {
     translatePage();
+    updateSoundToggle();
     languageSetting.value = currentLanguage();
     document.documentElement.lang = currentView === "game" ? currentLanguage() : "en";
     buttonLanguage.reset(currentLanguage());

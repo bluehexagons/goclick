@@ -225,6 +225,53 @@ async function harness(options = {}) {
   };
 }
 
+test("speaker defaults off, persists independently of motion, and survives unavailable audio", async () => {
+  const h = await harness();
+  const toggle = h.element("#sound-toggle");
+  assert.equal(toggle.attributes.get("aria-pressed"), "false");
+  assert.match(toggle.title, /Sound off/);
+  toggle.fire("click");
+  assert.equal(toggle.attributes.get("aria-pressed"), "true");
+  assert.equal(JSON.parse(h.storage.get("goclick.settings.v1")).sound, true);
+  assert.equal(JSON.parse(h.storage.get("goclick.settings.v1")).motion, "auto");
+  assert.deepEqual(h.requests, []);
+  h.fetch(async () => response(counters(11)));
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, "11");
+  const reloaded = await harness({ storage: [...h.storage] });
+  assert.equal(reloaded.element("#sound-toggle").attributes.get("aria-pressed"), "true");
+  reloaded.failStorage();
+  reloaded.element("#sound-toggle").fire("click");
+  assert.equal(reloaded.element("#sound-toggle").attributes.get("aria-pressed"), "false");
+  reloaded.element("#sound-toggle").fire("click");
+  assert.equal(reloaded.element("#sound-toggle").attributes.get("aria-pressed"), "true");
+});
+
+test("speaker follows cross-tab settings and language changes without account requests", async () => {
+  const h = await harness({ storage: [["goclick.settings.v1", '{"motion":"on","sound":true}']] });
+  const toggle = h.element("#sound-toggle");
+  assert.equal(toggle.attributes.get("aria-pressed"), "true");
+  h.window.fire("storage", { key: "goclick.settings.v1", newValue: '{"sound":false}' });
+  assert.equal(toggle.attributes.get("aria-pressed"), "false");
+  h.window.fire("storage", { key: "goclick.settings.v1", newValue: '{"sound":true}' });
+  assert.equal(toggle.attributes.get("aria-pressed"), "true");
+  h.element("#language-setting").value = "es";
+  h.element("#language-setting").fire("change");
+  assert.equal(toggle.attributes.get("aria-label"), "Efectos de sonido");
+  assert.match(toggle.title, /Sonido activado/);
+  assert.equal(toggle.attributes.get("aria-pressed"), "true");
+  h.window.fire("storage", { key: null, newValue: null });
+  assert.equal(toggle.attributes.get("aria-pressed"), "false");
+  assert.deepEqual(h.requests, []);
+});
+
+test("legacy, malformed, and non-boolean sound settings stay muted", async () => {
+  for (const value of ['{"motion":"on"}', '{"sound":"true"}', '{"sound":1}', "null", "invalid"]) {
+    const h = await harness({ storage: [["goclick.settings.v1", value]] });
+    assert.equal(h.element("#sound-toggle").attributes.get("aria-pressed"), "false", value);
+  }
+});
+
 test("even brief tab switches recheck identity and coalesce focus with visibility", async () => {
   const h = await harness();
   const progress = deferred();

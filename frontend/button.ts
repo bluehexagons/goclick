@@ -6,6 +6,7 @@ import {
 } from "./button-geometry.js";
 import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
+import { clickSound } from "./sound.js";
 import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
 
 // Press and release depth are immediate; dragging and rebound use springs.
@@ -201,6 +202,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
   }
   function begin() {
+    if (button.id === "click-button") clickSound.play("press");
     window.clearTimeout(holdTimer);
     clearResponse();
     coastUntil = 0;
@@ -423,7 +425,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       dragFromY = current.y;
       velocity.x = velocity.y = 0;
       begin();
-    }
+    } else if (button.id === "click-button") clickSound.play("press");
     button.setPointerCapture(event.pointerId);
     aimPointers();
   });
@@ -502,6 +504,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       begin();
       release();
     }
+    if (button.id === "click-button") clickSound.play("release");
     burst();
   });
   new MutationObserver(() => {

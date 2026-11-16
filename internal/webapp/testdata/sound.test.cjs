@@ -1,0 +1,196 @@
+"use strict";
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const { frontend } = require("./frontend.cjs");
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+function harness({ state = "running", sampleRate = 48000, unavailable = false, fail = "" } = {}) {
+  const events = new Map(),
+    contexts = [],
+    buffers = [],
+    sources = [];
+  let resume;
+  let resumes = 0;
+  const pendingResumes = [];
+  class AudioContext {
+    constructor() {
+      if (fail === "constructor") throw new Error("Audio unavailable");
+      this.state = state;
+      this.sampleRate = sampleRate;
+      contexts.push(this);
+    }
+    createGain() {
+      return (this.output = { gain: { value: 1 }, connect() {} });
+    }
+    createBuffer(channels, length, rate) {
+      if (fail === "buffer") throw new Error("Allocation failed");
+      assert.equal(channels, 1);
+      assert.equal(rate, sampleRate);
+      const samples = new Float32Array(length);
+      const buffer = { samples, getChannelData: () => samples };
+      buffers.push(buffer);
+      return buffer;
+    }
+    createBufferSource() {
+      const source = {
+        connect() {},
+        disconnect() {
+          this.disconnected = true;
+        },
+        start() {
+          this.started = true;
+        },
+        stop() {
+          this.stopped = true;
+        },
+      };
+      sources.push(source);
+      return source;
+    }
+    resume() {
+      resumes++;
+      if (fail === "resume") return Promise.reject(new Error("Blocked"));
+      return new Promise((resolve) => {
+        pendingResumes.push(resolve);
+        resume = () => {
+          this.state = "running";
+          for (const finish of pendingResumes.splice(0)) finish();
+        };
+      });
+    }
+  }
+  const document = {
+    hidden: false,
+    addEventListener: (name, callback) => events.set(name, callback),
+  };
+  const sound = frontend({
+    document,
+    window: { AudioContext: unavailable ? undefined : AudioContext },
+  }).load("sound").clickSound;
+  return {
+    sound,
+    contexts,
+    buffers,
+    sources,
+    resume: () => resume(),
+    resumes: () => resumes,
+    hide() {
+      document.hidden = true;
+      events.get("visibilitychange")();
+    },
+    show() {
+      document.hidden = false;
+      events.get("visibilitychange")();
+    },
+  };
+}
+
+test("sound defaults off and neither enabling nor responses allocate audio", () => {
+  const h = harness();
+  for (const kind of ["press", "release", "saved", "slow", "error", "limited"]) h.sound.play(kind);
+  assert.equal(h.contexts.length, 0);
+  h.sound.setEnabled(true);
+  h.sound.play("saved");
+  assert.equal(h.contexts.length, 0);
+  h.sound.play("press");
+  h.sound.play("release");
+  assert.equal(h.contexts.length, 1);
+  assert.equal(h.sources.length, 2);
+});
+
+for (const sampleRate of [44100, 48000])
+  test(`synthesized cues vary and have bounded, faded samples at ${sampleRate} Hz`, () => {
+    const h = harness({ sampleRate });
+    h.sound.setEnabled(true);
+    const peaks = new Map();
+    for (const kind of ["press", "release", "saved", "slow", "error", "limited"]) {
+      h.sound.play(kind);
+      h.sound.play(kind);
+      const first = h.buffers.at(-2).samples,
+        second = h.buffers.at(-1).samples;
+      assert.notDeepEqual(first, second, kind);
+      assert.ok(first.length > sampleRate * 0.09 && first.length < sampleRate * 0.1);
+      assert.equal(Math.abs(first[0]), 0);
+      assert.ok(Math.abs(first.at(-1)) === 0);
+      let peak = 0;
+      for (const sample of first) {
+        assert.ok(Number.isFinite(sample) && Math.abs(sample) <= 0.98);
+        peak = Math.max(peak, Math.abs(sample));
+      }
+      assert.ok(peak > 0.02);
+      peaks.set(kind, peak);
+    }
+    for (const kind of ["saved", "slow", "error", "limited"])
+      assert.ok(peaks.get(kind) < peaks.get("press") * 0.5, kind);
+    assert.ok(8 * 0.98 * h.contexts[0].output.gain.value < 1, "Combined peak cannot clip");
+  });
+
+test("rapid input bounds voices, ended sources disconnect, and mute stops all audio immediately", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  for (let i = 0; i < 100; i++) h.sound.play("press");
+  assert.equal(h.sources.filter((source) => !source.stopped).length, 8);
+  const ended = h.sources.at(-1);
+  ended.onended();
+  assert.equal(ended.disconnected, true);
+  h.sound.setEnabled(false);
+  assert.ok(h.sources.every((source) => source.disconnected));
+  h.sound.play("release");
+  assert.equal(h.sources.length, 100);
+});
+
+test("suspended audio retries on release, coalesces playback, and never queues response pings", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.setEnabled(true);
+  for (let i = 0; i < 20; i++) h.sound.play("press");
+  h.sound.play("release");
+  h.sound.play("saved");
+  assert.equal(h.resumes(), 21);
+  assert.equal(h.sources.length, 0);
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 1);
+  h.sound.play("saved");
+  assert.equal(h.sources.length, 2);
+});
+
+for (const action of ["mute", "hide"])
+  test(`${action} cancels pending unlocks and active voices`, async () => {
+    const h = harness({ state: "suspended" });
+    h.sound.setEnabled(true);
+    h.sound.play("press");
+    if (action === "mute") {
+      h.sound.setEnabled(false);
+      h.sound.setEnabled(true);
+    } else {
+      h.hide();
+      h.show();
+    }
+    h.resume();
+    await settle();
+    assert.equal(h.sources.length, 0);
+    h.sound.play("release");
+    assert.equal(h.sources.length, 1);
+    h.hide();
+    assert.equal(h.sources[0].stopped, true);
+    h.sound.play("saved");
+    assert.equal(h.sources.length, 1);
+  });
+
+test("missing, failed and blocked audio remain harmless and retryable", async () => {
+  for (const options of [
+    { unavailable: true },
+    { fail: "constructor" },
+    { fail: "buffer" },
+    { fail: "resume", state: "suspended" },
+  ]) {
+    const h = harness(options);
+    h.sound.setEnabled(true);
+    assert.doesNotThrow(() => h.sound.play("release"));
+    await settle();
+    assert.doesNotThrow(() => h.sound.play("press"));
+    await settle();
+    assert.equal(h.sources.length, 0);
+    if (options.fail === "resume") assert.equal(h.resumes(), 2);
+  }
+});

@@ -1131,16 +1131,29 @@ footer a {
   }
 }
 
-.options-button {
+.options-button,
+.sound-toggle {
   display: grid;
   place-items: center;
   padding: 10px;
   min-height: 44px;
   min-width: 44px;
 }
-.options-button .icon {
+.options-button .icon,
+.sound-toggle .icon {
   width: 21px;
   height: 21px;
+}
+.sound-toggle {
+  color: var(--muted);
+}
+.sound-toggle[aria-pressed="true"] {
+  color: var(--teal);
+  border-color: var(--teal);
+}
+.sound-toggle[aria-pressed="false"] .sound-waves,
+.sound-toggle[aria-pressed="true"] .sound-muted {
+  display: none;
 }
 .motion-shortcut {
   display: grid;

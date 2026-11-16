@@ -6,6 +6,7 @@ import { gameSettings, motionPreference } from "./preferences.js";
 import { localGame } from "./local-game.js";
 import { tactileButtons } from "./button.js";
 import { clickFeedback } from "./click-feedback.js";
+import { clickSound } from "./sound.js";
 import { statsShare } from "./share.js";
 import {
   languages,
@@ -43,6 +44,24 @@ const retryGameButton = $<HTMLButtonElement>("#retry-game-button");
 const retryBootButton = $<HTMLButtonElement>("#retry-boot-button");
 const refreshCounterButton = $<HTMLButtonElement>("#refresh-counter");
 const motionShortcut = $<HTMLButtonElement>("#motion-shortcut");
+const soundToggle = $<HTMLButtonElement>("#sound-toggle");
+function updateSoundToggle() {
+  const enabled = gameSettings.value.sound;
+  clickSound.setEnabled(enabled);
+  soundToggle.setAttribute("aria-pressed", String(enabled));
+  soundToggle.setAttribute("aria-label", t("sound"));
+  soundToggle.title = t(enabled ? "soundOn" : "soundOff");
+  soundToggle.lang = currentLanguage();
+}
+gameSettings.onChange(updateSoundToggle);
+updateSoundToggle();
+soundToggle.addEventListener("click", () => {
+  try {
+    gameSettings.update({ sound: !gameSettings.value.sound });
+  } catch {
+    // Like motion, sound still applies for this visit if storage is blocked.
+  }
+});
 const connection = $("#connection");
 const pendingIndicator = $("#pending-clicks");
 type View = "loading" | "home" | "login" | "signup" | "game";
@@ -992,6 +1011,7 @@ for (const language of languages) {
 }
 function applyLanguage() {
   translatePage();
+  updateSoundToggle();
   languageSetting.value = currentLanguage();
   document.documentElement.lang = currentView === "game" ? currentLanguage() : "en";
   buttonLanguage.reset(currentLanguage());

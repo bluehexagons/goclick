@@ -19,6 +19,7 @@ pick up changes in an already running binary.
 | Motion and local-save options | `frontend/preferences.ts`, `frontend/app.ts` |
 | Local save coordination | `frontend/local-game.ts` |
 | Floating click feedback | `frontend/click-feedback.ts` |
+| Procedural press, release, and response audio | `frontend/sound.ts` |
 | Sharing and clipboard feedback | `frontend/share.ts` |
 | Administration | `frontend/admin.ts`, `internal/webapp/web/admin.html` |
 
@@ -48,6 +49,20 @@ Each captured finger is independent; holding, repeated keydown events, and
 cancelled/outside releases do not add clicks. Dragging can move the solid beyond
 its layout stage. Auto motion follows the system preference; Reduced suppresses
 movement, particles, and flashes while retaining quiet color feedback.
+
+Sound is independently optional and off by default. The header speaker toggle
+persists a boolean in `goclick.settings.v1` and synchronizes it across tabs.
+`sound.ts` synthesizes short PCM buffers using damped tones and filtered noise,
+varying pitch, strength, and texture on each activation. Main-button presses
+and accepted releases use distinct mechanical sounds; save responses use much
+quieter tones, with separate slow, failed, and cooldown cues. Offline responses
+follow the simulated ping timing. Cancelled/outside releases, repeated keydowns,
+and suppressed native clicks produce no release sound. Audio initializes only
+on an enabled press/release, never on page load or a network response. Muting
+or hiding the page stops active voices and discards sounds awaiting audio unlock.
+Eight bounded voices keep rapid multi-touch play from building an audio queue.
+Unsupported or blocked audio leaves clicking usable. Motion preferences do not
+mute sound.
 
 Pending clicks remain separate from the confirmed total. Floating +1 labels
 show request timing and acknowledgment: amber while pending, mint for fast

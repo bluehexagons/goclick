@@ -84,6 +84,7 @@ function harness(reducedMotion = true, withPower = false) {
   const button = new Element(),
     stage = new Element(),
     rig = new Element();
+  button.id = "click-button";
   button.closest = () => stage;
   button.querySelector = () => ({ textContent: "Click!", dir: "ltr" });
   const power = new Element();
@@ -113,6 +114,7 @@ function harness(reducedMotion = true, withPower = false) {
   });
   let frameCallback = null,
     now = 0;
+  const sounds = [];
   const runtime = frontend(
     {
       document,
@@ -131,7 +133,10 @@ function harness(reducedMotion = true, withPower = false) {
         return 1;
       },
     },
-    { preferences: { motionPreference: { matches: reducedMotion, addEventListener() {} } } },
+    {
+      preferences: { motionPreference: { matches: reducedMotion, addEventListener() {} } },
+      sound: { clickSound: { play: (kind) => sounds.push(kind) } },
+    },
   );
   const controller = runtime.load("button").tactileButtons.get(button);
   const clicks = [];
@@ -176,6 +181,7 @@ function harness(reducedMotion = true, withPower = false) {
     },
     hasFrame: () => !!frameCallback,
     clicks,
+    sounds,
     pointer,
     window,
     selectionCleared: () => clearedSelections,
@@ -198,6 +204,7 @@ test("independent fingers each activate once and preserve their release coordina
   assert.equal(h.stage.classes.has("is-pressed"), false);
   assert.equal(h.button.captures.size, 0);
   assert.equal(h.selectionCleared(), 2);
+  assert.deepEqual(h.sounds, ["press", "press", "release", "release"]);
 });
 
 test("cancelling one finger keeps the other held; outside releases never count", () => {
@@ -209,6 +216,7 @@ test("cancelling one finger keeps the other held; outside releases never count",
   h.pointer("pointerup", 1, { clientX: 500 });
   assert.equal(h.clicks.length, 0);
   assert.equal(h.stage.classes.has("is-pressed"), false);
+  assert.deepEqual(h.sounds, ["press", "press"]);
 });
 
 test("mouse release plus its native click counts only once", () => {
@@ -217,6 +225,7 @@ test("mouse release plus its native click counts only once", () => {
   h.pointer("pointerup", 1, { pointerType: "mouse" });
   h.button.fire("click", { detail: 1, pointerType: "mouse" });
   assert.equal(h.clicks.length, 1);
+  assert.deepEqual(h.sounds, ["press", "release"]);
 });
 
 test("keyboard repeats and a second key cannot create extra clicks", () => {
@@ -232,6 +241,7 @@ test("keyboard repeats and a second key cannot create extra clicks", () => {
   h.button.fire("blur");
   h.button.fire("keyup", { key: " " });
   assert.equal(h.clicks.length, 1);
+  assert.deepEqual(h.sounds, ["press", "release", "press"]);
 });
 
 test("losing focus cancels every captured pointer without ghost clicks", () => {

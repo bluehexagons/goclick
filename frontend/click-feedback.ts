@@ -1,6 +1,7 @@
 import { motionPreference } from "./preferences.js";
 import { tactileButtons } from "./button.js";
 import { required } from "./dom.js";
+import { clickSound } from "./sound.js";
 import {
   currentLanguage,
   languageDirection,
@@ -120,6 +121,7 @@ const clickFeedback = (() => {
         popup.dataset.state =
           ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
         tactileButtons.get(button)?.respond(popup.dataset.state as ResponseState, ms);
+        clickSound.play(popup.dataset.state === "slow" ? "slow" : "saved");
         phase = "saved";
         measured = ms;
         translate();
@@ -133,6 +135,7 @@ const clickFeedback = (() => {
         window.clearTimeout(slow);
         popup.dataset.state = limited ? "limited" : "error";
         tactileButtons.get(button)?.respond(limited ? "limited" : "error");
+        clickSound.play(limited ? "limited" : "error");
         phase = limited ? "limited" : uncertain ? "unconfirmed" : "unsaved";
         translate();
         finish();

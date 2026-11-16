@@ -6,16 +6,19 @@ type MotionSetting = "auto" | "on" | "off";
 interface Settings {
   motion: MotionSetting;
   simulatedPing: 0 | 80 | 250 | 800;
+  sound: boolean;
 }
 const gameSettings = (() => {
   const key = "goclick.settings.v1";
   const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
   const listeners = new Set<(event: { matches: boolean }) => void>();
-  let value: Settings = { motion: "auto", simulatedPing: 80 };
+  const settingListeners = new Set<() => void>();
+  let value: Settings = { motion: "auto", simulatedPing: 80, sound: false };
   function parse(raw: string | null): Settings {
     const decoded: unknown = JSON.parse(raw || "{}");
     const saved = isRecord(decoded) ? decoded : {};
     return {
+      sound: saved.sound === true,
       motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "auto",
       simulatedPing:
         saved.simulatedPing === 0 || saved.simulatedPing === 250 || saved.simulatedPing === 800
@@ -40,13 +43,14 @@ const gameSettings = (() => {
   function apply() {
     const matches = motion.matches;
     document.documentElement.dataset.reducedMotion = String(matches);
+    for (const callback of settingListeners) callback();
     if (matches === appliedMotion) return;
     appliedMotion = matches;
     for (const callback of listeners) callback({ matches });
   }
   browser.addEventListener("change", apply);
   window.addEventListener("storage", (event) => {
-    if (event.key !== key) return;
+    if (event.key !== key && event.key !== null) return;
     try {
       value = parse(event.newValue);
       apply();
@@ -57,6 +61,9 @@ const gameSettings = (() => {
   apply();
   return {
     motion,
+    onChange(callback: () => void) {
+      settingListeners.add(callback);
+    },
     get value() {
       return { ...value };
     },

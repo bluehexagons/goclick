@@ -15,6 +15,11 @@ returns with the copper-to-gold finish on release. Etched channels and floating
 +1 feedback show pending, saved, slow, and failed requests. **Options** includes
 Auto, Reduced, and Full motion; Reduced keeps quiet, static feedback.
 
+Sound effects start **off**. The header's speaker toggle enables synthesized
+press and release clicks with slight variations, plus quieter save/ping and
+error cues. This preference is remembered in the browser and works in online
+and offline play. Muting stops active sounds immediately.
+
 **Play offline** keeps a separate local save in this browser, without account
 requests or online click limits. Download/import a save or restart it from
 Options. Local clicks never upload or change account progress. The page must
