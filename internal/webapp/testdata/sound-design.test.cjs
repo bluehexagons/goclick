@@ -100,3 +100,21 @@ test("recipes have distinct tails and pitch ranges for different preferences", (
   };
   assert.ok(crossings(render("low-beep")) < crossings(render("blip")) * 0.5);
 });
+
+test("release envelopes stay shorter, lighter, and lower in energy than presses", () => {
+  const { soundProfiles, createSoundMotion, renderSound } = design();
+  const energy = (samples) => samples.reduce((sum, sample) => sum + sample * sample, 0);
+  for (const rate of [44100, 48000]) {
+    for (const { id } of soundProfiles) {
+      const motion = createSoundMotion(() => 0.5);
+      for (const time of [0, 500, 5000]) {
+        const variation = motion.sample(time, true);
+        const press = renderSound(id, "press", rate, variation, noise());
+        const release = renderSound(id, "release", rate, variation, noise());
+        assert.ok(release.length < press.length * 0.85, `${id} release duration`);
+        assert.ok(peak(release) < peak(press) * 0.85, `${id} release peak`);
+        assert.ok(energy(release) < energy(press) * 0.65, `${id} release energy`);
+      }
+    }
+  }
+});

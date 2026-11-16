@@ -14,6 +14,9 @@ const previewVoices = new Set<AudioBufferSourceNode>();
 let previewPending = false;
 const maxVoices = 8;
 const maxUnlockDelay = 150;
+const responseInterval = 80;
+let responseAt = -Infinity;
+let responseWasFailure = false;
 
 function cancelPending() {
   generation++;
@@ -41,6 +44,8 @@ function removeVoice(voice: AudioBufferSourceNode, stop = false) {
 
 function stop() {
   cancelPending();
+  responseAt = -Infinity;
+  responseWasFailure = false;
   for (const voice of voices) removeVoice(voice, true);
 }
 
@@ -144,7 +149,21 @@ document.addEventListener("visibilitychange", () => {
 
 export const clickSound = {
   play(kind: SoundCue) {
-    withAudio(kind === "press" || kind === "release", (audio) => synthesize(audio, kind));
+    const physical = kind === "press" || kind === "release";
+    withAudio(physical, (audio) => {
+      const now = performance.now();
+      const failure = kind === "error" || kind === "limited";
+      // Replies can arrive together after network or event-loop delays. Keep
+      // them quiet by sounding one per short window, without queuing a burst.
+      // A failure can always interrupt a window started by a success cue.
+      if (!physical && now - responseAt < responseInterval && (!failure || responseWasFailure))
+        return;
+      synthesize(audio, kind);
+      if (!physical) {
+        responseAt = now;
+        responseWasFailure = failure;
+      }
+    });
   },
   preview() {
     // Schedule on the audio clock; mute, hiding, and profile changes can stop

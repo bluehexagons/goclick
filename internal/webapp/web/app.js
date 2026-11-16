@@ -243,7 +243,7 @@
     classic: {
       pitch: 175,
       end: 65,
-      release: 1.5,
+      release: { pitch: 1.5, duration: 0.065, decay: 0.011, gain: 0.65 },
       reply: 1100,
       ring: 1450,
       duration: 0.095,
@@ -253,7 +253,7 @@
     blip: {
       pitch: 620,
       end: 830,
-      release: 1.35,
+      release: { pitch: 1.35, duration: 0.06, decay: 0.015, gain: 0.64 },
       reply: 1400,
       ring: 1240,
       duration: 0.075,
@@ -263,7 +263,7 @@
     clack: {
       pitch: 430,
       end: 250,
-      release: 1.25,
+      release: { pitch: 1.25, duration: 0.045, decay: 6e-3, gain: 0.62 },
       reply: 1250,
       ring: 2800,
       duration: 0.065,
@@ -273,7 +273,7 @@
     clunk: {
       pitch: 115,
       end: 52,
-      release: 1.4,
+      release: { pitch: 1.4, duration: 0.085, decay: 0.017, gain: 0.62 },
       reply: 560,
       ring: 290,
       duration: 0.13,
@@ -283,7 +283,7 @@
     "low-beep": {
       pitch: 170,
       end: 160,
-      release: 1.3,
+      release: { pitch: 1.3, duration: 0.075, decay: 0.021, gain: 0.66 },
       reply: 340,
       ring: 340,
       duration: 0.11,
@@ -293,7 +293,7 @@
     "soft-chime": {
       pitch: 440,
       end: 440,
-      release: 1.25,
+      release: { pitch: 1.25, duration: 0.115, decay: 0.028, gain: 0.65 },
       reply: 880,
       ring: 1214,
       duration: 0.16,
@@ -311,12 +311,13 @@
     const recipe = recipes[profile2];
     const physical = cue === "press" || cue === "release";
     const response = physical ? null : responses[cue];
-    const multiplier = cue === "release" ? recipe.release : 1;
+    const release2 = cue === "release" ? recipe.release : null;
+    const multiplier = release2?.pitch ?? 1;
     const pitch = response ? recipe.reply * response.pitch : recipe.pitch * multiplier;
     const end = response ? recipe.reply * response.end : recipe.end * multiplier;
-    const gain = (response?.gain ?? (cue === "release" ? 0.8 : 1)) * variation.strength;
-    const decay = physical ? recipe.decay : 0.025;
-    const duration = recipe.duration * variation.duration;
+    const gain = (response?.gain ?? release2?.gain ?? 1) * variation.strength;
+    const decay = response ? 0.025 : release2?.decay ?? recipe.decay;
+    const duration = (release2?.duration ?? recipe.duration) * variation.duration;
     const samples = new Float32Array(Math.ceil(sampleRate * duration));
     let previousNoise = 0;
     let lowNoise = 0;
@@ -1158,6 +1159,9 @@
   var previewPending = false;
   var maxVoices = 8;
   var maxUnlockDelay = 150;
+  var responseInterval = 80;
+  var responseAt = -Infinity;
+  var responseWasFailure = false;
   function cancelPending() {
     generation++;
     previewPending = false;
@@ -1180,6 +1184,8 @@
   }
   function stop() {
     cancelPending();
+    responseAt = -Infinity;
+    responseWasFailure = false;
     for (const voice of voices) removeVoice(voice, true);
   }
   function synthesize(audio, kind, offset = 0, preview = false) {
@@ -1259,7 +1265,18 @@
   });
   var clickSound = {
     play(kind) {
-      withAudio(kind === "press" || kind === "release", (audio) => synthesize(audio, kind));
+      const physical = kind === "press" || kind === "release";
+      withAudio(physical, (audio) => {
+        const now = performance.now();
+        const failure = kind === "error" || kind === "limited";
+        if (!physical && now - responseAt < responseInterval && (!failure || responseWasFailure))
+          return;
+        synthesize(audio, kind);
+        if (!physical) {
+          responseAt = now;
+          responseWasFailure = failure;
+        }
+      });
     },
     preview() {
       stop();

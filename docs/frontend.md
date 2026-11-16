@@ -56,9 +56,11 @@ persists a boolean in `goclick.settings.v1` and synchronizes it across tabs.
 Options offers Classic (metal switch), Blip (arcade pulses), Clack (dry noisy
 impact), Clunk (deep phase-modulated body), Low beep (rounded sine tones), and
 Soft chime (inharmonic glassy partials). Each recipe supplies distinct press,
-release, and much quieter saved/slow/error/cooldown cues. The chosen
-`soundProfile` is stored alongside the sound boolean; legacy or unknown choices
-fall back to Classic. Choosing a profile never enables sound automatically.
+release, and much quieter saved/slow/error/cooldown cues. Releases use their own
+shorter duration, faster decay, and lower gain to keep the return stroke light
+and rapid clicks clear. The chosen `soundProfile` is stored alongside the sound
+boolean; legacy or unknown choices fall back to Classic. Choosing a profile
+never enables sound automatically.
 Options and the header share the same sound toggle. Preview schedules a press,
 release, and reply on the audio clock without touching game saves or the API;
 muting, hiding, changing profiles, or another preview stops that sequence.
@@ -83,6 +85,12 @@ Cancelling a gesture or losing focus also discards its pending audio; an unlock
 delayed more than 150 ms never replays the old sound. Partial audio setup and
 playback failures clean up their resources so a later gesture can retry.
 Eight bounded voices keep rapid multi-touch play from building an audio queue.
+Responses arriving within 80 ms share a cue instead of stacking
+pings. Error/cooldown cues can override a success cue's window, and suppress
+success pings for the rest of their own window. Physical press/release sounds
+are never coalesced. Only successfully started replies consume this
+window; muting, hiding, previews, and profile changes reset it. No replies are
+queued for later playback, and all click saves and visual feedback still run.
 Unsupported or blocked audio leaves clicking usable. Motion preferences do not
 mute sound.
 

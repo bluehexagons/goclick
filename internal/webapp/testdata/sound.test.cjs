@@ -130,7 +130,9 @@ for (const sampleRate of [44100, 48000])
     const peaks = new Map();
     for (const kind of ["press", "release", "saved", "slow", "error", "limited"]) {
       h.sound.play(kind);
+      h.advance(100);
       h.sound.play(kind);
+      h.advance(100);
       const first = h.buffers.at(-2).samples,
         second = h.buffers.at(-1).samples;
       assert.notDeepEqual(first, second, kind);
@@ -415,4 +417,66 @@ test("closing a preview cancels scheduled cues without cancelling a real gesture
   const preview = h.sources.slice(1);
   h.sound.cancelPreview();
   assert.ok(preview.every((source) => source.stopped));
+});
+
+test("response bursts coalesce without queuing or suppressing physical input", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.prepare();
+  for (let i = 0; i < 50; i++) h.sound.play(i % 2 ? "saved" : "slow");
+  assert.equal(h.sources.length, 1);
+  for (let i = 0; i < 5; i++) {
+    h.sound.play("press");
+    h.sound.play("release");
+    h.sound.play("saved");
+  }
+  assert.equal(h.sources.length, 11);
+  h.advance(79);
+  h.sound.play("saved");
+  assert.equal(h.sources.length, 11);
+  h.advance(1);
+  h.sound.play("saved");
+  assert.equal(h.sources.length, 12);
+});
+
+test("failure cues take priority over success bursts and briefly hold back success pings", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.prepare();
+  h.sound.play("saved");
+  h.sound.play("error");
+  assert.equal(h.sources.length, 2);
+  for (const cue of ["saved", "slow", "error", "limited"]) h.sound.play(cue);
+  assert.equal(h.sources.length, 2);
+  h.advance(80);
+  h.sound.play("limited");
+  assert.equal(h.sources.length, 3);
+  h.sound.play("saved");
+  assert.equal(h.sources.length, 3);
+  h.advance(80);
+  h.sound.play("saved");
+  assert.equal(h.sources.length, 4);
+});
+
+test("a muted, hidden, or failed response does not consume the next audible reply", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.prepare();
+  h.sound.play("saved");
+  h.sound.setEnabled(false);
+  h.sound.play("saved");
+  h.sound.setEnabled(true);
+  h.sound.play("saved");
+  assert.equal(h.sources.length, 2);
+  h.hide();
+  h.sound.play("saved");
+  h.show();
+  h.sound.play("saved");
+  assert.equal(h.sources.length, 3);
+  h.advance(80);
+  h.fail("buffer");
+  h.sound.play("saved");
+  h.fail("");
+  h.sound.play("saved");
+  assert.equal(h.sources.length, 4);
 });
