@@ -1,4 +1,6 @@
 import { isRecord } from "./dom.js";
+import { isSoundProfile } from "./sound-design.js";
+import type { SoundProfile } from "./sound-design.js";
 
 // Shared by the renderer, input controller and app. Manual choices override both
 // JavaScript animations and CSS; Auto follows a live OS/browser preference.
@@ -7,18 +9,25 @@ interface Settings {
   motion: MotionSetting;
   simulatedPing: 0 | 80 | 250 | 800;
   sound: boolean;
+  soundProfile: SoundProfile;
 }
 const gameSettings = (() => {
   const key = "goclick.settings.v1";
   const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
   const listeners = new Set<(event: { matches: boolean }) => void>();
   const settingListeners = new Set<() => void>();
-  let value: Settings = { motion: "auto", simulatedPing: 80, sound: false };
+  let value: Settings = {
+    motion: "auto",
+    simulatedPing: 80,
+    sound: false,
+    soundProfile: "classic",
+  };
   function parse(raw: string | null): Settings {
     const decoded: unknown = JSON.parse(raw || "{}");
     const saved = isRecord(decoded) ? decoded : {};
     return {
       sound: saved.sound === true,
+      soundProfile: isSoundProfile(saved.soundProfile) ? saved.soundProfile : "classic",
       motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "auto",
       simulatedPing:
         saved.simulatedPing === 0 || saved.simulatedPing === 250 || saved.simulatedPing === 800

@@ -272,6 +272,67 @@ test("legacy, malformed, and non-boolean sound settings stay muted", async () =>
   }
 });
 
+test("profile selection persists without enabling sound, requests, or game progress", async () => {
+  const h = await harness();
+  const selector = h.element("#sound-profile");
+  assert.equal(selector.value, "classic");
+  assert.equal(h.element("#sound-enabled").checked, false);
+  assert.equal(h.element("#preview-sound").disabled, true);
+  selector.value = "low-beep";
+  selector.fire("change");
+  assert.match(h.element("#sound-profile-description").textContent, /rounded electronic/);
+  assert.equal(JSON.parse(h.storage.get("goclick.settings.v1")).soundProfile, "low-beep");
+  assert.equal(JSON.parse(h.storage.get("goclick.settings.v1")).sound, false);
+  assert.deepEqual(h.requests, []);
+  assert.equal(h.element("#click-count").textContent, "10");
+  const reloaded = await harness({ storage: [...h.storage] });
+  assert.equal(reloaded.element("#sound-profile").value, "low-beep");
+  assert.equal(reloaded.element("#sound-enabled").checked, false);
+});
+
+test("Options and header sound toggles stay in sync; previews never add clicks", async () => {
+  const h = await harness();
+  const checkbox = h.element("#sound-enabled"),
+    preview = h.element("#preview-sound");
+  checkbox.checked = true;
+  checkbox.fire("change");
+  assert.equal(h.element("#sound-toggle").attributes.get("aria-pressed"), "true");
+  assert.equal(preview.disabled, false);
+  preview.fire("click");
+  assert.deepEqual(h.requests, []);
+  assert.equal(h.element("#click-count").textContent, "10");
+  h.element("#sound-toggle").fire("click");
+  assert.equal(checkbox.checked, false);
+  assert.equal(preview.disabled, true);
+  preview.fire("click");
+  assert.deepEqual(h.requests, []);
+});
+
+test("profile controls follow cross-tab choices, storage failure, and legacy fallback", async () => {
+  const h = await harness({ storage: [["goclick.settings.v1", '{"sound":true}']] });
+  const selector = h.element("#sound-profile");
+  assert.equal(selector.value, "classic");
+  h.window.fire("storage", {
+    key: "goclick.settings.v1",
+    newValue: '{"sound":true,"soundProfile":"soft-chime"}',
+  });
+  assert.equal(selector.value, "soft-chime");
+  assert.equal(h.element("#sound-enabled").checked, true);
+  h.failStorage();
+  selector.value = "clunk";
+  selector.fire("change");
+  assert.equal(selector.value, "clunk");
+  assert.match(h.element("#options-status").textContent, /Applied for this visit/);
+  for (const invalid of ["unknown", "__proto__", null, 5]) {
+    h.window.fire("storage", {
+      key: "goclick.settings.v1",
+      newValue: JSON.stringify({ soundProfile: invalid }),
+    });
+    assert.equal(selector.value, "classic");
+  }
+  assert.deepEqual(h.requests, []);
+});
+
 test("even brief tab switches recheck identity and coalesce focus with visibility", async () => {
   const h = await harness();
   const progress = deferred();

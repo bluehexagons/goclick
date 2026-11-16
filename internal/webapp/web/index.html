@@ -579,6 +579,21 @@
             <option value="off">Full — animations and effects</option>
           </select>
           <p class="field-hint">Applies immediately and is remembered in this browser.</p>
+          <h2>Sound</h2>
+          <label class="replace-local">
+            <input id="sound-enabled" type="checkbox" /> Sound effects
+          </label>
+          <label for="sound-profile">Sound profile</label>
+          <select id="sound-profile" aria-describedby="sound-profile-description"></select>
+          <p id="sound-profile-description" class="field-hint"></p>
+          <button id="preview-sound" class="button button-quiet" type="button" disabled>
+            Preview sound
+          </button>
+          <p class="field-hint">
+            Enable sound to preview a press, release, and reply. Previews never add clicks. Pitch
+            and texture drift gently over time and react to your clicking pace. Sound starts off;
+            your choices are remembered in this browser.
+          </p>
           <h2>Offline play</h2>
           <p class="muted">
             One local save in this browser. Local clicks never change your account progress. Leaving

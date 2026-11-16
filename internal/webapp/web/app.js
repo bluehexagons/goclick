@@ -185,18 +185,200 @@
     return Number.isFinite(delay) ? Math.max(1e3, Math.min(864e5, delay)) : 5e3;
   }
 
+  // frontend/sound-design.ts
+  var soundProfiles = [
+    {
+      id: "classic",
+      name: "Classic",
+      description: "A metal switch: a low thock with a bright tick."
+    },
+    { id: "blip", name: "Blip", description: "Playful arcade pulses with a bouncy pitch step." },
+    { id: "clack", name: "Clack", description: "Crisp, dry key clicks with a short, woody ring." },
+    {
+      id: "clunk",
+      name: "Clunk",
+      description: "A heavier, rounded impact with a deep resonant body."
+    },
+    {
+      id: "low-beep",
+      name: "Low beep",
+      description: "Low, rounded electronic tones without a sharp click."
+    },
+    {
+      id: "soft-chime",
+      name: "Soft chime",
+      description: "Gentle glassy notes with a soft attack and a short tail."
+    }
+  ];
+  function isSoundProfile(value) {
+    return soundProfiles.some((profile2) => profile2.id === value);
+  }
+  function createSoundMotion(random = Math.random) {
+    const phase = random() * Math.PI * 2;
+    const texturePhase = random() * Math.PI * 2;
+    let previous = null;
+    let activity = 0;
+    let accent = 0;
+    return {
+      sample(milliseconds, press = false) {
+        if (previous !== null) activity *= Math.exp(-Math.max(0, milliseconds - previous) / 900);
+        previous = milliseconds;
+        if (press) {
+          activity = Math.min(1, activity + 0.1);
+          accent = (random() - 0.5) * 8e-3;
+        }
+        const time = milliseconds / 1e3;
+        const drift = 0.65 * Math.sin(time * 0.73 + phase) + 0.35 * Math.sin(time * 0.23 + phase);
+        const breath = Math.sin(time * 1.13 + texturePhase);
+        return {
+          pitch: 1 + drift * 0.045 + activity * 0.035 + accent,
+          texture: 0.9 + breath * 0.15 + activity * 0.08,
+          duration: 1 + breath * 0.035 - activity * 0.025,
+          strength: 0.94 + drift * 0.035 + activity * 0.015
+        };
+      }
+    };
+  }
+  var recipes = {
+    classic: {
+      pitch: 175,
+      end: 65,
+      release: 1.5,
+      reply: 1100,
+      ring: 1450,
+      duration: 0.095,
+      decay: 0.018,
+      attack: 7e-4
+    },
+    blip: {
+      pitch: 620,
+      end: 830,
+      release: 1.35,
+      reply: 1400,
+      ring: 1240,
+      duration: 0.075,
+      decay: 0.021,
+      attack: 15e-4
+    },
+    clack: {
+      pitch: 430,
+      end: 250,
+      release: 1.25,
+      reply: 1250,
+      ring: 2800,
+      duration: 0.065,
+      decay: 9e-3,
+      attack: 5e-4
+    },
+    clunk: {
+      pitch: 115,
+      end: 52,
+      release: 1.4,
+      reply: 560,
+      ring: 290,
+      duration: 0.13,
+      decay: 0.027,
+      attack: 15e-4
+    },
+    "low-beep": {
+      pitch: 170,
+      end: 160,
+      release: 1.3,
+      reply: 340,
+      ring: 340,
+      duration: 0.11,
+      decay: 0.03,
+      attack: 5e-3
+    },
+    "soft-chime": {
+      pitch: 440,
+      end: 440,
+      release: 1.25,
+      reply: 880,
+      ring: 1214,
+      duration: 0.16,
+      decay: 0.037,
+      attack: 4e-3
+    }
+  };
+  var responses = {
+    saved: { pitch: 1, end: 1.16, gain: 0.2 },
+    slow: { pitch: 0.64, end: 0.77, gain: 0.18 },
+    error: { pitch: 0.25, end: 0.16, gain: 0.22 },
+    limited: { pitch: 0.35, end: 0.28, gain: 0.18 }
+  };
+  function renderSound(profile2, cue, sampleRate, variation, random = Math.random) {
+    const recipe = recipes[profile2];
+    const physical = cue === "press" || cue === "release";
+    const response = physical ? null : responses[cue];
+    const multiplier = cue === "release" ? recipe.release : 1;
+    const pitch = response ? recipe.reply * response.pitch : recipe.pitch * multiplier;
+    const end = response ? recipe.reply * response.end : recipe.end * multiplier;
+    const gain = (response?.gain ?? (cue === "release" ? 0.8 : 1)) * variation.strength;
+    const decay = physical ? recipe.decay : 0.025;
+    const duration = recipe.duration * variation.duration;
+    const samples = new Float32Array(Math.ceil(sampleRate * duration));
+    let previousNoise = 0;
+    let lowNoise = 0;
+    for (let i = 0; i < samples.length; i++) {
+      const time = i / sampleRate;
+      const phase = 2 * Math.PI * variation.pitch * (end * time + (pitch - end) * 0.012 * (1 - Math.exp(-time / 0.012)));
+      const envelope = Math.exp(-time / decay);
+      const ring = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
+      const noise = random() * 2 - 1;
+      lowNoise += (noise - lowNoise) * 0.18;
+      const highNoise = noise - previousNoise;
+      previousNoise = noise;
+      const texture = variation.texture * (physical ? 1 : 0.25);
+      let wave;
+      switch (profile2) {
+        case "classic":
+          wave = 0.6 * Math.sin(phase) * envelope + 0.14 * ring * Math.exp(-time / 8e-3) + 0.1 * highNoise * texture * Math.exp(-time / 3e-3);
+          break;
+        case "blip": {
+          const stepPhase = phase + Math.max(0, time - 0.018) * pitch * 0.35 * Math.PI * 2;
+          const triangle = 2 * Math.asin(Math.sin(stepPhase)) / Math.PI;
+          const pulse = Math.tanh(Math.sin(stepPhase) * (2.2 + variation.texture));
+          wave = (0.5 * triangle + 0.18 * pulse) * envelope;
+          break;
+        }
+        case "clack":
+          wave = 0.3 * Math.sin(phase) * envelope + 0.12 * ring * Math.exp(-time / 6e-3) + 0.22 * highNoise * texture * Math.exp(-time / 25e-4);
+          break;
+        case "clunk":
+          wave = 0.6 * Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) * envelope + 0.14 * ring * Math.exp(-time / 0.014) + 0.08 * lowNoise * texture * Math.exp(-time / 5e-3);
+          break;
+        case "low-beep":
+          wave = (0.6 * Math.sin(phase) + 0.1 * Math.sin(phase * 2) + 0.04 * Math.sin(phase / 2)) * envelope;
+          break;
+        case "soft-chime":
+          wave = (0.43 * Math.sin(phase) + 0.17 * Math.sin(phase * (2.76 + variation.texture * 0.015)) + 0.13 * Math.sin(phase * 4.07)) * envelope;
+          break;
+      }
+      const fade = Math.min(1, time / recipe.attack, (samples.length - 1 - i) / (sampleRate * 8e-3));
+      samples[i] = wave * fade * gain;
+    }
+    return samples;
+  }
+
   // frontend/preferences.ts
   var gameSettings = (() => {
     const key = "goclick.settings.v1";
     const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
     const listeners2 = /* @__PURE__ */ new Set();
     const settingListeners = /* @__PURE__ */ new Set();
-    let value = { motion: "auto", simulatedPing: 80, sound: false };
+    let value = {
+      motion: "auto",
+      simulatedPing: 80,
+      sound: false,
+      soundProfile: "classic"
+    };
     function parse(raw) {
       const decoded = JSON.parse(raw || "{}");
       const saved = isRecord(decoded) ? decoded : {};
       return {
         sound: saved.sound === true,
+        soundProfile: isSoundProfile(saved.soundProfile) ? saved.soundProfile : "classic",
         motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "auto",
         simulatedPing: saved.simulatedPing === 0 || saved.simulatedPing === 250 || saved.simulatedPing === 800 ? saved.simulatedPing : 80
       };
@@ -205,7 +387,7 @@
       value = parse(localStorage.getItem(key));
     } catch {
     }
-    const motion = {
+    const motion2 = {
       get matches() {
         return value.motion === "on" || value.motion === "auto" && browser.matches;
       },
@@ -215,7 +397,7 @@
     };
     let appliedMotion;
     function apply() {
-      const matches = motion.matches;
+      const matches = motion2.matches;
       document.documentElement.dataset.reducedMotion = String(matches);
       for (const callback of settingListeners) callback();
       if (matches === appliedMotion) return;
@@ -233,7 +415,7 @@
     });
     apply();
     return {
-      motion,
+      motion: motion2,
       onChange(callback) {
         settingListeners.add(callback);
       },
@@ -965,14 +1147,8 @@
   }
 
   // frontend/sound.ts
-  var profiles = {
-    press: { pitch: 175, end: 65, metal: 1450, noise: 0.12, decay: 0.018, gain: 1 },
-    release: { pitch: 260, end: 125, metal: 1900, noise: 0.08, decay: 0.014, gain: 0.8 },
-    saved: { pitch: 1100, end: 1280, metal: 1650, noise: 0, decay: 0.025, gain: 0.2 },
-    slow: { pitch: 700, end: 850, metal: 1050, noise: 0, decay: 0.025, gain: 0.18 },
-    error: { pitch: 240, end: 150, metal: 360, noise: 0, decay: 0.025, gain: 0.22 },
-    limited: { pitch: 380, end: 300, metal: 570, noise: 0, decay: 0.025, gain: 0.18 }
-  };
+  var motion = createSoundMotion();
+  var profile = "classic";
   var enabled = false;
   var context = null;
   var output = null;
@@ -1001,25 +1177,11 @@
     cancelPending();
     for (const voice of voices) removeVoice(voice, true);
   }
-  function synthesize(audio, kind) {
-    const profile = profiles[kind];
-    const duration = 0.095 * (0.95 + Math.random() * 0.1);
-    const buffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * duration), audio.sampleRate);
-    const samples = buffer.getChannelData(0);
-    const pitch = 0.96 + Math.random() * 0.08;
-    const strength = profile.gain * (0.9 + Math.random() * 0.1);
-    let previousNoise = 0;
-    for (let i = 0; i < samples.length; i++) {
-      const time = i / audio.sampleRate;
-      const phase = 2 * Math.PI * pitch * (profile.end * time + (profile.pitch - profile.end) * 0.012 * (1 - Math.exp(-time / 0.012)));
-      const body = Math.sin(phase) * Math.exp(-time / profile.decay);
-      const overtone = Math.sin(2 * Math.PI * profile.metal * pitch * time) * Math.exp(-time / 8e-3);
-      const noise = Math.random() * 2 - 1;
-      const tick2 = (noise - previousNoise) * Math.exp(-time / 3e-3);
-      previousNoise = noise;
-      const fade = Math.min(1, time / 7e-4, (samples.length - 1 - i) / (audio.sampleRate * 8e-3));
-      samples[i] = (0.6 * body + 0.14 * overtone + profile.noise * tick2) * fade * strength;
-    }
+  function synthesize(audio, kind, offset = 0) {
+    const variation = motion.sample(performance.now(), kind === "press");
+    const samples = renderSound(profile, kind, audio.sampleRate, variation);
+    const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
+    buffer.getChannelData(0).set(samples);
     if (voices.size >= maxVoices) {
       const oldest = voices.values().next().value;
       removeVoice(oldest, true);
@@ -1030,7 +1192,7 @@
       voice.connect(output);
       voice.onended = () => removeVoice(voice);
       voices.add(voice);
-      voice.start();
+      voice.start(audio.currentTime + offset);
     } catch (error) {
       removeVoice(voice, true);
       throw error;
@@ -1064,19 +1226,18 @@
     } catch {
     }
   }
-  function play(kind) {
+  function withAudio(gesture, emit) {
     if (!enabled || document.hidden) return;
-    const gesture = kind === "press" || kind === "release";
     const current = gesture ? ++generation : generation;
     try {
       const audio = audioContext(gesture);
       if (!audio) return;
-      if (audio.state === "running") synthesize(audio, kind);
+      if (audio.state === "running") emit(audio);
       else if (gesture) {
         const requestedAt = performance.now();
         void audio.resume().then(() => {
           if (enabled && !document.hidden && current === generation && audio.state === "running" && performance.now() - requestedAt <= maxUnlockDelay)
-            synthesize(audio, kind);
+            emit(audio);
         }).catch(() => {
         });
       }
@@ -1087,7 +1248,22 @@
     if (document.hidden) stop();
   });
   var clickSound = {
-    play,
+    play(kind) {
+      withAudio(kind === "press" || kind === "release", (audio) => synthesize(audio, kind));
+    },
+    preview() {
+      stop();
+      withAudio(true, (audio) => {
+        synthesize(audio, "press");
+        synthesize(audio, "release", 0.06);
+        synthesize(audio, "saved", 0.18);
+      });
+    },
+    setProfile(value) {
+      if (profile === value) return;
+      stop();
+      profile = value;
+    },
     prepare,
     cancelPending,
     setEnabled(value) {
@@ -2898,9 +3074,25 @@
   var refreshCounterButton = required("#refresh-counter");
   var motionShortcut = required("#motion-shortcut");
   var soundToggle = required("#sound-toggle");
+  var soundEnabled = required("#sound-enabled");
+  var soundProfileSetting = required("#sound-profile");
+  var soundPreview = required("#preview-sound");
+  for (const profile2 of soundProfiles) {
+    const option = document.createElement("option");
+    option.value = profile2.id;
+    option.textContent = profile2.name;
+    soundProfileSetting.append(option);
+  }
   function updateSoundToggle() {
-    const enabled2 = gameSettings.value.sound;
+    const { sound: enabled2, soundProfile } = gameSettings.value;
+    clickSound.setProfile(soundProfile);
     clickSound.setEnabled(enabled2);
+    soundEnabled.checked = enabled2;
+    soundProfileSetting.value = soundProfile;
+    soundPreview.disabled = !enabled2;
+    required("#sound-profile-description").textContent = soundProfiles.find(
+      (profile2) => profile2.id === soundProfile
+    ).description;
     soundToggle.setAttribute("aria-pressed", String(enabled2));
     soundToggle.setAttribute("aria-label", message2("sound"));
     soundToggle.title = message2(enabled2 ? "soundOn" : "soundOff");
@@ -3566,9 +3758,18 @@
       );
     }
   }
+  soundEnabled.addEventListener("change", () => {
+    saveOption({ sound: soundEnabled.checked });
+    if (gameSettings.value.sound) clickSound.prepare();
+  });
+  soundProfileSetting.addEventListener("change", () => {
+    const profile2 = soundProfileSetting.value;
+    if (isSoundProfile(profile2)) saveOption({ soundProfile: profile2 });
+  });
+  soundPreview.addEventListener("click", () => clickSound.preview());
   required("#motion-setting").addEventListener("change", () => {
-    const motion = required("#motion-setting").value;
-    if (motion === "auto" || motion === "on" || motion === "off") saveOption({ motion });
+    const motion2 = required("#motion-setting").value;
+    if (motion2 === "auto" || motion2 === "on" || motion2 === "off") saveOption({ motion: motion2 });
   });
   motionShortcut.addEventListener("click", () => {
     try {

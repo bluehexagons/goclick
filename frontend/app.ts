@@ -7,6 +7,7 @@ import { localGame } from "./local-game.js";
 import { tactileButtons } from "./button.js";
 import { clickFeedback } from "./click-feedback.js";
 import { clickSound } from "./sound.js";
+import { isSoundProfile, soundProfiles } from "./sound-design.js";
 import { statsShare } from "./share.js";
 import {
   languages,
@@ -45,9 +46,25 @@ const retryBootButton = $<HTMLButtonElement>("#retry-boot-button");
 const refreshCounterButton = $<HTMLButtonElement>("#refresh-counter");
 const motionShortcut = $<HTMLButtonElement>("#motion-shortcut");
 const soundToggle = $<HTMLButtonElement>("#sound-toggle");
+const soundEnabled = $<HTMLInputElement>("#sound-enabled");
+const soundProfileSetting = $<HTMLSelectElement>("#sound-profile");
+const soundPreview = $<HTMLButtonElement>("#preview-sound");
+for (const profile of soundProfiles) {
+  const option = document.createElement("option");
+  option.value = profile.id;
+  option.textContent = profile.name;
+  soundProfileSetting.append(option);
+}
 function updateSoundToggle() {
-  const enabled = gameSettings.value.sound;
+  const { sound: enabled, soundProfile } = gameSettings.value;
+  clickSound.setProfile(soundProfile);
   clickSound.setEnabled(enabled);
+  soundEnabled.checked = enabled;
+  soundProfileSetting.value = soundProfile;
+  soundPreview.disabled = !enabled;
+  $("#sound-profile-description").textContent = soundProfiles.find(
+    (profile) => profile.id === soundProfile,
+  )!.description;
   soundToggle.setAttribute("aria-pressed", String(enabled));
   soundToggle.setAttribute("aria-label", t("sound"));
   soundToggle.title = t(enabled ? "soundOn" : "soundOff");
@@ -804,6 +821,15 @@ function saveOption(patch: Parameters<typeof gameSettings.update>[0]) {
     );
   }
 }
+soundEnabled.addEventListener("change", () => {
+  saveOption({ sound: soundEnabled.checked });
+  if (gameSettings.value.sound) clickSound.prepare();
+});
+soundProfileSetting.addEventListener("change", () => {
+  const profile = soundProfileSetting.value;
+  if (isSoundProfile(profile)) saveOption({ soundProfile: profile });
+});
+soundPreview.addEventListener("click", () => clickSound.preview());
 $<HTMLSelectElement>("#motion-setting").addEventListener("change", () => {
   const motion = $<HTMLSelectElement>("#motion-setting").value;
   if (motion === "auto" || motion === "on" || motion === "off") saveOption({ motion });

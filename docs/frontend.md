@@ -20,6 +20,7 @@ pick up changes in an already running binary.
 | Local save coordination | `frontend/local-game.ts` |
 | Floating click feedback | `frontend/click-feedback.ts` |
 | Procedural press, release, and response audio | `frontend/sound.ts` |
+| Sound profiles, synthesis recipes, and variation curves | `frontend/sound-design.ts` |
 | Sharing and clipboard feedback | `frontend/share.ts` |
 | Administration | `frontend/admin.ts`, `internal/webapp/web/admin.html` |
 
@@ -52,16 +53,29 @@ movement, particles, and flashes while retaining quiet color feedback.
 
 Sound is independently optional and off by default. The header speaker toggle
 persists a boolean in `goclick.settings.v1` and synchronizes it across tabs.
-`sound.ts` synthesizes short PCM buffers using damped tones and filtered noise,
-varying pitch, strength, and texture on each activation. Main-button presses
-and accepted releases use distinct mechanical sounds; save responses use much
-quieter tones, with separate slow, failed, and cooldown cues. Offline responses
-follow the simulated ping timing. Cancelled/outside releases, repeated keydowns,
+Options offers Classic (metal switch), Blip (arcade pulses), Clack (dry noisy
+impact), Clunk (deep phase-modulated body), Low beep (rounded sine tones), and
+Soft chime (inharmonic glassy partials). Each recipe supplies distinct press,
+release, and much quieter saved/slow/error/cooldown cues. The chosen
+`soundProfile` is stored alongside the sound boolean; legacy or unknown choices
+fall back to Classic. Choosing a profile never enables sound automatically.
+Options and the header share the same sound toggle. Preview schedules a press,
+release, and reply on the audio clock without touching game saves or the API;
+muting, hiding, changing profiles, or another preview stops that sequence.
+
+`sound-design.ts` renders short, faded PCM buffers without allocating an audio
+device. Pitch follows overlapping slow sine curves; texture and duration follow
+another smooth curve. A bounded activity value rises on presses and decays
+exponentially over 900 ms, adding a little energy during rapid play. Randomness
+seeds the curves once per visit, adds less than half a percent of pitch accent
+per press, and supplies noise for mechanical textures. Release and reply sample
+the same continuous curves rather than picking unrelated parameters. Offline
+responses follow the simulated ping timing. Cancelled/outside releases, repeated keydowns,
 and suppressed native clicks produce no release sound. Explicitly enabling sound
 prepares the audio device silently, so startup does not delay the first game
 press. A remembered preference stays allocation-free until a press/release;
-page load and network responses never initialize audio. Muting
-or hiding the page stops active voices and discards sounds awaiting audio unlock.
+page load and network responses never initialize audio. Muting or hiding the
+page stops active voices and discards sounds awaiting audio unlock.
 Cancelling a gesture or losing focus also discards its pending audio; an unlock
 delayed more than 150 ms never replays the old sound. Partial audio setup and
 playback failures clean up their resources so a later gesture can retry.

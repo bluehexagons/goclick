@@ -18,6 +18,7 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
       if (fail === "constructor") throw new Error("Audio unavailable");
       this.state = state;
       this.sampleRate = sampleRate;
+      this.currentTime = 10;
       contexts.push(this);
     }
     createGain() {
@@ -46,9 +47,10 @@ function harness({ state = "running", sampleRate = 48000, unavailable = false, f
         disconnect() {
           this.disconnected = true;
         },
-        start() {
+        start(time) {
           if (fail === "start") throw new Error("Source unavailable");
           this.started = true;
+          this.startTime = time;
         },
         stop() {
           if (fail === "stop" || (fail === "start" && !this.started))
@@ -132,7 +134,7 @@ for (const sampleRate of [44100, 48000])
       const first = h.buffers.at(-2).samples,
         second = h.buffers.at(-1).samples;
       assert.notDeepEqual(first, second, kind);
-      assert.ok(first.length > sampleRate * 0.09 && first.length < sampleRate * 0.1);
+      assert.ok(first.length > sampleRate * 0.04 && first.length < sampleRate * 0.18);
       assert.equal(Math.abs(first[0]), 0);
       assert.ok(Math.abs(first.at(-1)) === 0);
       let peak = 0;
@@ -318,4 +320,57 @@ test("a failed source stop cannot interrupt muting or leave the other voices con
   h.fail("stop");
   assert.doesNotThrow(() => h.sound.setEnabled(false));
   assert.ok(h.sources.every((source) => source.disconnected));
+});
+
+test("preview stays muted by default, schedules a sample sequence, and can be stopped before replies", () => {
+  const h = harness();
+  h.sound.preview();
+  assert.equal(h.contexts.length, 0);
+  h.sound.setEnabled(true);
+  h.sound.setProfile("blip");
+  h.sound.preview();
+  assert.equal(h.sources.length, 3);
+  assert.deepEqual(
+    h.sources.map((source) => source.startTime),
+    [10, 10.06, 10.18],
+  );
+  h.sound.setEnabled(false);
+  assert.ok(h.sources.every((source) => source.stopped && source.disconnected));
+});
+
+test("a new preview replaces the previous sequence and hiding stops scheduled voices", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  const first = h.sources.slice();
+  h.sound.preview();
+  assert.ok(first.every((source) => source.stopped));
+  assert.equal(h.sources.length, 6);
+  h.hide();
+  assert.ok(h.sources.every((source) => source.stopped));
+});
+
+test("changing profile stops old voices, uses a different recipe, and leaves the same profile alone", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  const classicLength = h.buffers[0].samples.length;
+  h.sound.setProfile("classic");
+  assert.equal(h.sources[0].stopped, undefined);
+  h.sound.setProfile("clunk");
+  assert.equal(h.sources[0].stopped, true);
+  h.sound.play("press");
+  assert.ok(h.buffers[1].samples.length > classicLength);
+});
+
+test("a profile change invalidates a preview awaiting audio unlock", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  h.sound.setProfile("soft-chime");
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 0);
+  h.sound.preview();
+  assert.equal(h.sources.length, 3);
 });
