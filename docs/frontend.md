@@ -57,8 +57,10 @@ varying pitch, strength, and texture on each activation. Main-button presses
 and accepted releases use distinct mechanical sounds; save responses use much
 quieter tones, with separate slow, failed, and cooldown cues. Offline responses
 follow the simulated ping timing. Cancelled/outside releases, repeated keydowns,
-and suppressed native clicks produce no release sound. Audio initializes only
-on an enabled press/release, never on page load or a network response. Muting
+and suppressed native clicks produce no release sound. Explicitly enabling sound
+prepares the audio device silently, so startup does not delay the first game
+press. A remembered preference stays allocation-free until a press/release;
+page load and network responses never initialize audio. Muting
 or hiding the page stops active voices and discards sounds awaiting audio unlock.
 Cancelling a gesture or losing focus also discards its pending audio; an unlock
 delayed more than 150 ms never replays the old sound. Partial audio setup and

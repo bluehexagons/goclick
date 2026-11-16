@@ -148,6 +148,48 @@ for (const sampleRate of [44100, 48000])
     assert.ok(8 * 0.98 * h.contexts[0].output.gain.value < 1, "Combined peak cannot clip");
   });
 
+test("explicit opt-in prepares audio silently and the first press reuses it", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.prepare();
+  assert.equal(h.contexts.length, 0);
+  h.sound.setEnabled(true);
+  h.sound.prepare();
+  assert.equal(h.contexts.length, 1);
+  assert.equal(h.sources.length, 0);
+  assert.equal(h.resumes(), 1);
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 0);
+  h.sound.play("press");
+  assert.equal(h.contexts.length, 1);
+  assert.equal(h.sources.length, 1);
+});
+
+test("blocked preparation remains silent and a later gesture retries", async () => {
+  const h = harness({ state: "suspended", fail: "resume" });
+  h.sound.setEnabled(true);
+  h.sound.prepare();
+  await settle();
+  assert.equal(h.sources.length, 0);
+  h.fail("");
+  h.sound.play("release");
+  assert.equal(h.resumes(), 2);
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 1);
+});
+
+test("muting while preparation is pending cannot play an opt-in tone", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.setEnabled(true);
+  h.sound.prepare();
+  h.sound.setEnabled(false);
+  h.resume();
+  await settle();
+  h.sound.play("release");
+  assert.equal(h.sources.length, 0);
+});
+
 test("rapid input bounds voices, ended sources disconnect, and mute stops all audio immediately", () => {
   const h = harness();
   h.sound.setEnabled(true);

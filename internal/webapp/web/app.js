@@ -1036,27 +1036,41 @@
       throw error;
     }
   }
+  function audioContext(allowCreate) {
+    if (!context || context.state === "closed") {
+      if (!allowCreate || typeof window.AudioContext !== "function") return null;
+      const next = new window.AudioContext({ latencyHint: "interactive" });
+      try {
+        const gain = next.createGain();
+        gain.gain.value = 0.12;
+        gain.connect(next.destination);
+        output = gain;
+        context = next;
+      } catch (error) {
+        void next.close().catch(() => {
+        });
+        throw error;
+      }
+    }
+    return context;
+  }
+  function prepare() {
+    if (!enabled || document.hidden) return;
+    try {
+      const audio = audioContext(true);
+      if (audio && audio.state !== "running")
+        void audio.resume().catch(() => {
+        });
+    } catch {
+    }
+  }
   function play(kind) {
     if (!enabled || document.hidden) return;
     const gesture = kind === "press" || kind === "release";
     const current = gesture ? ++generation : generation;
     try {
-      if (!context || context.state === "closed") {
-        if (!gesture || typeof window.AudioContext !== "function") return;
-        const next = new window.AudioContext({ latencyHint: "interactive" });
-        try {
-          const gain = next.createGain();
-          gain.gain.value = 0.12;
-          gain.connect(next.destination);
-          output = gain;
-          context = next;
-        } catch (error) {
-          void next.close().catch(() => {
-          });
-          throw error;
-        }
-      }
-      const audio = context;
+      const audio = audioContext(gesture);
+      if (!audio) return;
       if (audio.state === "running") synthesize(audio, kind);
       else if (gesture) {
         const requestedAt = performance.now();
@@ -1074,6 +1088,7 @@
   });
   var clickSound = {
     play,
+    prepare,
     cancelPending,
     setEnabled(value) {
       if (enabled === value) return;
@@ -2898,6 +2913,7 @@
       gameSettings.update({ sound: !gameSettings.value.sound });
     } catch {
     }
+    if (gameSettings.value.sound) clickSound.prepare();
   });
   var connection = required("#connection");
   var pendingIndicator = required("#pending-clicks");

@@ -61,6 +61,9 @@ soundToggle.addEventListener("click", () => {
   } catch {
     // Like motion, sound still applies for this visit if storage is blocked.
   }
+  // Unlock and start the device during explicit opt-in, before the first game
+  // press. Startup and stored preferences remain silent and allocation-free.
+  if (gameSettings.value.sound) clickSound.prepare();
 });
 const connection = $("#connection");
 const pendingIndicator = $("#pending-clicks");

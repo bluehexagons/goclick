@@ -1,5 +1,5 @@
 // All sounds are synthesized locally; audio stays unallocated until an enabled
-// press/release gesture. Responses never unlock audio or queue delayed pings.
+// opt-in or press/release gesture. Responses never unlock audio or queue delayed pings.
 type Sound = "press" | "release" | "saved" | "slow" | "error" | "limited";
 const profiles = {
   press: { pitch: 175, end: 65, metal: 1450, noise: 0.12, decay: 0.018, gain: 1 },
@@ -87,28 +87,46 @@ function synthesize(audio: AudioContext, kind: Sound) {
   }
 }
 
+function audioContext(allowCreate: boolean) {
+  if (!context || context.state === "closed") {
+    if (!allowCreate || typeof window.AudioContext !== "function") return null;
+    const next = new window.AudioContext({ latencyHint: "interactive" });
+    try {
+      const gain = next.createGain();
+      gain.gain.value = 0.12;
+      gain.connect(next.destination);
+      output = gain;
+      context = next;
+    } catch (error) {
+      void next.close().catch(() => {
+        // A failed device may also reject closing its partial graph.
+      });
+      throw error;
+    }
+  }
+  return context;
+}
+
+function prepare() {
+  if (!enabled || document.hidden) return;
+  try {
+    const audio = audioContext(true);
+    if (audio && audio.state !== "running")
+      void audio.resume().catch(() => {
+        // A later press/release can retry if the toggle gesture was blocked.
+      });
+  } catch {
+    // Enabling sound must stay usable when the audio device is unavailable.
+  }
+}
+
 function play(kind: Sound) {
   if (!enabled || document.hidden) return;
   const gesture = kind === "press" || kind === "release";
   const current = gesture ? ++generation : generation;
   try {
-    if (!context || context.state === "closed") {
-      if (!gesture || typeof window.AudioContext !== "function") return;
-      const next = new window.AudioContext({ latencyHint: "interactive" });
-      try {
-        const gain = next.createGain();
-        gain.gain.value = 0.12;
-        gain.connect(next.destination);
-        output = gain;
-        context = next;
-      } catch (error) {
-        void next.close().catch(() => {
-          // A failed device may also reject closing its partial graph.
-        });
-        throw error;
-      }
-    }
-    const audio = context;
+    const audio = audioContext(gesture);
+    if (!audio) return;
     if (audio.state === "running") synthesize(audio, kind);
     else if (gesture) {
       const requestedAt = performance.now();
@@ -141,6 +159,7 @@ document.addEventListener("visibilitychange", () => {
 
 export const clickSound = {
   play,
+  prepare,
   cancelPending,
   setEnabled(value: boolean) {
     if (enabled === value) return;
