@@ -184,6 +184,7 @@ async function harness(options = {}) {
   const runtime = frontend(globals, {
     button: { tactileButtons: globals.tactileButtons },
     "click-feedback": { clickFeedback: globals.clickFeedback },
+    ...(options.sound ? { sound: { clickSound: options.sound } } : {}),
   });
   const context = options.production ? runtime.bundle("app") : runtime.load("app");
   await settle();
@@ -305,6 +306,31 @@ test("Options and header sound toggles stay in sync; previews never add clicks",
   assert.equal(checkbox.checked, false);
   assert.equal(preview.disabled, true);
   preview.fire("click");
+  assert.deepEqual(h.requests, []);
+});
+
+test("closing Options cancels its sound preview without changing game progress", async () => {
+  let playing = false;
+  const h = await harness({
+    storage: [["goclick.settings.v1", '{"sound":true}']],
+    sound: {
+      setProfile() {},
+      setEnabled() {},
+      preview() {
+        playing = true;
+      },
+      cancelPreview() {
+        playing = false;
+      },
+    },
+  });
+  h.element("#options-button").fire("click");
+  assert.equal(h.element("#preview-sound").disabled, false);
+  h.element("#preview-sound").fire("click");
+  assert.equal(playing, true);
+  h.element("#options-dialog").fire("close");
+  assert.equal(playing, false);
+  assert.equal(h.element("#click-count").textContent, "10");
   assert.deepEqual(h.requests, []);
 });
 

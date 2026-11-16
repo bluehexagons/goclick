@@ -374,3 +374,45 @@ test("a profile change invalidates a preview awaiting audio unlock", async () =>
   h.sound.preview();
   assert.equal(h.sources.length, 3);
 });
+
+test("a real game press cancels all remaining preview voices", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  const preview = h.sources.slice();
+  h.sound.play("press");
+  assert.ok(preview.every((source) => source.stopped && source.disconnected));
+  assert.equal(h.sources.length, 4);
+  assert.equal(h.sources[3].stopped, undefined);
+});
+
+test("focus or gesture cancellation stops previews while preserving real response sounds", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  const preview = h.sources.slice();
+  h.sound.play("saved");
+  h.sound.cancelPending();
+  assert.ok(preview.every((source) => source.stopped));
+  assert.equal(h.sources[3].stopped, undefined);
+});
+
+test("closing a preview cancels scheduled cues without cancelling a real gesture", async () => {
+  const h = harness({ state: "suspended" });
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  h.sound.cancelPreview();
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 0);
+  h.contexts[0].state = "suspended";
+  h.sound.play("press");
+  h.sound.cancelPreview();
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 1);
+  h.sound.preview();
+  const preview = h.sources.slice(1);
+  h.sound.cancelPreview();
+  assert.ok(preview.every((source) => source.stopped));
+});

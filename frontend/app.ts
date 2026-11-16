@@ -780,6 +780,7 @@ $<HTMLButtonElement>("#share-stats").addEventListener("click", () => {
 retryBootButton.addEventListener("click", () => boot());
 
 const optionsDialog = $<HTMLDialogElement>("#options-dialog");
+optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
 function optionsNotice(message: string, error = false) {
   const notice = $("#options-status");
   notice.textContent = message;

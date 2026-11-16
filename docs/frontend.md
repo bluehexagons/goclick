@@ -62,6 +62,9 @@ fall back to Classic. Choosing a profile never enables sound automatically.
 Options and the header share the same sound toggle. Preview schedules a press,
 release, and reply on the audio clock without touching game saves or the API;
 muting, hiding, changing profiles, or another preview stops that sequence.
+Closing Options, losing focus, or starting a real game press also cancels the
+preview, including its scheduled release and reply. Cancelling only a preview
+preserves genuine game-response sounds.
 
 `sound-design.ts` renders short, faded PCM buffers without allocating an audio
 device. Pitch follows overlapping slow sine curves; texture and duration follow

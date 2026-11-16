@@ -1154,13 +1154,18 @@
   var output = null;
   var generation = 0;
   var voices = /* @__PURE__ */ new Set();
+  var previewVoices = /* @__PURE__ */ new Set();
+  var previewPending = false;
   var maxVoices = 8;
   var maxUnlockDelay = 150;
   function cancelPending() {
     generation++;
+    previewPending = false;
+    for (const voice of previewVoices) removeVoice(voice, true);
   }
   function removeVoice(voice, stop2 = false) {
     voices.delete(voice);
+    if (previewVoices.delete(voice) && previewVoices.size === 0) previewPending = false;
     voice.onended = null;
     if (stop2) {
       try {
@@ -1177,7 +1182,7 @@
     cancelPending();
     for (const voice of voices) removeVoice(voice, true);
   }
-  function synthesize(audio, kind, offset = 0) {
+  function synthesize(audio, kind, offset = 0, preview = false) {
     const variation = motion.sample(performance.now(), kind === "press");
     const samples = renderSound(profile, kind, audio.sampleRate, variation);
     const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
@@ -1192,6 +1197,7 @@
       voice.connect(output);
       voice.onended = () => removeVoice(voice);
       voices.add(voice);
+      if (preview) previewVoices.add(voice);
       voice.start(audio.currentTime + offset);
     } catch (error) {
       removeVoice(voice, true);
@@ -1226,9 +1232,13 @@
     } catch {
     }
   }
-  function withAudio(gesture, emit) {
+  function withAudio(gesture, emit, preview = false) {
     if (!enabled || document.hidden) return;
-    const current = gesture ? ++generation : generation;
+    if (gesture) {
+      cancelPending();
+      previewPending = preview;
+    }
+    const current = generation;
     try {
       const audio = audioContext(gesture);
       if (!audio) return;
@@ -1253,11 +1263,18 @@
     },
     preview() {
       stop();
-      withAudio(true, (audio) => {
-        synthesize(audio, "press");
-        synthesize(audio, "release", 0.06);
-        synthesize(audio, "saved", 0.18);
-      });
+      withAudio(
+        true,
+        (audio) => {
+          synthesize(audio, "press", 0, true);
+          synthesize(audio, "release", 0.06, true);
+          synthesize(audio, "saved", 0.18, true);
+        },
+        true
+      );
+    },
+    cancelPreview() {
+      if (previewPending) cancelPending();
     },
     setProfile(value) {
       if (profile === value) return;
@@ -3721,6 +3738,7 @@
   });
   retryBootButton.addEventListener("click", () => boot());
   var optionsDialog = required("#options-dialog");
+  optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
   function optionsNotice(message3, error = false) {
     const notice = required("#options-status");
     notice.textContent = message3;

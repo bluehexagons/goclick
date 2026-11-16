@@ -10,15 +10,20 @@ let context: AudioContext | null = null;
 let output: GainNode | null = null;
 let generation = 0;
 const voices = new Set<AudioBufferSourceNode>();
+const previewVoices = new Set<AudioBufferSourceNode>();
+let previewPending = false;
 const maxVoices = 8;
 const maxUnlockDelay = 150;
 
 function cancelPending() {
   generation++;
+  previewPending = false;
+  for (const voice of previewVoices) removeVoice(voice, true);
 }
 
 function removeVoice(voice: AudioBufferSourceNode, stop = false) {
   voices.delete(voice);
+  if (previewVoices.delete(voice) && previewVoices.size === 0) previewPending = false;
   voice.onended = null;
   if (stop) {
     try {
@@ -39,7 +44,7 @@ function stop() {
   for (const voice of voices) removeVoice(voice, true);
 }
 
-function synthesize(audio: AudioContext, kind: SoundCue, offset = 0) {
+function synthesize(audio: AudioContext, kind: SoundCue, offset = 0, preview = false) {
   const variation = motion.sample(performance.now(), kind === "press");
   const samples = renderSound(profile, kind, audio.sampleRate, variation);
   const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
@@ -56,6 +61,7 @@ function synthesize(audio: AudioContext, kind: SoundCue, offset = 0) {
     voice.connect(output!);
     voice.onended = () => removeVoice(voice);
     voices.add(voice);
+    if (preview) previewVoices.add(voice);
     voice.start(audio.currentTime + offset);
   } catch (error) {
     removeVoice(voice, true);
@@ -96,9 +102,13 @@ function prepare() {
   }
 }
 
-function withAudio(gesture: boolean, emit: (audio: AudioContext) => void) {
+function withAudio(gesture: boolean, emit: (audio: AudioContext) => void, preview = false) {
   if (!enabled || document.hidden) return;
-  const current = gesture ? ++generation : generation;
+  if (gesture) {
+    cancelPending();
+    previewPending = preview;
+  }
+  const current = generation;
   try {
     const audio = audioContext(gesture);
     if (!audio) return;
@@ -140,11 +150,18 @@ export const clickSound = {
     // Schedule on the audio clock; mute, hiding, and profile changes can stop
     // the entire sequence, including voices whose start time is still ahead.
     stop();
-    withAudio(true, (audio) => {
-      synthesize(audio, "press");
-      synthesize(audio, "release", 0.06);
-      synthesize(audio, "saved", 0.18);
-    });
+    withAudio(
+      true,
+      (audio) => {
+        synthesize(audio, "press", 0, true);
+        synthesize(audio, "release", 0.06, true);
+        synthesize(audio, "saved", 0.18, true);
+      },
+      true,
+    );
+  },
+  cancelPreview() {
+    if (previewPending) cancelPending();
   },
   setProfile(value: SoundProfile) {
     if (profile === value) return;
