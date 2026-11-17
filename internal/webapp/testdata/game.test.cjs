@@ -1073,7 +1073,10 @@ test("a stale clipboard failure cannot interrupt a different mode and duplicate 
 });
 
 test("429s start a calm cooldown, suppress requests, and resume without replaying clicks", async () => {
-  const h = await harness();
+  const sounds = [];
+  const h = await harness({
+    sound: { setProfile() {}, setEnabled() {}, play: (cue) => sounds.push(cue) },
+  });
   h.fetch(async () => ({ ...response({ error: "Slow down" }, 429), headers: { get: () => "5" } }));
   await h.element("#click-button").fire("click");
   assert.equal(h.element("#play-status").hidden, false);
@@ -1084,6 +1087,7 @@ test("429s start a calm cooldown, suppress requests, and resume without replayin
   await h.element("#click-button").fire("click");
   assert.equal(h.requests.length, requests);
   assert.equal(h.element("#click-count").textContent, "10");
+  assert.deepEqual(sounds, ["limited"]);
   h.advance(5000);
   h.runTimers();
   assert.equal(h.element("#play-status").hidden, true);

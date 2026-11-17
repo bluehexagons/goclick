@@ -319,6 +319,8 @@
     const decay = response ? 0.025 : release2?.decay ?? recipe.decay;
     const duration = (release2?.duration ?? recipe.duration) * variation.duration;
     const samples = new Float32Array(Math.ceil(sampleRate * duration));
+    const noiseBlend = sampleRate === 48e3 ? 0.18 : 1 - Math.pow(0.82, 48e3 / sampleRate);
+    const stepPitch = end < pitch ? -pitch : pitch;
     let previousNoise = 0;
     let lowNoise = 0;
     for (let i = 0; i < samples.length; i++) {
@@ -327,7 +329,7 @@
       const envelope = Math.exp(-time / decay);
       const ring = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
       const noise = random() * 2 - 1;
-      lowNoise += (noise - lowNoise) * 0.18;
+      lowNoise += (noise - lowNoise) * noiseBlend;
       const highNoise = noise - previousNoise;
       previousNoise = noise;
       const texture = variation.texture * (physical ? 1 : 0.25);
@@ -337,7 +339,7 @@
           wave = 0.6 * Math.sin(phase) * envelope + 0.14 * ring * Math.exp(-time / 8e-3) + 0.1 * highNoise * texture * Math.exp(-time / 3e-3);
           break;
         case "blip": {
-          const stepPhase = phase + Math.max(0, time - 0.018) * pitch * 0.35 * Math.PI * 2;
+          const stepPhase = phase + Math.max(0, time - 0.018) * stepPitch * 0.35 * Math.PI * 2;
           const triangle = 2 * Math.asin(Math.sin(stepPhase)) / Math.PI;
           const pulse = Math.tanh(Math.sin(stepPhase) * (2.2 + variation.texture));
           wave = (0.5 * triangle + 0.18 * pulse) * envelope;
@@ -1221,7 +1223,7 @@
       if (audio === context && (!enabled || document.hidden)) suspend();
     });
   }
-  function synthesize(audio, kind, offset = 0, preview = false) {
+  function synthesize(audio, kind, preview = false, when) {
     const variation = motion.sample(performance.now(), kind === "press");
     const samples = renderSound(profile, kind, audio.sampleRate, variation);
     const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
@@ -1237,7 +1239,9 @@
       voice.onended = () => removeVoice(voice);
       voices.add(voice);
       if (preview) previewVoices.add(voice);
-      voice.start(audio.currentTime + offset);
+      const start = when ?? audio.currentTime;
+      voice.start(start);
+      return start;
     } catch (error) {
       removeVoice(voice, true);
       throw error;
@@ -1324,9 +1328,9 @@
       withAudio(
         true,
         (audio) => {
-          synthesize(audio, "press", 0, true);
-          synthesize(audio, "release", 0.06, true);
-          synthesize(audio, "saved", 0.18, true);
+          const start = synthesize(audio, "press", true);
+          synthesize(audio, "release", true, start + 0.06);
+          synthesize(audio, "saved", true, start + 0.18);
         },
         true
       );
@@ -3697,6 +3701,7 @@
       return;
     if (coolingDown()) {
       tactileButtons.get(clickButton)?.respond("limited");
+      clickSound.play("limited");
       return;
     }
     if (pendingClicks === 0) {

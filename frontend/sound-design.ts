@@ -158,6 +158,9 @@ export function renderSound(
   const decay = response ? 0.025 : (release?.decay ?? recipe.decay);
   const duration = (release?.duration ?? recipe.duration) * variation.duration;
   const samples = new Float32Array(Math.ceil(sampleRate * duration));
+  // Keep the Clunk noise pole's decay time fixed across output devices.
+  const noiseBlend = sampleRate === 48000 ? 0.18 : 1 - Math.pow(0.82, 48000 / sampleRate);
+  const stepPitch = end < pitch ? -pitch : pitch;
   let previousNoise = 0;
   let lowNoise = 0;
   for (let i = 0; i < samples.length; i++) {
@@ -170,7 +173,7 @@ export function renderSound(
     const envelope = Math.exp(-time / decay);
     const ring = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
     const noise = random() * 2 - 1;
-    lowNoise += (noise - lowNoise) * 0.18;
+    lowNoise += (noise - lowNoise) * noiseBlend;
     const highNoise = noise - previousNoise;
     previousNoise = noise;
     const texture = variation.texture * (physical ? 1 : 0.25);
@@ -184,7 +187,7 @@ export function renderSound(
         break;
       case "blip": {
         // A pitch step and rounded pulse evoke a tiny arcade voice.
-        const stepPhase = phase + Math.max(0, time - 0.018) * pitch * 0.35 * Math.PI * 2;
+        const stepPhase = phase + Math.max(0, time - 0.018) * stepPitch * 0.35 * Math.PI * 2;
         const triangle = (2 * Math.asin(Math.sin(stepPhase))) / Math.PI;
         const pulse = Math.tanh(Math.sin(stepPhase) * (2.2 + variation.texture));
         wave = (0.5 * triangle + 0.18 * pulse) * envelope;

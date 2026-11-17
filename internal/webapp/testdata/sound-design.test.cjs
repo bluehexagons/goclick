@@ -64,15 +64,17 @@ test("press activity rises gently, stays bounded, and decays after a pause; repl
   }
 });
 
-for (const rate of [44100, 48000])
+for (const rate of [44100, 48000, 96000])
   test(`every profile varies all cues, fades cleanly, and keeps replies quiet at ${rate} Hz`, () => {
     const { soundProfiles, createSoundMotion, renderSound } = design();
     for (const { id } of soundProfiles) {
       const motion = createSoundMotion(() => 0.5),
         peaks = new Map();
+      let time = 1000;
       for (const cue of cues) {
-        const a = renderSound(id, cue, rate, motion.sample(1000, true), noise());
-        const b = renderSound(id, cue, rate, motion.sample(1250, true), noise());
+        const a = renderSound(id, cue, rate, motion.sample(time, cue === "press"), noise());
+        const b = renderSound(id, cue, rate, motion.sample(time + 250, cue === "press"), noise());
+        time += 500;
         assert.notDeepEqual(a, b, `${id}.${cue} must vary even with the same noise seed`);
         assert.ok(a.length > rate * 0.04 && a.length < rate * 0.18);
         assert.equal(Math.abs(a[0]), 0);
@@ -117,4 +119,42 @@ test("release envelopes stay shorter, lighter, and lower in energy than presses"
       }
     }
   }
+});
+
+test("Blip failure and cooldown cues step down while success cues step up", () => {
+  const { createSoundMotion, renderSound } = design();
+  const variation = createSoundMotion(() => 0.5).sample(0);
+  const frequency = (samples, rate, from, until) => {
+    let crossings = 0;
+    for (let i = Math.ceil(from * rate); i < until * rate; i++)
+      if (samples[i - 1] < 0 && samples[i] >= 0) crossings++;
+    return crossings / (until - from);
+  };
+  for (const rate of [44100, 48000, 96000]) {
+    for (const cue of ["saved", "slow", "error", "limited"]) {
+      const samples = renderSound("blip", cue, rate, variation, noise());
+      const early = frequency(samples, rate, 0.002, 0.017);
+      const late = frequency(samples, rate, 0.035, 0.065);
+      assert.ok(cue === "error" || cue === "limited" ? late < early : late > early, cue);
+    }
+  }
+});
+
+test("Clunk's noise decay follows elapsed time at different device sample rates", () => {
+  const { createSoundMotion, renderSound } = design();
+  const variation = createSoundMotion(() => 0.5).sample(0);
+  const ratios = [48000, 96000].map((rate) => {
+    let first = true;
+    const impulse = renderSound("clunk", "press", rate, variation, () => {
+      const value = first ? 1 : 0.5;
+      first = false;
+      return value;
+    });
+    const silent = renderSound("clunk", "press", rate, variation, () => 0.5);
+    const a = rate / 4800,
+      b = rate / 2400;
+    // Both samples are in the linear attack. Remove its change to isolate decay.
+    return (impulse[b] - silent[b]) / (impulse[a] - silent[a]) / 2;
+  });
+  assert.ok(Math.abs(ratios[0] - ratios[1]) < 0.002, ratios.join(", "));
 });

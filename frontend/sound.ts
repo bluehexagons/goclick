@@ -89,7 +89,7 @@ function resume(audio: AudioContext) {
   });
 }
 
-function synthesize(audio: AudioContext, kind: SoundCue, offset = 0, preview = false) {
+function synthesize(audio: AudioContext, kind: SoundCue, preview = false, when?: number) {
   const variation = motion.sample(performance.now(), kind === "press");
   const samples = renderSound(profile, kind, audio.sampleRate, variation);
   const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
@@ -107,7 +107,9 @@ function synthesize(audio: AudioContext, kind: SoundCue, offset = 0, preview = f
     voice.onended = () => removeVoice(voice);
     voices.add(voice);
     if (preview) previewVoices.add(voice);
-    voice.start(audio.currentTime + offset);
+    const start = when ?? audio.currentTime;
+    voice.start(start);
+    return start;
   } catch (error) {
     removeVoice(voice, true);
     throw error;
@@ -223,9 +225,9 @@ export const clickSound = {
     withAudio(
       true,
       (audio) => {
-        synthesize(audio, "press", 0, true);
-        synthesize(audio, "release", 0.06, true);
-        synthesize(audio, "saved", 0.18, true);
+        const start = synthesize(audio, "press", true);
+        synthesize(audio, "release", true, start + 0.06);
+        synthesize(audio, "saved", true, start + 0.18);
       },
       true,
     );

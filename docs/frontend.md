@@ -64,6 +64,8 @@ never enables sound automatically.
 Options and the header share the same sound toggle. Preview schedules a press,
 release, and reply on the audio clock without touching game saves or the API;
 muting, hiding, changing profiles, or another preview stops that sequence.
+Release and reply share the press's audio-clock origin, so synthesis cost does
+not add extra delay between the preview cues.
 Closing Options, losing focus, or starting a real game press also cancels the
 preview, including its scheduled release and reply. Cancelling only a preview
 preserves genuine game-response sounds.
@@ -74,9 +76,12 @@ another smooth curve. A bounded activity value rises on presses and decays
 exponentially over 900 ms, adding a little energy during rapid play. Randomness
 seeds the curves once per visit, adds less than half a percent of pitch accent
 per press, and supplies noise for mechanical textures. Release and reply sample
-the same continuous curves rather than picking unrelated parameters. Offline
-responses follow the simulated ping timing. Cancelled/outside releases, repeated keydowns,
-and suppressed native clicks produce no release sound. Explicitly enabling sound
+the same continuous curves rather than picking unrelated parameters. Blip's
+pitch step follows each cue's direction, including downward error/cooldown
+tones. Clunk's noise-filter decay is normalized for the device sample rate.
+Offline responses follow the simulated ping timing. Cancelled/outside releases,
+repeated keydowns, and suppressed native clicks produce no release sound.
+Explicitly enabling sound
 prepares the audio device silently, so startup does not delay the first game
 press. A remembered preference stays allocation-free until a press/release;
 page load and network responses never initialize audio. Muting or hiding the
@@ -98,6 +103,8 @@ success pings for the rest of their own window. Physical press/release sounds
 are never coalesced. Only successfully started replies consume this
 window; muting, hiding, previews, and profile changes reset it. No replies are
 queued for later playback, and all click saves and visual feedback still run.
+Presses during an active cooldown give the limited cue without submitting a
+request or adding progress, using the same coalescing as server rejections.
 Unsupported or blocked audio leaves clicking usable. Motion preferences do not
 mute sound.
 

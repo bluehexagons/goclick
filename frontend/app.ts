@@ -678,6 +678,7 @@ clickButton.addEventListener("click", async (event) => {
     return;
   if (coolingDown()) {
     tactileButtons.get(clickButton)?.respond("limited");
+    clickSound.play("limited");
     return;
   }
   if (pendingClicks === 0) {

@@ -10,6 +10,7 @@ function harness({
   unavailable = false,
   fail = "",
   delayedSuspend = false,
+  bufferDelay = 0,
 } = {}) {
   const events = new Map(),
     contexts = [],
@@ -45,6 +46,7 @@ function harness({
       if (fail === "buffer") throw new Error("Allocation failed");
       assert.equal(channels, 1);
       assert.equal(rate, sampleRate);
+      this.currentTime += bufferDelay;
       const samples = new Float32Array(length);
       const buffer = { samples, getChannelData: () => samples };
       buffers.push(buffer);
@@ -699,4 +701,13 @@ test("closed-context cleanup also works before its state event arrives", () => {
   h.sound.play("press");
   assert.equal(h.contexts.length, 2);
   assert.equal(h.sources.length, 4);
+});
+
+test("preview timing uses a single audio-clock origin despite synthesis cost", () => {
+  const h = harness({ bufferDelay: 0.01 });
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  const [press, release, reply] = h.sources.map((voice) => voice.startTime);
+  assert.ok(Math.abs(release - press - 0.06) < 1e-8);
+  assert.ok(Math.abs(reply - press - 0.18) < 1e-8);
 });
