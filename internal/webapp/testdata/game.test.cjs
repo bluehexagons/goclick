@@ -1297,11 +1297,11 @@ test("older click replies cannot roll back a more recent score or earned badges"
   await second;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
   assert.equal(h.element("#week-streak").textContent, "2");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 8");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 17");
   slower.resolve(
     response({ ...counters(24), progress: { ...progress, recent_days: 63, best_day_streak: 6 } }),
   );
   await first;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 8");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 17");
 });

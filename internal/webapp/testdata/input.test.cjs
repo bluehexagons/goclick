@@ -101,10 +101,15 @@ function harness(reducedMotion = true, withPower = false) {
     createElement: () => new Element(),
   });
   let clearedSelections = 0;
+  let timerID = 0;
+  const timers = new Map();
   const window = Object.assign(new Element(), {
-    clearTimeout() {},
-    setTimeout() {
-      return 1;
+    clearTimeout(id) {
+      timers.delete(id);
+    },
+    setTimeout(callback, delay) {
+      timers.set(++timerID, { callback, delay });
+      return timerID;
     },
     getSelection: () => ({
       removeAllRanges() {
@@ -189,6 +194,15 @@ function harness(reducedMotion = true, withPower = false) {
     },
     hasFrame: () => !!frameCallback,
     clicks,
+    runTimer(delay) {
+      for (const [id, timer] of timers) {
+        if (timer.delay === delay) {
+          timers.delete(id);
+          timer.callback();
+        }
+      }
+    },
+    hasTrick: runtime.load("button-tricks").hasTrick,
     sounds,
     soundCancellations: () => soundCancellations,
     pointer,
@@ -613,4 +627,19 @@ test("the cable SVG follows dragging and resizing while the wall outlet stays fi
   h.frame(336);
   assert.equal(h.power.attributes.get("viewBox"), "-160 -120 320 240");
   assert.ok(Number.isFinite(Number(h.power.props.get("--cord-scale"))));
+});
+
+test("a continuous hold unlocks after ten seconds while cancellation clears the timer", () => {
+  const h = harness();
+  h.pointer("pointerdown", 1);
+  h.pointer("pointercancel", 1);
+  h.runTimer(10_000);
+  assert.equal(h.hasTrick("hold"), false);
+  h.pointer("pointerdown", 1);
+  assert.equal(h.hasTrick("hold"), false);
+  h.runTimer(10_000);
+  assert.equal(h.hasTrick("hold"), true);
+  assert.equal(h.clicks.length, 0);
+  h.pointer("pointerup", 1);
+  assert.equal(h.clicks.length, 1);
 });

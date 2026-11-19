@@ -135,6 +135,9 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 	if version < 6 {
 		delete(expected, "click_progress")
 	}
+	if version < 7 {
+		delete(expected, "click_achievements")
+	}
 	if len(expected) != len(actual) {
 		return 0, errors.New("unexpected schema objects")
 	}
@@ -194,6 +197,12 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 			WHERE typeof(recent_days)!='integer' OR typeof(week_streak)!='integer'
 				OR typeof(best_day_streak)!='integer' OR typeof(best_week_streak)!='integer'
 				OR last_clicked_at IS NULL OR best_day_streak < day_streak`)
+	}
+	if version >= 7 {
+		checks = append(checks, `SELECT COUNT(*) FROM click_achievements JOIN counters USING (user_id)
+			WHERE typeof(day_clicks)!='integer' OR typeof(week_clicks)!='integer' OR typeof(month_clicks)!='integer'
+				OR typeof(hours)!='integer' OR typeof(active_days)!='integer' OR typeof(active_months)!='integer'
+				OR typeof(earned)!='integer' OR last_clicked_at IS NULL`)
 	}
 	for _, query := range checks {
 		if err := db.QueryRowContext(ctx, query).Scan(&invalid); err != nil {
@@ -421,6 +430,12 @@ func (s *Store) Restore(ctx context.Context, path, recoveryDirectory string, act
 		if _, err := tx.ExecContext(ctx, `INSERT INTO main.click_progress (user_id,recent_days,week_streak,best_day_streak,best_week_streak)
 			SELECT user_id,recent_days,week_streak,best_day_streak,best_week_streak FROM restore_source.click_progress`); err != nil {
 			return result, fmt.Errorf("restore click progress: %w", err)
+		}
+	}
+	if version >= 7 {
+		columns := strings.Join(achievementSchemaTable.columns, ",")
+		if _, err := tx.ExecContext(ctx, `INSERT INTO main.click_achievements (`+columns+`) SELECT `+columns+` FROM restore_source.click_achievements`); err != nil {
+			return result, fmt.Errorf("restore click achievements: %w", err)
 		}
 	}
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&result.Users); err != nil {

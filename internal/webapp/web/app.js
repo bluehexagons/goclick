@@ -368,7 +368,7 @@
   var gameSettings = (() => {
     const key = "goclick.settings.v1";
     const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const listeners2 = /* @__PURE__ */ new Set();
+    const listeners3 = /* @__PURE__ */ new Set();
     const settingListeners = /* @__PURE__ */ new Set();
     let value = {
       motion: "auto",
@@ -395,7 +395,7 @@
         return value.motion === "on" || value.motion === "auto" && browser.matches;
       },
       addEventListener(type, callback) {
-        if (type === "change") listeners2.add(callback);
+        if (type === "change") listeners3.add(callback);
       }
     };
     let appliedMotion;
@@ -405,7 +405,7 @@
       for (const callback of settingListeners) callback();
       if (matches === appliedMotion) return;
       appliedMotion = matches;
-      for (const callback of listeners2) callback({ matches });
+      for (const callback of listeners3) callback({ matches });
     }
     browser.addEventListener("change", apply);
     window.addEventListener("storage", (event) => {
@@ -509,6 +509,19 @@
     const next = start + dayMilliseconds;
     return { next, elapsed: now - start, minutesLeft: Math.ceil((next - now) / 6e4) };
   }
+  var century = 1;
+  var fourDigits = 2;
+  var fiveGrand = 4;
+  var threeVisits = 8;
+  var emptyClickAchievements = {
+    day_clicks: 0,
+    week_clicks: 0,
+    month_clicks: 0,
+    hours: 0,
+    active_days: 0,
+    active_months: 0,
+    earned: 0
+  };
 
   // frontend/types.ts
   var counterKinds = [
@@ -544,6 +557,7 @@
       const last = result.click_count?.modified_time;
       const daily = result.streak_counter_day?.count ?? 0;
       result.progress = counters.progress == null ? seedProgress(last, daily) : validateProgress(counters.progress, last, daily);
+      result.achievements = counters.achievements == null ? seedAchievements(last, daily, result.streak_counter_month?.count ?? 0) : validateAchievements(counters.achievements, Boolean(last));
       return result;
     }
     function validateProgress(value, last, daily) {
@@ -555,6 +569,61 @@
     }
     function nonnegativeInteger(value) {
       return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+    }
+    const achievementLimits = {
+      day_clicks: 100,
+      week_clicks: 1e3,
+      month_clicks: 5e3,
+      hours: 16777215,
+      active_days: 10,
+      active_months: 3,
+      earned: 15
+    };
+    function validateAchievements(value, hasTime) {
+      if (!isRecord(value)) throw new Error("Invalid local achievement progress.");
+      const result = { ...emptyClickAchievements };
+      for (const key2 of Object.keys(achievementLimits)) {
+        const field = value[key2];
+        if (!nonnegativeInteger(field) || field > achievementLimits[key2])
+          throw new Error("Invalid local achievement progress.");
+        result[key2] = field;
+      }
+      for (const key2 of ["day_clicks", "week_clicks", "month_clicks", "hours"])
+        if (Boolean(result[key2]) !== hasTime) throw new Error("Invalid local achievement activity.");
+      return result;
+    }
+    function seedAchievements(time, days, months) {
+      const activity = {
+        ...emptyClickAchievements,
+        active_days: Math.min(10, days),
+        active_months: Math.min(3, months)
+      };
+      if (!time) return activity;
+      const seeded = advanceAchievements(emptyClickAchievements, null, time);
+      seeded.active_days = Math.max(activity.active_days, 1);
+      seeded.active_months = Math.max(activity.active_months, 1);
+      return seeded;
+    }
+    function advanceAchievements(a, previous, current) {
+      const now = new Date(current);
+      const before = previous ? new Date(previous) : null;
+      const day = utcDay(now.getTime());
+      const previousDay = before ? utcDay(before.getTime()) : NaN;
+      const sameMonth = before && before.getUTCFullYear() === now.getUTCFullYear() && before.getUTCMonth() === now.getUTCMonth();
+      const dayClicks = day === previousDay ? Math.min(100, a.day_clicks + 1) : 1;
+      const weekClicks = utcWeek(day) === utcWeek(previousDay) ? Math.min(1e3, a.week_clicks + 1) : 1;
+      const monthClicks = sameMonth ? Math.min(5e3, a.month_clicks + 1) : 1;
+      const hours = (day === previousDay ? a.hours : 0) | 1 << now.getUTCHours();
+      const twoOrMore = hours & hours - 1;
+      return {
+        day_clicks: dayClicks,
+        week_clicks: weekClicks,
+        month_clicks: monthClicks,
+        hours,
+        active_days: Math.min(10, a.active_days + Number(day !== previousDay)),
+        active_months: Math.min(3, a.active_months + Number(!sameMonth)),
+        earned: a.earned | (dayClicks === 100 ? century : 0) | (weekClicks === 1e3 ? fourDigits : 0) | (monthClicks === 5e3 ? fiveGrand : 0) | (twoOrMore & twoOrMore - 1 ? threeVisits : 0)
+      };
     }
     function decode(raw) {
       const save = JSON.parse(raw);
@@ -601,6 +670,7 @@
         time,
         counters.streak_counter_day.count
       );
+      counters.achievements = advanceAchievements(counters.achievements, previous, time);
       return write(counters);
     }
     function change(operation) {
@@ -1437,6 +1507,40 @@
     }
   };
 
+  // frontend/button-tricks.ts
+  var tricks = ["hold", "outlet", "keyboard"];
+  var trickPrefix = "goclick.trick.";
+  var earnedTricks = /* @__PURE__ */ new Set();
+  var listeners = /* @__PURE__ */ new Set();
+  for (const trick of tricks) {
+    try {
+      if (localStorage.getItem(trickPrefix + trick) === "1") earnedTricks.add(trick);
+    } catch {
+    }
+  }
+  function hasTrick(trick) {
+    return earnedTricks.has(trick);
+  }
+  function unlockTrick(trick) {
+    if (hasTrick(trick)) return;
+    earnedTricks.add(trick);
+    try {
+      localStorage.setItem(trickPrefix + trick, "1");
+    } catch {
+    }
+    for (const listener of listeners) listener();
+  }
+  function onTrickUnlock(listener) {
+    listeners.add(listener);
+  }
+  window.addEventListener("storage", (event) => {
+    const trick = tricks.find((name) => event.key === trickPrefix + name);
+    if (trick && event.newValue === "1" && !hasTrick(trick)) {
+      earnedTricks.add(trick);
+      for (const listener of listeners) listener();
+    }
+  });
+
   // frontend/button.ts
   var QUICK_TAP_MS = 90;
   var TAP_RELEASE_MS = 70;
@@ -1444,8 +1548,8 @@
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let paint2 = function() {
-      if (power && stage.clientWidth && stage.clientHeight) {
-        const cable = projectButtonPower(current, button.offsetWidth);
+      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth) : null;
+      if (power && cable) {
         power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
         power.setAttribute(
           "viewBox",
@@ -1490,6 +1594,14 @@
         `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`
       );
       renderer?.draw(current);
+      if (button.id === "click-button" && power && cable && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
+        const frame2 = power.getBoundingClientRect();
+        const face = button.getBoundingClientRect();
+        const x = frame2.left + frame2.width / 2 + cable.outletX;
+        const y = frame2.top + frame2.height / 2 + cable.outletY;
+        if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - 15 > 0 && x - 15 < face.left || x + 15 < window.innerWidth && x + 15 > face.right || y - 25 > 0 && y - 25 < face.top || y + 25 < window.innerHeight && y + 25 > face.bottom))
+          unlockTrick("outlet");
+      }
     }, tick2 = function(time) {
       const dt = lastFrame ? clamp((time - lastFrame) / (1e3 / 60), 0.25, 2) : 1;
       lastFrame = time;
@@ -1540,7 +1652,7 @@
     }, animate2 = function() {
       if (reducedMotion.matches) {
         for (const key of keys) {
-          current[key] = 0;
+          current[key] = pointers.size && (key === "x" || key === "y") ? target[key] : 0;
           velocity[key] = 0;
         }
         current.flash = 0;
@@ -1576,6 +1688,11 @@
         animate2();
       } else burst2(true);
       holdTimer = window.setTimeout(() => setPhase2("held"), 180);
+      if (button.id === "click-button" && !hasTrick("hold")) {
+        achievementTimer = window.setTimeout(() => {
+          if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
+        }, 1e4);
+      }
     }, aim2 = function(event) {
       const rect = stage.getBoundingClientRect();
       const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
@@ -1594,6 +1711,7 @@
       if (cancelled && button.id === "click-button") clickSound.cancelPending();
       activeKey = null;
       window.clearTimeout(holdTimer);
+      window.clearTimeout(achievementTimer);
       const wasPressed = phase !== "idle";
       const quick = performance.now() - pressedAt < QUICK_TAP_MS;
       current.press = 0;
@@ -1764,7 +1882,7 @@
     let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
     let activatingRelease = false;
-    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, phase = "idle";
+    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, achievementTimer = 0, phase = "idle";
     let responseStarted = null;
     let responseDuration = 500;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -1827,7 +1945,10 @@
       event.preventDefault();
       if (event.key !== activeKey) return;
       release2();
-      if (!button.disabled) activateRelease2();
+      if (!button.disabled) {
+        if (button.id === "click-button") unlockTrick("keyboard");
+        activateRelease2();
+      }
     });
     button.addEventListener("blur", () => {
       if (activeKey !== null) reset2();
@@ -2982,7 +3103,7 @@
   ];
   var languageStorageKey = "goclick.language.v1";
   var language = "en";
-  var listeners = /* @__PURE__ */ new Set();
+  var listeners2 = /* @__PURE__ */ new Set();
   function supportedLanguage(value) {
     return languages.find((item) => item.code === value)?.code;
   }
@@ -3022,12 +3143,12 @@
     return new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" }).format(value);
   }
   function onLanguageChange(listener) {
-    listeners.add(listener);
+    listeners2.add(listener);
   }
   function setLanguage(code) {
     if (language === code) return;
     language = code;
-    for (const listener of listeners) listener();
+    for (const listener of listeners2) listener();
   }
   function rememberLanguage(code) {
     setLanguage(code);
@@ -3385,6 +3506,105 @@
     return new Date(instant.getTime() - offset);
   }
 
+  // frontend/achievements.ts
+  var translatedRequirements = /* @__PURE__ */ new Map();
+  function requirements(language2) {
+    if (!translatedRequirements.has(language2)) {
+      translatedRequirements.set(language2, [
+        message2("firstClick"),
+        ...[25, 100, 500].map((count) => message2("clickMilestone", { count: formatNumber(count) })),
+        ...[3, 7].map((count) => message2("consecutive", { duration: formatUnit(count, "day") })),
+        ...[2, 4].map((count) => message2("consecutive", { duration: formatUnit(count, "week") }))
+      ]);
+    }
+    return translatedRequirements.get(language2);
+  }
+  function badgesFor(data, progress) {
+    const language2 = currentLanguage();
+    const clicks = data.click_count?.count ?? 0;
+    const calendar = data.achievements ?? emptyClickAchievements;
+    const localized = language2 === "en" ? [] : requirements(language2);
+    function badge(name, description, earned, localized2) {
+      return {
+        name,
+        description: language2 !== "en" && localized2 ? localized2 : description,
+        earned,
+        descriptionLanguage: localized2 ? language2 : "en"
+      };
+    }
+    return [
+      badge("First Click", "Save your first click.", clicks >= 1, localized[0]),
+      badge("Warm-Up", "Save 25 clicks in total.", clicks >= 25, localized[1]),
+      badge("Getting the Hang of It", "Save 100 clicks in total.", clicks >= 100, localized[2]),
+      badge("Old Reliable", "Save 500 clicks in total.", clicks >= 500, localized[3]),
+      badge(
+        "Three in a Row",
+        "Save a click on 3 consecutive UTC days.",
+        progress.best_day_streak >= 3,
+        localized[4]
+      ),
+      badge(
+        "Seven in a Row",
+        "Save a click on 7 consecutive UTC days.",
+        progress.best_day_streak >= 7,
+        localized[5]
+      ),
+      badge(
+        "See You Next Week",
+        "Save a click in 2 consecutive UTC weeks.",
+        progress.best_week_streak >= 2,
+        localized[6]
+      ),
+      badge(
+        "Weekly Regular",
+        "Save a click in 4 consecutive UTC weeks.",
+        progress.best_week_streak >= 4,
+        localized[7]
+      ),
+      badge("Century", "Save 100 clicks in one UTC day.", Boolean(calendar.earned & century)),
+      badge(
+        "Four Digits",
+        "Save 1,000 clicks in one Monday\u2013Sunday UTC week.",
+        Boolean(calendar.earned & fourDigits)
+      ),
+      badge(
+        "Five Grand",
+        "Save 5,000 clicks in one UTC calendar month.",
+        Boolean(calendar.earned & fiveGrand)
+      ),
+      badge(
+        "Three Visits",
+        "Save a click in 3 different UTC hours on the same day.",
+        Boolean(calendar.earned & threeVisits)
+      ),
+      badge(
+        "Ten Days Your Way",
+        "Save clicks on 10 different UTC days, with gaps allowed.",
+        calendar.active_days >= 10
+      ),
+      badge(
+        "Familiar Face",
+        "Save clicks in 3 different UTC calendar months, with gaps allowed.",
+        calendar.active_months >= 3
+      ),
+      badge(
+        "Hold That Thought",
+        "Keep the button pressed for 10 seconds without releasing it.",
+        hasTrick("hold")
+      ),
+      badge(
+        "Behind the Button",
+        "Drag the button far enough to reveal the outlet.",
+        hasTrick("outlet")
+      ),
+      badge(
+        "Key Player",
+        "Press and release Space or Enter with the game button focused.",
+        hasTrick("keyboard")
+      )
+    ];
+  }
+
   // frontend/progress-panel.ts
   var activityRail = required("#activity-days");
   var dayMarks = Array.from({ length: fortnight }, () => {
@@ -3399,7 +3619,10 @@
   var lastBadges = "";
   var resetMinute = NaN;
   var resetTimer = 0;
+  var shownCounters = {};
+  onTrickUnlock(() => renderProgress(shownCounters));
   function renderProgress(data) {
+    shownCounters = data;
     const progress = data.progress ?? seedProgress(data.click_count?.modified_time, data.streak_counter_day?.count ?? 0);
     required("#week-streak").textContent = formatNumber(progress.week_streak);
     const activityKey = `${currentLanguage()}:${progress.recent_days}`;
@@ -3417,20 +3640,7 @@
           Boolean(progress.recent_days & 1 << fortnight - 1 - index)
         );
     }
-    const badges = [
-      ...[1, 25, 100, 500].map((goal) => ({
-        label: () => goal === 1 ? message2("firstClick") : message2("clickMilestone", { count: formatNumber(goal) }),
-        earned: (data.click_count?.count ?? 0) >= goal
-      })),
-      ...[3, 7].map((goal) => ({
-        label: () => message2("consecutive", { duration: formatUnit(goal, "day") }),
-        earned: progress.best_day_streak >= goal
-      })),
-      ...[2, 4].map((goal) => ({
-        label: () => message2("consecutive", { duration: formatUnit(goal, "week") }),
-        earned: progress.best_week_streak >= goal
-      }))
-    ];
+    const badges = badgesFor(data, progress);
     const badgeKey = `${currentLanguage()}:${badges.map(({ earned }) => Number(earned)).join("")}`;
     if (badgeKey !== lastBadges) {
       lastBadges = badgeKey;
@@ -3446,7 +3656,16 @@
         const state = document.createElement("span");
         state.className = "visually-hidden";
         state.textContent = `${message2(badge.earned ? "earned" : "locked")}. `;
-        item.append(state, badge.label());
+        const name = document.createElement("strong");
+        name.lang = "en";
+        name.dir = "ltr";
+        name.textContent = badge.name;
+        const description = document.createElement("span");
+        description.className = "achievement-description";
+        description.lang = badge.descriptionLanguage;
+        description.dir = languageDirection(badge.descriptionLanguage);
+        description.textContent = badge.description;
+        item.append(state, name, description);
         list.append(item);
       }
     }

@@ -24,7 +24,19 @@ export interface ClickProgress {
   best_day_streak: number;
   best_week_streak: number;
 }
-export type Counters = Partial<Record<CounterKind, Counter | null>> & { progress?: ClickProgress };
+export interface ClickAchievements {
+  day_clicks: number;
+  week_clicks: number;
+  month_clicks: number;
+  hours: number;
+  active_days: number;
+  active_months: number;
+  earned: number;
+}
+export type Counters = Partial<Record<CounterKind, Counter | null>> & {
+  progress?: ClickProgress;
+  achievements?: ClickAchievements;
+};
 export interface GameState {
   user: User;
   counters: Counters;

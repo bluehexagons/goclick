@@ -1678,10 +1678,18 @@ select {
   font-size: 12px;
 }
 .achievement-list li {
-  padding: 4px 7px;
+  padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: 5px;
   color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.achievement-description {
+  display: block;
+  margin-block-start: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 .achievement-list li::before {
   content: "";

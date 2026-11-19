@@ -48,8 +48,9 @@ focus loss, and hiding the page reset transient interaction state.
 Mouse, touch, pen, Space, and Enter score once on release inside the button.
 Each captured finger is independent; holding, repeated keydown events, and
 cancelled/outside releases do not add clicks. Dragging can move the solid beyond
-its layout stage. Auto motion follows the system preference; Reduced suppresses
-movement, particles, and flashes while retaining quiet color feedback.
+its layout stage. Auto motion follows the system preference. Reduced follows
+deliberate drags directly and suppresses tilt, springs, particles, and flashes
+while retaining quiet color feedback.
 
 Sound is independently optional and off by default. The header speaker toggle
 persists a boolean in `goclick.settings.v1` and synchronizes it across tabs.

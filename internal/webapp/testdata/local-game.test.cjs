@@ -129,3 +129,32 @@ test("local imports reject invalid progress without replacing the saved game", (
   );
   assert.equal(storage.get(game.key), before);
 });
+
+test("calendar badges unlock from local activity and survive period changes and export", () => {
+  const { game } = harness();
+  const sunday = "2026-01-25T23:00:00.000Z";
+  const prior = game.increment(new Date(sunday));
+  game.replace({
+    ...prior,
+    achievements: {
+      ...prior.achievements,
+      day_clicks: 99,
+      week_clicks: 999,
+      month_clicks: 4999,
+      hours: (1 << 21) | (1 << 22),
+    },
+  });
+  const earned = game.increment(new Date(sunday)).achievements;
+  assert.equal(earned.earned, 15);
+  assert.equal(earned.hours, (1 << 21) | (1 << 22) | (1 << 23));
+  const monday = game.increment(new Date("2026-01-26")).achievements;
+  assert.equal(monday.day_clicks, 1);
+  assert.equal(monday.week_clicks, 1);
+  assert.equal(monday.month_clicks, 5000);
+  const february = game.increment(new Date("2026-02-01")).achievements;
+  assert.equal(february.week_clicks, 2);
+  assert.equal(february.month_clicks, 1);
+  assert.equal(february.active_days, 3);
+  assert.equal(february.active_months, 2);
+  assert.equal(game.decode(game.encode(game.read())).achievements.earned, 15);
+});

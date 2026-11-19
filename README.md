@@ -36,10 +36,12 @@ stats support right-to-left Arabic. The button occasionally changes its label
 to another language until the next click. Account forms, storage options, and
 administration remain English.
 
-**Achievements** begin with lifetime click milestones (1, 25, 100, and 500),
-daily streaks of 3 and 7 days, and weekly streaks of 2 and 4 weeks. One saved
-click counts for a week, Monday through Sunday in UTC. Earned achievements
-survive breaks. Online and offline saves track progress separately.
+**Achievements** cover lifetime clicks, streaks, total days and months played,
+period click totals, and playing at different hours of the same day. Days and
+months use UTC. Weeks run Monday through Sunday in UTC, and one saved click
+counts toward a weekly streak. Earned achievements survive breaks. Online and
+offline saves track calendar progress separately. Button tricks are discoveries
+stored in the current browser and are shared between online and offline play.
 
 **Fortnight activity** scores the 14 UTC days ending on your last saved click.
 An active day earns 5 points, and each adjacent pair of active days earns 2
@@ -115,7 +117,9 @@ and aggregate statistics remain JSON numbers.
 The `/api/clicks` and `/api/game` counters include a `progress` object with `week_streak`,
 `best_day_streak`, `best_week_streak`, and `recent_days`. The last field
 is a 14-bit activity mask, with the last saved click's UTC date in bit zero
-and earlier dates in increasing bit positions.
+and earlier dates in increasing bit positions. The `achievements` object contains
+capped period click totals, a mask of UTC hours played that day, capped total
+active days and months, and a mask of earned period badges.
 
 The browser rechecks the game snapshot when it regains focus. A later return
 supersedes an older read still in flight. Changing accounts also updates an open
@@ -233,11 +237,12 @@ Activity history starts with this release; migrated all-time counters remain
 intact. [`docs/administration.md`](docs/administration.md) covers bootstrap
 commands, the admin API, and production recovery details.
 
-Schema 6 stores recent activity and streak records. It uses existing click
-history and the saved daily streak to initialize progress for older accounts,
-and uses the saved daily streak to initialize older offline saves. Upgrades
-preserve accounts, sessions, counters, and archives. The panel accepts schema-2
-through schema-6 backups.
+Schema 7 stores calendar achievement progress alongside recent activity and
+streak records. For older accounts, Go Click uses recorded clicks and saved
+streaks as evidence of past activity. Older offline saves have only their last
+click and streak counters for reconstructing this progress. Upgrades preserve
+accounts, sessions, counters, and archives. The panel accepts schema-2 through
+schema-7 backups.
 
 See [`docs/backups.md`](docs/backups.md) for full SQLite backups, data checks,
 restore rehearsal, and session revocation during recovery. Deployment backups

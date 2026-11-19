@@ -1,4 +1,4 @@
-import type { ClickProgress } from "./types.js";
+import type { ClickAchievements, ClickProgress } from "./types.js";
 
 export const fortnight = 14;
 export const fortnightMask = (1 << fortnight) - 1;
@@ -14,7 +14,7 @@ export function utcDay(time: number) {
   return Math.floor(time / dayMilliseconds);
 }
 
-function utcWeek(day: number) {
+export function utcWeek(day: number) {
   // 1970-01-01 was Thursday. Weeks start on Monday.
   return Math.floor((day + 3) / 7);
 }
@@ -80,3 +80,18 @@ export function utcReset(now: number) {
   const next = start + dayMilliseconds;
   return { next, elapsed: now - start, minutesLeft: Math.ceil((next - now) / 60_000) };
 }
+
+export const century = 1;
+export const fourDigits = 2;
+export const fiveGrand = 4;
+export const threeVisits = 8;
+
+export const emptyClickAchievements: ClickAchievements = {
+  day_clicks: 0,
+  week_clicks: 0,
+  month_clicks: 0,
+  hours: 0,
+  active_days: 0,
+  active_months: 0,
+  earned: 0,
+};

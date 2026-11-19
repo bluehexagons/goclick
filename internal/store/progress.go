@@ -54,37 +54,47 @@ func (p *ClickProgress) recordDays(previous, first, last int64) {
 	p.BestWeekStreak = max(p.BestWeekStreak, p.WeekStreak)
 }
 
-func readCounters(ctx context.Context, tx *sql.Tx, userID int64) (Counters, bool, error) {
+func readCounters(ctx context.Context, tx *sql.Tx, userID int64) (Counters, bool, bool, error) {
 	var counters Counters
 	var last sql.NullString
-	var recent sql.NullInt64
+	var recent, hours sql.NullInt64
 	err := tx.QueryRowContext(ctx, `
 		SELECT click_count, day_streak, month_streak, year_streak, last_clicked_at,
-		       recent_days, coalesce(week_streak,0), coalesce(best_day_streak,0), coalesce(best_week_streak,0)
-		FROM counters LEFT JOIN click_progress USING (user_id) WHERE counters.user_id = ?`, userID).
+		       recent_days, coalesce(week_streak,0), coalesce(best_day_streak,0), coalesce(best_week_streak,0),
+		       coalesce(day_clicks,0), coalesce(week_clicks,0), coalesce(month_clicks,0),
+		       hours, coalesce(active_days,0), coalesce(active_months,0), coalesce(earned,0)
+		FROM counters LEFT JOIN click_progress USING (user_id)
+			LEFT JOIN click_achievements USING (user_id) WHERE counters.user_id = ?`, userID).
 		Scan(&counters.Clicks, &counters.DayStreak, &counters.MonthStreak, &counters.YearStreak, &last,
-			&recent, &counters.Progress.WeekStreak, &counters.Progress.BestDayStreak, &counters.Progress.BestWeekStreak)
+			&recent, &counters.Progress.WeekStreak, &counters.Progress.BestDayStreak, &counters.Progress.BestWeekStreak,
+			&counters.Achievements.DayClicks, &counters.Achievements.WeekClicks, &counters.Achievements.MonthClicks,
+			&hours, &counters.Achievements.ActiveDays, &counters.Achievements.ActiveMonths, &counters.Achievements.Earned)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Counters{}, false, nil
+		return Counters{}, false, false, nil
 	}
 	if err != nil {
-		return Counters{}, false, fmt.Errorf("read counters: %w", err)
+		return Counters{}, false, false, fmt.Errorf("read counters: %w", err)
 	}
 	counters.Exists = true
 	counters.Progress.RecentDays = int(recent.Int64)
 	if last.Valid {
 		parsed, err := parseTime(last.String)
 		if err != nil {
-			return Counters{}, false, fmt.Errorf("parse last click: %w", err)
+			return Counters{}, false, false, fmt.Errorf("parse last click: %w", err)
 		}
 		counters.LastClickedAt = &parsed
 	}
 	if !recent.Valid {
 		if err := counters.loadHistoricalProgress(ctx, tx, userID); err != nil {
-			return Counters{}, false, err
+			return Counters{}, false, false, err
 		}
 	}
-	return counters, recent.Valid, nil
+	if hours.Valid {
+		counters.Achievements.Hours = int(hours.Int64)
+	} else if err := counters.loadHistoricalAchievements(ctx, tx, userID); err != nil {
+		return Counters{}, false, false, err
+	}
+	return counters, recent.Valid, hours.Valid, nil
 }
 
 func (c *Counters) loadHistoricalProgress(ctx context.Context, tx *sql.Tx, userID int64) error {

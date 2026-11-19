@@ -18,16 +18,13 @@ func init() {
 	// User-scoped sign-in lookups still use the existing partial index's
 	// user_id prefix, then sort that user's sign-ins.
 	registerTimestampFunction("goclick_time_key", func(t time.Time) driver.Value {
-		// SQLite compares BLOBs bytewise. Flip the seconds' sign bit so negative
-		// Unix seconds sort first, then compare the nanoseconds within a second.
-		// UnixNano would overflow for otherwise accepted dates outside 1678–2262.
-		key := make([]byte, 12)
-		binary.BigEndian.PutUint64(key[:8], uint64(t.Unix())^(uint64(1)<<63))
-		binary.BigEndian.PutUint32(key[8:], uint32(t.Nanosecond()))
-		return key
+		return timestampSortKey(t)
 	})
 	registerTimestampFunction("goclick_utc_day", func(t time.Time) driver.Value {
 		return utcDay(t)
+	})
+	registerTimestampFunction("goclick_utc_hour", func(t time.Time) driver.Value {
+		return t.Truncate(time.Hour).Unix() / 3600
 	})
 	registerTimestampFunction("goclick_utc_date", func(t time.Time) driver.Value {
 		return dateKey(t)
@@ -35,6 +32,16 @@ func init() {
 	registerTimestampFunction("goclick_date_ceiling", func(t time.Time) driver.Value {
 		return timestampDateCeiling(t)
 	})
+}
+
+func timestampSortKey(t time.Time) []byte {
+	// SQLite compares BLOBs bytewise. Flip the seconds' sign bit so negative
+	// Unix seconds sort first, then compare the nanoseconds within a second.
+	// UnixNano would overflow for otherwise accepted dates outside 1678–2262.
+	key := make([]byte, 12)
+	binary.BigEndian.PutUint64(key[:8], uint64(t.Unix())^(uint64(1)<<63))
+	binary.BigEndian.PutUint32(key[8:], uint32(t.Nanosecond()))
+	return key
 }
 
 // Every accepted timestamp starts with a four-digit local date. Go's parser

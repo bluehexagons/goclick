@@ -7,6 +7,7 @@ import {
 import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
 import { clickSound } from "./sound.js";
+import { hasTrick, unlockTrick } from "./button-tricks.js";
 import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
 
 // Press and release depth are immediate; dragging and rebound use springs.
@@ -73,14 +74,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     releaseCopper = 0,
     releaseDuration = TAP_RELEASE_MS,
     holdTimer = 0,
+    achievementTimer = 0,
     phase: "idle" | "pressed" | "held" = "idle";
   let responseStarted: number | null = null;
   let responseDuration = 500;
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
   function paint() {
-    if (power && stage.clientWidth && stage.clientHeight) {
-      const cable = projectButtonPower(current, button.offsetWidth);
+    const cable =
+      power && stage.clientWidth && stage.clientHeight
+        ? projectButtonPower(current, button.offsetWidth)
+        : null;
+    if (power && cable) {
       power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
       power.setAttribute(
         "viewBox",
@@ -125,6 +130,32 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`,
     );
     renderer?.draw(current);
+    if (
+      button.id === "click-button" &&
+      power &&
+      cable &&
+      pointers.size &&
+      !hasTrick("outlet") &&
+      Math.hypot(current.x, current.y) > 45
+    ) {
+      // Check the painted pose so a flick that never exposes the outlet
+      // cannot unlock it. Sample inside the plate to ignore a sliver at its edge.
+      const frame = power.getBoundingClientRect();
+      const face = button.getBoundingClientRect();
+      const x = frame.left + frame.width / 2 + cable.outletX;
+      const y = frame.top + frame.height / 2 + cable.outletY;
+      if (
+        x > 0 &&
+        x < window.innerWidth &&
+        y > 0 &&
+        y < window.innerHeight &&
+        ((x - 15 > 0 && x - 15 < face.left) ||
+          (x + 15 < window.innerWidth && x + 15 > face.right) ||
+          (y - 25 > 0 && y - 25 < face.top) ||
+          (y + 25 < window.innerHeight && y + 25 > face.bottom))
+      )
+        unlockTrick("outlet");
+    }
   }
   function tick(time: number) {
     const dt = lastFrame ? clamp((time - lastFrame) / (1000 / 60), 0.25, 2) : 1;
@@ -183,7 +214,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function animate() {
     if (reducedMotion.matches) {
       for (const key of keys) {
-        current[key] = 0;
+        // Deliberate drag follows the pointer directly in reduced motion.
+        // Hover, tilt, springs, and release animation remain suppressed.
+        current[key] = pointers.size && (key === "x" || key === "y") ? target[key] : 0;
         velocity[key] = 0;
       }
       current.flash = 0;
@@ -221,6 +254,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       animate();
     } else burst(true);
     holdTimer = window.setTimeout(() => setPhase("held"), 180);
+    if (button.id === "click-button" && !hasTrick("hold")) {
+      achievementTimer = window.setTimeout(() => {
+        if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
+      }, 10_000);
+    }
   }
   function aim(event: Pick<PointerEvent, "clientX" | "clientY">) {
     const rect = stage.getBoundingClientRect();
@@ -245,6 +283,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (cancelled && button.id === "click-button") clickSound.cancelPending();
     activeKey = null;
     window.clearTimeout(holdTimer);
+    window.clearTimeout(achievementTimer);
     const wasPressed = phase !== "idle";
     const quick = performance.now() - pressedAt < QUICK_TAP_MS;
     current.press = 0;
@@ -494,7 +533,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     event.preventDefault();
     if (event.key !== activeKey) return;
     release();
-    if (!button.disabled) activateRelease();
+    if (!button.disabled) {
+      if (button.id === "click-button") unlockTrick("keyboard");
+      activateRelease();
+    }
   });
   button.addEventListener("blur", () => {
     if (activeKey !== null) reset();

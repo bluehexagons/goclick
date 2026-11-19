@@ -44,9 +44,10 @@ type Counters struct {
 	YearStreak    int64
 	LastClickedAt *time.Time
 	Progress      ClickProgress
+	Achievements  ClickAchievements
 }
 
-const schemaVersion = 6
+const schemaVersion = 7
 
 type schemaTable struct {
 	name    string
@@ -89,6 +90,16 @@ CREATE TABLE IF NOT EXISTS click_progress (
 	week_streak INTEGER NOT NULL CHECK (week_streak >= 1),
 	best_day_streak INTEGER NOT NULL CHECK (best_day_streak >= 1),
 	best_week_streak INTEGER NOT NULL CHECK (best_week_streak >= week_streak)
+);
+CREATE TABLE IF NOT EXISTS click_achievements (
+	user_id INTEGER PRIMARY KEY REFERENCES counters(user_id) ON DELETE CASCADE,
+	day_clicks INTEGER NOT NULL CHECK (day_clicks BETWEEN 1 AND 100),
+	week_clicks INTEGER NOT NULL CHECK (week_clicks BETWEEN 1 AND 1000),
+	month_clicks INTEGER NOT NULL CHECK (month_clicks BETWEEN 1 AND 5000),
+	hours INTEGER NOT NULL CHECK (hours BETWEEN 1 AND 16777215),
+	active_days INTEGER NOT NULL CHECK (active_days BETWEEN 1 AND 10),
+	active_months INTEGER NOT NULL CHECK (active_months BETWEEN 1 AND 3),
+	earned INTEGER NOT NULL CHECK (earned BETWEEN 0 AND 15)
 );
 CREATE TABLE IF NOT EXISTS rails_entities (
 	id INTEGER PRIMARY KEY,
@@ -601,7 +612,7 @@ func (s *Store) CurrentCounters(ctx context.Context, userID int64) (Counters, er
 		return Counters{}, fmt.Errorf("begin counters read: %w", err)
 	}
 	defer tx.Rollback()
-	counters, _, err := readCounters(ctx, tx, userID)
+	counters, _, _, err := readCounters(ctx, tx, userID)
 	return counters, err
 }
 
@@ -613,7 +624,7 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 	}
 	defer tx.Rollback()
 
-	counters, progressSaved, err := readCounters(ctx, tx, userID)
+	counters, progressSaved, achievementsSaved, err := readCounters(ctx, tx, userID)
 	if err != nil {
 		return Counters{}, err
 	}
@@ -643,6 +654,8 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		counters.Progress.recordDays(utcDay(*previous), utcDay(now), utcDay(now))
 	}
 	counters.Progress.BestDayStreak = max(counters.Progress.BestDayStreak, counters.DayStreak)
+	previousAchievements := counters.Achievements
+	counters.Achievements.record(previous, now, 1)
 	counters.Clicks++
 	counters.Exists = true
 	counters.LastClickedAt = &now
@@ -662,6 +675,11 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 	}
 	if newDay || !progressSaved {
 		if err := counters.Progress.save(ctx, tx, userID); err != nil {
+			return Counters{}, err
+		}
+	}
+	if !achievementsSaved || counters.Achievements != previousAchievements {
+		if err := counters.Achievements.save(ctx, tx, userID); err != nil {
 			return Counters{}, err
 		}
 	}

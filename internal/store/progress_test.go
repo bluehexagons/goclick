@@ -40,7 +40,7 @@ func TestVersionFiveProgressUsesClickDatesAndImportedStreak(t *testing.T) {
 	user := createTestUser(t, db, "historical_week")
 	ctx := context.Background()
 	last := time.Date(2026, 1, 11, 22, 0, 0, 0, time.UTC)
-	if _, err := db.db.Exec(`DROP TABLE click_progress; PRAGMA user_version=5`); err != nil {
+	if _, err := db.db.Exec(`DROP TABLE click_achievements; DROP TABLE click_progress; PRAGMA user_version=5`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.db.Exec(`INSERT INTO counters(user_id,click_count,day_streak,last_clicked_at) VALUES (?,100,3,?)`, user.ID, formatTime(last)); err != nil {
