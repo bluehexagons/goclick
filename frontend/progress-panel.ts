@@ -1,5 +1,5 @@
 import { required as $ } from "./dom.js";
-import { currentLanguage, formatNumber, languageDirection, message as t } from "./i18n.js";
+import { currentLanguage, formatNumber, message as t } from "./i18n.js";
 import {
   dayMilliseconds,
   fortnight,
@@ -8,7 +8,7 @@ import {
   utcReset,
 } from "./progress.js";
 import type { Counters } from "./types.js";
-import { badgesFor } from "./achievements.js";
+import { renderAchievements } from "./achievement-panel.js";
 import { onTrickUnlock } from "./button-tricks.js";
 
 const activityRail = $("#activity-days");
@@ -22,13 +22,12 @@ const resetTime = $("#day-reset-local");
 const timeLeft = $("#day-reset-left");
 
 let lastActivity = "";
-let lastBadges = "";
 let resetMinute = NaN;
 let resetTimer = 0;
 let shownCounters: Counters = {};
-onTrickUnlock(() => renderProgress(shownCounters));
+onTrickUnlock((local) => renderProgress(shownCounters, local));
 
-export function renderProgress(data: Counters) {
+export function renderProgress(data: Counters, announce = false) {
   shownCounters = data;
   const progress =
     data.progress ??
@@ -51,35 +50,7 @@ export function renderProgress(data: Counters) {
       );
   }
 
-  const badges = badgesFor(data, progress);
-  const badgeKey = `${currentLanguage()}:${badges.map(({ earned }) => Number(earned)).join("")}`;
-  if (badgeKey !== lastBadges) {
-    lastBadges = badgeKey;
-    $("#achievement-count").textContent = t("outOf", {
-      count: formatNumber(badges.filter(({ earned }) => earned).length),
-      total: formatNumber(badges.length),
-    });
-    const list = $("#achievement-list");
-    list.textContent = "";
-    for (const badge of badges) {
-      const item = document.createElement("li");
-      item.classList.toggle("earned", badge.earned);
-      const state = document.createElement("span");
-      state.className = "visually-hidden";
-      state.textContent = `${t(badge.earned ? "earned" : "locked")}. `;
-      const name = document.createElement("strong");
-      name.lang = "en";
-      name.dir = "ltr";
-      name.textContent = badge.name;
-      const description = document.createElement("span");
-      description.className = "achievement-description";
-      description.lang = badge.descriptionLanguage;
-      description.dir = languageDirection(badge.descriptionLanguage);
-      description.textContent = badge.description;
-      item.append(state, name, description);
-      list.append(item);
-    }
-  }
+  renderAchievements(data, progress, announce);
 }
 
 export function paintReset(force = false) {

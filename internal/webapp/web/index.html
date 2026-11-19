@@ -582,18 +582,47 @@
                 <p class="progress-caption" id="day-reset-left"></p>
                 <span class="reset-tooltip" id="day-reset-local" role="tooltip"></span>
               </section>
-              <details class="progress-section achievements">
-                <summary class="progress-heading">
-                  <span data-i18n="achievements">Achievements</span>
-                  <strong id="achievement-count" aria-live="polite">0 / 22</strong>
-                </summary>
-                <p class="progress-caption" data-i18n="weekRule">
-                  One saved click counts for the week, Monday through Sunday (UTC).
-                </p>
-                <p class="progress-caption" lang="en">Button tricks are saved in this browser.</p>
-                <ul id="achievement-list" class="achievement-list" role="list"></ul>
-              </details>
+              <button
+                id="open-achievements"
+                class="progress-section achievement-launcher"
+                type="button"
+                aria-haspopup="dialog"
+                aria-controls="achievement-dialog"
+              >
+                <svg class="achievement-icon" viewBox="0 0 48 48" aria-hidden="true">
+                  <use href="/achievement-icons.svg#medal" />
+                </svg>
+                <span data-i18n="achievements">Achievements</span>
+                <progress id="achievement-meter" value="0" max="22" aria-hidden="true"></progress>
+                <strong id="achievement-count">0 / 22</strong>
+                <svg class="achievement-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
+                </svg>
+              </button>
             </div>
+            <div
+              id="achievement-notice"
+              class="achievement-notice"
+              lang="en"
+              dir="ltr"
+              aria-hidden="true"
+              hidden
+            >
+              <svg class="achievement-icon" viewBox="0 0 48 48">
+                <use href="/achievement-icons.svg#medal" />
+              </svg>
+              <div>
+                <p id="achievement-notice-title">Achievement unlocked</p>
+                <strong id="achievement-notice-names"></strong>
+              </div>
+            </div>
+            <p
+              id="achievement-announcement"
+              class="visually-hidden"
+              lang="en"
+              dir="ltr"
+              role="status"
+            ></p>
           </div>
         </section>
       </main>
@@ -608,6 +637,58 @@
         >
       </footer>
     </div>
+    <dialog
+      id="achievement-dialog"
+      class="options-dialog achievement-dialog"
+      aria-labelledby="achievement-title"
+      data-game-language
+    >
+      <div class="achievement-header">
+        <div class="options-heading">
+          <div class="achievement-title">
+            <svg class="achievement-icon" viewBox="0 0 48 48" aria-hidden="true">
+              <use href="/achievement-icons.svg#medal" />
+            </svg>
+            <h1 id="achievement-title" data-i18n="achievements">Achievements</h1>
+          </div>
+          <button
+            id="close-achievements"
+            class="button button-quiet"
+            type="button"
+            data-i18n="done"
+          >
+            Done
+          </button>
+        </div>
+        <div class="achievement-tools">
+          <div class="achievement-filters" role="group" aria-label="Filter achievements">
+            <button id="achievement-all" type="button" aria-pressed="true" lang="en">All</button>
+            <button id="achievement-earned" type="button" aria-pressed="false" data-i18n="earned">
+              Earned
+            </button>
+            <button id="achievement-locked" type="button" aria-pressed="false" data-i18n="locked">
+              Locked
+            </button>
+          </div>
+          <label class="achievement-spoilers" lang="en">
+            <input id="achievement-spoilers" type="checkbox" />
+            Reveal locked requirements
+          </label>
+        </div>
+      </div>
+      <p
+        id="achievement-dialog-announcement"
+        class="visually-hidden"
+        lang="en"
+        dir="ltr"
+        role="status"
+      ></p>
+      <ul id="achievement-list" class="achievement-list" role="list"></ul>
+      <p id="achievement-empty" class="achievement-empty" lang="en" dir="ltr" hidden></p>
+      <p class="achievement-footnote" lang="en" dir="ltr">
+        Button tricks are saved in this browser.
+      </p>
+    </dialog>
     <dialog
       lang="en"
       dir="ltr"

@@ -1396,12 +1396,12 @@
     stop();
     if (!context || context.state === "closed" || suspending) return;
     try {
-      const pending = context.suspend();
-      suspending = pending;
+      const pending2 = context.suspend();
+      suspending = pending2;
       const settled = () => {
-        if (suspending === pending) suspending = null;
+        if (suspending === pending2) suspending = null;
       };
-      void pending.then(settled, settled);
+      void pending2.then(settled, settled);
     } catch {
     }
   }
@@ -1570,7 +1570,7 @@
       localStorage.setItem(trickPrefix + trick, "1");
     } catch {
     }
-    for (const listener of listeners) listener();
+    for (const listener of listeners) listener(true);
   }
   function onTrickUnlock(listener) {
     listeners.add(listener);
@@ -1579,7 +1579,7 @@
     const trick = tricks.find((name) => event.key === trickPrefix + name);
     if (trick && event.newValue === "1" && !hasTrick(trick)) {
       earnedTricks.add(trick);
-      for (const listener of listeners) listener();
+      for (const listener of listeners) listener(false);
     }
   });
   var activations = /* @__PURE__ */ new WeakMap();
@@ -3306,7 +3306,7 @@
     unsaved: "feedbackUnsaved"
   };
   var clickFeedback = (() => {
-    const samples = [], live = /* @__PURE__ */ new Set();
+    const samples = [], live2 = /* @__PURE__ */ new Set();
     const average = () => samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : 150;
     function start(button, event, simulated = false) {
       const stage = button.closest(".button-stage");
@@ -3370,7 +3370,7 @@
         window.clearTimeout(removal);
         animation?.cancel();
         popup.remove();
-        live.delete(handle);
+        live2.delete(handle);
       }
       const handle = {
         remove,
@@ -3418,20 +3418,20 @@
           );
         removal = window.setTimeout(remove, motionPreference.matches ? 800 : 950);
       }
-      live.add(handle);
-      while (live.size > 32) live.values().next().value?.remove();
+      live2.add(handle);
+      while (live2.size > 32) live2.values().next().value?.remove();
       return handle;
     }
     onLanguageChange(() => {
-      for (const handle of live) handle.translate();
+      for (const handle of live2) handle.translate();
     });
     motionPreference.addEventListener("change", () => {
-      if (motionPreference.matches) for (const handle of live) handle.reduce();
+      if (motionPreference.matches) for (const handle of live2) handle.reduce();
     });
     return {
       start,
       reset() {
-        for (const handle of live) handle.remove();
+        for (const handle of live2) handle.remove();
         samples.length = 0;
       }
     };
@@ -3462,7 +3462,7 @@
   var statsShare = (() => {
     const button = required("#share-stats");
     const status = required("#share-status");
-    const dialog = required("#share-dialog");
+    const dialog2 = required("#share-dialog");
     const text = required("#share-text");
     const copyButton = required("#copy-share-text");
     const options = {
@@ -3519,14 +3519,14 @@
       } catch {
         clipboardWrite = Promise.reject(new Error("Clipboard unavailable"));
       }
-      if (openDialog && !dialog.open) dialog.showModal();
+      if (openDialog && !dialog2.open) dialog2.showModal();
       try {
         await clipboardWrite;
         if (current === generation2) announce(summary === text.value ? "copied" : "copyChanged");
       } catch {
         if (current !== generation2) return;
         announce("clipboardUnavailable");
-        if (dialog.open && summary === text.value) {
+        if (dialog2.open && summary === text.value) {
           text.focus();
           text.select();
         }
@@ -3542,12 +3542,12 @@
       updatePreview();
       if (announcement) status.textContent = message2(announcement);
     });
-    required("#close-share").addEventListener("click", () => dialog.close());
-    dialog.addEventListener("click", (event) => {
-      if (event.target !== dialog) return;
-      const bounds = dialog.getBoundingClientRect();
+    required("#close-share").addEventListener("click", () => dialog2.close());
+    dialog2.addEventListener("click", (event) => {
+      if (event.target !== dialog2) return;
+      const bounds = dialog2.getBoundingClientRect();
       const outside = event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
-      if (outside) dialog.close();
+      if (outside) dialog2.close();
     });
     copyButton.addEventListener("click", () => void copyCurrent(false));
     for (const option of Object.values(options)) option.addEventListener("change", updatePreview);
@@ -3562,7 +3562,7 @@
         copyButton.setAttribute("aria-busy", "false");
         announce(null);
         text.value = "";
-        if (dialog.open) dialog.close();
+        if (dialog2.open) dialog2.close();
       },
       copy(counters, local) {
         currentStats = { counters, local };
@@ -3608,98 +3608,328 @@
     const clicks = data.click_count?.count ?? 0;
     const calendar = data.achievements ?? emptyClickAchievements;
     const localized = language2 === "en" ? [] : requirements(language2);
-    function badge(name, description, earned, localized2) {
+    function badge(icon, name, hint, description, earned, translation) {
       return {
+        icon,
         name,
-        description: language2 !== "en" && localized2 ? localized2 : description,
-        earned,
-        descriptionLanguage: localized2 ? language2 : "en"
+        hint,
+        description: translation ?? description,
+        descriptionLanguage: translation ? language2 : "en",
+        earned
       };
     }
     return [
-      badge("Gone Click", "Saved you a click.", clicks >= 1, localized[0]),
-      badge("Sentence", "Save 25 clicks in total.", clicks >= 25, localized[1]),
-      badge("Paragraph", "Save 100 clicks in total.", clicks >= 100, localized[2]),
-      badge("Essay", "Save 500 clicks in total.", clicks >= 500, localized[3]),
       badge(
+        "medal",
+        "Gone Click",
+        "Every collection has a first badge.",
+        "Saved you a click.",
+        clicks >= 1,
+        localized[0]
+      ),
+      badge(
+        "clicks",
+        "Sentence",
+        "Give your click total a little momentum.",
+        "Save 25 clicks in total.",
+        clicks >= 25,
+        localized[1]
+      ),
+      badge(
+        "clicks",
+        "Paragraph",
+        "Your click total is starting to tell a story.",
+        "Save 100 clicks in total.",
+        clicks >= 100,
+        localized[2]
+      ),
+      badge(
+        "clicks",
+        "Essay",
+        "Keep adding to your all-time click total.",
+        "Save 500 clicks in total.",
+        clicks >= 500,
+        localized[3]
+      ),
+      badge(
+        "calendar",
         "Clicks for Days",
+        "A few days in a row will do it.",
         "Save a click on 3 consecutive UTC days.",
         progress.best_day_streak >= 3,
         localized[4]
       ),
       badge(
+        "calendar",
         "One-Week Streak",
+        "Make the button part of your daily routine.",
         "Save a click on 7 consecutive UTC days.",
         progress.best_day_streak >= 7,
         localized[5]
       ),
       badge(
+        "calendar",
         "Good to See You Again",
+        "Come back and click again next week.",
         "Save a click in 2 consecutive UTC weeks.",
         progress.best_week_streak >= 2,
         localized[6]
       ),
       badge(
+        "calendar",
         "Double Fortnight",
+        "Keep that weekly routine going.",
         "Save a click in 4 consecutive UTC weeks.",
         progress.best_week_streak >= 4,
         localized[7]
       ),
-      badge("Busy Day", "Save 100 clicks in one UTC day.", Boolean(calendar.earned & century)),
       badge(
+        "pace",
+        "Busy Day",
+        "Make today's click total stand out.",
+        "Save 100 clicks in one UTC day.",
+        Boolean(calendar.earned & century)
+      ),
+      badge(
+        "pace",
         "Brisk Pace",
+        "Keep the clicks coming this week.",
         "Save 1,000 clicks in one Monday\u2013Sunday UTC week.",
         Boolean(calendar.earned & fourDigits)
       ),
       badge(
+        "pace",
         "High Score",
+        "See how many clicks you can rack up in a month.",
         "Save 5,000 clicks in one UTC calendar month.",
         Boolean(calendar.earned & fiveGrand)
       ),
       badge(
+        "pace",
         "Three Visits",
+        "Give the button a little company throughout the day.",
         "Save a click in 3 different UTC hours on the same day.",
         Boolean(calendar.earned & threeVisits)
       ),
       badge(
+        "calendar",
         "Returning Clicker",
+        "Drop in when you feel like it. The days add up.",
         "Save clicks on 10 different UTC days, with gaps allowed.",
         calendar.active_days >= 10
       ),
       badge(
+        "calendar",
         "Welcome Back",
+        "Come back from time to time as the calendar turns.",
         "Save clicks in 3 different UTC calendar months, with gaps allowed.",
         calendar.active_months >= 3
       ),
-      badge("Hold It", "Hold the button down for a while.", hasTrick("hold")),
-      badge("Behind the Button", "Drag the button far enough.", hasTrick("outlet")),
       badge(
+        "discovery",
+        "Hold It",
+        "Take your time with the button.",
+        "Keep the game button pressed for 10 seconds without releasing it.",
+        hasTrick("hold")
+      ),
+      badge(
+        "discovery",
+        "Behind the Button",
+        "There's more to the button than meets the eye.",
+        "Drag the button far enough to reveal the outlet.",
+        hasTrick("outlet")
+      ),
+      badge(
+        "discovery",
         "Key Player",
+        "Your mouse can take a break.",
         "Press and release Space or Enter with the game button focused.",
         hasTrick("keyboard")
       ),
       badge(
+        "discovery",
         "U-Turn",
+        "Sometimes the best place to end up is where you started.",
         "Drag the button away, bring it back to where it started, and release to save a click.",
         hasTrick("u-turn")
       ),
       badge(
+        "discovery",
         "That Seems Unsafe",
-        "Pull the button in different directions until the plug comes loose.",
+        "See how much the button can take.",
+        "Loosen the plug by making at least four long pulls in at least three different directions.",
         hasTrick("loose-plug")
       ),
       badge(
+        "discovery",
         "Alternative Press",
+        "Try a different way to save a click.",
         "Save one click with the keyboard and one with a pointer, in either order.",
         hasTrick("saved-keyboard") && hasTrick("saved-pointer")
       ),
-      badge("Mobile Mogul", "Save 100 clicks using touch in one session.", hasTrick("touch-100")),
       badge(
+        "discovery",
+        "Mobile Mogul",
+        "See what you can do on a touchscreen.",
+        "Save 100 clicks using touch in one session.",
+        hasTrick("touch-100")
+      ),
+      badge(
+        "discovery",
         "Wrong Button",
+        "The game button has a few surprises.",
         "Click the game button with the middle or right mouse button.",
         hasTrick("wrong-button")
       )
     ];
+  }
+
+  // frontend/achievement-panel.ts
+  var launcher = required("#open-achievements");
+  var dialog = required("#achievement-dialog");
+  var list = required("#achievement-list");
+  var empty = required("#achievement-empty");
+  var spoiler = required("#achievement-spoilers");
+  var filters = {
+    all: required("#achievement-all"),
+    earned: required("#achievement-earned"),
+    locked: required("#achievement-locked")
+  };
+  var notice = required("#achievement-notice");
+  var noticeTitle = required("#achievement-notice-title");
+  var noticeNames = required("#achievement-notice-names");
+  var live = required("#achievement-announcement");
+  var dialogLive = required("#achievement-dialog-announcement");
+  var game = required("#game-view");
+  var spoilerKey = "goclick.achievements.reveal.v1";
+  var filter = "all";
+  var badges = [];
+  var badgeKey = "";
+  var noticeTimer = 0;
+  var pending = /* @__PURE__ */ new Set();
+  var visible = /* @__PURE__ */ new Set();
+  try {
+    spoiler.checked = localStorage.getItem(spoilerKey) === "1";
+  } catch {
+  }
+  function card(badge) {
+    const item = document.createElement("li");
+    item.className = badge.earned ? "achievement-card earned" : "achievement-card";
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("class", "achievement-icon");
+    icon.setAttribute("viewBox", "0 0 48 48");
+    icon.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", `/achievement-icons.svg#${badge.icon}`);
+    icon.append(use);
+    const text = document.createElement("div");
+    const name = document.createElement("strong");
+    name.lang = "en";
+    name.dir = "ltr";
+    name.textContent = badge.name;
+    const description = document.createElement("p");
+    description.className = "achievement-description";
+    const showDetail = badge.earned || spoiler.checked;
+    description.lang = showDetail ? badge.descriptionLanguage : "en";
+    description.dir = languageDirection(showDetail ? badge.descriptionLanguage : "en");
+    description.textContent = showDetail ? badge.description : badge.hint;
+    const state = document.createElement("span");
+    state.className = "achievement-state";
+    state.textContent = message2(badge.earned ? "earned" : "locked");
+    text.append(name, description);
+    item.append(icon, state, text);
+    return item;
+  }
+  function paintList() {
+    const cards = badges.filter(
+      (badge) => filter === "all" || badge.earned === (filter === "earned")
+    );
+    list.textContent = "";
+    list.append(...cards.map(card));
+    empty.hidden = cards.length > 0;
+    if (!cards.length)
+      empty.textContent = filter === "locked" ? "You\u2019ve earned every achievement." : "No achievements earned yet.";
+  }
+  for (const key of Object.keys(filters)) {
+    filters[key].addEventListener("click", () => {
+      if (filter === key) return;
+      filters[filter].setAttribute("aria-pressed", "false");
+      filter = key;
+      filters[key].setAttribute("aria-pressed", "true");
+      paintList();
+      dialog.scrollTop = 0;
+    });
+  }
+  spoiler.addEventListener("change", () => {
+    try {
+      localStorage.setItem(spoilerKey, spoiler.checked ? "1" : "0");
+    } catch {
+    }
+    paintList();
+  });
+  launcher.addEventListener("click", () => {
+    paintList();
+    if (!dialog.open) {
+      dialog.append(notice);
+      dialog.showModal();
+    }
+  });
+  dialog.addEventListener("close", () => {
+    if (!dialog.open) game.append(notice);
+  });
+  required("#close-achievements").addEventListener("click", closeAchievements);
+  function closeAchievements() {
+    if (dialog.open) dialog.close();
+  }
+  function clearAchievementNotice() {
+    window.clearTimeout(noticeTimer);
+    pending.clear();
+    visible.clear();
+    notice.hidden = true;
+    live.textContent = "";
+    dialogLive.textContent = "";
+  }
+  function queueNotice(names) {
+    if (!names.length || game.hidden || document.hidden) return;
+    const queued = pending.size > 0;
+    for (const name of names) pending.add(name);
+    if (queued) return;
+    void Promise.resolve().then(() => {
+      if (!pending.size) return;
+      const earned = [...pending];
+      pending.clear();
+      if (game.hidden || document.hidden) return;
+      for (const name of earned) visible.add(name);
+      noticeTitle.textContent = visible.size === 1 ? "Achievement unlocked" : "Achievements unlocked";
+      noticeNames.textContent = [...visible].join(" \xB7 ");
+      notice.hidden = false;
+      const title = earned.length === 1 ? "Achievement unlocked" : "Achievements unlocked";
+      const announcement = dialog.open ? dialogLive : live;
+      announcement.textContent = `${title}. ${earned.join(". ")}.`;
+      window.clearTimeout(noticeTimer);
+      noticeTimer = window.setTimeout(clearAchievementNotice, 6500);
+    });
+  }
+  function renderAchievements(data, progress, announce) {
+    const next = badgesFor(data, progress);
+    const key = `${currentLanguage()}:${next.map(({ earned }) => Number(earned)).join("")}`;
+    if (key === badgeKey) return;
+    if (announce && badges.length) {
+      queueNotice(
+        next.filter((badge, index) => badge.earned && !badges[index]?.earned).map(({ name }) => name)
+      );
+    }
+    badges = next;
+    badgeKey = key;
+    const count = badges.filter(({ earned }) => earned).length;
+    required("#achievement-count").textContent = message2("outOf", {
+      count: formatNumber(count),
+      total: formatNumber(badges.length)
+    });
+    const meter = required("#achievement-meter");
+    meter.value = count;
+    meter.max = badges.length;
+    if (dialog.open) paintList();
   }
 
   // frontend/progress-panel.ts
@@ -3713,12 +3943,11 @@
   var resetTime = required("#day-reset-local");
   var timeLeft = required("#day-reset-left");
   var lastActivity = "";
-  var lastBadges = "";
   var resetMinute = NaN;
   var resetTimer = 0;
   var shownCounters = {};
-  onTrickUnlock(() => renderProgress(shownCounters));
-  function renderProgress(data) {
+  onTrickUnlock((local) => renderProgress(shownCounters, local));
+  function renderProgress(data, announce = false) {
     shownCounters = data;
     const progress = data.progress ?? seedProgress(data.click_count?.modified_time, data.streak_counter_day?.count ?? 0);
     required("#week-streak").textContent = formatNumber(progress.week_streak);
@@ -3737,35 +3966,7 @@
           Boolean(progress.recent_days & 1 << fortnight - 1 - index)
         );
     }
-    const badges = badgesFor(data, progress);
-    const badgeKey = `${currentLanguage()}:${badges.map(({ earned }) => Number(earned)).join("")}`;
-    if (badgeKey !== lastBadges) {
-      lastBadges = badgeKey;
-      required("#achievement-count").textContent = message2("outOf", {
-        count: formatNumber(badges.filter(({ earned }) => earned).length),
-        total: formatNumber(badges.length)
-      });
-      const list = required("#achievement-list");
-      list.textContent = "";
-      for (const badge of badges) {
-        const item = document.createElement("li");
-        item.classList.toggle("earned", badge.earned);
-        const state = document.createElement("span");
-        state.className = "visually-hidden";
-        state.textContent = `${message2(badge.earned ? "earned" : "locked")}. `;
-        const name = document.createElement("strong");
-        name.lang = "en";
-        name.dir = "ltr";
-        name.textContent = badge.name;
-        const description = document.createElement("span");
-        description.className = "achievement-description";
-        description.lang = badge.descriptionLanguage;
-        description.dir = languageDirection(badge.descriptionLanguage);
-        description.textContent = badge.description;
-        item.append(state, name, description);
-        list.append(item);
-      }
-    }
+    renderAchievements(data, progress, announce);
   }
   function paintReset(force = false) {
     const now = Date.now();
@@ -3920,7 +4121,13 @@
     views.home.hidden = view !== "home";
     views.auth.hidden = view !== "login" && view !== "signup";
     views.game.hidden = !authenticated;
-    if (changed) showReset(authenticated);
+    if (changed) {
+      showReset(authenticated);
+      if (!authenticated) {
+        closeAchievements();
+        clearAchievementNotice();
+      }
+    }
     loginForm.hidden = view !== "login";
     signupForm.hidden = view !== "signup";
     required("#guest-nav").hidden = authenticated || view === "loading";
@@ -4033,6 +4240,7 @@
     required("#admin-link").hidden = !user?.admin;
     if (identityChanged) {
       required("#replace-local").checked = false;
+      clearAchievementNotice();
       resetClickState();
       renderCounters({}, true);
       if (optionsDialog.open) updateOptions();
@@ -4116,13 +4324,13 @@
       )
     );
   }
-  function renderCounters(data, allowDecrease = false) {
+  function renderCounters(data, allowDecrease = false, announce = false) {
     const clicks = data.click_count;
     const displayedClicks = displayedCounters.click_count?.count ?? 0;
     if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks)
       return;
     displayedCounters = data;
-    renderProgress(data);
+    renderProgress(data, announce);
     for (const [id, count] of [
       ["click-count", clicks?.count ?? 0],
       ["day-streak", data.streak_counter_day?.count ?? 0],
@@ -4389,7 +4597,7 @@
         headers: { "X-GoClick-User-ID": user.id }
       });
       if (generation2 !== clickGeneration) return;
-      renderCounters(data);
+      renderCounters(data, false, true);
       recordSavedButtonClick(event);
       if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
         lastOnlineCounters = data;
@@ -4471,10 +4679,10 @@
   var optionsDialog = required("#options-dialog");
   optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
   function optionsNotice(message3, error = false) {
-    const notice = required("#options-status");
-    notice.textContent = message3;
-    notice.hidden = !message3;
-    notice.classList.toggle("notice-error", error);
+    const notice2 = required("#options-status");
+    notice2.textContent = message3;
+    notice2.hidden = !message3;
+    notice2.classList.toggle("notice-error", error);
   }
   function updateOptions() {
     required("#motion-setting").value = gameSettings.value.motion;
@@ -4553,6 +4761,7 @@
       const data = localGame.read();
       gameSettings.setMode("local");
       localMode = true;
+      clearAchievementNotice();
       gameReady = false;
       resetClickState();
       optionsDialog.close();
@@ -4577,6 +4786,7 @@
       remembered = false;
     }
     localMode = false;
+    clearAchievementNotice();
     gameReady = false;
     resetClickState();
     await boot();
@@ -4600,7 +4810,7 @@
     try {
       const data = await localGame.change(() => localGame.increment());
       if (generation2 !== clickGeneration) return;
-      renderCounters(data);
+      renderCounters(data, false, true);
       recordSavedButtonClick(event);
       showError("#game-error", "");
       window.setTimeout(() => {
@@ -4639,6 +4849,7 @@
       const data = await operation();
       await localGame.change(() => localGame.replace(data));
       if (localMode) {
+        clearAchievementNotice();
         resetClickState();
         openLocalGame();
       }

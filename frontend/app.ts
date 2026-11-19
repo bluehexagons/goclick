@@ -28,6 +28,7 @@ import type { Language } from "./i18n.js";
 import type { MessageKey } from "./messages.js";
 import { parseStoredTimestamp } from "./timestamp.js";
 import type { User, Counters, GameState } from "./types.js";
+import { closeAchievements, clearAchievementNotice } from "./achievement-panel.js";
 import { recordSavedButtonClick } from "./button-tricks.js";
 import { paintReset, renderProgress, showReset } from "./progress-panel.js";
 
@@ -162,7 +163,13 @@ function show(view: View) {
   views.home.hidden = view !== "home";
   views.auth.hidden = view !== "login" && view !== "signup";
   views.game.hidden = !authenticated;
-  if (changed) showReset(authenticated);
+  if (changed) {
+    showReset(authenticated);
+    if (!authenticated) {
+      closeAchievements();
+      clearAchievementNotice();
+    }
+  }
   loginForm.hidden = view !== "login";
   signupForm.hidden = view !== "signup";
   $("#guest-nav").hidden = authenticated || view === "loading";
@@ -300,6 +307,7 @@ function setUser(nextUser: User | null) {
   $<HTMLAnchorElement>("#admin-link").hidden = !user?.admin;
   if (identityChanged) {
     $<HTMLInputElement>("#replace-local").checked = false;
+    clearAchievementNotice();
     resetClickState();
     renderCounters({}, true);
     if (optionsDialog.open) updateOptions();
@@ -403,7 +411,7 @@ function animateNumber(element: HTMLElement) {
   );
 }
 
-function renderCounters(data: Counters, allowDecrease = false) {
+function renderCounters(data: Counters, allowDecrease = false, announce = false) {
   const clicks = data.click_count;
   const displayedClicks = displayedCounters.click_count?.count ?? 0;
   if (
@@ -414,7 +422,7 @@ function renderCounters(data: Counters, allowDecrease = false) {
   )
     return;
   displayedCounters = data;
-  renderProgress(data);
+  renderProgress(data, announce);
   for (const [id, count] of [
     ["click-count", clicks?.count ?? 0],
     ["day-streak", data.streak_counter_day?.count ?? 0],
@@ -706,7 +714,7 @@ clickButton.addEventListener("click", async (event) => {
       headers: { "X-GoClick-User-ID": user.id },
     });
     if (generation !== clickGeneration) return;
-    renderCounters(data);
+    renderCounters(data, false, true);
     recordSavedButtonClick(event);
     if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
       lastOnlineCounters = data;
@@ -878,6 +886,7 @@ function startLocalGame() {
     const data = localGame.read();
     gameSettings.setMode("local");
     localMode = true;
+    clearAchievementNotice();
     gameReady = false;
     resetClickState();
     optionsDialog.close();
@@ -904,6 +913,7 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
     remembered = false;
   }
   localMode = false;
+  clearAchievementNotice();
   gameReady = false;
   resetClickState();
   await boot();
@@ -930,7 +940,7 @@ async function clickLocal(event: MouseEvent) {
     // Save immediately; simulated ping affects only the visual acknowledgement.
     const data = await localGame.change(() => localGame.increment());
     if (generation !== clickGeneration) return;
-    renderCounters(data);
+    renderCounters(data, false, true);
     recordSavedButtonClick(event);
     showError("#game-error", "");
     window.setTimeout(() => {
@@ -969,6 +979,7 @@ async function replaceLocalSave(operation: () => Counters | Promise<Counters>, m
     const data = await operation();
     await localGame.change(() => localGame.replace(data));
     if (localMode) {
+      clearAchievementNotice();
       resetClickState();
       openLocalGame();
     }

@@ -107,6 +107,7 @@ async function harness(options = {}) {
     hidden: false,
     querySelector: element,
     createElement: () => new Element(),
+    createElementNS: () => new Element(),
     querySelectorAll: (selector) =>
       selector === "[data-play-local]" ? [element("#play-local")] : [],
   });
@@ -1305,6 +1306,37 @@ test("older click replies cannot roll back a more recent score or earned badges"
   await first;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
   assert.equal(h.element("#achievement-count").textContent, "5 / 22");
+});
+
+test("new achievements announce without replaying loaded or synchronized badges", async () => {
+  const h = await harness();
+  const notice = h.element("#achievement-notice");
+  const live = h.element("#achievement-announcement");
+  const button = h.element("#click-button");
+  assert.equal(notice.hidden, true);
+  assert.equal(live.textContent, "");
+  h.window.fire("storage", { key: "goclick.trick.hold", newValue: "1" });
+  assert.equal(h.element("#achievement-count").textContent, "2 / 22");
+  assert.equal(notice.hidden, true);
+  h.fetch(async () => response({ error: "Save failed" }, 500));
+  await button.fire("click");
+  assert.equal(live.textContent, "");
+
+  h.fetch(async () => response(counters(100)));
+  const event = {};
+  h.rememberButtonActivation(event, { source: "pointer", uTurn: true });
+  button.focus();
+  await button.events.get("click")(event);
+  assert.equal(notice.hidden, false);
+  assert.equal(live.textContent, "Achievements unlocked. Sentence. Paragraph. U-Turn.");
+  assert.equal(h.element("#achievement-notice-names").textContent, "Sentence · Paragraph · U-Turn");
+  assert.equal(h.document.activeElement, button);
+
+  h.runTimers();
+  assert.equal(notice.hidden, true);
+  h.fetch(async () => response(counters(101)));
+  await button.fire("click");
+  assert.equal(live.textContent, "");
 });
 
 test("saved input badges count only confirmed releases and count touch clicks once", async () => {

@@ -42,6 +42,9 @@ months use UTC. Weeks run Monday through Sunday in UTC, and one saved click
 counts toward a weekly streak. Earned achievements survive breaks. Online and
 offline saves track calendar progress separately. Button tricks are discoveries
 stored in the current browser and are shared between online and offline play.
+Open **Achievements** to browse badges and filter by earned or locked. Locked
+badges show hints until you turn on **Reveal locked requirements**, a setting
+remembered in your browser. New unlocks appear briefly during play.
 
 **Fortnight activity** scores the 14 UTC days ending on your last saved click.
 An active day earns 5 points, and each adjacent pair of active days earns 2

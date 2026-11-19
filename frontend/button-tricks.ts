@@ -12,7 +12,7 @@ const tricks = [
 type Trick = (typeof tricks)[number];
 const trickPrefix = "goclick.trick.";
 const earnedTricks = new Set<Trick>();
-const listeners = new Set<() => void>();
+const listeners = new Set<(local: boolean) => void>();
 for (const trick of tricks) {
   try {
     if (localStorage.getItem(trickPrefix + trick) === "1") earnedTricks.add(trick);
@@ -33,17 +33,17 @@ export function unlockTrick(trick: Trick) {
   } catch {
     // Keep this visit's badge if the browser cannot save it.
   }
-  for (const listener of listeners) listener();
+  for (const listener of listeners) listener(true);
 }
 
-export function onTrickUnlock(listener: () => void) {
+export function onTrickUnlock(listener: (local: boolean) => void) {
   listeners.add(listener);
 }
 window.addEventListener("storage", (event) => {
   const trick = tricks.find((name) => event.key === trickPrefix + name);
   if (trick && event.newValue === "1" && !hasTrick(trick)) {
     earnedTricks.add(trick);
-    for (const listener of listeners) listener();
+    for (const listener of listeners) listener(false);
   }
 });
 
