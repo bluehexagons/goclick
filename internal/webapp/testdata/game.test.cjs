@@ -299,7 +299,10 @@ test("profile selection persists without enabling sound, requests, or game progr
   assert.equal(h.element("#preview-sound").disabled, true);
   selector.value = "low-beep";
   selector.fire("change");
-  assert.match(h.element("#sound-profile-description").textContent, /rounded electronic/);
+  assert.equal(
+    h.element("#sound-profile-description").textContent,
+    "A low tone with a soft attack.",
+  );
   assert.equal(JSON.parse(h.storage.get("goclick.settings.v1")).soundProfile, "low-beep");
   assert.equal(JSON.parse(h.storage.get("goclick.settings.v1")).sound, false);
   assert.deepEqual(h.requests, []);

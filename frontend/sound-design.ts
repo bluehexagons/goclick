@@ -5,24 +5,24 @@ export const soundProfiles = [
   {
     id: "classic",
     name: "Classic",
-    description: "A metal switch: a low thock with a bright tick.",
+    description: "A low press and a higher release.",
   },
-  { id: "blip", name: "Blip", description: "Playful arcade pulses with a bouncy pitch step." },
-  { id: "clack", name: "Clack", description: "Crisp, dry key clicks with a short, woody ring." },
+  { id: "blip", name: "Blip", description: "Short electronic tones that rise in pitch." },
+  { id: "clack", name: "Clack", description: "A short, dry key click." },
   {
     id: "clunk",
     name: "Clunk",
-    description: "A heavier, rounded impact with a deep resonant body.",
+    description: "A low, resonant impact.",
   },
   {
     id: "low-beep",
     name: "Low beep",
-    description: "Low, rounded electronic tones without a sharp click.",
+    description: "A low tone with a soft attack.",
   },
   {
     id: "soft-chime",
     name: "Soft chime",
-    description: "Gentle glassy notes with a soft attack and a short tail.",
+    description: "A soft chime with a short decay.",
   },
 ] as const;
 export type SoundProfile = (typeof soundProfiles)[number]["id"];

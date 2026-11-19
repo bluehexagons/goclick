@@ -190,24 +190,24 @@
     {
       id: "classic",
       name: "Classic",
-      description: "A metal switch: a low thock with a bright tick."
+      description: "A low press and a higher release."
     },
-    { id: "blip", name: "Blip", description: "Playful arcade pulses with a bouncy pitch step." },
-    { id: "clack", name: "Clack", description: "Crisp, dry key clicks with a short, woody ring." },
+    { id: "blip", name: "Blip", description: "Short electronic tones that rise in pitch." },
+    { id: "clack", name: "Clack", description: "A short, dry key click." },
     {
       id: "clunk",
       name: "Clunk",
-      description: "A heavier, rounded impact with a deep resonant body."
+      description: "A low, resonant impact."
     },
     {
       id: "low-beep",
       name: "Low beep",
-      description: "Low, rounded electronic tones without a sharp click."
+      description: "A low tone with a soft attack."
     },
     {
       id: "soft-chime",
       name: "Soft chime",
-      description: "Gentle glassy notes with a soft attack and a short tail."
+      description: "A soft chime with a short decay."
     }
   ];
   function isSoundProfile(value) {
@@ -2223,8 +2223,8 @@
     game: "Play Go Click",
     savedClicks: "Saved clicks",
     localClicks: "Local clicks",
-    click: "Click!",
-    clickAction: "Click to increment score",
+    click: "Click",
+    clickAction: "Add a click",
     feedbackWaiting: "waiting",
     feedbackUnconfirmed: "unconfirmed",
     feedbackUnsaved: "not saved",
@@ -2259,7 +2259,7 @@
     days: "days",
     months: "months",
     years: "years",
-    networkNotice: "You\u2019re offline. Clicking is paused. Your saved progress will refresh when you reconnect.",
+    networkNotice: "Offline. Clicking is paused. The counter refreshes when you reconnect.",
     localMode: "Offline \xB7 local save",
     offline: "Offline",
     backOnline: "Back online",
@@ -2281,11 +2281,11 @@
     signOutError: "Could not sign out. Please try again.",
     shareTitle: "Share stats",
     done: "Done",
-    shareInstructions: "Choose what to include. Changing an option updates the preview; copy again to share the customized text.",
+    shareInstructions: "Choose what to include, then copy the preview.",
     include: "Include",
     siteLink: "Site link",
     clickTotal: "Click total",
-    shareDataNote: "Click totals are cumulative. Daily and weekly totals are not part of the current counter summary.",
+    shareDataNote: "The total includes all clicks in the current save.",
     preview: "Preview",
     statsToShare: "Stats to share",
     copyText: "Copy text",
@@ -2321,7 +2321,7 @@
       game: "\u73A9 Go Click",
       savedClicks: "\u5DF2\u4FDD\u5B58\u7684\u70B9\u51FB",
       localClicks: "\u672C\u5730\u70B9\u51FB",
-      click: "\u70B9\u51FB\uFF01",
+      click: "\u70B9\u51FB",
       clickAction: "\u70B9\u51FB\u589E\u52A0\u5206\u6570",
       feedbackWaiting: "\u7B49\u5F85\u4E2D",
       feedbackUnconfirmed: "\u672A\u786E\u8BA4",
@@ -2418,7 +2418,7 @@
       game: "Jugar a Go Click",
       savedClicks: "Clics guardados",
       localClicks: "Clics locales",
-      click: "\xA1Clic!",
+      click: "Clic",
       clickAction: "Haz clic para sumar un punto",
       feedbackWaiting: "esperando",
       feedbackUnconfirmed: "sin confirmar",
@@ -2515,7 +2515,7 @@
       game: "\u0627\u0644\u0639\u0628 Go Click",
       savedClicks: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0641\u0648\u0638\u0629",
       localClicks: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0644\u064A\u0629",
-      click: "\u0627\u0646\u0642\u0631!",
+      click: "\u0627\u0646\u0642\u0631",
       clickAction: "\u0627\u0646\u0642\u0631 \u0644\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0637\u0629",
       feedbackWaiting: "\u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631",
       feedbackUnconfirmed: "\u063A\u064A\u0631 \u0645\u0624\u0643\u062F\u0629",
@@ -2612,7 +2612,7 @@
       game: "Go Click \u0916\u0947\u0932\u0947\u0902",
       savedClicks: "\u0938\u0939\u0947\u091C\u0947 \u0917\u090F \u0915\u094D\u0932\u093F\u0915",
       localClicks: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0915\u094D\u0932\u093F\u0915",
-      click: "\u0915\u094D\u0932\u093F\u0915!",
+      click: "\u0915\u094D\u0932\u093F\u0915",
       clickAction: "\u0905\u0902\u0915 \u092C\u0922\u093C\u093E\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902",
       feedbackWaiting: "\u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \u091C\u093E\u0930\u0940",
       feedbackUnconfirmed: "\u0905\u092A\u0941\u0937\u094D\u091F",
@@ -2709,7 +2709,7 @@
       game: "Main Go Click",
       savedClicks: "Klik tersimpan",
       localClicks: "Klik lokal",
-      click: "Klik!",
+      click: "Klik",
       clickAction: "Klik untuk menambah skor",
       feedbackWaiting: "menunggu",
       feedbackUnconfirmed: "belum terkonfirmasi",
@@ -2806,7 +2806,7 @@
       game: "Jogar Go Click",
       savedClicks: "Cliques salvos",
       localClicks: "Cliques locais",
-      click: "Clique!",
+      click: "Clique",
       clickAction: "Clique para aumentar a pontua\xE7\xE3o",
       feedbackWaiting: "aguardando",
       feedbackUnconfirmed: "n\xE3o confirmado",
@@ -2903,7 +2903,7 @@
       game: "Jouer \xE0 Go Click",
       savedClicks: "Clics enregistr\xE9s",
       localClicks: "Clics locaux",
-      click: "Cliquez !",
+      click: "Cliquez",
       clickAction: "Cliquer pour ajouter un point",
       feedbackWaiting: "en attente",
       feedbackUnconfirmed: "non confirm\xE9",
@@ -3000,7 +3000,7 @@
       game: "Go Click \u3092\u30D7\u30EC\u30A4",
       savedClicks: "\u4FDD\u5B58\u6E08\u307F\u30AF\u30EA\u30C3\u30AF",
       localClicks: "\u30ED\u30FC\u30AB\u30EB\u30AF\u30EA\u30C3\u30AF",
-      click: "\u30AF\u30EA\u30C3\u30AF\uFF01",
+      click: "\u30AF\u30EA\u30C3\u30AF",
       clickAction: "\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u30B9\u30B3\u30A2\u3092\u5897\u3084\u3059",
       feedbackWaiting: "\u5F85\u6A5F\u4E2D",
       feedbackUnconfirmed: "\u672A\u78BA\u8A8D",
@@ -3097,7 +3097,7 @@
       game: "\u0418\u0433\u0440\u0430\u0442\u044C \u0432 Go Click",
       savedClicks: "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0435 \u043A\u043B\u0438\u043A\u0438",
       localClicks: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043A\u043B\u0438\u043A\u0438",
-      click: "\u0416\u043C\u0438!",
+      click: "\u041D\u0430\u0436\u0430\u0442\u044C",
       clickAction: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0447\u043A\u043E",
       feedbackWaiting: "\u043E\u0436\u0438\u0434\u0430\u043D\u0438\u0435",
       feedbackUnconfirmed: "\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
@@ -3194,7 +3194,7 @@
       game: "Go Click spielen",
       savedClicks: "Gespeicherte Klicks",
       localClicks: "Lokale Klicks",
-      click: "Klick!",
+      click: "Klick",
       clickAction: "Klicken, um den Punktestand zu erh\xF6hen",
       feedbackWaiting: "wartet",
       feedbackUnconfirmed: "unbest\xE4tigt",
@@ -3729,7 +3729,7 @@
       badge(
         "medal",
         "Gone Click",
-        "Every collection has a first badge.",
+        "An early milestone.",
         "Saved you a click.",
         clicks >= 1,
         localized[0],
@@ -3739,7 +3739,7 @@
       badge(
         "clicks",
         "Sentence",
-        "Give your click total a little momentum.",
+        "A few clicks in.",
         "Save 25 clicks in total.",
         clicks >= 25,
         localized[1],
@@ -3749,7 +3749,7 @@
       badge(
         "clicks",
         "Paragraph",
-        "Your click total is starting to tell a story.",
+        "The clicks add up.",
         "Save 100 clicks in total.",
         clicks >= 100,
         localized[2],
@@ -3759,7 +3759,7 @@
       badge(
         "clicks",
         "Essay",
-        "Keep adding to your all-time click total.",
+        "No time limit.",
         "Save 500 clicks in total.",
         clicks >= 500,
         localized[3],
@@ -3769,7 +3769,7 @@
       badge(
         "calendar",
         "Clicks for Days",
-        "A few days in a row will do it.",
+        "A short run of consecutive days.",
         "Save a click on 3 consecutive UTC days.",
         progress.best_day_streak >= 3,
         localized[4],
@@ -3779,7 +3779,7 @@
       badge(
         "calendar",
         "One-Week Streak",
-        "Make the button part of your daily routine.",
+        "A longer daily streak.",
         "Save a click on 7 consecutive UTC days.",
         progress.best_day_streak >= 7,
         localized[5],
@@ -3789,7 +3789,7 @@
       badge(
         "calendar",
         "Good to See You Again",
-        "Come back and click again next week.",
+        "Check in again next week.",
         "Save a click in 2 consecutive UTC weeks.",
         progress.best_week_streak >= 2,
         localized[6],
@@ -3799,7 +3799,7 @@
       badge(
         "calendar",
         "Double Fortnight",
-        "Keep that weekly routine going.",
+        "A longer weekly streak.",
         "Save a click in 4 consecutive UTC weeks.",
         progress.best_week_streak >= 4,
         localized[7],
@@ -3809,7 +3809,7 @@
       badge(
         "pace",
         "Busy Day",
-        "Make today's click total stand out.",
+        "Clicks within one UTC day.",
         "Save 100 clicks in one UTC day.",
         Boolean(calendar.earned & century),
         void 0,
@@ -3819,7 +3819,7 @@
       badge(
         "pace",
         "Brisk Pace",
-        "Keep the clicks coming this week.",
+        "Clicks within one UTC week.",
         "Save 1,000 clicks in one Monday\u2013Sunday UTC week.",
         Boolean(calendar.earned & fourDigits),
         void 0,
@@ -3829,7 +3829,7 @@
       badge(
         "pace",
         "High Score",
-        "See how many clicks you can rack up in a month.",
+        "Clicks within one UTC month.",
         "Save 5,000 clicks in one UTC calendar month.",
         Boolean(calendar.earned & fiveGrand),
         void 0,
@@ -3839,7 +3839,7 @@
       badge(
         "pace",
         "Three Visits",
-        "Give the button a little company throughout the day.",
+        "Different times on the same day.",
         "Save a click in 3 different UTC hours on the same day.",
         Boolean(calendar.earned & threeVisits),
         void 0,
@@ -3849,8 +3849,8 @@
       badge(
         "calendar",
         "Returning Clicker",
-        "Drop in when you feel like it. The days add up.",
-        "Save clicks on 10 different UTC days, with gaps allowed.",
+        "The days can be spread out.",
+        "Save a click on 10 different UTC days, with gaps allowed.",
         calendar.active_days >= 10,
         void 0,
         calendar.active_days,
@@ -3859,8 +3859,8 @@
       badge(
         "calendar",
         "Welcome Back",
-        "Come back from time to time as the calendar turns.",
-        "Save clicks in 3 different UTC calendar months, with gaps allowed.",
+        "An occasional visit is enough.",
+        "Save a click in 3 different UTC calendar months, with gaps allowed.",
         calendar.active_months >= 3,
         void 0,
         calendar.active_months,
@@ -3869,42 +3869,42 @@
       badge(
         "discovery",
         "Hold It",
-        "Take your time with the button.",
-        "Keep the game button pressed for 10 seconds without releasing it.",
+        "The button can wait.",
+        "Hold the button for 10 seconds.",
         hasTrick("hold")
       ),
       badge(
         "discovery",
         "Behind the Button",
-        "There's more to the button than meets the eye.",
+        "The button has a back.",
         "Drag the button far enough to reveal the outlet.",
         hasTrick("outlet")
       ),
       badge(
         "discovery",
         "Key Player",
-        "Your mouse can take a break.",
+        "Keyboard input.",
         "Press and release Space or Enter with the game button focused.",
         hasTrick("keyboard")
       ),
       badge(
         "discovery",
         "U-Turn",
-        "Sometimes the best place to end up is where you started.",
-        "Drag the button away, bring it back to where it started, and release to save a click.",
+        "A return trip.",
+        "Drag the button away, return it to its starting point, then release to save a click.",
         hasTrick("u-turn")
       ),
       badge(
         "discovery",
         "That Seems Unsafe",
-        "See how much the button can take.",
+        "The cord has some slack.",
         "Loosen the plug by making at least four long pulls in at least three different directions.",
         hasTrick("loose-plug")
       ),
       badge(
         "discovery",
         "Alternative Press",
-        "Try a different way to save a click.",
+        "There\u2019s more than one way to click.",
         "Save one click with the keyboard and one with a pointer, in either order.",
         hasTrick("saved-keyboard") && hasTrick("saved-pointer"),
         void 0,
@@ -3914,7 +3914,7 @@
       badge(
         "discovery",
         "Mobile Mogul",
-        "See what you can do on a touchscreen.",
+        "Touch input.",
         "Save 100 clicks using touch in one session.",
         hasTrick("touch-100"),
         void 0,
@@ -3924,14 +3924,14 @@
       badge(
         "discovery",
         "Wrong Button",
-        "The game button has a few surprises.",
+        "That\u2019s a mouse button too.",
         "Click the game button with the middle or right mouse button.",
         hasTrick("wrong-button")
       ),
       badge(
         "medal",
         "Curiosity",
-        "See what else the game has to offer.",
+        "A look around the interface.",
         "Open the Achievements screen.",
         hasTrick("achievements")
       )
@@ -3941,7 +3941,7 @@
       badge(
         "medal",
         "Recursion",
-        "Build up your collection.",
+        "Achievements count toward this one.",
         "Earn 10 other achievements.",
         earned >= 10,
         void 0,
@@ -4704,7 +4704,7 @@
     gameReady = false;
     setUser(null);
     show("login");
-    showError("#login-error", "Your session expired. Sign in to keep clicking.", true);
+    showError("#login-error", "Your session expired. Sign in again.", true);
   }
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -4907,7 +4907,7 @@
     show("loading");
     views.loading.setAttribute("aria-busy", "true");
     required(".loading-spinner").hidden = false;
-    required("#loading-message").textContent = "Loading your counter\u2026";
+    required("#loading-message").textContent = "Loading counter\u2026";
     retryBootButton.hidden = true;
     try {
       const state = await readGameState();
@@ -4948,7 +4948,7 @@
     required("#motion-setting").value = gameSettings.value.motion;
     required("#simulated-ping").value = String(gameSettings.value.simulatedPing);
     required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
-    required("#copy-online-note").textContent = lastOnlineCounters ? `Copy the last loaded account progress for ${user?.username ?? "your account"}. This only replaces the local save.` : "Open your account counter first to make a copy. Copying only replaces the local save.";
+    required("#copy-online-note").textContent = lastOnlineCounters ? `Replace the local save with the latest loaded progress for ${user?.username ?? "your account"}.` : "Open your account counter to copy its progress to the local save.";
     try {
       const data = localGame.read();
       required("#local-save-summary").textContent = `${data.click_count?.count ?? 0} clicks saved in this browser.`;
@@ -4969,10 +4969,7 @@
       gameSettings.update(patch);
       optionsNotice("Option saved.");
     } catch {
-      optionsNotice(
-        "Applied for this visit. Browser storage is unavailable, so this option could not be remembered.",
-        true
-      );
+      optionsNotice("Applied for this visit. Browser storage is unavailable.", true);
     }
   }
   soundEnabled.addEventListener("change", () => {
@@ -5054,10 +5051,7 @@
     await boot();
     if (!remembered) {
       updateOptions();
-      optionsNotice(
-        "Back online for this visit. Browser storage is unavailable, so this mode change could not be remembered.",
-        true
-      );
+      optionsNotice("Back online for this visit. Browser storage is unavailable.", true);
       optionsDialog.showModal();
     }
   });
@@ -5134,10 +5128,7 @@
   required("#copy-online-local").addEventListener("click", () => {
     if (!lastOnlineCounters) return;
     const snapshot = lastOnlineCounters;
-    replaceLocalSave(
-      () => snapshot,
-      "Account progress copied to the local save. Account progress is unchanged."
-    );
+    replaceLocalSave(() => snapshot, "Account progress copied to the local save.");
   });
   required("#import-local").addEventListener("change", async (event) => {
     const input = event.currentTarget;

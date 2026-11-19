@@ -623,7 +623,7 @@ function handleExpiredSession() {
   gameReady = false;
   setUser(null);
   show("login");
-  showError("#login-error", "Your session expired. Sign in to keep clicking.", true);
+  showError("#login-error", "Your session expired. Sign in again.", true);
 }
 
 document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => {
@@ -841,7 +841,7 @@ async function boot() {
   show("loading");
   views.loading.setAttribute("aria-busy", "true");
   $(".loading-spinner").hidden = false;
-  $("#loading-message").textContent = "Loading your counter…";
+  $("#loading-message").textContent = "Loading counter…";
   retryBootButton.hidden = true;
   try {
     const state = await readGameState();
@@ -886,8 +886,8 @@ function updateOptions() {
   $<HTMLButtonElement>("#copy-online-local").disabled =
     !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
   $("#copy-online-note").textContent = lastOnlineCounters
-    ? `Copy the last loaded account progress for ${user?.username ?? "your account"}. This only replaces the local save.`
-    : "Open your account counter first to make a copy. Copying only replaces the local save.";
+    ? `Replace the local save with the latest loaded progress for ${user?.username ?? "your account"}.`
+    : "Open your account counter to copy its progress to the local save.";
   try {
     const data = localGame.read();
     $("#local-save-summary").textContent =
@@ -909,10 +909,7 @@ function saveOption(patch: Parameters<typeof gameSettings.update>[0]) {
     gameSettings.update(patch);
     optionsNotice("Option saved.");
   } catch {
-    optionsNotice(
-      "Applied for this visit. Browser storage is unavailable, so this option could not be remembered.",
-      true,
-    );
+    optionsNotice("Applied for this visit. Browser storage is unavailable.", true);
   }
 }
 soundEnabled.addEventListener("change", () => {
@@ -997,10 +994,7 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
   await boot();
   if (!remembered) {
     updateOptions();
-    optionsNotice(
-      "Back online for this visit. Browser storage is unavailable, so this mode change could not be remembered.",
-      true,
-    );
+    optionsNotice("Back online for this visit. Browser storage is unavailable.", true);
     optionsDialog.showModal();
   }
 });
@@ -1079,10 +1073,7 @@ $<HTMLButtonElement>("#restart-local").addEventListener("click", () =>
 $<HTMLButtonElement>("#copy-online-local").addEventListener("click", () => {
   if (!lastOnlineCounters) return;
   const snapshot = lastOnlineCounters;
-  replaceLocalSave(
-    () => snapshot,
-    "Account progress copied to the local save. Account progress is unchanged.",
-  );
+  replaceLocalSave(() => snapshot, "Account progress copied to the local save.");
 });
 $<HTMLInputElement>("#import-local").addEventListener("change", async (event) => {
   const input = event.currentTarget as HTMLInputElement;

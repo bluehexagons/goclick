@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Go Click. A small clicker game." />
+    <meta name="description" content="Go Click is a click counter with streaks and achievements." />
     <title>Go Click</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/app.css" />
@@ -161,7 +161,7 @@
       <main id="main-content" tabindex="-1">
         <section id="loading-view" class="loading-view" aria-live="polite" aria-busy="true">
           <span class="loading-spinner" aria-hidden="true"></span>
-          <p id="loading-message">Loading your counter…</p>
+          <p id="loading-message">Loading counter…</p>
           <button id="retry-boot-button" class="button button-quiet" type="button" hidden>
             Try again
           </button>
@@ -169,8 +169,8 @@
         </section>
 
         <section id="home-view" class="home" hidden>
-          <h1>Go Click.</h1>
-          <p class="home-greeting">Save to your account, or play offline in this browser.</p>
+          <h1>Go Click</h1>
+          <p class="home-greeting">Sign in to save clicks to your account.</p>
           <div class="button-stage">
             <svg class="button-power" aria-hidden="true" focusable="false">
               <g class="power-outlet">
@@ -202,9 +202,9 @@
                   type="button"
                   data-tactile-button
                   data-view="login"
-                  aria-label="Click to log in"
+                  aria-label="Sign in"
                 >
-                  <span class="button-label">Click!</span>
+                  <span class="button-label">Click</span>
                 </button>
               </div>
             </div>
@@ -213,7 +213,7 @@
             <button class="text-link" type="button" data-view="signup">Create an account</button>
           </p>
           <button class="button button-quiet" type="button" data-play-local>Play offline</button>
-          <p class="field-hint">One local save · no account needed</p>
+          <p class="field-hint">Offline progress is saved in this browser.</p>
         </section>
 
         <section id="auth-view" class="auth-layout" hidden>
@@ -407,7 +407,7 @@
             role="status"
             hidden
           >
-            You’re offline. Clicking is paused. Your saved progress will refresh when you reconnect.
+            Offline. Clicking is paused. The counter refreshes when you reconnect.
           </p>
           <div id="game-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
           <button
@@ -466,11 +466,11 @@
                       class="click-button"
                       type="button"
                       data-tactile-button
-                      aria-label="Click to increment score"
+                      aria-label="Add a click"
                       data-i18n-aria-label="clickAction"
                       aria-describedby="button-hint"
                     >
-                      <span class="button-label">Click!</span>
+                      <span class="button-label">Click</span>
                     </button>
                   </div>
                 </div>
@@ -754,7 +754,7 @@
             <option value="on">Reduced — no movement or flashes</option>
             <option value="off">Full — animations and effects</option>
           </select>
-          <p class="field-hint">Applies immediately and is remembered in this browser.</p>
+          <p class="field-hint">Motion settings are saved in this browser.</p>
           <h2>Sound</h2>
           <label class="replace-local">
             <input id="sound-enabled" type="checkbox" /> Sound effects
@@ -766,15 +766,11 @@
             Preview sound
           </button>
           <p class="field-hint">
-            Enable sound to preview a press, release, and reply. Previews never add clicks. Pitch
-            and texture drift gently over time and react to your clicking pace. Sound starts off;
-            your choices are remembered in this browser.
+            The preview plays a press, release, and save response without adding a click. Sound
+            settings are saved in this browser.
           </p>
           <h2>Offline play</h2>
-          <p class="muted">
-            One local save in this browser. Local clicks never change your account progress. Leaving
-            offline play keeps both saves.
-          </p>
+          <p class="muted">Offline clicks go to a separate save in this browser.</p>
           <button class="button button-quiet" type="button" data-play-local>Play offline</button>
           <label for="simulated-ping">Simulated ping</label>
           <select id="simulated-ping">
@@ -812,21 +808,21 @@
             /></label>
           </div>
           <p id="copy-online-note" class="field-hint">
-            Open your account counter first to make a copy. Copying only replaces the local save.
+            Open your account counter to copy its progress to the local save.
           </p>
         </section>
       </div>
       <details class="controls-help">
         <summary>Controls</summary>
         <p id="button-hint" data-game-language data-i18n="controls">
-          Press with a mouse or touch, then release inside the button. Each finger counts
+          Press with a mouse or touch, then release on or near the button. Each finger counts
           separately. With the button focused, Space or Enter adds one click on release. Holding
           never adds extra clicks.
         </p>
         <p>
-          +1 stays amber while waiting. The lettering, etched channels, and lingering sparks respond
-          in mint for a fast reply, blue for confirmation, violet for a slower reply, and red for a
-          failed or unconfirmed save. Reduced motion uses a static tint.
+          An amber +1 means a save is pending. The button shows green for a fast response, blue for
+          a standard response, purple for a slow response, and red for a failed or unconfirmed save.
+          Reduced motion uses a static color.
         </p>
       </details>
       <details class="technical-notes" id="technical-notes">
@@ -840,9 +836,9 @@
           <article>
             <h2>Clicks &amp; saves</h2>
             <p>
-              Releasing inside the button adds one click. Holding does not add extra clicks. The
-              total shows server-confirmed saves; pending clicks appear separately. Returning to
-              this tab or reconnecting refreshes saved progress. Failed clicks are never replayed.
+              Releasing on or near the button adds one click. The counter shows saved clicks, with
+              pending clicks listed separately. Returning to this tab or reconnecting refreshes the
+              counter.
             </p>
           </article>
           <article>
@@ -912,8 +908,7 @@
         </button>
       </div>
       <p id="share-hint" data-i18n="shareInstructions" class="muted">
-        Choose what to include. Changing an option updates the preview; copy again to share the
-        customized text.
+        Choose what to include, then copy the preview.
       </p>
       <fieldset class="share-options">
         <legend data-i18n="include">Include</legend>
@@ -931,8 +926,7 @@
         >
       </fieldset>
       <p class="field-hint share-data-note" data-i18n="shareDataNote">
-        Click totals are cumulative. Daily and weekly totals are not part of the current counter
-        summary.
+        The total includes all clicks in the current save.
       </p>
       <label class="share-preview-label" for="share-text" data-i18n="preview">Preview</label>
       <textarea
@@ -951,9 +945,7 @@
       <p id="share-status" class="share-status" role="status" aria-live="polite"></p>
     </dialog>
     <noscript>
-      <p class="noscript-notice">
-        Go Click needs JavaScript enabled so it can sign you in and save your clicks.
-      </p>
+      <p class="noscript-notice">Go Click requires JavaScript to sign in and save clicks.</p>
     </noscript>
   </body>
 </html>
