@@ -128,7 +128,8 @@ outlet hidden behind the resting button while projecting the cord’s other end
 onto its rear. Dragging takes up slack, then stretches and thins the taut cord.
 Repeated long pulls in different directions loosen the game button’s plug.
 The plug rocks loose and leans toward the button, and the cord stays attached
-to its grommet. Further long pulls snap it free to swing beneath the button.
+to its grommet. Further long pulls snap it free. The plug trails the moving
+button and settles beneath the cord’s attachment point.
 The button’s lights flicker and fade as it loses power. Reduced motion applies
 the final pose and light state immediately. The disconnected button still
 counts clicks. A refresh reseats the plug and preserves the badge. The SVG is

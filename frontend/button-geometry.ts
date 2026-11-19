@@ -47,6 +47,38 @@ export type PlugState = "seated" | "loose" | "unplugged";
 export const plugTransitionDuration = { loose: 280, unplugged: 680 };
 export const powerDrainDuration = 920;
 
+const hangingCordLength = (buttonWidth: number) => buttonWidth * 0.24 + 48;
+
+export function createPlugSwing() {
+  let angle = 0;
+  let velocity = 0;
+  let previousX = 0;
+  const limit = 0.55;
+  return {
+    get angle() {
+      return angle;
+    },
+    reset(x: number) {
+      previousX = x;
+      angle = velocity = 0;
+    },
+    step(x: number, buttonWidth: number, dt: number) {
+      // As the anchor moves, the plug's mass lags behind. Gravity and damping
+      // carry it through a small overshoot and bring it back under the anchor.
+      angle += (previousX - x) / hangingCordLength(buttonWidth);
+      previousX = x;
+      velocity = (velocity - 0.023 * angle * dt) * 0.9 ** dt;
+      angle += velocity * dt;
+      if (Math.abs(angle) > limit) {
+        angle = Math.sign(angle) * limit;
+        if (angle * velocity > 0) velocity = 0;
+      }
+      if (Math.abs(angle) < 0.002 && Math.abs(velocity) < 0.001) angle = velocity = 0;
+      return angle !== 0 || velocity !== 0;
+    },
+  };
+}
+
 export function powerDrainLighting(elapsed: number) {
   const remaining = Math.max(0, 1 - Math.max(0, elapsed) / powerDrainDuration);
   // Two brief dropouts give way to the slower discharge of the last light.
@@ -60,8 +92,7 @@ export function projectButtonPower(
   state: ButtonState,
   buttonWidth: number,
   plug: PlugState = "seated",
-  progress = 1,
-  looseBeforeDetach = 1,
+  { progress = 1, looseBeforeDetach = 1, hangAngle = 0 } = {},
 ) {
   const pose = projectButtonPose(state, buttonWidth);
   const { scale, recession, lift, cx, sx, cy, sy } = pose;
@@ -76,14 +107,13 @@ export function projectButtonPower(
   const outletY = -12;
   const pullDistance = Math.hypot(state.x, state.y);
   const pull = Math.max(buttonWidth * 0.52, pullDistance, 1);
-  const leanX = state.x / pull;
+  const disconnecting = plug === "unplugged";
+  const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
   let startX = outletX;
   let startY = outletY + 12;
   let plugTransform = `translate(${outletX} ${outletY})`;
   let plugEdgeTransform = "";
   if (plug !== "seated") {
-    const disconnecting = plug === "unplugged";
-    const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
     const loosening = disconnecting ? looseBeforeDetach : progress;
     const rock = 1 - (1 - loosening) ** 2 * Math.cos(Math.PI * 2 * loosening);
     // Tip around the axis perpendicular to the pull. The orthographic
@@ -101,13 +131,15 @@ export function projectButtonPower(
     startY += reach * towardY;
     let rotation = "";
     if (disconnecting) {
-      const hangX = endX - 22 + 15 * leanX;
-      const hangY = endY + buttonWidth * 0.24 + 48;
+      const length = hangingCordLength(buttonWidth);
+      const hangX = endX + length * Math.sin(hangAngle);
+      const hangY = endY + length * Math.cos(hangAngle);
       const tug = 32 * Math.sin(Math.PI * progress) * (1 - progress);
       startX += (hangX - startX) * travel + tug * towardX;
       startY += (hangY - startY) * travel + tug * towardY;
       const swing = 30 * Math.sin(2 * Math.PI * progress) * (1 - progress);
-      const angle = (162 - 24 * leanX) * travel;
+      // Align the plug with the cable, which is taut when it hangs freely.
+      const angle = (180 - (hangAngle * 180) / Math.PI) * travel;
       rotation = `rotate(${angle + swing}) `;
     }
     plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
@@ -122,8 +154,9 @@ export function projectButtonPower(
   const length = Math.max(90, buttonWidth * 0.42);
   // Slack vanishes smoothly at the cable's natural length. Further pulling
   // extends the taut cable and narrows its jacket like stretched rubber.
-  const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
-  const thickness = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
+  const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2) * (1 - travel);
+  const stretch = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
+  const thickness = stretch + (1 - stretch) * travel;
   return {
     outletX,
     outletY,

@@ -1,6 +1,7 @@
 import { motionPreference } from "./preferences.js";
 import {
   createPlugPullTracker,
+  createPlugSwing,
   holdBeat,
   holdDuration,
   holdLighting,
@@ -36,6 +37,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const plugEdge = stage.querySelector<SVGRectElement>(".plug-edge");
   const gameButton = button.id === "click-button";
   const plugPulls = createPlugPullTracker();
+  const plugSwing = createPlugSwing();
   let plugState: PlugState = "seated";
   let plugStartedAt: number | null = null;
   let looseBeforeDetach = 1;
@@ -112,13 +114,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         : 0;
     const cable =
       power && stage.clientWidth && stage.clientHeight
-        ? projectButtonPower(
-            current,
-            button.offsetWidth,
-            plugState,
-            plugProgress(time),
+        ? projectButtonPower(current, button.offsetWidth, plugState, {
+            progress: plugProgress(time),
             looseBeforeDetach,
-          )
+            hangAngle: plugSwing.angle,
+          })
         : null;
     if (power && cable) {
       power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
@@ -273,8 +273,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       (plugState === "unplugged" &&
         plugStartedAt !== null &&
         time - plugStartedAt < powerDrainDuration);
+    const swinging =
+      plugState === "unplugged" &&
+      !reducedMotion.matches &&
+      plugSwing.step(current.x, button.offsetWidth, dt);
     paint(time);
-    frame = (moving || animatingPower) && !document.hidden ? requestAnimationFrame(tick) : 0;
+    frame =
+      (moving || animatingPower || swinging) && !document.hidden ? requestAnimationFrame(tick) : 0;
     if (!frame) lastFrame = 0;
   }
   function animate() {
@@ -287,6 +292,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       }
       current.flash = 0;
       current.labelCharge = 0;
+      plugSwing.reset(current.x);
       paint();
       return;
     }
@@ -364,7 +370,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
         if (nextPlug) {
           const now = performance.now();
-          if (nextPlug === "unplugged") looseBeforeDetach = plugProgress(now);
+          if (nextPlug === "unplugged") {
+            looseBeforeDetach = plugProgress(now);
+            plugSwing.reset(current.x);
+          }
           plugState = nextPlug;
           plugStartedAt = reducedMotion.matches ? null : now;
           power.dataset.plug = nextPlug;
@@ -729,6 +738,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       plugStartedAt = null;
+      plugSwing.reset(current.x);
       reset();
     }
   });

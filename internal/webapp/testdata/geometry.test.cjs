@@ -216,22 +216,61 @@ test("the loose plug tips toward the pull with its back over the socket and cord
 
 test("the disconnected plug moves with the button and hangs below its attachment", () => {
   const { projectButtonPower } = frontend({}).load("button-geometry");
-  const cable = projectButtonPower({ ...idle, x: 210, y: 140 }, 420, "unplugged");
-  const [, , plugY] = cable.cord.split(" ").map(Number);
-  assert.ok(plugY - cable.endY > 140);
-  assert.equal(cable.outletY, -12);
+  for (const x of [-210, 0, 210]) {
+    const cable = projectButtonPower({ ...idle, x, y: 140 }, 420, "unplugged");
+    const [, plugX, plugY] = cable.cord.split(" ").map(Number);
+    assert.equal(plugX, cable.endX);
+    assert.ok(plugY - cable.endY > 140);
+    assert.match(cable.plugTransform, /rotate\(180\)/);
+    assert.equal(cable.outletY, -12);
+  }
 });
 
 test("plug transitions keep the cord attached from the socket to the hanging pose", () => {
   const { projectButtonPower } = frontend({}).load("button-geometry");
   const pulled = { ...idle, x: -250, y: 50 };
   const cordOrigin = (cable) => cable.cord.split(" ").slice(1, 3).map(Number);
-  assert.deepEqual(cordOrigin(projectButtonPower(pulled, 420, "loose", 0)), [0, 0]);
-  const loosening = projectButtonPower(pulled, 420, "loose", 0.4);
-  const disconnecting = projectButtonPower(pulled, 420, "unplugged", 0, 0.4);
+  assert.deepEqual(cordOrigin(projectButtonPower(pulled, 420, "loose", { progress: 0 })), [0, 0]);
+  const loosening = projectButtonPower(pulled, 420, "loose", { progress: 0.4 });
+  const disconnecting = projectButtonPower(pulled, 420, "unplugged", {
+    progress: 0,
+    looseBeforeDetach: 0.4,
+  });
   assert.deepEqual(cordOrigin(disconnecting), cordOrigin(loosening));
-  const [swingX, swingY] = cordOrigin(projectButtonPower(pulled, 420, "unplugged", 0.3));
+  const [swingX, swingY] = cordOrigin(
+    projectButtonPower(pulled, 420, "unplugged", { progress: 0.3 }),
+  );
   const [hangX, hangY] = cordOrigin(projectButtonPower(pulled, 420, "unplugged"));
   assert.ok(hangX < swingX && swingX < 0);
   assert.ok(0 < swingY && swingY < hangY);
+});
+
+test("the dangling plug lags, overshoots, and settles with its axis aligned to the cord", () => {
+  const { createPlugSwing, projectButtonPower } = frontend({}).load("button-geometry");
+  for (const dt of [0.5, 1, 2]) {
+    const swing = createPlugSwing();
+    swing.reset(0);
+    assert.equal(swing.step(180, 420, dt), true);
+    assert.ok(swing.angle < 0);
+    const cable = projectButtonPower({ ...idle, x: 180 }, 420, "unplugged", {
+      hangAngle: swing.angle,
+    });
+    const [, x, y] = cable.cord.split(" ").map(Number);
+    const angle = Math.atan2(x - cable.endX, y - cable.endY);
+    const rotation = Number(cable.plugTransform.match(/rotate\(([^)]+)\)/)[1]);
+    assert.ok(x < cable.endX && y > cable.endY);
+    assert.ok(Math.abs(Math.hypot(x - cable.endX, y - cable.endY) - 148.8) < 1e-9);
+    assert.ok(Math.abs(rotation - (180 - (angle * 180) / Math.PI)) < 1e-9);
+    assert.equal(cable.sag, 0);
+
+    let overshot = false;
+    for (let time = 0; time < 180; time += dt) {
+      swing.step(180, 420, dt);
+      overshot ||= swing.angle > 0;
+      assert.ok(Math.abs(swing.angle) <= 0.55);
+    }
+    assert.equal(overshot, true);
+    assert.equal(swing.step(180, 420, dt), false);
+    assert.equal(swing.angle, 0);
+  }
 });

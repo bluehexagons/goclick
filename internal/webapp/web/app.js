@@ -756,12 +756,40 @@
   }
   var plugTransitionDuration = { loose: 280, unplugged: 680 };
   var powerDrainDuration = 920;
+  var hangingCordLength = (buttonWidth) => buttonWidth * 0.24 + 48;
+  function createPlugSwing() {
+    let angle = 0;
+    let velocity = 0;
+    let previousX = 0;
+    const limit = 0.55;
+    return {
+      get angle() {
+        return angle;
+      },
+      reset(x) {
+        previousX = x;
+        angle = velocity = 0;
+      },
+      step(x, buttonWidth, dt) {
+        angle += (previousX - x) / hangingCordLength(buttonWidth);
+        previousX = x;
+        velocity = (velocity - 0.023 * angle * dt) * 0.9 ** dt;
+        angle += velocity * dt;
+        if (Math.abs(angle) > limit) {
+          angle = Math.sign(angle) * limit;
+          if (angle * velocity > 0) velocity = 0;
+        }
+        if (Math.abs(angle) < 2e-3 && Math.abs(velocity) < 1e-3) angle = velocity = 0;
+        return angle !== 0 || velocity !== 0;
+      }
+    };
+  }
   function powerDrainLighting(elapsed) {
     const remaining = Math.max(0, 1 - Math.max(0, elapsed) / powerDrainDuration);
     const dropout = (center, radius) => Math.max(0, 1 - Math.abs(elapsed - center) / radius);
     return 0.5 * remaining ** 2.2 * (1 - 0.8 * dropout(56, 30) - 0.65 * dropout(146, 38));
   }
-  function projectButtonPower(state, buttonWidth, plug = "seated", progress = 1, looseBeforeDetach = 1) {
+  function projectButtonPower(state, buttonWidth, plug = "seated", { progress = 1, looseBeforeDetach = 1, hangAngle = 0 } = {}) {
     const pose = projectButtonPose(state, buttonWidth);
     const { scale, recession, lift, cx, sx, cy, sy } = pose;
     const x = -35 * scale, y = 10 * scale, z = -16 - recession;
@@ -772,14 +800,13 @@
     const outletY = -12;
     const pullDistance = Math.hypot(state.x, state.y);
     const pull = Math.max(buttonWidth * 0.52, pullDistance, 1);
-    const leanX = state.x / pull;
+    const disconnecting = plug === "unplugged";
+    const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
     let startX = outletX;
     let startY = outletY + 12;
     let plugTransform = `translate(${outletX} ${outletY})`;
     let plugEdgeTransform = "";
     if (plug !== "seated") {
-      const disconnecting = plug === "unplugged";
-      const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
       const loosening = disconnecting ? looseBeforeDetach : progress;
       const rock = 1 - (1 - loosening) ** 2 * Math.cos(Math.PI * 2 * loosening);
       const towardX = state.x / (pullDistance || 1);
@@ -795,13 +822,14 @@
       startY += reach * towardY;
       let rotation = "";
       if (disconnecting) {
-        const hangX = endX - 22 + 15 * leanX;
-        const hangY = endY + buttonWidth * 0.24 + 48;
+        const length2 = hangingCordLength(buttonWidth);
+        const hangX = endX + length2 * Math.sin(hangAngle);
+        const hangY = endY + length2 * Math.cos(hangAngle);
         const tug = 32 * Math.sin(Math.PI * progress) * (1 - progress);
         startX += (hangX - startX) * travel + tug * towardX;
         startY += (hangY - startY) * travel + tug * towardY;
         const swing = 30 * Math.sin(2 * Math.PI * progress) * (1 - progress);
-        const angle = (162 - 24 * leanX) * travel;
+        const angle = (180 - hangAngle * 180 / Math.PI) * travel;
         rotation = `rotate(${angle + swing}) `;
       }
       plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
@@ -812,8 +840,9 @@
     const dy = endY - startY;
     const distance = Math.hypot(dx, dy);
     const length = Math.max(90, buttonWidth * 0.42);
-    const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
-    const thickness = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
+    const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2) * (1 - travel);
+    const stretch = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
+    const thickness = stretch + (1 - stretch) * travel;
     return {
       outletX,
       outletY,
@@ -1685,13 +1714,11 @@
       return clamp((time - plugStartedAt) / plugTransitionDuration[plugState], 0, 1);
     }, paint2 = function(time = performance.now()) {
       current.drainLight = plugState === "unplugged" && plugStartedAt !== null ? powerDrainLighting(time - plugStartedAt) : 0;
-      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(
-        current,
-        button.offsetWidth,
-        plugState,
-        plugProgress2(time),
-        looseBeforeDetach
-      ) : null;
+      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
+        progress: plugProgress2(time),
+        looseBeforeDetach,
+        hangAngle: plugSwing.angle
+      }) : null;
       if (power && cable) {
         power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
         power.setAttribute(
@@ -1811,8 +1838,9 @@
         else responseStarted = null;
       }
       const animatingPower = plugProgress2(time) < 1 || plugState === "unplugged" && plugStartedAt !== null && time - plugStartedAt < powerDrainDuration;
+      const swinging = plugState === "unplugged" && !reducedMotion.matches && plugSwing.step(current.x, button.offsetWidth, dt);
       paint2(time);
-      frame = (moving || animatingPower) && !document.hidden ? requestAnimationFrame(tick2) : 0;
+      frame = (moving || animatingPower || swinging) && !document.hidden ? requestAnimationFrame(tick2) : 0;
       if (!frame) lastFrame = 0;
     }, animate2 = function() {
       if (reducedMotion.matches) {
@@ -1822,6 +1850,7 @@
         }
         current.flash = 0;
         current.labelCharge = 0;
+        plugSwing.reset(current.x);
         paint2();
         return;
       }
@@ -1892,7 +1921,10 @@
           const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
           if (nextPlug) {
             const now = performance.now();
-            if (nextPlug === "unplugged") looseBeforeDetach = plugProgress2(now);
+            if (nextPlug === "unplugged") {
+              looseBeforeDetach = plugProgress2(now);
+              plugSwing.reset(current.x);
+            }
             plugState = nextPlug;
             plugStartedAt = reducedMotion.matches ? null : now;
             power.dataset.plug = nextPlug;
@@ -2074,6 +2106,7 @@
     const plugEdge = stage.querySelector(".plug-edge");
     const gameButton = button.id === "click-button";
     const plugPulls = createPlugPullTracker();
+    const plugSwing = createPlugSwing();
     let plugState = "seated";
     let plugStartedAt = null;
     let looseBeforeDetach = 1;
@@ -2228,6 +2261,7 @@
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         plugStartedAt = null;
+        plugSwing.reset(current.x);
         reset2();
       }
     });
