@@ -221,3 +221,17 @@ test("the disconnected plug moves with the button and hangs below its attachment
   assert.ok(plugY - cable.endY > 140);
   assert.equal(cable.outletY, -12);
 });
+
+test("plug transitions keep the cord attached from the socket to the hanging pose", () => {
+  const { projectButtonPower } = frontend({}).load("button-geometry");
+  const pulled = { ...idle, x: -250, y: 50 };
+  const cordOrigin = (cable) => cable.cord.split(" ").slice(1, 3).map(Number);
+  assert.deepEqual(cordOrigin(projectButtonPower(pulled, 420, "loose", 0)), [0, 0]);
+  const loosening = projectButtonPower(pulled, 420, "loose", 0.4);
+  const disconnecting = projectButtonPower(pulled, 420, "unplugged", 0, 0.4);
+  assert.deepEqual(cordOrigin(disconnecting), cordOrigin(loosening));
+  const [swingX, swingY] = cordOrigin(projectButtonPower(pulled, 420, "unplugged", 0.3));
+  const [hangX, hangY] = cordOrigin(projectButtonPower(pulled, 420, "unplugged"));
+  assert.ok(hangX < swingX && swingX < 0);
+  assert.ok(0 < swingY && swingY < hangY);
+});

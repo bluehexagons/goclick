@@ -127,11 +127,12 @@ behind both the WebGL solid and CSS fallback. `projectButtonPower()` keeps the
 outlet hidden behind the resting button while projecting the cord’s other end
 onto its rear. Dragging takes up slack, then stretches and thins the taut cord.
 Repeated long pulls in different directions loosen the game button’s plug.
-The plug leans toward the button, and the cord stays attached to its grommet.
-Further long pulls disconnect the plug. It hangs from the button, which still
-counts clicks with its lights and sounds off. A refresh reseats the plug and
-preserves the badge. The SVG is hidden from assistive technology and does not
-intercept pointer input.
+The plug rocks loose and leans toward the button, and the cord stays attached
+to its grommet. Further long pulls snap it free to swing beneath the button.
+The button’s lights flicker and fade as it loses power. Reduced motion applies
+the final pose and light state immediately. The disconnected button still
+counts clicks. A refresh reseats the plug and preserves the badge. The SVG is
+hidden from assistive technology and does not intercept pointer input.
 
 ## Material authoring
 

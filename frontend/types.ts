@@ -51,6 +51,7 @@ export interface ButtonState {
   reducedMotion?: boolean;
   powered?: boolean;
   holdLight?: number;
+  drainLight?: number;
   labelCharge?: number;
   labelPhase?: number;
   x: number;

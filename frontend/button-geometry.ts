@@ -44,12 +44,24 @@ export function holdLighting(elapsed: number) {
 }
 
 export type PlugState = "seated" | "loose" | "unplugged";
+export const plugTransitionDuration = { loose: 280, unplugged: 680 };
+export const powerDrainDuration = 920;
+
+export function powerDrainLighting(elapsed: number) {
+  const remaining = Math.max(0, 1 - Math.max(0, elapsed) / powerDrainDuration);
+  // Two brief dropouts give way to the slower discharge of the last light.
+  const dropout = (center: number, radius: number) =>
+    Math.max(0, 1 - Math.abs(elapsed - center) / radius);
+  return 0.5 * remaining ** 2.2 * (1 - 0.8 * dropout(56, 30) - 0.65 * dropout(146, 38));
+}
 
 // Attach the cord to the plug's grommet and the projected rear of the solid.
 export function projectButtonPower(
   state: ButtonState,
   buttonWidth: number,
   plug: PlugState = "seated",
+  progress = 1,
+  looseBeforeDetach = 1,
 ) {
   const pose = projectButtonPose(state, buttonWidth);
   const { scale, recession, lift, cx, sx, cy, sy } = pose;
@@ -69,12 +81,16 @@ export function projectButtonPower(
   let startY = outletY + 12;
   let plugTransform = `translate(${outletX} ${outletY})`;
   let plugEdgeTransform = "";
-  if (plug === "loose") {
+  if (plug !== "seated") {
+    const disconnecting = plug === "unplugged";
+    const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
+    const loosening = disconnecting ? looseBeforeDetach : progress;
+    const rock = 1 - (1 - loosening) ** 2 * Math.cos(Math.PI * 2 * loosening);
     // Tip around the axis perpendicular to the pull. The orthographic
     // projection foreshortens the face only along the pull direction.
     const towardX = state.x / (pullDistance || 1);
     const towardY = state.y / (pullDistance || 1);
-    const tilt = (Math.PI / 5) * (pullDistance / pull);
+    const tilt = (Math.PI / 5) * (pullDistance / pull) * rock * (1 - travel);
     const foreshortening = 1 - Math.cos(tilt);
     const a = 1 - foreshortening * towardX * towardX;
     const b = -foreshortening * towardX * towardY;
@@ -83,15 +99,22 @@ export function projectButtonPower(
     const reach = depth * Math.sin(tilt);
     startX += reach * towardX;
     startY += reach * towardY;
-    plugTransform = `translate(${startX} ${startY}) matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
-    // Counter the front's offset in local coordinates to keep the back seated
-    // over the socket. The cord starts at the projected front grommet.
+    let rotation = "";
+    if (disconnecting) {
+      const hangX = endX - 22 + 15 * leanX;
+      const hangY = endY + buttonWidth * 0.24 + 48;
+      const tug = 32 * Math.sin(Math.PI * progress) * (1 - progress);
+      startX += (hangX - startX) * travel + tug * towardX;
+      startY += (hangY - startY) * travel + tug * towardY;
+      const swing = 30 * Math.sin(2 * Math.PI * progress) * (1 - progress);
+      const angle = (162 - 24 * leanX) * travel;
+      rotation = `rotate(${angle + swing}) `;
+    }
+    plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
+    // Counter the front's offset so the back stays over the socket while loose.
+    // Both parts move together once the plug is free.
     const setback = -depth * Math.tan(tilt);
     plugEdgeTransform = `translate(${setback * towardX} ${setback * towardY})`;
-  } else if (plug === "unplugged") {
-    startX = endX - 22 + 15 * leanX;
-    startY = endY + buttonWidth * 0.24 + 48;
-    plugTransform = `translate(${startX} ${startY}) rotate(${162 - 24 * leanX}) translate(0 -12)`;
   }
   const dx = endX - startX;
   const dy = endY - startY;
@@ -236,7 +259,7 @@ export function projectButtonLettering(state: ButtonState) {
       state.response * 0.45 + charge * 0.25 + (state.reducedMotion ? 0 : state.flash * 0.18),
     ),
     light: !powered
-      ? 0
+      ? 0.9 * (state.drainLight ?? 0) ** 1.4
       : state.reducedMotion
         ? Math.min(0.3, state.press * 0.3 + state.response * 0.25)
         : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),

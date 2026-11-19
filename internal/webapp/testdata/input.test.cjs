@@ -710,6 +710,50 @@ test("continued pulls unplug the button, darkening it without disabling clicks",
   assert.equal(h.power.dataset.plug, "unplugged");
 });
 
+test("the plug rocks free and the drained lights stay dark after release and new clicks", () => {
+  const h = harness(false, true);
+  const move = (x, y) =>
+    h.stage.fire("pointermove", { pointerId: 1, clientX: 170 + x, clientY: 150 + y });
+  const frame = (time) => {
+    h.setTime(time);
+    h.frame(time);
+    return Number(h.rig.props.get("--glow-intensity"));
+  };
+  const plugOrigin = () => h.cords[0].attributes.get("d").split(" ").slice(1, 3).map(Number);
+  h.pointer("pointerdown", 1);
+  for (const [x, y] of [
+    [190, 0],
+    [-190, 0],
+    [0, -190],
+    [0, 190],
+  ])
+    move(x, y);
+  frame(0);
+  assert.deepEqual(plugOrigin(), [0, 0]);
+  frame(130);
+  assert.ok(plugOrigin()[1] > 0);
+
+  for (const [x, y] of [
+    [220, 0],
+    [0, -220],
+    [0, 220],
+  ])
+    move(x, y);
+  const initialLight = frame(130);
+  assert.ok(initialLight >= 0.45);
+  const dropout = frame(186);
+  h.pointer("pointerup", 1);
+  assert.ok(frame(230) > dropout);
+  assert.ok(frame(460) < initialLight);
+  assert.equal(frame(1050), 0);
+  h.pointer("pointerdown", 1);
+  h.pointer("pointerup", 1);
+  h.controller.respond("fast");
+  assert.equal(frame(1090), 0);
+  assert.equal(h.clicks.length, 2);
+  assert.deepEqual(h.sounds, ["press"]);
+});
+
 test("nearby releases count and fast drags can release ahead of the painted face", () => {
   for (const [pointerType, x] of [
     ["mouse", 370],

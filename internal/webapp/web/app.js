@@ -754,7 +754,14 @@
     const beat = 0.5 + 0.5 * Math.cos(2 * Math.PI * elapsed / holdBeat);
     return charge * (0.085 + 0.018 * beat);
   }
-  function projectButtonPower(state, buttonWidth, plug = "seated") {
+  var plugTransitionDuration = { loose: 280, unplugged: 680 };
+  var powerDrainDuration = 920;
+  function powerDrainLighting(elapsed) {
+    const remaining = Math.max(0, 1 - Math.max(0, elapsed) / powerDrainDuration);
+    const dropout = (center, radius) => Math.max(0, 1 - Math.abs(elapsed - center) / radius);
+    return 0.5 * remaining ** 2.2 * (1 - 0.8 * dropout(56, 30) - 0.65 * dropout(146, 38));
+  }
+  function projectButtonPower(state, buttonWidth, plug = "seated", progress = 1, looseBeforeDetach = 1) {
     const pose = projectButtonPose(state, buttonWidth);
     const { scale, recession, lift, cx, sx, cy, sy } = pose;
     const x = -35 * scale, y = 10 * scale, z = -16 - recession;
@@ -770,10 +777,14 @@
     let startY = outletY + 12;
     let plugTransform = `translate(${outletX} ${outletY})`;
     let plugEdgeTransform = "";
-    if (plug === "loose") {
+    if (plug !== "seated") {
+      const disconnecting = plug === "unplugged";
+      const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
+      const loosening = disconnecting ? looseBeforeDetach : progress;
+      const rock = 1 - (1 - loosening) ** 2 * Math.cos(Math.PI * 2 * loosening);
       const towardX = state.x / (pullDistance || 1);
       const towardY = state.y / (pullDistance || 1);
-      const tilt = Math.PI / 5 * (pullDistance / pull);
+      const tilt = Math.PI / 5 * (pullDistance / pull) * rock * (1 - travel);
       const foreshortening = 1 - Math.cos(tilt);
       const a = 1 - foreshortening * towardX * towardX;
       const b = -foreshortening * towardX * towardY;
@@ -782,13 +793,20 @@
       const reach = depth * Math.sin(tilt);
       startX += reach * towardX;
       startY += reach * towardY;
-      plugTransform = `translate(${startX} ${startY}) matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
+      let rotation = "";
+      if (disconnecting) {
+        const hangX = endX - 22 + 15 * leanX;
+        const hangY = endY + buttonWidth * 0.24 + 48;
+        const tug = 32 * Math.sin(Math.PI * progress) * (1 - progress);
+        startX += (hangX - startX) * travel + tug * towardX;
+        startY += (hangY - startY) * travel + tug * towardY;
+        const swing = 30 * Math.sin(2 * Math.PI * progress) * (1 - progress);
+        const angle = (162 - 24 * leanX) * travel;
+        rotation = `rotate(${angle + swing}) `;
+      }
+      plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
       const setback = -depth * Math.tan(tilt);
       plugEdgeTransform = `translate(${setback * towardX} ${setback * towardY})`;
-    } else if (plug === "unplugged") {
-      startX = endX - 22 + 15 * leanX;
-      startY = endY + buttonWidth * 0.24 + 48;
-      plugTransform = `translate(${startX} ${startY}) rotate(${162 - 24 * leanX}) translate(0 -12)`;
     }
     const dx = endX - startX;
     const dy = endY - startY;
@@ -905,7 +923,7 @@
         0.55,
         state.response * 0.45 + charge * 0.25 + (state.reducedMotion ? 0 : state.flash * 0.18)
       ),
-      light: !powered2 ? 0 : state.reducedMotion ? Math.min(0.3, state.press * 0.3 + state.response * 0.25) : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
+      light: !powered2 ? 0.9 * (state.drainLight ?? 0) ** 1.4 : state.reducedMotion ? Math.min(0.3, state.press * 0.3 + state.response * 0.25) : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
       charge,
       sheen: state.reducedMotion ? 1.35 : 0.35 + Math.sin((state.labelPhase ?? 0) * 8.8) * 0.5 + (1 - charge)
     };
@@ -980,6 +998,7 @@
     uniform float response;
     uniform float responseProgress;
     uniform float holdLight;
+    uniform float drainLight;
     uniform vec3 responseColor;
     uniform vec4 letteringPose;
     uniform vec2 letteringAccent;
@@ -1021,7 +1040,7 @@
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
-      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse + holdLight);
+      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse + holdLight + drainLight);
       vec3 lightColor = response > 0. ? responseColor : vec3(.22, .72, .46);
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
@@ -1092,6 +1111,7 @@
       "response",
       "responseProgress",
       "holdLight",
+      "drainLight",
       "responseColor",
       "letteringPose",
       "letteringAccent",
@@ -1312,6 +1332,7 @@
       gl.uniform1f(uniforms.response, state.response || 0);
       gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
       gl.uniform1f(uniforms.holdLight, state.holdLight ?? 0);
+      gl.uniform1f(uniforms.drainLight, state.drainLight ?? 0);
       gl.uniform3f(uniforms.responseColor, ...state.responseColor || [0.38, 0.84, 0.8]);
       const letterPose = projectButtonLettering(state);
       gl.uniform4f(
@@ -1659,8 +1680,18 @@
   var HOLD_RELEASE_MS = 110;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
-    let paint2 = function() {
-      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState) : null;
+    let plugProgress2 = function(time) {
+      if (plugState === "seated" || plugStartedAt === null) return 1;
+      return clamp((time - plugStartedAt) / plugTransitionDuration[plugState], 0, 1);
+    }, paint2 = function(time = performance.now()) {
+      current.drainLight = plugState === "unplugged" && plugStartedAt !== null ? powerDrainLighting(time - plugStartedAt) : 0;
+      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(
+        current,
+        button.offsetWidth,
+        plugState,
+        plugProgress2(time),
+        looseBeforeDetach
+      ) : null;
       if (power && cable) {
         power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
         power.setAttribute(
@@ -1698,7 +1729,7 @@
       );
       const glow = Math.min(
         1.4,
-        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8 + (current.holdLight ?? 0)
+        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8 + (current.holdLight ?? 0) + current.drainLight
       );
       rig.style.setProperty("--glow-intensity", glow.toFixed(3));
       const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
@@ -1779,8 +1810,9 @@
         if (current.responseProgress < 1) moving = true;
         else responseStarted = null;
       }
-      paint2();
-      frame = moving && !document.hidden ? requestAnimationFrame(tick2) : 0;
+      const animatingPower = plugProgress2(time) < 1 || plugState === "unplugged" && plugStartedAt !== null && time - plugStartedAt < powerDrainDuration;
+      paint2(time);
+      frame = (moving || animatingPower) && !document.hidden ? requestAnimationFrame(tick2) : 0;
       if (!frame) lastFrame = 0;
     }, animate2 = function() {
       if (reducedMotion.matches) {
@@ -1859,7 +1891,10 @@
         if (gameButton && power) {
           const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
           if (nextPlug) {
+            const now = performance.now();
+            if (nextPlug === "unplugged") looseBeforeDetach = plugProgress2(now);
             plugState = nextPlug;
+            plugStartedAt = reducedMotion.matches ? null : now;
             power.dataset.plug = nextPlug;
             if (nextPlug === "loose") unlockTrick("loose-plug");
             else {
@@ -2028,7 +2063,7 @@
         animate2();
       }
     };
-    paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, endPointer = endPointer2;
+    plugProgress = plugProgress2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, endPointer = endPointer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -2040,6 +2075,8 @@
     const gameButton = button.id === "click-button";
     const plugPulls = createPlugPullTracker();
     let plugState = "seated";
+    let plugStartedAt = null;
+    let looseBeforeDetach = 1;
     const readout = gameButton ? document.querySelector(".game-readout") : null;
     let readoutOffset = 0;
     const effects = document.createElement("div");
@@ -2179,6 +2216,7 @@
       attributeFilter: ["lang", "dir"]
     });
     reducedMotion.addEventListener("change", () => {
+      if (reducedMotion.matches) plugStartedAt = null;
       reset2();
       if (reducedMotion.matches) {
         for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
@@ -2188,7 +2226,10 @@
     window.addEventListener("blur", () => reset2());
     window.addEventListener("resize", () => reset2());
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) reset2();
+      if (document.hidden) {
+        plugStartedAt = null;
+        reset2();
+      }
     });
     new ResizeObserver(() => {
       if (!renderer && !setupFrame && stage.clientWidth && stage.clientHeight) {
@@ -2202,6 +2243,7 @@
     }).observe(stage);
     tactileButtons.set(button, { reset: reset2, respond: respond2 });
   }
+  var plugProgress;
   var paint;
   var moveReadout;
   var tick;

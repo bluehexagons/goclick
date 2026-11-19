@@ -4,6 +4,9 @@ import {
   holdBeat,
   holdDuration,
   holdLighting,
+  plugTransitionDuration,
+  powerDrainDuration,
+  powerDrainLighting,
   projectButtonLettering,
   projectButtonPose,
   projectButtonPower,
@@ -34,6 +37,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const gameButton = button.id === "click-button";
   const plugPulls = createPlugPullTracker();
   let plugState: PlugState = "seated";
+  let plugStartedAt: number | null = null;
+  let looseBeforeDetach = 1;
   const readout = gameButton ? document.querySelector<HTMLElement>(".game-readout") : null;
   let readoutOffset = 0;
   const effects = document.createElement("div");
@@ -95,10 +100,25 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let responseDuration = 500;
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
-  function paint() {
+  function plugProgress(time: number) {
+    if (plugState === "seated" || plugStartedAt === null) return 1;
+    return clamp((time - plugStartedAt) / plugTransitionDuration[plugState], 0, 1);
+  }
+
+  function paint(time = performance.now()) {
+    current.drainLight =
+      plugState === "unplugged" && plugStartedAt !== null
+        ? powerDrainLighting(time - plugStartedAt)
+        : 0;
     const cable =
       power && stage.clientWidth && stage.clientHeight
-        ? projectButtonPower(current, button.offsetWidth, plugState)
+        ? projectButtonPower(
+            current,
+            button.offsetWidth,
+            plugState,
+            plugProgress(time),
+            looseBeforeDetach,
+          )
         : null;
     if (power && cable) {
       power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
@@ -140,7 +160,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       current.copper * 0.38 +
         current.flash * 0.65 +
         current.response * 0.8 +
-        (current.holdLight ?? 0),
+        (current.holdLight ?? 0) +
+        current.drainLight,
     );
     rig.style.setProperty("--glow-intensity", glow.toFixed(3));
     const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
@@ -247,8 +268,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       if (current.responseProgress < 1) moving = true;
       else responseStarted = null;
     }
-    paint();
-    frame = moving && !document.hidden ? requestAnimationFrame(tick) : 0;
+    const animatingPower =
+      plugProgress(time) < 1 ||
+      (plugState === "unplugged" &&
+        plugStartedAt !== null &&
+        time - plugStartedAt < powerDrainDuration);
+    paint(time);
+    frame = (moving || animatingPower) && !document.hidden ? requestAnimationFrame(tick) : 0;
     if (!frame) lastFrame = 0;
   }
   function animate() {
@@ -337,7 +363,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       if (gameButton && power) {
         const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
         if (nextPlug) {
+          const now = performance.now();
+          if (nextPlug === "unplugged") looseBeforeDetach = plugProgress(now);
           plugState = nextPlug;
+          plugStartedAt = reducedMotion.matches ? null : now;
           power.dataset.plug = nextPlug;
           if (nextPlug === "loose") unlockTrick("loose-plug");
           else {
@@ -688,6 +717,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     attributeFilter: ["lang", "dir"],
   });
   reducedMotion.addEventListener("change", () => {
+    if (reducedMotion.matches) plugStartedAt = null;
     reset();
     if (reducedMotion.matches) {
       for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
@@ -697,7 +727,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   window.addEventListener("blur", () => reset());
   window.addEventListener("resize", () => reset());
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) reset();
+    if (document.hidden) {
+      plugStartedAt = null;
+      reset();
+    }
   });
 
   // The CSS button is usable immediately. Compile graphics only for a visible
