@@ -1378,6 +1378,37 @@ test("loading the achievements URL opens its screen and reset times match gamepl
   assert.equal(h.element("#streak-reset-ring").attributes.get("stroke-dasharray"), `${elapsed} 1`);
 });
 
+test("the streak readout uses singular and plural units in the selected language", async () => {
+  const h = await harness({
+    initialFetch: async () =>
+      response({
+        user: player,
+        counters: {
+          click_count: { count: 10, modified_time: "2026-05-16T11:00:00Z" },
+          streak_counter_day: { count: 1 },
+          streak_counter_month: { count: 2 },
+          streak_counter_year: { count: 1 },
+        },
+      }),
+  });
+  for (const [unit, label] of [
+    ["day", "day"],
+    ["week", "week"],
+    ["month", "months"],
+    ["year", "year"],
+  ])
+    assert.equal(h.element(`#${unit}-streak-unit`).textContent, label);
+
+  h.element("#language-setting").value = "ru";
+  h.element("#language-setting").fire("change");
+  assert.equal(h.element("#month-streak").textContent, "2");
+  assert.equal(h.element("#month-streak-unit").textContent, "месяца");
+  h.element("#language-setting").value = "ar";
+  h.element("#language-setting").fire("change");
+  assert.equal(h.element("#month-streak").textContent, "شهران");
+  assert.equal(h.element("#month-streak-unit").hidden, true);
+});
+
 test("Curiosity can be the tenth other achievement and earn Recursion once", async () => {
   const tricks = [
     "hold",
@@ -1406,6 +1437,35 @@ test("Curiosity can be the tenth other achievement and earn Recursion once", asy
   h.element("#back-to-game").fire("click", { button: 0 });
   await settle();
   assert.equal(h.element("#achievement-notice").hidden, true);
+});
+
+test("opening Achievements directly loads counters before awarding Curiosity and Recursion", async () => {
+  const h = await harness({
+    url: "https://goclick.example/?view=achievements",
+    initialFetch: async () =>
+      response({
+        user: player,
+        counters: {
+          ...counters(100),
+          progress: { recent_days: 127, week_streak: 2, best_day_streak: 7, best_week_streak: 2 },
+          achievements: {
+            day_clicks: 100,
+            week_clicks: 100,
+            month_clicks: 100,
+            hours: 7,
+            active_days: 10,
+            active_months: 2,
+            earned: 9,
+          },
+        },
+      }),
+    expectedCount: 100,
+  });
+  assert.equal(h.element("#achievement-count").textContent, "11 / 24");
+  assert.equal(h.element("#achievement-notice").hidden, true);
+  h.element("#back-to-game").fire("click", { button: 0 });
+  await settle();
+  assert.equal(h.element("#achievement-notice-names").textContent, "Curiosity · Recursion");
 });
 
 test("the last-click timestamp stays fixed and fades only after six confirmed saves", async () => {
@@ -1459,6 +1519,26 @@ test("new achievements announce without replaying loaded or synchronized badges"
   h.fetch(async () => response(counters(101)));
   await button.fire("click");
   assert.equal(live.textContent, "");
+});
+
+test("a save confirmed in a hidden tab announces its badge after returning", async () => {
+  const h = await harness({ initialFetch: async () => response(game(24)), expectedCount: 24 });
+  const pending = deferred();
+  const notice = h.element("#achievement-notice");
+  h.fetch(() => pending.promise);
+  const click = h.element("#click-button").fire("click");
+  h.document.hidden = true;
+  h.document.fire("visibilitychange");
+  pending.resolve(response(counters(25)));
+  await click;
+  assert.equal(notice.hidden, true);
+
+  h.fetch(async () => response(game(25)));
+  h.document.hidden = false;
+  h.document.fire("visibilitychange");
+  await settle();
+  assert.equal(notice.hidden, false);
+  assert.equal(h.element("#achievement-notice-names").textContent, "Sentence");
 });
 
 test("saved input badges count only confirmed releases and count touch clicks once", async () => {

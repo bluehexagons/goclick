@@ -58,6 +58,7 @@ document.addEventListener("keydown", (event) => {
 
 let lastActivity = "";
 let resetMinute = NaN;
+let nextReset = NaN;
 let resetTimer = 0;
 let shownCounters: Counters = {};
 onTrickUnlock((local) => renderProgress(shownCounters, local));
@@ -67,8 +68,6 @@ export function renderProgress(data: Counters, announce = false) {
   const progress =
     data.progress ??
     seedProgress(data.click_count?.modified_time, data.streak_counter_day?.count ?? 0);
-  $("#week-streak").textContent = formatNumber(progress.week_streak);
-
   const activityKey = `${currentLanguage()}:${progress.recent_days}`;
   if (activityKey !== lastActivity) {
     lastActivity = activityKey;
@@ -86,6 +85,7 @@ export function renderProgress(data: Counters, announce = false) {
   }
 
   renderAchievements(data, progress, announce);
+  return progress;
 }
 
 export function paintReset(force = false) {
@@ -94,6 +94,12 @@ export function paintReset(force = false) {
   if (!force && minute === resetMinute) return;
   resetMinute = minute;
   const { next, elapsed, minutesLeft } = utcReset(now);
+  if (next !== nextReset) {
+    nextReset = next;
+    // Period badge meters reset on the calendar. The activity score still
+    // reflects the dates ending on the last saved click.
+    if (!$("#achievement-view").hidden) renderProgress(shownCounters);
+  }
   const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
   const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;
   const countdown = t("timeUntilReset", { time: remaining });

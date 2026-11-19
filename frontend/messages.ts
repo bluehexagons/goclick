@@ -1,6 +1,5 @@
 // Main game messages. Add the same keys to every locale; see docs/localization.md.
 export const english = {
-  weeks: "weeks",
   fortnightActivity: "Fortnight activity",
   outOf: "{count} / {total}",
   daysActive: "Active days: {count}",
@@ -59,9 +58,6 @@ export const english = {
   seconds: "{count}s",
   streaks: "Streaks",
   streakLabel: "Click streaks",
-  days: "days",
-  months: "months",
-  years: "years",
   networkNotice: "Offline. Clicking is paused. The counter refreshes when you reconnect.",
   localMode: "Offline · local save",
   offline: "Offline",
@@ -104,7 +100,6 @@ export type MessageKey = keyof typeof english;
 export type Messages = Record<MessageKey, string>;
 export const translations = {
   "zh-Hans": {
-    weeks: "周",
     fortnightActivity: "两周活跃度",
     outOf: "{count} / {total}",
     daysActive: "活跃天数：{count}",
@@ -161,9 +156,6 @@ export const translations = {
     seconds: "{count}秒",
     streaks: "连续记录",
     streakLabel: "连续点击记录",
-    days: "天",
-    months: "个月",
-    years: "年",
     networkNotice: "网络已断开，点击已暂停。重新连接后将刷新已保存的进度。",
     localMode: "离线 · 本地存档",
     offline: "离线",
@@ -202,7 +194,6 @@ export const translations = {
     playLink: "开始游戏：{url}",
   },
   es: {
-    weeks: "semanas",
     fortnightActivity: "Actividad de la quincena",
     outOf: "{count} / {total}",
     daysActive: "Días activos: {count}",
@@ -261,9 +252,6 @@ export const translations = {
     seconds: "{count} s",
     streaks: "Rachas",
     streakLabel: "Rachas de clics",
-    days: "días",
-    months: "meses",
-    years: "años",
     networkNotice:
       "No tienes conexión. Los clics están en pausa. Tu progreso guardado se actualizará al reconectarte.",
     localMode: "Sin conexión · guardado local",
@@ -309,7 +297,6 @@ export const translations = {
     playLink: "Jugar: {url}",
   },
   ar: {
-    weeks: "أسابيع",
     fortnightActivity: "نشاط آخر أسبوعين",
     outOf: "{count} من {total}",
     daysActive: "أيام النشاط: {count}",
@@ -368,9 +355,6 @@ export const translations = {
     seconds: "{count} ث",
     streaks: "سلاسل متتالية",
     streakLabel: "سلاسل النقر المتتالية",
-    days: "أيام",
-    months: "أشهر",
-    years: "سنوات",
     networkNotice: "أنت غير متصل. النقر متوقف مؤقتًا. سيُحدَّث تقدمك المحفوظ عند إعادة الاتصال.",
     localMode: "غير متصل · حفظ محلي",
     offline: "غير متصل",
@@ -410,7 +394,6 @@ export const translations = {
     playLink: "العب: {url}",
   },
   hi: {
-    weeks: "सप्ताह",
     fortnightActivity: "पखवाड़े की गतिविधि",
     outOf: "{count} / {total}",
     daysActive: "सक्रिय दिन: {count}",
@@ -468,9 +451,6 @@ export const translations = {
     seconds: "{count} सेकंड",
     streaks: "लगातार खेलने का क्रम",
     streakLabel: "लगातार क्लिक के क्रम",
-    days: "दिन",
-    months: "महीने",
-    years: "वर्ष",
     networkNotice: "आप ऑफ़लाइन हैं। क्लिक रुके हुए हैं। दोबारा जुड़ने पर सहेजी गई प्रगति रीफ़्रेश होगी।",
     localMode: "ऑफ़लाइन · स्थानीय सेव",
     offline: "ऑफ़लाइन",
@@ -510,7 +490,6 @@ export const translations = {
     playLink: "खेलें: {url}",
   },
   id: {
-    weeks: "minggu",
     fortnightActivity: "Aktivitas dua pekan",
     outOf: "{count} / {total}",
     daysActive: "Hari aktif: {count}",
@@ -568,9 +547,6 @@ export const translations = {
     seconds: "{count} dtk",
     streaks: "Rentetan",
     streakLabel: "Rentetan klik",
-    days: "hari",
-    months: "bulan",
-    years: "tahun",
     networkNotice:
       "Anda sedang luring. Klik dijeda. Progres tersimpan akan diperbarui saat tersambung kembali.",
     localMode: "Luring · simpanan lokal",
@@ -615,7 +591,6 @@ export const translations = {
     playLink: "Main: {url}",
   },
   "pt-BR": {
-    weeks: "semanas",
     fortnightActivity: "Atividade da quinzena",
     outOf: "{count} / {total}",
     daysActive: "Dias ativos: {count}",
@@ -674,9 +649,6 @@ export const translations = {
     seconds: "{count} s",
     streaks: "Sequências",
     streakLabel: "Sequências de cliques",
-    days: "dias",
-    months: "meses",
-    years: "anos",
     networkNotice:
       "Você está sem conexão. Os cliques estão pausados. Seu progresso salvo será atualizado ao reconectar.",
     localMode: "Offline · save local",
@@ -722,7 +694,6 @@ export const translations = {
     playLink: "Jogar: {url}",
   },
   fr: {
-    weeks: "semaines",
     fortnightActivity: "Activité sur deux semaines",
     outOf: "{count} / {total}",
     daysActive: "Jours actifs : {count}",
@@ -781,9 +752,6 @@ export const translations = {
     seconds: "{count} s",
     streaks: "Séries",
     streakLabel: "Séries de clics",
-    days: "jours",
-    months: "mois",
-    years: "ans",
     networkNotice:
       "Vous êtes hors ligne. Les clics sont suspendus. Votre progression sera actualisée à la reconnexion.",
     localMode: "Hors ligne · sauvegarde locale",
@@ -829,7 +797,6 @@ export const translations = {
     playLink: "Jouer : {url}",
   },
   ja: {
-    weeks: "週",
     fortnightActivity: "2週間のアクティビティ",
     outOf: "{count} / {total}",
     daysActive: "アクティブ日数：{count}",
@@ -889,9 +856,6 @@ export const translations = {
     seconds: "{count}秒",
     streaks: "連続記録",
     streakLabel: "クリックの連続記録",
-    days: "日",
-    months: "か月",
-    years: "年",
     networkNotice:
       "オフラインです。クリックは一時停止中です。再接続すると保存済みの進行状況を更新します。",
     localMode: "オフライン · ローカル保存",
@@ -936,7 +900,6 @@ export const translations = {
     playLink: "プレイ：{url}",
   },
   ru: {
-    weeks: "нед.",
     fortnightActivity: "Активность за две недели",
     outOf: "{count} / {total}",
     daysActive: "Активных дней: {count}",
@@ -995,9 +958,6 @@ export const translations = {
     seconds: "{count} с",
     streaks: "Серии",
     streakLabel: "Серии кликов",
-    days: "дни",
-    months: "месяцы",
-    years: "годы",
     networkNotice:
       "Нет подключения. Клики приостановлены. Сохранённый прогресс обновится после подключения.",
     localMode: "Офлайн · локальное сохранение",
@@ -1041,7 +1001,6 @@ export const translations = {
     playLink: "Играть: {url}",
   },
   de: {
-    weeks: "Wochen",
     fortnightActivity: "Aktivität in zwei Wochen",
     outOf: "{count} / {total}",
     daysActive: "Aktive Tage: {count}",
@@ -1100,9 +1059,6 @@ export const translations = {
     seconds: "{count} s",
     streaks: "Serien",
     streakLabel: "Klickserien",
-    days: "Tage",
-    months: "Monate",
-    years: "Jahre",
     networkNotice:
       "Du bist offline. Klicken ist pausiert. Dein gespeicherter Fortschritt wird beim Verbinden aktualisiert.",
     localMode: "Offline · lokaler Spielstand",

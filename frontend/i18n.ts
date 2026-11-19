@@ -62,12 +62,19 @@ export function formatNumber(value: number, code = language): string {
   }
   return formatter.format(value);
 }
+const unitFormats = new Map<string, Intl.NumberFormat>();
 export function formatUnit(
   value: number,
   unit: "day" | "week" | "month" | "year",
   code = language,
 ) {
-  return new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" }).format(value);
+  const key = `${code}:${unit}`;
+  let formatter = unitFormats.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" });
+    unitFormats.set(key, formatter);
+  }
+  return formatter.format(value);
 }
 export function onLanguageChange(listener: () => void) {
   listeners.add(listener);

@@ -16,6 +16,7 @@ import {
   languageDirection,
   message as t,
   formatNumber,
+  formatUnit,
   readLanguage,
   rememberLanguage,
   supportedLanguage,
@@ -52,6 +53,7 @@ const playLink = $<HTMLAnchorElement>("#back-to-game");
 const buttonLanguage = createButtonLanguage(currentLanguage());
 const buttonLabel = $(".button-label", clickButton);
 const counterCard = $("#counter-card");
+const playerStatus = $("#player-status");
 const retryGameButton = $<HTMLButtonElement>("#retry-game-button");
 const retryBootButton = $<HTMLButtonElement>("#retry-boot-button");
 const refreshCounterButton = $<HTMLButtonElement>("#refresh-counter");
@@ -112,7 +114,7 @@ motionPreference.addEventListener("change", () => {
   updateMotionShortcut();
   if (!motionPreference.matches) return;
   viewAnimation?.cancel();
-  for (const id of ["click-count", "day-streak", "month-streak", "year-streak"])
+  for (const id of ["click-count", "day-streak", "week-streak", "month-streak", "year-streak"])
     numberAnimations.get($(`#${id}`))?.cancel();
 });
 let user: User | null = null;
@@ -212,6 +214,7 @@ function show(view: View) {
   views.auth.hidden = view !== "login" && view !== "signup";
   views.game.hidden = view !== "game";
   views.achievements.hidden = view !== "achievements";
+  playerStatus.hidden = !player;
   achievementsLink.hidden = !player;
   achievementsLink.setAttribute("aria-current", view === "achievements" ? "page" : "false");
   if (changed) {
@@ -219,7 +222,7 @@ function show(view: View) {
     if (view === "achievements") {
       hideAchievementNotice();
       renderProgress(displayedCounters);
-      unlockTrick("achievements");
+      if (gameReady) unlockTrick("achievements");
       paintAchievementList();
       $("#achievement-title").focus();
     } else if (view === "game") {
@@ -419,6 +422,7 @@ function updateGameControls() {
     String(refreshCounterButton.disabled || !!counterLoad),
   );
   refreshCounterButton.setAttribute("aria-busy", String(!!counterLoad));
+  retryGameButton.disabled = refreshCounterButton.disabled || !!counterLoad;
   $<HTMLButtonElement>("#share-stats").disabled =
     !gameReady || signingOut || pendingClicks > 0 || !!counterLoad || localSaveReplacing;
   $("#network-notice").hidden = !offline || localMode;
@@ -480,15 +484,26 @@ function renderCounters(data: Counters, allowDecrease = false, announce = false)
   )
     return;
   displayedCounters = data;
-  renderProgress(data, announce);
-  for (const [id, count] of [
+  const progress = renderProgress(data, announce);
+  for (const [id, count, unit] of [
     ["click-count", clicks?.count ?? 0],
-    ["day-streak", data.streak_counter_day?.count ?? 0],
-    ["month-streak", data.streak_counter_month?.count ?? 0],
-    ["year-streak", data.streak_counter_year?.count ?? 0],
+    ["day-streak", data.streak_counter_day?.count ?? 0, "day"],
+    ["week-streak", progress.week_streak, "week"],
+    ["month-streak", data.streak_counter_month?.count ?? 0, "month"],
+    ["year-streak", data.streak_counter_year?.count ?? 0, "year"],
   ] as const) {
-    const element = $(`#${id}`),
-      formatted = formatNumber(count);
+    const element = $(`#${id}`);
+    let formatted = formatNumber(count);
+    if (unit) {
+      const quantity = formatUnit(count, unit);
+      const label = $(`#${id}-unit`);
+      // Some locales express singular or dual quantities without digits.
+      const separateUnit = quantity.startsWith(formatted);
+      const suffix = separateUnit ? quantity.slice(formatted.length).trim() : "";
+      if (label.textContent !== suffix) label.textContent = suffix;
+      label.hidden = !suffix;
+      if (!separateUnit) formatted = quantity;
+    }
     if (element.textContent === formatted) continue;
     element.textContent = formatted;
     if (!allowDecrease) animateNumber(element);
@@ -496,10 +511,13 @@ function renderCounters(data: Counters, allowDecrease = false, announce = false)
   paintLastClick();
 }
 
-function rememberLastClick(data: Counters) {
+function applyLoadedCounters(data: Counters) {
   const key = lastClickKey();
   if (!lastClicks.has(key))
     lastClicks.set(key, { time: data.click_count?.modified_time ?? null, saved: 0 });
+  renderCounters(data, true);
+  gameReady = true;
+  if (currentView === "achievements") unlockTrick("achievements");
 }
 
 function paintLastClick(saved = false) {
@@ -548,10 +566,8 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
       generation = clickGeneration;
       counterLoadOwner = owner;
       lastOnlineCounters = state.counters;
-      rememberLastClick(state.counters);
-      renderCounters(state.counters, true);
+      applyLoadedCounters(state.counters);
       if (optionsDialog.open) updateOptions();
-      gameReady = true;
       updateGameControls();
       if (focusButton && currentView === "game" && !clickButton.disabled) clickButton.focus();
       setConnection();
@@ -942,10 +958,7 @@ function openLocalGame(data?: Counters) {
   showError("#game-error", "");
   retryGameButton.hidden = true;
   try {
-    const counters = data ?? localGame.read();
-    rememberLastClick(counters);
-    renderCounters(counters, true);
-    gameReady = true;
+    applyLoadedCounters(data ?? localGame.read());
     counterCard.setAttribute("aria-busy", "false");
     updateGameControls();
     setConnection();

@@ -857,6 +857,10 @@ input:focus {
 .refresh-counter {
   width: 44px;
 }
+.player-status {
+  max-width: 1000px;
+  margin-inline: auto;
+}
 .retry-game {
   margin: 0 0 16px;
 }

@@ -2199,7 +2199,6 @@
 
   // frontend/messages.ts
   var english = {
-    weeks: "weeks",
     fortnightActivity: "Fortnight activity",
     outOf: "{count} / {total}",
     daysActive: "Active days: {count}",
@@ -2256,9 +2255,6 @@
     seconds: "{count}s",
     streaks: "Streaks",
     streakLabel: "Click streaks",
-    days: "days",
-    months: "months",
-    years: "years",
     networkNotice: "Offline. Clicking is paused. The counter refreshes when you reconnect.",
     localMode: "Offline \xB7 local save",
     offline: "Offline",
@@ -2297,7 +2293,6 @@
   };
   var translations = {
     "zh-Hans": {
-      weeks: "\u5468",
       fortnightActivity: "\u4E24\u5468\u6D3B\u8DC3\u5EA6",
       outOf: "{count} / {total}",
       daysActive: "\u6D3B\u8DC3\u5929\u6570\uFF1A{count}",
@@ -2354,9 +2349,6 @@
       seconds: "{count}\u79D2",
       streaks: "\u8FDE\u7EED\u8BB0\u5F55",
       streakLabel: "\u8FDE\u7EED\u70B9\u51FB\u8BB0\u5F55",
-      days: "\u5929",
-      months: "\u4E2A\u6708",
-      years: "\u5E74",
       networkNotice: "\u7F51\u7EDC\u5DF2\u65AD\u5F00\uFF0C\u70B9\u51FB\u5DF2\u6682\u505C\u3002\u91CD\u65B0\u8FDE\u63A5\u540E\u5C06\u5237\u65B0\u5DF2\u4FDD\u5B58\u7684\u8FDB\u5EA6\u3002",
       localMode: "\u79BB\u7EBF \xB7 \u672C\u5730\u5B58\u6863",
       offline: "\u79BB\u7EBF",
@@ -2394,7 +2386,6 @@
       playLink: "\u5F00\u59CB\u6E38\u620F\uFF1A{url}"
     },
     es: {
-      weeks: "semanas",
       fortnightActivity: "Actividad de la quincena",
       outOf: "{count} / {total}",
       daysActive: "D\xEDas activos: {count}",
@@ -2451,9 +2442,6 @@
       seconds: "{count} s",
       streaks: "Rachas",
       streakLabel: "Rachas de clics",
-      days: "d\xEDas",
-      months: "meses",
-      years: "a\xF1os",
       networkNotice: "No tienes conexi\xF3n. Los clics est\xE1n en pausa. Tu progreso guardado se actualizar\xE1 al reconectarte.",
       localMode: "Sin conexi\xF3n \xB7 guardado local",
       offline: "Sin conexi\xF3n",
@@ -2491,7 +2479,6 @@
       playLink: "Jugar: {url}"
     },
     ar: {
-      weeks: "\u0623\u0633\u0627\u0628\u064A\u0639",
       fortnightActivity: "\u0646\u0634\u0627\u0637 \u0622\u062E\u0631 \u0623\u0633\u0628\u0648\u0639\u064A\u0646",
       outOf: "{count} \u0645\u0646 {total}",
       daysActive: "\u0623\u064A\u0627\u0645 \u0627\u0644\u0646\u0634\u0627\u0637: {count}",
@@ -2548,9 +2535,6 @@
       seconds: "{count} \u062B",
       streaks: "\u0633\u0644\u0627\u0633\u0644 \u0645\u062A\u062A\u0627\u0644\u064A\u0629",
       streakLabel: "\u0633\u0644\u0627\u0633\u0644 \u0627\u0644\u0646\u0642\u0631 \u0627\u0644\u0645\u062A\u062A\u0627\u0644\u064A\u0629",
-      days: "\u0623\u064A\u0627\u0645",
-      months: "\u0623\u0634\u0647\u0631",
-      years: "\u0633\u0646\u0648\u0627\u062A",
       networkNotice: "\u0623\u0646\u062A \u063A\u064A\u0631 \u0645\u062A\u0635\u0644. \u0627\u0644\u0646\u0642\u0631 \u0645\u062A\u0648\u0642\u0641 \u0645\u0624\u0642\u062A\u064B\u0627. \u0633\u064A\u064F\u062D\u062F\u064E\u0651\u062B \u062A\u0642\u062F\u0645\u0643 \u0627\u0644\u0645\u062D\u0641\u0648\u0638 \u0639\u0646\u062F \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0627\u062A\u0635\u0627\u0644.",
       localMode: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644 \xB7 \u062D\u0641\u0638 \u0645\u062D\u0644\u064A",
       offline: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644",
@@ -2588,7 +2572,6 @@
       playLink: "\u0627\u0644\u0639\u0628: {url}"
     },
     hi: {
-      weeks: "\u0938\u092A\u094D\u0924\u093E\u0939",
       fortnightActivity: "\u092A\u0916\u0935\u093E\u0921\u093C\u0947 \u0915\u0940 \u0917\u0924\u093F\u0935\u093F\u0927\u093F",
       outOf: "{count} / {total}",
       daysActive: "\u0938\u0915\u094D\u0930\u093F\u092F \u0926\u093F\u0928: {count}",
@@ -2645,9 +2628,6 @@
       seconds: "{count} \u0938\u0947\u0915\u0902\u0921",
       streaks: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u093E \u0915\u094D\u0930\u092E",
       streakLabel: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0915\u094D\u0932\u093F\u0915 \u0915\u0947 \u0915\u094D\u0930\u092E",
-      days: "\u0926\u093F\u0928",
-      months: "\u092E\u0939\u0940\u0928\u0947",
-      years: "\u0935\u0930\u094D\u0937",
       networkNotice: "\u0906\u092A \u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0939\u0948\u0902\u0964 \u0915\u094D\u0932\u093F\u0915 \u0930\u0941\u0915\u0947 \u0939\u0941\u090F \u0939\u0948\u0902\u0964 \u0926\u094B\u092C\u093E\u0930\u093E \u091C\u0941\u0921\u093C\u0928\u0947 \u092A\u0930 \u0938\u0939\u0947\u091C\u0940 \u0917\u0908 \u092A\u094D\u0930\u0917\u0924\u093F \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0939\u094B\u0917\u0940\u0964",
       localMode: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \xB7 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935",
       offline: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928",
@@ -2685,7 +2665,6 @@
       playLink: "\u0916\u0947\u0932\u0947\u0902: {url}"
     },
     id: {
-      weeks: "minggu",
       fortnightActivity: "Aktivitas dua pekan",
       outOf: "{count} / {total}",
       daysActive: "Hari aktif: {count}",
@@ -2742,9 +2721,6 @@
       seconds: "{count} dtk",
       streaks: "Rentetan",
       streakLabel: "Rentetan klik",
-      days: "hari",
-      months: "bulan",
-      years: "tahun",
       networkNotice: "Anda sedang luring. Klik dijeda. Progres tersimpan akan diperbarui saat tersambung kembali.",
       localMode: "Luring \xB7 simpanan lokal",
       offline: "Luring",
@@ -2782,7 +2758,6 @@
       playLink: "Main: {url}"
     },
     "pt-BR": {
-      weeks: "semanas",
       fortnightActivity: "Atividade da quinzena",
       outOf: "{count} / {total}",
       daysActive: "Dias ativos: {count}",
@@ -2839,9 +2814,6 @@
       seconds: "{count} s",
       streaks: "Sequ\xEAncias",
       streakLabel: "Sequ\xEAncias de cliques",
-      days: "dias",
-      months: "meses",
-      years: "anos",
       networkNotice: "Voc\xEA est\xE1 sem conex\xE3o. Os cliques est\xE3o pausados. Seu progresso salvo ser\xE1 atualizado ao reconectar.",
       localMode: "Offline \xB7 save local",
       offline: "Offline",
@@ -2879,7 +2851,6 @@
       playLink: "Jogar: {url}"
     },
     fr: {
-      weeks: "semaines",
       fortnightActivity: "Activit\xE9 sur deux semaines",
       outOf: "{count} / {total}",
       daysActive: "Jours actifs : {count}",
@@ -2936,9 +2907,6 @@
       seconds: "{count} s",
       streaks: "S\xE9ries",
       streakLabel: "S\xE9ries de clics",
-      days: "jours",
-      months: "mois",
-      years: "ans",
       networkNotice: "Vous \xEAtes hors ligne. Les clics sont suspendus. Votre progression sera actualis\xE9e \xE0 la reconnexion.",
       localMode: "Hors ligne \xB7 sauvegarde locale",
       offline: "Hors ligne",
@@ -2976,7 +2944,6 @@
       playLink: "Jouer : {url}"
     },
     ja: {
-      weeks: "\u9031",
       fortnightActivity: "2\u9031\u9593\u306E\u30A2\u30AF\u30C6\u30A3\u30D3\u30C6\u30A3",
       outOf: "{count} / {total}",
       daysActive: "\u30A2\u30AF\u30C6\u30A3\u30D6\u65E5\u6570\uFF1A{count}",
@@ -3033,9 +3000,6 @@
       seconds: "{count}\u79D2",
       streaks: "\u9023\u7D9A\u8A18\u9332",
       streakLabel: "\u30AF\u30EA\u30C3\u30AF\u306E\u9023\u7D9A\u8A18\u9332",
-      days: "\u65E5",
-      months: "\u304B\u6708",
-      years: "\u5E74",
       networkNotice: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u3059\u3002\u30AF\u30EA\u30C3\u30AF\u306F\u4E00\u6642\u505C\u6B62\u4E2D\u3067\u3059\u3002\u518D\u63A5\u7D9A\u3059\u308B\u3068\u4FDD\u5B58\u6E08\u307F\u306E\u9032\u884C\u72B6\u6CC1\u3092\u66F4\u65B0\u3057\u307E\u3059\u3002",
       localMode: "\u30AA\u30D5\u30E9\u30A4\u30F3 \xB7 \u30ED\u30FC\u30AB\u30EB\u4FDD\u5B58",
       offline: "\u30AA\u30D5\u30E9\u30A4\u30F3",
@@ -3073,7 +3037,6 @@
       playLink: "\u30D7\u30EC\u30A4\uFF1A{url}"
     },
     ru: {
-      weeks: "\u043D\u0435\u0434.",
       fortnightActivity: "\u0410\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C \u0437\u0430 \u0434\u0432\u0435 \u043D\u0435\u0434\u0435\u043B\u0438",
       outOf: "{count} / {total}",
       daysActive: "\u0410\u043A\u0442\u0438\u0432\u043D\u044B\u0445 \u0434\u043D\u0435\u0439: {count}",
@@ -3130,9 +3093,6 @@
       seconds: "{count} \u0441",
       streaks: "\u0421\u0435\u0440\u0438\u0438",
       streakLabel: "\u0421\u0435\u0440\u0438\u0438 \u043A\u043B\u0438\u043A\u043E\u0432",
-      days: "\u0434\u043D\u0438",
-      months: "\u043C\u0435\u0441\u044F\u0446\u044B",
-      years: "\u0433\u043E\u0434\u044B",
       networkNotice: "\u041D\u0435\u0442 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u044F. \u041A\u043B\u0438\u043A\u0438 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B. \u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043E\u0431\u043D\u043E\u0432\u0438\u0442\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u044F.",
       localMode: "\u041E\u0444\u043B\u0430\u0439\u043D \xB7 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435",
       offline: "\u041E\u0444\u043B\u0430\u0439\u043D",
@@ -3170,7 +3130,6 @@
       playLink: "\u0418\u0433\u0440\u0430\u0442\u044C: {url}"
     },
     de: {
-      weeks: "Wochen",
       fortnightActivity: "Aktivit\xE4t in zwei Wochen",
       outOf: "{count} / {total}",
       daysActive: "Aktive Tage: {count}",
@@ -3227,9 +3186,6 @@
       seconds: "{count} s",
       streaks: "Serien",
       streakLabel: "Klickserien",
-      days: "Tage",
-      months: "Monate",
-      years: "Jahre",
       networkNotice: "Du bist offline. Klicken ist pausiert. Dein gespeicherter Fortschritt wird beim Verbinden aktualisiert.",
       localMode: "Offline \xB7 lokaler Spielstand",
       offline: "Offline",
@@ -3320,8 +3276,15 @@
     }
     return formatter.format(value);
   }
+  var unitFormats = /* @__PURE__ */ new Map();
   function formatUnit(value, unit, code = language) {
-    return new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" }).format(value);
+    const key = `${code}:${unit}`;
+    let formatter = unitFormats.get(key);
+    if (!formatter) {
+      formatter = new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" });
+      unitFormats.set(key, formatter);
+    }
+    return formatter.format(value);
   }
   function onLanguageChange(listener) {
     listeners2.add(listener);
@@ -4058,7 +4021,7 @@
     hideAchievementNotice();
   }
   function queueNotice(names) {
-    if (!names.length || game.hidden && screen.hidden || document.hidden) return;
+    if (!names.length || game.hidden && screen.hidden) return;
     for (const name of names) pending.add(name);
     showAchievementNotices();
   }
@@ -4145,13 +4108,13 @@
   });
   var lastActivity = "";
   var resetMinute = NaN;
+  var nextReset = NaN;
   var resetTimer = 0;
   var shownCounters = {};
   onTrickUnlock((local) => renderProgress(shownCounters, local));
   function renderProgress(data, announce = false) {
     shownCounters = data;
     const progress = data.progress ?? seedProgress(data.click_count?.modified_time, data.streak_counter_day?.count ?? 0);
-    required("#week-streak").textContent = formatNumber(progress.week_streak);
     const activityKey = `${currentLanguage()}:${progress.recent_days}`;
     if (activityKey !== lastActivity) {
       lastActivity = activityKey;
@@ -4168,6 +4131,7 @@
         );
     }
     renderAchievements(data, progress, announce);
+    return progress;
   }
   function paintReset(force = false) {
     const now = Date.now();
@@ -4175,6 +4139,10 @@
     if (!force && minute === resetMinute) return;
     resetMinute = minute;
     const { next, elapsed, minutesLeft } = utcReset(now);
+    if (next !== nextReset) {
+      nextReset = next;
+      if (!required("#achievement-view").hidden) renderProgress(shownCounters);
+    }
     const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
     const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;
     const countdown = message2("timeUntilReset", { time: remaining });
@@ -4218,6 +4186,7 @@
   var buttonLanguage = createButtonLanguage(currentLanguage());
   var buttonLabel = required(".button-label", clickButton);
   var counterCard = required("#counter-card");
+  var playerStatus = required("#player-status");
   var retryGameButton = required("#retry-game-button");
   var retryBootButton = required("#retry-boot-button");
   var refreshCounterButton = required("#refresh-counter");
@@ -4274,7 +4243,7 @@
     updateMotionShortcut();
     if (!motionPreference.matches) return;
     viewAnimation?.cancel();
-    for (const id of ["click-count", "day-streak", "month-streak", "year-streak"])
+    for (const id of ["click-count", "day-streak", "week-streak", "month-streak", "year-streak"])
       numberAnimations.get(required(`#${id}`))?.cancel();
   });
   var user = null;
@@ -4356,6 +4325,7 @@
     views.auth.hidden = view !== "login" && view !== "signup";
     views.game.hidden = view !== "game";
     views.achievements.hidden = view !== "achievements";
+    playerStatus.hidden = !player;
     achievementsLink.hidden = !player;
     achievementsLink.setAttribute("aria-current", view === "achievements" ? "page" : "false");
     if (changed) {
@@ -4363,7 +4333,7 @@
       if (view === "achievements") {
         hideAchievementNotice();
         renderProgress(displayedCounters);
-        unlockTrick("achievements");
+        if (gameReady) unlockTrick("achievements");
         paintAchievementList();
         required("#achievement-title").focus();
       } else if (view === "game") {
@@ -4524,6 +4494,7 @@
       String(refreshCounterButton.disabled || !!counterLoad)
     );
     refreshCounterButton.setAttribute("aria-busy", String(!!counterLoad));
+    retryGameButton.disabled = refreshCounterButton.disabled || !!counterLoad;
     required("#share-stats").disabled = !gameReady || signingOut || pendingClicks > 0 || !!counterLoad || localSaveReplacing;
     required("#network-notice").hidden = !offline || localMode;
     required("#local-mode-note").hidden = !localMode;
@@ -4574,24 +4545,38 @@
     if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks)
       return;
     displayedCounters = data;
-    renderProgress(data, announce);
-    for (const [id, count] of [
+    const progress = renderProgress(data, announce);
+    for (const [id, count, unit] of [
       ["click-count", clicks?.count ?? 0],
-      ["day-streak", data.streak_counter_day?.count ?? 0],
-      ["month-streak", data.streak_counter_month?.count ?? 0],
-      ["year-streak", data.streak_counter_year?.count ?? 0]
+      ["day-streak", data.streak_counter_day?.count ?? 0, "day"],
+      ["week-streak", progress.week_streak, "week"],
+      ["month-streak", data.streak_counter_month?.count ?? 0, "month"],
+      ["year-streak", data.streak_counter_year?.count ?? 0, "year"]
     ]) {
-      const element = required(`#${id}`), formatted = formatNumber(count);
+      const element = required(`#${id}`);
+      let formatted = formatNumber(count);
+      if (unit) {
+        const quantity = formatUnit(count, unit);
+        const label = required(`#${id}-unit`);
+        const separateUnit = quantity.startsWith(formatted);
+        const suffix = separateUnit ? quantity.slice(formatted.length).trim() : "";
+        if (label.textContent !== suffix) label.textContent = suffix;
+        label.hidden = !suffix;
+        if (!separateUnit) formatted = quantity;
+      }
       if (element.textContent === formatted) continue;
       element.textContent = formatted;
       if (!allowDecrease) animateNumber(element);
     }
     paintLastClick();
   }
-  function rememberLastClick(data) {
+  function applyLoadedCounters(data) {
     const key = lastClickKey();
     if (!lastClicks.has(key))
       lastClicks.set(key, { time: data.click_count?.modified_time ?? null, saved: 0 });
+    renderCounters(data, true);
+    gameReady = true;
+    if (currentView === "achievements") unlockTrick("achievements");
   }
   function paintLastClick(saved = false) {
     const entry = lastClicks.get(lastClickKey());
@@ -4634,10 +4619,8 @@
         generation2 = clickGeneration;
         counterLoadOwner = owner;
         lastOnlineCounters = state.counters;
-        rememberLastClick(state.counters);
-        renderCounters(state.counters, true);
+        applyLoadedCounters(state.counters);
         if (optionsDialog.open) updateOptions();
-        gameReady = true;
         updateGameControls();
         if (focusButton && currentView === "game" && !clickButton.disabled) clickButton.focus();
         setConnection();
@@ -5001,10 +4984,7 @@
     showError("#game-error", "");
     retryGameButton.hidden = true;
     try {
-      const counters = data ?? localGame.read();
-      rememberLastClick(counters);
-      renderCounters(counters, true);
-      gameReady = true;
+      applyLoadedCounters(data ?? localGame.read());
       counterCard.setAttribute("aria-busy", "false");
       updateGameControls();
       setConnection();

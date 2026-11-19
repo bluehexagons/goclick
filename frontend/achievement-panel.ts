@@ -122,7 +122,7 @@ export function clearAchievementNotice() {
 }
 
 function queueNotice(names: string[]) {
-  if (!names.length || (game.hidden && screen.hidden) || document.hidden) return;
+  if (!names.length || (game.hidden && screen.hidden)) return;
   for (const name of names) pending.add(name);
   showAchievementNotices();
 }

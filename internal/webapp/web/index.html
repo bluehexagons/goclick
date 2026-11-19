@@ -392,6 +392,18 @@
           </div>
         </section>
 
+        <div id="player-status" class="player-status" data-game-language hidden>
+          <div id="game-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
+          <button
+            id="retry-game-button"
+            class="button button-quiet retry-game"
+            type="button"
+            hidden
+            data-i18n="reload"
+          >
+            Reload counter
+          </button>
+        </div>
         <section
           id="game-view"
           data-game-language
@@ -409,16 +421,6 @@
           >
             Offline. Clicking is paused. The counter refreshes when you reconnect.
           </p>
-          <div id="game-error" class="notice notice-error" role="alert" tabindex="-1" hidden></div>
-          <button
-            id="retry-game-button"
-            class="button button-quiet retry-game"
-            type="button"
-            hidden
-            data-i18n="reload"
-          >
-            Reload counter
-          </button>
           <p id="local-mode-note" class="local-mode-note" hidden data-i18n="localMode">
             Offline · local save
           </p>
@@ -540,7 +542,9 @@
                     <span class="streak-icon" aria-hidden="true"
                       ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day" /></svg
                     ></span>
-                    <div><strong id="day-streak">0</strong><span data-i18n="days">days</span></div>
+                    <div>
+                      <strong id="day-streak">0</strong><span id="day-streak-unit">days</span>
+                    </div>
                     <button
                       id="streak-reset-button"
                       class="streak-reset-button"
@@ -570,7 +574,7 @@
                       ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#week" /></svg
                     ></span>
                     <div>
-                      <strong id="week-streak">0</strong><span data-i18n="weeks">weeks</span>
+                      <strong id="week-streak">0</strong><span id="week-streak-unit">weeks</span>
                     </div>
                   </article>
                   <article class="streak-card">
@@ -578,7 +582,7 @@
                       ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month" /></svg
                     ></span>
                     <div>
-                      <strong id="month-streak">0</strong><span data-i18n="months">months</span>
+                      <strong id="month-streak">0</strong><span id="month-streak-unit">months</span>
                     </div>
                   </article>
                   <article class="streak-card">
@@ -586,7 +590,7 @@
                       ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#year" /></svg
                     ></span>
                     <div>
-                      <strong id="year-streak">0</strong><span data-i18n="years">years</span>
+                      <strong id="year-streak">0</strong><span id="year-streak-unit">years</span>
                     </div>
                   </article>
                 </div>
