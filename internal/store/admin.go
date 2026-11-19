@@ -15,12 +15,18 @@ func (s *Store) UserByUsername(ctx context.Context, username string) (User, erro
 	return scanUser(s.db.QueryRowContext(ctx, `SELECT id,username,email,password_hash,admin,created_at,updated_at FROM users WHERE username=?`, username))
 }
 
-func allSchemaTables() []schemaTable {
+func allSchemaTables(version int) []schemaTable {
 	tables := append([]schemaTable{}, coreSchemaTables...)
-	return append(tables, archiveSchemaTable,
+	tables = append(tables, archiveSchemaTable,
 		schemaTable{"player_activity", []string{"id", "user_id", "action", "occurred_at", "click_count"}},
-		schemaTable{"admin_audit", []string{"id", "actor_id", "actor_username", "action", "target_user_id", "result", "details", "occurred_at"}},
-		schemaTable{"rails_json_users", []string{"user_id", "payload"}})
+		schemaTable{"admin_audit", []string{"id", "actor_id", "actor_username", "action", "target_user_id", "result", "details", "occurred_at"}})
+	if version >= 4 {
+		tables = append(tables, schemaTable{"rails_json_users", []string{"user_id", "payload"}})
+	}
+	if version >= 6 {
+		tables = append(tables, progressSchemaTable)
+	}
+	return tables
 }
 
 // SetAdmin is an operator-only operation. Revoking sessions requires a fresh

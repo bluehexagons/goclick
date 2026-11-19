@@ -18,7 +18,13 @@ export const counterKinds = [
   "streak_counter_year",
 ] as const;
 export type CounterKind = (typeof counterKinds)[number];
-export type Counters = Partial<Record<CounterKind, Counter | null>>;
+export interface ClickProgress {
+  recent_days: number;
+  week_streak: number;
+  best_day_streak: number;
+  best_week_streak: number;
+}
+export type Counters = Partial<Record<CounterKind, Counter | null>> & { progress?: ClickProgress };
 export interface GameState {
   user: User;
   counters: Counters;

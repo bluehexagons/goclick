@@ -132,6 +132,9 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 	if version < 5 {
 		delete(expected, "player_activity_sign_in")
 	}
+	if version < 6 {
+		delete(expected, "click_progress")
+	}
 	if len(expected) != len(actual) {
 		return 0, errors.New("unexpected schema objects")
 	}
@@ -185,6 +188,12 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 	}
 	if version >= 4 {
 		checks = append(checks, `SELECT COUNT(*) FROM rails_json_users WHERE typeof(user_id)!='integer' OR typeof(payload)!='text' OR NOT json_valid(payload)`)
+	}
+	if version >= 6 {
+		checks = append(checks, `SELECT COUNT(*) FROM click_progress JOIN counters USING (user_id)
+			WHERE typeof(recent_days)!='integer' OR typeof(week_streak)!='integer'
+				OR typeof(best_day_streak)!='integer' OR typeof(best_week_streak)!='integer'
+				OR last_clicked_at IS NULL OR best_day_streak < day_streak`)
 	}
 	for _, query := range checks {
 		if err := db.QueryRowContext(ctx, query).Scan(&invalid); err != nil {
@@ -406,6 +415,12 @@ func (s *Store) Restore(ctx context.Context, path, recoveryDirectory string, act
 	if version >= 4 {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO main.rails_json_users SELECT user_id,payload FROM restore_source.rails_json_users`); err != nil {
 			return result, err
+		}
+	}
+	if version >= 6 {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO main.click_progress (user_id,recent_days,week_streak,best_day_streak,best_week_streak)
+			SELECT user_id,recent_days,week_streak,best_day_streak,best_week_streak FROM restore_source.click_progress`); err != nil {
+			return result, fmt.Errorf("restore click progress: %w", err)
 		}
 	}
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&result.Users); err != nil {

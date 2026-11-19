@@ -444,6 +444,72 @@
   })();
   var motionPreference = gameSettings.motion;
 
+  // frontend/progress.ts
+  var fortnight = 14;
+  var fortnightMask = (1 << fortnight) - 1;
+  var dayMilliseconds = 864e5;
+  var emptyProgress = {
+    recent_days: 0,
+    week_streak: 0,
+    best_day_streak: 0,
+    best_week_streak: 0
+  };
+  function utcDay(time) {
+    return Math.floor(time / dayMilliseconds);
+  }
+  function utcWeek(day) {
+    return Math.floor((day + 3) / 7);
+  }
+  function seedProgress(time, dailyStreak) {
+    if (!time) return { ...emptyProgress, best_day_streak: dailyStreak };
+    const last = utcDay(Date.parse(time));
+    const first = Math.max(-1e8, last - Math.max(0, dailyStreak - 1));
+    const weeks = utcWeek(last) - utcWeek(first) + 1;
+    return {
+      recent_days: (1 << Math.min(fortnight, last - first + 1)) - 1,
+      week_streak: weeks,
+      best_day_streak: Math.max(1, dailyStreak),
+      best_week_streak: weeks
+    };
+  }
+  function advanceProgress(progress, previous, time, dailyStreak) {
+    if (!previous) {
+      const first = seedProgress(time, dailyStreak);
+      first.best_day_streak = Math.max(first.best_day_streak, progress.best_day_streak);
+      return first;
+    }
+    const before = utcDay(Date.parse(previous));
+    const today = utcDay(Date.parse(time));
+    if (before === today) {
+      return dailyStreak <= progress.best_day_streak ? progress : { ...progress, best_day_streak: dailyStreak };
+    }
+    const gap = utcWeek(today) - utcWeek(before);
+    const weeks = gap <= 1 ? progress.week_streak + gap : 1;
+    return {
+      recent_days: (progress.recent_days << Math.min(fortnight, today - before) | 1) & fortnightMask,
+      week_streak: weeks,
+      best_day_streak: Math.max(dailyStreak, progress.best_day_streak),
+      best_week_streak: Math.max(weeks, progress.best_week_streak)
+    };
+  }
+  function fortnightActivity(mask) {
+    let days = 0;
+    let consecutivePairs = 0;
+    for (let bits = mask; bits; bits >>>= 1) {
+      days += bits & 1;
+      consecutivePairs += bits & bits >>> 1 & 1;
+    }
+    const score = Math.round(
+      100 * (5 * days + 2 * consecutivePairs) / (5 * fortnight + 2 * (fortnight - 1))
+    );
+    return { days, score };
+  }
+  function utcReset(now) {
+    const start = utcDay(now) * dayMilliseconds;
+    const next = start + dayMilliseconds;
+    return { next, elapsed: now - start, minutesLeft: Math.ceil((next - now) / 6e4) };
+  }
+
   // frontend/types.ts
   var counterKinds = [
     "click_count",
@@ -475,7 +541,20 @@
           modified_time: typeof time === "string" ? new Date(time).toISOString() : null
         };
       }
+      const last = result.click_count?.modified_time;
+      const daily = result.streak_counter_day?.count ?? 0;
+      result.progress = counters.progress == null ? seedProgress(last, daily) : validateProgress(counters.progress, last, daily);
       return result;
+    }
+    function validateProgress(value, last, daily) {
+      if (!isRecord(value)) throw new Error("Invalid local achievement progress.");
+      const { recent_days, week_streak, best_day_streak, best_week_streak } = value;
+      if (!nonnegativeInteger(recent_days) || recent_days > fortnightMask || !nonnegativeInteger(week_streak) || !nonnegativeInteger(best_day_streak) || best_day_streak < daily || !nonnegativeInteger(best_week_streak) || best_week_streak < week_streak || Boolean(recent_days & 1) !== Boolean(last) || Boolean(week_streak) !== Boolean(last) || (last ? best_day_streak < 1 : recent_days !== 0 || best_week_streak !== 0))
+        throw new Error("Invalid local achievement progress.");
+      return { recent_days, week_streak, best_day_streak, best_week_streak };
+    }
+    function nonnegativeInteger(value) {
+      return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
     }
     function decode(raw) {
       const save = JSON.parse(raw);
@@ -501,12 +580,12 @@
     }
     function period(time, index) {
       const date = new Date(time);
-      return index === 1 ? Math.floor(
-        Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 864e5
-      ) : index === 2 ? date.getUTCFullYear() * 12 + date.getUTCMonth() : date.getUTCFullYear();
+      return index === 1 ? utcDay(date.getTime()) : index === 2 ? date.getUTCFullYear() * 12 + date.getUTCMonth() : date.getUTCFullYear();
     }
     function increment(now = /* @__PURE__ */ new Date()) {
-      const counters = read(), time = now.toISOString();
+      const counters = read();
+      const previous = counters.click_count?.modified_time;
+      const time = previous && Date.parse(previous) > now.getTime() ? previous : now.toISOString();
       for (const [index, kind] of kinds.entries()) {
         const old = counters[kind], count = old?.count ?? 0;
         let next = count + 1;
@@ -516,6 +595,12 @@
         }
         counters[kind] = { count: next, modified_time: time };
       }
+      counters.progress = advanceProgress(
+        counters.progress,
+        previous,
+        time,
+        counters.streak_counter_day.count
+      );
       return write(counters);
     }
     function change(operation) {
@@ -1812,6 +1897,21 @@
 
   // frontend/messages.ts
   var english = {
+    weeks: "weeks",
+    fortnightActivity: "Fortnight activity",
+    outOf: "{count} / {total}",
+    daysActive: "Active days: {count}",
+    activityNote: "Based on the 14 days ending with your last click. Consecutive days earn bonus points.",
+    nextDay: "Next streak day",
+    timeUntilReset: "{time} remaining",
+    localReset: "Local reset: {time}",
+    achievements: "Achievements",
+    weekRule: "One saved click counts for the week, Monday through Sunday (UTC).",
+    firstClick: "First click",
+    clickMilestone: "{count} clicks",
+    consecutive: "{duration} in a row",
+    earned: "Earned",
+    locked: "Locked",
     language: "Language",
     account: "Account",
     localGame: "Local game",
@@ -1895,6 +1995,21 @@
   };
   var translations = {
     "zh-Hans": {
+      weeks: "\u5468",
+      fortnightActivity: "\u4E24\u5468\u6D3B\u8DC3\u5EA6",
+      outOf: "{count} / {total}",
+      daysActive: "\u6D3B\u8DC3\u5929\u6570\uFF1A{count}",
+      activityNote: "\u7EDF\u8BA1\u622A\u81F3\u4E0A\u6B21\u70B9\u51FB\u7684 14 \u5929\u3002\u8FDE\u7EED\u70B9\u51FB\u7684\u5929\u6570\u53EF\u83B7\u5F97\u989D\u5916\u5206\u6570\u3002",
+      nextDay: "\u4E0B\u4E00\u4E2A\u8FDE\u7EED\u8BB0\u5F55\u65E5",
+      timeUntilReset: "\u5269\u4F59 {time}",
+      localReset: "\u672C\u5730\u91CD\u7F6E\u65F6\u95F4\uFF1A{time}",
+      achievements: "\u6210\u5C31",
+      weekRule: "\u6BCF\u5468\u4ECE\u5468\u4E00\u5230\u5468\u65E5\uFF08UTC\uFF09\uFF0C\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\u5373\u7B97\u6D3B\u8DC3\u4E00\u5468\u3002",
+      firstClick: "\u9996\u6B21\u70B9\u51FB",
+      clickMilestone: "\u70B9\u51FB {count} \u6B21",
+      consecutive: "\u8FDE\u7EED {duration}",
+      earned: "\u5DF2\u83B7\u5F97",
+      locked: "\u672A\u89E3\u9501",
       language: "\u8BED\u8A00",
       account: "\u8D26\u6237",
       localGame: "\u672C\u5730\u6E38\u620F",
@@ -1977,6 +2092,21 @@
       playLink: "\u5F00\u59CB\u6E38\u620F\uFF1A{url}"
     },
     es: {
+      weeks: "semanas",
+      fortnightActivity: "Actividad de la quincena",
+      outOf: "{count} / {total}",
+      daysActive: "D\xEDas activos: {count}",
+      activityNote: "Cuenta los 14 d\xEDas hasta tu \xFAltimo clic. Los d\xEDas consecutivos dan puntos extra.",
+      nextDay: "Pr\xF3ximo d\xEDa de la racha",
+      timeUntilReset: "Quedan {time}",
+      localReset: "Reinicio en hora local: {time}",
+      achievements: "Logros",
+      weekRule: "Un clic guardado cuenta para la semana, de lunes a domingo (UTC).",
+      firstClick: "Primer clic",
+      clickMilestone: "{count} clics",
+      consecutive: "{duration} seguidos",
+      earned: "Conseguido",
+      locked: "Bloqueado",
       language: "Idioma",
       account: "Cuenta",
       localGame: "Juego local",
@@ -2059,6 +2189,21 @@
       playLink: "Jugar: {url}"
     },
     ar: {
+      weeks: "\u0623\u0633\u0627\u0628\u064A\u0639",
+      fortnightActivity: "\u0646\u0634\u0627\u0637 \u0622\u062E\u0631 \u0623\u0633\u0628\u0648\u0639\u064A\u0646",
+      outOf: "{count} \u0645\u0646 {total}",
+      daysActive: "\u0623\u064A\u0627\u0645 \u0627\u0644\u0646\u0634\u0627\u0637: {count}",
+      activityNote: "\u064A\u0639\u062A\u0645\u062F \u0639\u0644\u0649 \u0627\u0644\u0623\u064A\u0627\u0645 \u0627\u0644\u0640\u0661\u0664 \u0627\u0644\u0645\u0646\u062A\u0647\u064A\u0629 \u0628\u0622\u062E\u0631 \u0646\u0642\u0631\u0629 \u0644\u0643. \u062A\u0645\u0646\u062D\u0643 \u0627\u0644\u0623\u064A\u0627\u0645 \u0627\u0644\u0645\u062A\u062A\u0627\u0644\u064A\u0629 \u0646\u0642\u0627\u0637\u064B\u0627 \u0625\u0636\u0627\u0641\u064A\u0629.",
+      nextDay: "\u0627\u0644\u064A\u0648\u0645 \u0627\u0644\u062A\u0627\u0644\u064A \u0641\u064A \u0627\u0644\u0633\u0644\u0633\u0644\u0629",
+      timeUntilReset: "\u0645\u062A\u0628\u0642\u064D\u0651 {time}",
+      localReset: "\u0648\u0642\u062A \u0627\u0644\u062A\u062C\u062F\u064A\u062F \u0645\u062D\u0644\u064A\u064B\u0627: {time}",
+      achievements: "\u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A",
+      weekRule: "\u062A\u0643\u0641\u064A \u0646\u0642\u0631\u0629 \u0645\u062D\u0641\u0648\u0638\u0629 \u0648\u0627\u062D\u062F\u0629 \u0644\u0627\u062D\u062A\u0633\u0627\u0628 \u0627\u0644\u0623\u0633\u0628\u0648\u0639\u060C \u0645\u0646 \u0627\u0644\u0627\u062B\u0646\u064A\u0646 \u0625\u0644\u0649 \u0627\u0644\u0623\u062D\u062F (UTC).",
+      firstClick: "\u0623\u0648\u0644 \u0646\u0642\u0631\u0629",
+      clickMilestone: "\u0639\u062F\u062F \u0627\u0644\u0646\u0642\u0631\u0627\u062A: {count}",
+      consecutive: "\u0645\u062A\u062A\u0627\u0644\u064A\u0629: {duration}",
+      earned: "\u062A\u0645 \u062A\u062D\u0642\u064A\u0642\u0647",
+      locked: "\u0645\u0642\u0641\u0644",
       language: "\u0627\u0644\u0644\u063A\u0629",
       account: "\u0627\u0644\u062D\u0633\u0627\u0628",
       localGame: "\u0644\u0639\u0628\u0629 \u0645\u062D\u0644\u064A\u0629",
@@ -2141,6 +2286,21 @@
       playLink: "\u0627\u0644\u0639\u0628: {url}"
     },
     hi: {
+      weeks: "\u0938\u092A\u094D\u0924\u093E\u0939",
+      fortnightActivity: "\u092A\u0916\u0935\u093E\u0921\u093C\u0947 \u0915\u0940 \u0917\u0924\u093F\u0935\u093F\u0927\u093F",
+      outOf: "{count} / {total}",
+      daysActive: "\u0938\u0915\u094D\u0930\u093F\u092F \u0926\u093F\u0928: {count}",
+      activityNote: "\u0906\u092A\u0915\u0947 \u092A\u093F\u091B\u0932\u0947 \u0915\u094D\u0932\u093F\u0915 \u0924\u0915 \u0915\u0947 14 \u0926\u093F\u0928\u094B\u0902 \u092A\u0930 \u0906\u0927\u093E\u0930\u093F\u0924\u0964 \u0932\u0917\u093E\u0924\u093E\u0930 \u0926\u093F\u0928\u094B\u0902 \u0915\u0947 \u0932\u093F\u090F \u0905\u0924\u093F\u0930\u093F\u0915\u094D\u0924 \u0905\u0902\u0915 \u092E\u093F\u0932\u0924\u0947 \u0939\u0948\u0902\u0964",
+      nextDay: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u093E \u0905\u0917\u0932\u093E \u0926\u093F\u0928",
+      timeUntilReset: "{time} \u0936\u0947\u0937",
+      localReset: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0930\u0940\u0938\u0947\u091F \u0938\u092E\u092F: {time}",
+      achievements: "\u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901",
+      weekRule: "\u0938\u094B\u092E\u0935\u093E\u0930 \u0938\u0947 \u0930\u0935\u093F\u0935\u093E\u0930 (UTC) \u0915\u0947 \u092C\u0940\u091A \u090F\u0915 \u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \u0915\u094D\u0932\u093F\u0915 \u0909\u0938 \u0938\u092A\u094D\u0924\u093E\u0939 \u0915\u0947 \u0932\u093F\u090F \u0915\u093E\u092B\u093C\u0940 \u0939\u0948\u0964",
+      firstClick: "\u092A\u0939\u0932\u093E \u0915\u094D\u0932\u093F\u0915",
+      clickMilestone: "{count} \u0915\u094D\u0932\u093F\u0915",
+      consecutive: "\u0932\u0917\u093E\u0924\u093E\u0930 {duration}",
+      earned: "\u092A\u094D\u0930\u093E\u092A\u094D\u0924",
+      locked: "\u0932\u0949\u0915 \u0939\u0948",
       language: "\u092D\u093E\u0937\u093E",
       account: "\u0916\u093E\u0924\u093E",
       localGame: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0916\u0947\u0932",
@@ -2223,6 +2383,21 @@
       playLink: "\u0916\u0947\u0932\u0947\u0902: {url}"
     },
     id: {
+      weeks: "minggu",
+      fortnightActivity: "Aktivitas dua pekan",
+      outOf: "{count} / {total}",
+      daysActive: "Hari aktif: {count}",
+      activityNote: "Berdasarkan 14 hari hingga klik terakhir. Hari berurutan memberi poin bonus.",
+      nextDay: "Hari berikutnya untuk rentetan",
+      timeUntilReset: "Tersisa {time}",
+      localReset: "Waktu reset lokal: {time}",
+      achievements: "Pencapaian",
+      weekRule: "Satu klik tersimpan sudah cukup untuk satu minggu, Senin sampai Minggu (UTC).",
+      firstClick: "Klik pertama",
+      clickMilestone: "{count} klik",
+      consecutive: "{duration} berturut-turut",
+      earned: "Diraih",
+      locked: "Terkunci",
       language: "Bahasa",
       account: "Akun",
       localGame: "Permainan lokal",
@@ -2305,6 +2480,21 @@
       playLink: "Main: {url}"
     },
     "pt-BR": {
+      weeks: "semanas",
+      fortnightActivity: "Atividade da quinzena",
+      outOf: "{count} / {total}",
+      daysActive: "Dias ativos: {count}",
+      activityNote: "Conta os 14 dias at\xE9 o seu \xFAltimo clique. Dias consecutivos rendem pontos extras.",
+      nextDay: "Pr\xF3ximo dia da sequ\xEAncia",
+      timeUntilReset: "Restam {time}",
+      localReset: "Rein\xEDcio no hor\xE1rio local: {time}",
+      achievements: "Conquistas",
+      weekRule: "Um clique salvo conta para a semana, de segunda a domingo (UTC).",
+      firstClick: "Primeiro clique",
+      clickMilestone: "{count} cliques",
+      consecutive: "{duration} seguidos",
+      earned: "Conquistado",
+      locked: "Bloqueado",
       language: "Idioma",
       account: "Conta",
       localGame: "Jogo local",
@@ -2387,6 +2577,21 @@
       playLink: "Jogar: {url}"
     },
     fr: {
+      weeks: "semaines",
+      fortnightActivity: "Activit\xE9 sur deux semaines",
+      outOf: "{count} / {total}",
+      daysActive: "Jours actifs : {count}",
+      activityNote: "Calcul\xE9e sur les 14 jours jusqu\u2019au dernier clic. Les jours cons\xE9cutifs donnent des points bonus.",
+      nextDay: "Prochain jour de la s\xE9rie",
+      timeUntilReset: "Encore {time}",
+      localReset: "R\xE9initialisation en heure locale : {time}",
+      achievements: "Succ\xE8s",
+      weekRule: "Un clic enregistr\xE9 compte pour la semaine, du lundi au dimanche (UTC).",
+      firstClick: "Premier clic",
+      clickMilestone: "Clics : {count}",
+      consecutive: "{duration} de suite",
+      earned: "Obtenu",
+      locked: "Verrouill\xE9",
       language: "Langue",
       account: "Compte",
       localGame: "Partie locale",
@@ -2469,6 +2674,21 @@
       playLink: "Jouer : {url}"
     },
     ja: {
+      weeks: "\u9031",
+      fortnightActivity: "2\u9031\u9593\u306E\u30A2\u30AF\u30C6\u30A3\u30D3\u30C6\u30A3",
+      outOf: "{count} / {total}",
+      daysActive: "\u30A2\u30AF\u30C6\u30A3\u30D6\u65E5\u6570\uFF1A{count}",
+      activityNote: "\u6700\u5F8C\u306B\u30AF\u30EA\u30C3\u30AF\u3057\u305F\u65E5\u307E\u3067\u306E14\u65E5\u9593\u304C\u5BFE\u8C61\u3067\u3059\u3002\u9023\u7D9A\u3057\u3066\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3068\u30DC\u30FC\u30CA\u30B9\u70B9\u304C\u5165\u308A\u307E\u3059\u3002",
+      nextDay: "\u9023\u7D9A\u8A18\u9332\u306E\u6B21\u306E\u65E5",
+      timeUntilReset: "\u6B8B\u308A {time}",
+      localReset: "\u73FE\u5730\u306E\u30EA\u30BB\u30C3\u30C8\u6642\u523B\uFF1A{time}",
+      achievements: "\u5B9F\u7E3E",
+      weekRule: "\u6708\u66DC\u304B\u3089\u65E5\u66DC\u307E\u3067\uFF08UTC\uFF09\u306B1\u56DE\u30AF\u30EA\u30C3\u30AF\u3092\u4FDD\u5B58\u3059\u308B\u3068\u3001\u305D\u306E\u9031\u304C\u8A18\u9332\u3055\u308C\u307E\u3059\u3002",
+      firstClick: "\u521D\u30AF\u30EA\u30C3\u30AF",
+      clickMilestone: "{count}\u30AF\u30EA\u30C3\u30AF",
+      consecutive: "{duration}\u9023\u7D9A",
+      earned: "\u7372\u5F97\u6E08\u307F",
+      locked: "\u672A\u7372\u5F97",
       language: "\u8A00\u8A9E",
       account: "\u30A2\u30AB\u30A6\u30F3\u30C8",
       localGame: "\u30ED\u30FC\u30AB\u30EB\u30B2\u30FC\u30E0",
@@ -2551,6 +2771,21 @@
       playLink: "\u30D7\u30EC\u30A4\uFF1A{url}"
     },
     ru: {
+      weeks: "\u043D\u0435\u0434.",
+      fortnightActivity: "\u0410\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C \u0437\u0430 \u0434\u0432\u0435 \u043D\u0435\u0434\u0435\u043B\u0438",
+      outOf: "{count} / {total}",
+      daysActive: "\u0410\u043A\u0442\u0438\u0432\u043D\u044B\u0445 \u0434\u043D\u0435\u0439: {count}",
+      activityNote: "\u0423\u0447\u0438\u0442\u044B\u0432\u0430\u044E\u0442\u0441\u044F 14 \u0434\u043D\u0435\u0439 \u0434\u043E \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0433\u043E \u043A\u043B\u0438\u043A\u0430 \u0432\u043A\u043B\u044E\u0447\u0438\u0442\u0435\u043B\u044C\u043D\u043E. \u0414\u043D\u0438 \u043F\u043E\u0434\u0440\u044F\u0434 \u0434\u0430\u044E\u0442 \u0431\u043E\u043D\u0443\u0441\u043D\u044B\u0435 \u0431\u0430\u043B\u043B\u044B.",
+      nextDay: "\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0434\u0435\u043D\u044C \u0441\u0435\u0440\u0438\u0438",
+      timeUntilReset: "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C {time}",
+      localReset: "\u0421\u043C\u0435\u043D\u0430 \u0434\u043D\u044F \u043F\u043E \u043C\u0435\u0441\u0442\u043D\u043E\u043C\u0443 \u0432\u0440\u0435\u043C\u0435\u043D\u0438: {time}",
+      achievements: "\u0414\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F",
+      weekRule: "\u041E\u0434\u0438\u043D \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043A\u043B\u0438\u043A \u0437\u0430\u0441\u0447\u0438\u0442\u044B\u0432\u0430\u0435\u0442 \u043D\u0435\u0434\u0435\u043B\u044E \u0441 \u043F\u043E\u043D\u0435\u0434\u0435\u043B\u044C\u043D\u0438\u043A\u0430 \u043F\u043E \u0432\u043E\u0441\u043A\u0440\u0435\u0441\u0435\u043D\u044C\u0435 (UTC).",
+      firstClick: "\u041F\u0435\u0440\u0432\u044B\u0439 \u043A\u043B\u0438\u043A",
+      clickMilestone: "\u041A\u043B\u0438\u043A\u0438: {count}",
+      consecutive: "{duration} \u043F\u043E\u0434\u0440\u044F\u0434",
+      earned: "\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u043E",
+      locked: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E",
       language: "\u042F\u0437\u044B\u043A",
       account: "\u0410\u043A\u043A\u0430\u0443\u043D\u0442",
       localGame: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u0430\u044F \u0438\u0433\u0440\u0430",
@@ -2633,6 +2868,21 @@
       playLink: "\u0418\u0433\u0440\u0430\u0442\u044C: {url}"
     },
     de: {
+      weeks: "Wochen",
+      fortnightActivity: "Aktivit\xE4t in zwei Wochen",
+      outOf: "{count} / {total}",
+      daysActive: "Aktive Tage: {count}",
+      activityNote: "Gewertet werden die 14 Tage bis zu deinem letzten Klick. Aufeinanderfolgende Tage bringen Bonuspunkte.",
+      nextDay: "N\xE4chster Tag der Serie",
+      timeUntilReset: "Noch {time}",
+      localReset: "Tageswechsel in Ortszeit: {time}",
+      achievements: "Erfolge",
+      weekRule: "Ein gespeicherter Klick z\xE4hlt f\xFCr die Woche von Montag bis Sonntag (UTC).",
+      firstClick: "Erster Klick",
+      clickMilestone: "{count} Klicks",
+      consecutive: "{duration} in Folge",
+      earned: "Erreicht",
+      locked: "Gesperrt",
       language: "Sprache",
       account: "Konto",
       localGame: "Lokales Spiel",
@@ -2871,8 +3121,8 @@
       popup.className = "click-bonus";
       popup.dataset.state = "pending";
       popup.setAttribute("aria-hidden", "true");
-      popup.style.left = `${x}px`;
-      popup.style.top = `${y}px`;
+      popup.style.left = `${100 * x / rect.width}%`;
+      popup.style.top = `${100 * y / rect.height}%`;
       popup.append(score, timing);
       required(".score-effects", stage).append(popup);
       tactileButtons.get(button)?.respond("pending");
@@ -3135,6 +3385,102 @@
     return new Date(instant.getTime() - offset);
   }
 
+  // frontend/progress-panel.ts
+  var activityRail = required("#activity-days");
+  var dayMarks = Array.from({ length: fortnight }, () => {
+    const mark = document.createElement("span");
+    activityRail.append(mark);
+    return mark;
+  });
+  var resetMeter = required("#day-reset-meter");
+  var resetTime = required("#day-reset-local");
+  var timeLeft = required("#day-reset-left");
+  var lastActivity = "";
+  var lastBadges = "";
+  var resetMinute = NaN;
+  var resetTimer = 0;
+  function renderProgress(data) {
+    const progress = data.progress ?? seedProgress(data.click_count?.modified_time, data.streak_counter_day?.count ?? 0);
+    required("#week-streak").textContent = formatNumber(progress.week_streak);
+    const activityKey = `${currentLanguage()}:${progress.recent_days}`;
+    if (activityKey !== lastActivity) {
+      lastActivity = activityKey;
+      const { days, score } = fortnightActivity(progress.recent_days);
+      required("#fortnight-score").textContent = message2("outOf", {
+        count: formatNumber(score),
+        total: formatNumber(100)
+      });
+      required("#activity-count").textContent = message2("daysActive", { count: formatNumber(days) });
+      for (const [index, mark] of dayMarks.entries())
+        mark.classList.toggle(
+          "active",
+          Boolean(progress.recent_days & 1 << fortnight - 1 - index)
+        );
+    }
+    const badges = [
+      ...[1, 25, 100, 500].map((goal) => ({
+        label: () => goal === 1 ? message2("firstClick") : message2("clickMilestone", { count: formatNumber(goal) }),
+        earned: (data.click_count?.count ?? 0) >= goal
+      })),
+      ...[3, 7].map((goal) => ({
+        label: () => message2("consecutive", { duration: formatUnit(goal, "day") }),
+        earned: progress.best_day_streak >= goal
+      })),
+      ...[2, 4].map((goal) => ({
+        label: () => message2("consecutive", { duration: formatUnit(goal, "week") }),
+        earned: progress.best_week_streak >= goal
+      }))
+    ];
+    const badgeKey = `${currentLanguage()}:${badges.map(({ earned }) => Number(earned)).join("")}`;
+    if (badgeKey !== lastBadges) {
+      lastBadges = badgeKey;
+      required("#achievement-count").textContent = message2("outOf", {
+        count: formatNumber(badges.filter(({ earned }) => earned).length),
+        total: formatNumber(badges.length)
+      });
+      const list = required("#achievement-list");
+      list.textContent = "";
+      for (const badge of badges) {
+        const item = document.createElement("li");
+        item.classList.toggle("earned", badge.earned);
+        const state = document.createElement("span");
+        state.className = "visually-hidden";
+        state.textContent = `${message2(badge.earned ? "earned" : "locked")}. `;
+        item.append(state, badge.label());
+        list.append(item);
+      }
+    }
+  }
+  function paintReset(force = false) {
+    const now = Date.now();
+    const minute = Math.floor(now / 6e4);
+    if (!force && minute === resetMinute) return;
+    resetMinute = minute;
+    const { next, elapsed, minutesLeft } = utcReset(now);
+    const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
+    const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;
+    const countdown = message2("timeUntilReset", { time: remaining });
+    timeLeft.textContent = countdown;
+    resetMeter.value = elapsed / dayMilliseconds;
+    resetMeter.setAttribute("aria-valuetext", countdown);
+    resetTime.textContent = message2("localReset", {
+      time: new Date(next).toLocaleString(currentLanguage(), {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        timeZoneName: "short"
+      })
+    });
+  }
+  function showReset(show2) {
+    window.clearInterval(resetTimer);
+    if (!show2) return;
+    paintReset(true);
+    resetTimer = window.setInterval(paintReset, 1e3);
+  }
+
   // frontend/app.ts
   var views = {
     loading: required("#loading-view"),
@@ -3258,6 +3604,7 @@
     views.home.hidden = view !== "home";
     views.auth.hidden = view !== "login" && view !== "signup";
     views.game.hidden = !authenticated;
+    if (changed) showReset(authenticated);
     loginForm.hidden = view !== "login";
     signupForm.hidden = view !== "signup";
     required("#guest-nav").hidden = authenticated || view === "loading";
@@ -3459,6 +3806,7 @@
     if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks)
       return;
     displayedCounters = data;
+    renderProgress(data);
     for (const [id, count] of [
       ["click-count", clicks?.count ?? 0],
       ["day-streak", data.streak_counter_day?.count ?? 0],
@@ -3562,7 +3910,10 @@
     else resumeGame();
   });
   window.addEventListener("blur", () => identityEpoch++);
-  window.addEventListener("focus", resumeGame);
+  window.addEventListener("focus", () => {
+    if (currentView === "game") paintReset(true);
+    resumeGame();
+  });
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) refreshGame();
   });
@@ -4058,6 +4409,7 @@
     buttonLanguage.reset(currentLanguage());
     paintButtonLanguage(currentLanguage());
     renderCounters(displayedCounters, true);
+    if (currentView === "game") paintReset(true);
     updatePendingIndicator();
     updateGameControls();
     if (lastGameError) showGameError(lastGameError);

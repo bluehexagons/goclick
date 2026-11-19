@@ -116,6 +116,10 @@ async function harness(options = {}) {
     location: { origin: "https://goclick.example" },
     matchMedia: () => ({ matches: true, addEventListener() {} }),
     scrollTo() {},
+    setInterval() {
+      return 1;
+    },
+    clearInterval() {},
     clearTimeout(id) {
       timers.delete(id);
     },
@@ -1272,4 +1276,32 @@ test("a stale clipboard failure preserves focus on changed share options", async
   assert.equal(h.document.activeElement, option);
   assert.equal(h.element("#share-text").selected, undefined);
   assert.match(h.element("#share-status").textContent, /Clipboard unavailable/);
+});
+
+test("older click replies cannot roll back a more recent score or earned badges", async () => {
+  const h = await harness();
+  const slower = deferred();
+  const faster = deferred();
+  let sent = 0;
+  h.fetch(() => (++sent === 1 ? slower.promise : faster.promise));
+  const click = () => h.element("#click-button").fire("click");
+  const first = click();
+  const second = click();
+  const progress = {
+    recent_days: 127,
+    week_streak: 2,
+    best_day_streak: 7,
+    best_week_streak: 2,
+  };
+  faster.resolve(response({ ...counters(25), progress }));
+  await second;
+  assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
+  assert.equal(h.element("#week-streak").textContent, "2");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 8");
+  slower.resolve(
+    response({ ...counters(24), progress: { ...progress, recent_days: 63, best_day_streak: 6 } }),
+  );
+  await first;
+  assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 8");
 });

@@ -527,6 +527,12 @@
                   ></span>
                   <div><strong id="day-streak">0</strong><span data-i18n="days">days</span></div>
                 </article>
+                <article class="streak-card" data-i18n-title="weekRule">
+                  <span class="streak-icon" aria-hidden="true"
+                    ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#week" /></svg
+                  ></span>
+                  <div><strong id="week-streak">0</strong><span data-i18n="weeks">weeks</span></div>
+                </article>
                 <article class="streak-card">
                   <span class="streak-icon" aria-hidden="true"
                     ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month" /></svg
@@ -543,6 +549,49 @@
                 </article>
               </div>
             </aside>
+            <div class="progress-panel">
+              <section class="progress-section" aria-labelledby="fortnight-label">
+                <div class="progress-heading">
+                  <h2 id="fortnight-label" data-i18n="fortnightActivity">Fortnight activity</h2>
+                  <strong id="fortnight-score">0 / 100</strong>
+                </div>
+                <div id="activity-days" class="activity-days" aria-hidden="true"></div>
+                <p class="progress-caption" id="activity-count"></p>
+                <p class="progress-caption" data-i18n="activityNote">
+                  Based on the 14 days ending with your last click. Consecutive days earn bonus
+                  points.
+                </p>
+              </section>
+              <section
+                class="progress-section day-reset"
+                tabindex="0"
+                aria-labelledby="day-reset-label"
+                aria-describedby="day-reset-local"
+              >
+                <div class="progress-heading">
+                  <h2 id="day-reset-label" data-i18n="nextDay">Next streak day</h2>
+                  <span class="progress-utc" dir="ltr">00:00 UTC</span>
+                </div>
+                <progress
+                  id="day-reset-meter"
+                  value="0"
+                  max="1"
+                  aria-labelledby="day-reset-label"
+                ></progress>
+                <p class="progress-caption" id="day-reset-left"></p>
+                <span class="reset-tooltip" id="day-reset-local" role="tooltip"></span>
+              </section>
+              <details class="progress-section achievements">
+                <summary class="progress-heading">
+                  <span data-i18n="achievements">Achievements</span>
+                  <strong id="achievement-count" aria-live="polite">0 / 8</strong>
+                </summary>
+                <p class="progress-caption" data-i18n="weekRule">
+                  One saved click counts for the week, Monday through Sunday (UTC).
+                </p>
+                <ul id="achievement-list" class="achievement-list" role="list"></ul>
+              </details>
+            </div>
           </div>
         </section>
       </main>

@@ -28,6 +28,7 @@ import type { Language } from "./i18n.js";
 import type { MessageKey } from "./messages.js";
 import { parseStoredTimestamp } from "./timestamp.js";
 import type { User, Counters, GameState, Activation } from "./types.js";
+import { paintReset, renderProgress, showReset } from "./progress-panel.js";
 
 const views = {
   loading: $("#loading-view"),
@@ -160,6 +161,7 @@ function show(view: View) {
   views.home.hidden = view !== "home";
   views.auth.hidden = view !== "login" && view !== "signup";
   views.game.hidden = !authenticated;
+  if (changed) showReset(authenticated);
   loginForm.hidden = view !== "login";
   signupForm.hidden = view !== "signup";
   $("#guest-nav").hidden = authenticated || view === "loading";
@@ -411,6 +413,7 @@ function renderCounters(data: Counters, allowDecrease = false) {
   )
     return;
   displayedCounters = data;
+  renderProgress(data);
   for (const [id, count] of [
     ["click-count", clicks?.count ?? 0],
     ["day-streak", data.streak_counter_day?.count ?? 0],
@@ -524,7 +527,10 @@ document.addEventListener("visibilitychange", () => {
   else resumeGame();
 });
 window.addEventListener("blur", () => identityEpoch++);
-window.addEventListener("focus", resumeGame);
+window.addEventListener("focus", () => {
+  if (currentView === "game") paintReset(true);
+  resumeGame();
+});
 window.addEventListener("pageshow", (event) => {
   if (event.persisted) refreshGame();
 });
@@ -1048,6 +1054,7 @@ function applyLanguage() {
   buttonLanguage.reset(currentLanguage());
   paintButtonLanguage(currentLanguage());
   renderCounters(displayedCounters, true);
+  if (currentView === "game") paintReset(true);
   updatePendingIndicator();
   updateGameControls();
   if (lastGameError) showGameError(lastGameError);

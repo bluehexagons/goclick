@@ -26,6 +26,9 @@ func init() {
 		binary.BigEndian.PutUint32(key[8:], uint32(t.Nanosecond()))
 		return key
 	})
+	registerTimestampFunction("goclick_utc_day", func(t time.Time) driver.Value {
+		return utcDay(t)
+	})
 	registerTimestampFunction("goclick_utc_date", func(t time.Time) driver.Value {
 		return dateKey(t)
 	})

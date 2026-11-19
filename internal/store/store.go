@@ -43,9 +43,10 @@ type Counters struct {
 	MonthStreak   int64
 	YearStreak    int64
 	LastClickedAt *time.Time
+	Progress      ClickProgress
 }
 
-const schemaVersion = 5
+const schemaVersion = 6
 
 type schemaTable struct {
 	name    string
@@ -81,6 +82,13 @@ CREATE TABLE IF NOT EXISTS counters (
 	month_streak INTEGER NOT NULL DEFAULT 0 CHECK (month_streak >= 0),
 	year_streak INTEGER NOT NULL DEFAULT 0 CHECK (year_streak >= 0),
 	last_clicked_at TEXT
+);
+CREATE TABLE IF NOT EXISTS click_progress (
+	user_id INTEGER PRIMARY KEY REFERENCES counters(user_id) ON DELETE CASCADE,
+	recent_days INTEGER NOT NULL CHECK (recent_days BETWEEN 1 AND 16383 AND recent_days % 2 = 1),
+	week_streak INTEGER NOT NULL CHECK (week_streak >= 1),
+	best_day_streak INTEGER NOT NULL CHECK (best_day_streak >= 1),
+	best_week_streak INTEGER NOT NULL CHECK (best_week_streak >= week_streak)
 );
 CREATE TABLE IF NOT EXISTS rails_entities (
 	id INTEGER PRIMARY KEY,
@@ -223,7 +231,7 @@ func initializeSchema(ctx context.Context, db *sql.DB, currentVersion int) error
 	if _, err := tx.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("initialize database: %w", err)
 	}
-	if err := validateSchemaTables(ctx, tx, allSchemaTables()); err != nil {
+	if err := validateSchemaTables(ctx, tx, allSchemaTables(schemaVersion)); err != nil {
 		return fmt.Errorf("validate initialized database: %w", err)
 	}
 	if currentVersion < schemaVersion {
@@ -264,10 +272,7 @@ func validateExistingSchema(ctx context.Context, db *sql.DB, version int) error 
 		tables = append(tables, archiveSchemaTable)
 	}
 	if version >= 3 {
-		tables = allSchemaTables()
-		if version < 4 {
-			tables = tables[:len(tables)-1]
-		}
+		tables = allSchemaTables(version)
 	}
 	if err := validateSchemaTables(ctx, db, tables); err != nil {
 		return fmt.Errorf("database is not a compatible Go Click database: %w", err)
@@ -591,27 +596,13 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) error 
 }
 
 func (s *Store) CurrentCounters(ctx context.Context, userID int64) (Counters, error) {
-	var counters Counters
-	var last sql.NullString
-	err := s.db.QueryRowContext(ctx, `
-		SELECT click_count, day_streak, month_streak, year_streak, last_clicked_at
-		FROM counters WHERE user_id = ?`, userID).
-		Scan(&counters.Clicks, &counters.DayStreak, &counters.MonthStreak, &counters.YearStreak, &last)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Counters{}, nil
-	}
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
-		return Counters{}, fmt.Errorf("read counters: %w", err)
+		return Counters{}, fmt.Errorf("begin counters read: %w", err)
 	}
-	counters.Exists = true
-	if last.Valid {
-		parsed, err := parseTime(last.String)
-		if err != nil {
-			return Counters{}, fmt.Errorf("parse last click: %w", err)
-		}
-		counters.LastClickedAt = &parsed
-	}
-	return counters, nil
+	defer tx.Rollback()
+	counters, _, err := readCounters(ctx, tx, userID)
+	return counters, err
 }
 
 func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Counters, error) {
@@ -622,32 +613,20 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 	}
 	defer tx.Rollback()
 
-	var counters Counters
-	var last sql.NullString
-	err = tx.QueryRowContext(ctx, `
-		SELECT click_count, day_streak, month_streak, year_streak, last_clicked_at
-		FROM counters WHERE user_id = ?`, userID).
-		Scan(&counters.Clicks, &counters.DayStreak, &counters.MonthStreak, &counters.YearStreak, &last)
-	if errors.Is(err, sql.ErrNoRows) {
-		counters.Exists = true
-		counters.DayStreak = 1
-		counters.MonthStreak = 1
-		counters.YearStreak = 1
-	} else if err != nil {
-		return Counters{}, fmt.Errorf("read click counters: %w", err)
-	} else if last.Valid {
-		previous, err := parseTime(last.String)
-		if err != nil {
-			return Counters{}, fmt.Errorf("parse previous click: %w", err)
-		}
+	counters, progressSaved, err := readCounters(ctx, tx, userID)
+	if err != nil {
+		return Counters{}, err
+	}
+	previous := counters.LastClickedAt
+	if previous != nil {
 		// Concurrent requests can reach the transaction in a different order
 		// from their receipt timestamps. Never move a saved period backward.
-		if now.Before(previous) {
-			now = previous
+		if now.Before(*previous) {
+			now = *previous
 		}
-		counters.DayStreak = updateStreak(counters.DayStreak, dateKey(previous), dateKey(now), dateKey(now.AddDate(0, 0, -1)))
-		counters.MonthStreak = updateStreak(counters.MonthStreak, monthKey(previous), monthKey(now), previousMonthKey(now))
-		counters.YearStreak = updateStreak(counters.YearStreak, yearKey(previous), yearKey(now), yearKey(now.AddDate(-1, 0, 0)))
+		counters.DayStreak = updateStreak(counters.DayStreak, dateKey(*previous), dateKey(now), dateKey(now.AddDate(0, 0, -1)))
+		counters.MonthStreak = updateStreak(counters.MonthStreak, monthKey(*previous), monthKey(now), previousMonthKey(now))
+		counters.YearStreak = updateStreak(counters.YearStreak, yearKey(*previous), yearKey(now), yearKey(now.AddDate(-1, 0, 0)))
 	} else {
 		// Imported or manually repaired rows without a click timestamp have no
 		// period to compare against. Start a fresh streak on the next click.
@@ -655,6 +634,15 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		counters.MonthStreak = 1
 		counters.YearStreak = 1
 	}
+	newDay := previous == nil || utcDay(*previous) != utcDay(now)
+	if previous == nil {
+		counters.Progress.RecentDays = 1
+		counters.Progress.WeekStreak = 1
+		counters.Progress.BestWeekStreak = 1
+	} else if newDay {
+		counters.Progress.recordDays(utcDay(*previous), utcDay(now), utcDay(now))
+	}
+	counters.Progress.BestDayStreak = max(counters.Progress.BestDayStreak, counters.DayStreak)
 	counters.Clicks++
 	counters.Exists = true
 	counters.LastClickedAt = &now
@@ -671,6 +659,11 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 		userID, counters.Clicks, counters.DayStreak, counters.MonthStreak, counters.YearStreak, formatTime(now))
 	if err != nil {
 		return Counters{}, fmt.Errorf("save click: %w", err)
+	}
+	if newDay || !progressSaved {
+		if err := counters.Progress.save(ctx, tx, userID); err != nil {
+			return Counters{}, err
+		}
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO player_activity(user_id,action,occurred_at,click_count) VALUES (?, 'click', ?, ?)`, userID, formatTime(now), counters.Clicks); err != nil {
 		return Counters{}, fmt.Errorf("record click activity: %w", err)

@@ -394,7 +394,11 @@ func (a *App) current(w http.ResponseWriter, r *http.Request) {
 		a.internalError(w, r, "read counters", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, entityResponse(counters))
+	response := entityResponse(counters)
+	if r.URL.Path == "/entities/current" {
+		response.Progress = nil
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 // game keeps identity and counters bound to the same authenticated request.
@@ -441,7 +445,11 @@ func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 		a.internalError(w, r, "increment counters", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, entityResponse(counters))
+	response := entityResponse(counters)
+	if r.URL.Path == "/entities/increment" {
+		response.Progress = nil
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 type publicUserResponse struct {
@@ -467,15 +475,16 @@ type entity struct {
 }
 
 type entitiesResponse struct {
-	ClickCount         *entity `json:"click_count"`
-	StreakCounterDay   *entity `json:"streak_counter_day"`
-	StreakCounterMonth *entity `json:"streak_counter_month"`
-	StreakCounterYear  *entity `json:"streak_counter_year"`
+	ClickCount         *entity              `json:"click_count"`
+	StreakCounterDay   *entity              `json:"streak_counter_day"`
+	StreakCounterMonth *entity              `json:"streak_counter_month"`
+	StreakCounterYear  *entity              `json:"streak_counter_year"`
+	Progress           *store.ClickProgress `json:"progress,omitempty"`
 }
 
 func entityResponse(counters store.Counters) entitiesResponse {
 	if !counters.Exists {
-		return entitiesResponse{}
+		return entitiesResponse{Progress: &counters.Progress}
 	}
 	var modified *string
 	if counters.LastClickedAt != nil {
@@ -487,6 +496,7 @@ func entityResponse(counters store.Counters) entitiesResponse {
 		StreakCounterDay:   &entity{Count: counters.DayStreak, ModifiedTime: modified},
 		StreakCounterMonth: &entity{Count: counters.MonthStreak, ModifiedTime: modified},
 		StreakCounterYear:  &entity{Count: counters.YearStreak, ModifiedTime: modified},
+		Progress:           &counters.Progress,
 	}
 }
 

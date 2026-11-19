@@ -90,3 +90,42 @@ test("missing cross-tab coordination refuses a local write without changing the 
   );
   assert.equal(storage.get(game.key), saved);
 });
+
+test("older local saves seed progress from their daily streak and preserve badges across gaps", () => {
+  const { game, storage } = harness();
+  const time = "2026-01-05T00:00:00.000Z"; // Monday, ending a seven-day run.
+  storage.set(
+    game.key,
+    JSON.stringify({
+      format: "goclick-local",
+      version: 1,
+      counters: {
+        click_count: { count: 12, modified_time: time },
+        streak_counter_day: { count: 7, modified_time: time },
+      },
+    }),
+  );
+  assert.equal(game.read().progress.recent_days, 127);
+  assert.equal(game.increment(new Date(time)).progress.week_streak, 2);
+  assert.equal(game.increment(new Date("2026-01-12")).progress.week_streak, 3);
+  const result = game.increment(new Date("2026-02-01"));
+  assert.equal(result.progress.week_streak, 1);
+  assert.equal(result.progress.best_week_streak, 3);
+  assert.equal(result.progress.best_day_streak, 7);
+  assert.equal(result.progress.recent_days, 1);
+  assert.equal(game.increment(new Date("2026-01-31")).progress.recent_days, 1);
+  const snapshot = game.decode(game.encode(game.read()));
+  assert.equal(snapshot.progress.best_week_streak, 3);
+  assert.equal(snapshot.progress.best_day_streak, 7);
+});
+
+test("local imports reject invalid progress without replacing the saved game", () => {
+  const { game, storage } = harness();
+  const save = game.increment(new Date("2026-01-05"));
+  const before = storage.get(game.key);
+  assert.throws(() => game.replace({ ...save, progress: { ...save.progress, recent_days: 2 } }));
+  assert.throws(() =>
+    game.replace({ ...save, progress: { ...save.progress, best_week_streak: 0 } }),
+  );
+  assert.equal(storage.get(game.key), before);
+});

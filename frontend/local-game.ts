@@ -1,6 +1,7 @@
 import { isRecord } from "./dom.js";
+import { advanceProgress, fortnightMask, seedProgress, utcDay } from "./progress.js";
 import { counterKinds } from "./types.js";
-import type { Counters } from "./types.js";
+import type { ClickProgress, Counters } from "./types.js";
 
 // One local slot, intentionally unrelated to authentication or the account API.
 const localGame = (() => {
@@ -30,7 +31,38 @@ const localGame = (() => {
         modified_time: typeof time === "string" ? new Date(time).toISOString() : null,
       };
     }
+    const last = result.click_count?.modified_time;
+    const daily = result.streak_counter_day?.count ?? 0;
+    result.progress =
+      counters.progress == null
+        ? seedProgress(last, daily)
+        : validateProgress(counters.progress, last, daily);
     return result;
+  }
+  function validateProgress(
+    value: unknown,
+    last: string | null | undefined,
+    daily: number,
+  ): ClickProgress {
+    if (!isRecord(value)) throw new Error("Invalid local achievement progress.");
+    const { recent_days, week_streak, best_day_streak, best_week_streak } = value;
+    if (
+      !nonnegativeInteger(recent_days) ||
+      recent_days > fortnightMask ||
+      !nonnegativeInteger(week_streak) ||
+      !nonnegativeInteger(best_day_streak) ||
+      best_day_streak < daily ||
+      !nonnegativeInteger(best_week_streak) ||
+      best_week_streak < week_streak ||
+      Boolean(recent_days & 1) !== Boolean(last) ||
+      Boolean(week_streak) !== Boolean(last) ||
+      (last ? best_day_streak < 1 : recent_days !== 0 || best_week_streak !== 0)
+    )
+      throw new Error("Invalid local achievement progress.");
+    return { recent_days, week_streak, best_day_streak, best_week_streak };
+  }
+  function nonnegativeInteger(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
   }
   function decode(raw: string) {
     const save: unknown = JSON.parse(raw);
@@ -57,16 +89,15 @@ const localGame = (() => {
   function period(time: string, index: number) {
     const date = new Date(time);
     return index === 1
-      ? Math.floor(
-          Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000,
-        )
+      ? utcDay(date.getTime())
       : index === 2
         ? date.getUTCFullYear() * 12 + date.getUTCMonth()
         : date.getUTCFullYear();
   }
   function increment(now = new Date()) {
-    const counters = read(),
-      time = now.toISOString();
+    const counters = read();
+    const previous = counters.click_count?.modified_time;
+    const time = previous && Date.parse(previous) > now.getTime() ? previous : now.toISOString();
     for (const [index, kind] of kinds.entries()) {
       const old = counters[kind],
         count = old?.count ?? 0;
@@ -79,6 +110,12 @@ const localGame = (() => {
       }
       counters[kind] = { count: next, modified_time: time };
     }
+    counters.progress = advanceProgress(
+      counters.progress!,
+      previous,
+      time,
+      counters.streak_counter_day!.count,
+    );
     return write(counters);
   }
   // Operations are synchronous so an IndexedDB read/write transaction can

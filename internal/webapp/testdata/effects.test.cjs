@@ -117,8 +117,8 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
   const h = effects();
   const first = h.feedback.start(h.button, { detail: 1, clientX: 110, clientY: 160 });
   let popup = h.layer.children.at(-1);
-  assert.equal(popup.style.left, "90px");
-  assert.equal(popup.style.top, "120px");
+  assert.ok(Math.abs((Number.parseFloat(popup.style.left) * 340) / 100 - 90) < 0.01);
+  assert.equal(popup.style.top, "50%");
   assert.equal(popup.dataset.state, "pending");
   assert.equal(popup.animations.length, 0);
   first.success(50);
@@ -126,7 +126,7 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
   assert.match(popup.children[1].textContent, /50 ms/);
   const slow = h.feedback.start(h.button, { detail: 0 });
   popup = h.layer.children.at(-1);
-  assert.equal(popup.style.left, "170px");
+  assert.equal(popup.style.left, "50%");
   slow.success(900);
   assert.equal(popup.dataset.state, "slow");
   const failed = h.feedback.start(h.button, { detail: 0 });

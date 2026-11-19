@@ -49,8 +49,9 @@ const clickFeedback = (() => {
     popup.className = "click-bonus";
     popup.dataset.state = "pending";
     popup.setAttribute("aria-hidden", "true");
-    popup.style.left = `${x}px`;
-    popup.style.top = `${y}px`;
+    // Keep the anchor on the stage if the viewport changes while a reply is pending.
+    popup.style.left = `${(100 * x) / rect.width}%`;
+    popup.style.top = `${(100 * y) / rect.height}%`;
     popup.append(score, timing);
     required(".score-effects", stage).append(popup);
     tactileButtons.get(button)?.respond("pending");

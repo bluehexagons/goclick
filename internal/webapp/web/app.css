@@ -884,10 +884,10 @@ input:focus {
   width: 15px;
   height: 15px;
 }
-.streak-card:nth-child(2) .streak-icon {
+.streak-card:nth-child(3) .streak-icon {
   color: var(--teal);
 }
-.streak-card:nth-child(3) .streak-icon {
+.streak-card:nth-child(4) .streak-icon {
   color: var(--gold);
 }
 .streak-card div {
@@ -1554,4 +1554,168 @@ select {
 [lang="ar"] .local-mode-note,
 [lang="ar"] .streak-heading h2 {
   letter-spacing: normal;
+}
+
+.progress-panel {
+  margin-block-start: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.progress-section {
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #10151d;
+}
+.progress-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.progress-heading h2,
+.progress-heading strong,
+.achievements summary {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.progress-heading strong {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.activity-days {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 4px;
+  margin-block: 9px 6px;
+}
+.activity-days span {
+  height: 7px;
+  border-radius: 2px;
+  background: #343d4a;
+}
+.activity-days .active {
+  background: var(--gold);
+}
+.progress-caption,
+.progress-utc {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.progress-utc {
+  font-family: var(--mono);
+  margin: 0;
+  white-space: nowrap;
+}
+.day-reset {
+  cursor: help;
+}
+.day-reset progress {
+  display: block;
+  width: 100%;
+  height: 7px;
+  margin-block: 9px 6px;
+  border: none;
+  border-radius: 4px;
+  overflow: hidden;
+  color: var(--teal);
+  background: #343d4a;
+}
+.day-reset progress::-webkit-progress-bar {
+  background: #343d4a;
+}
+.day-reset progress::-webkit-progress-value {
+  background: var(--teal);
+}
+.day-reset progress::-moz-progress-bar {
+  background: var(--teal);
+}
+.reset-tooltip {
+  display: block;
+  margin-block-start: 5px;
+  font-size: 11px;
+  line-height: 1.4;
+  visibility: hidden;
+}
+.day-reset:hover .reset-tooltip,
+.day-reset:focus .reset-tooltip {
+  visibility: visible;
+}
+.achievements {
+  grid-column: 1 / -1;
+}
+.achievements summary {
+  cursor: pointer;
+  list-style: none;
+  justify-content: start;
+}
+.achievements summary::-webkit-details-marker {
+  display: none;
+}
+.achievements summary strong {
+  margin-inline-start: auto;
+}
+.achievements summary::after {
+  content: "+";
+  width: 1ch;
+  color: var(--muted);
+}
+.achievements[open] summary::after {
+  content: "−";
+}
+.achievement-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0;
+  margin: 9px 0 0;
+  list-style: none;
+  font-size: 12px;
+}
+.achievement-list li {
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--muted);
+}
+.achievement-list li::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+.achievement-list .earned {
+  color: var(--gold);
+  border-color: #ffc83d42;
+  background: #ffc83d0b;
+}
+.achievement-list .earned::before {
+  background: currentColor;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .achievement-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .progress-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -165,7 +165,8 @@ func TestBackupRestorePreservesDataAndRevokesSessions(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	legacy := seedArchivedPlayer(t, db, user.PasswordHash)
-	if _, err := db.Increment(ctx, user.ID, now); err != nil {
+	original, err := db.Increment(ctx, user.ID, now)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.db.Exec(`INSERT INTO rails_entities(id,user_id,kind,count,created_at,updated_at) VALUES(11,?,'custom_bonus',7,?,?),(12,?,NULL,NULL,?,?)`, user.ID, formatTime(now), formatTime(now), user.ID, formatTime(now), formatTime(now)); err != nil {
@@ -182,7 +183,7 @@ func TestBackupRestorePreservesDataAndRevokesSessions(t *testing.T) {
 	if err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatalf("snapshot permissions: %v %v", info, err)
 	}
-	if _, err := db.Increment(ctx, user.ID, now); err != nil {
+	if _, err := db.Increment(ctx, user.ID, now.AddDate(0, 0, 1)); err != nil {
 		t.Fatal(err)
 	}
 	createTestUser(t, db, "after_backup")
@@ -198,7 +199,7 @@ func TestBackupRestorePreservesDataAndRevokesSessions(t *testing.T) {
 		t.Fatalf("restored user: %+v %v", restored, err)
 	}
 	counters, err := db.CurrentCounters(ctx, user.ID)
-	if err != nil || counters.Clicks != 1 {
+	if err != nil || counters.Clicks != 1 || counters.Progress != original.Progress {
 		t.Fatalf("restored counters: %+v %v", counters, err)
 	}
 	entities, total, err := db.ArchivedEntities(ctx, user.ID, 25, 0)
@@ -325,7 +326,7 @@ func TestVersionTwoBackupCanBeRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(`DROP TABLE player_activity; DROP TABLE admin_audit; DROP TABLE rails_json_users; PRAGMA user_version=2`); err != nil {
+	if _, err := raw.Exec(`DROP TABLE click_progress; DROP TABLE player_activity; DROP TABLE admin_audit; DROP TABLE rails_json_users; PRAGMA user_version=2`); err != nil {
 		t.Fatal(err)
 	}
 	raw.Close()
@@ -348,7 +349,7 @@ func TestVersionThreeBackupCanBeRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(`DROP TABLE rails_json_users; DROP INDEX player_activity_sign_in; PRAGMA user_version=3`); err != nil {
+	if _, err := raw.Exec(`DROP TABLE click_progress; DROP TABLE rails_json_users; DROP INDEX player_activity_sign_in; PRAGMA user_version=3`); err != nil {
 		t.Fatal(err)
 	}
 	raw.Close()
@@ -376,7 +377,7 @@ func TestVersionFourBackupCanBeRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(`DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
+	if _, err := raw.Exec(`DROP TABLE click_progress; DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
 		t.Fatal(err)
 	}
 	raw.Close()
@@ -421,7 +422,7 @@ func TestActivityFilteringAndSignInSurviveVersionFourUpgrade(t *testing.T) {
 		}
 	}
 	path := dbPath(t, db)
-	if _, err := db.db.Exec(`DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
+	if _, err := db.db.Exec(`DROP TABLE click_progress; DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -433,7 +434,7 @@ func TestActivityFilteringAndSignInSurviveVersionFourUpgrade(t *testing.T) {
 	}
 	defer upgraded.Close()
 	var version int
-	if err := upgraded.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != 5 {
+	if err := upgraded.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != schemaVersion {
 		t.Fatalf("upgrade: version=%d, %v", version, err)
 	}
 	player, err := upgraded.AdminPlayer(ctx, first.ID)

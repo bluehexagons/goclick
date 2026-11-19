@@ -7,8 +7,8 @@ or `VACUUM INTO` to produce a consistent, standalone snapshot. Do not copy a
 live `.db` file with `cp`. See [SQLite's WAL documentation](https://www.sqlite.org/wal.html).
 
 Full backups preserve user IDs, password hashes, admin flags, timestamps,
-counters, the complete Rails entity archive, and session digests. Treat them
-as credentials-bearing private files. A public/admin JSON user-data report is
+counters, achievement progress, the complete Rails entity archive, and session
+digests. Treat them as credentials-bearing private files. A public/admin JSON user-data report is
 not a substitute for a recovery backup.
 
 Basaltwater makes a backup before replacement deployments and retains 14 copies
@@ -45,7 +45,7 @@ printf 'Verified backup: %s\n' "$backup"
 The checks require `integrity_check` to return exactly `ok` and
 `foreign_key_check` to return no rows. [Integrity checks do not check foreign
 keys](https://www.sqlite.org/pragma.html#pragma_integrity_check), so both matter.
-The current schema version is 5. Row counts and integrity checks do not prove
+The current schema version is 6. Row counts and integrity checks do not prove
 every application's value is correct; inspect representative accounts as well.
 On any failure, keep the error and distinguish the failed snapshot from verified
 backups. Do not apply retention deletion until the new snapshot is verified.
@@ -85,7 +85,7 @@ table/column checks alone do not establish that an untrusted upload is safe.
 2. Make and verify a fresh pre-restore backup with the procedure above, and
    retain its path independently from the chosen recovery snapshot.
 3. Set `backup` to the chosen recovery file and stage a private copy beside the
-   live database. The following block assumes a version-5 Go Click snapshot:
+   live database. The following block assumes a version-6 Go Click snapshot:
 
 ```bash
 test -f "$backup"
@@ -94,7 +94,7 @@ cp -- "$backup" "$restore"
 chmod 600 "$restore"
 test "$(sqlite3 -bail -readonly "$restore" 'PRAGMA integrity_check;')" = ok
 test -z "$(sqlite3 -bail -readonly "$restore" 'PRAGMA foreign_key_check;')"
-test "$(sqlite3 -bail -readonly "$restore" 'PRAGMA user_version;')" = 5
+test "$(sqlite3 -bail -readonly "$restore" 'PRAGMA user_version;')" = 6
 sqlite3 -bail "$restore" 'PRAGMA journal_mode=DELETE; DELETE FROM sessions;'
 ```
 
@@ -131,8 +131,8 @@ The admin panel also supports restore without replacing the live database file.
 It pauses this server's HTTP requests, validates the staged upload, saves a
 pre-restore snapshot, and copies known data columns into the trusted schema in
 one transaction. Existing audit history is retained, and all sessions are
-revoked. A failed transaction leaves live data intact. Version-2, version-3, version-4, and version-5
-snapshots are supported; the snapshot must contain an administrator. Other
+revoked. A failed transaction leaves live data intact. Snapshots from schema
+versions 2 through 6 are supported and must contain an administrator. Other
 service instances and other database writers must be stopped before panel recovery.
 See [administration](administration.md) for password verification, upload limits,
 and recovery-snapshot locations. The stopped-service procedure above remains

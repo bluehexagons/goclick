@@ -62,7 +62,11 @@ export function formatNumber(value: number, code = language): string {
   }
   return formatter.format(value);
 }
-export function formatUnit(value: number, unit: "day" | "month" | "year", code = language) {
+export function formatUnit(
+  value: number,
+  unit: "day" | "week" | "month" | "year",
+  code = language,
+) {
   return new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" }).format(value);
 }
 export function onLanguageChange(listener: () => void) {

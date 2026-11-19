@@ -2,8 +2,8 @@
 
 Go Click is the small, self-contained successor to
 [Minimal Clicker](https://github.com/bluehexagons/rails_test). It provides the
-same essentials—accounts, sign-in, clicking, and day/month/year streaks—with a
-Go server and a dependency-free browser frontend.
+same essentials—accounts, sign-in, clicking, and streaks—with a Go server and
+a dependency-free browser frontend.
 
 The server uses SQLite, embeds the frontend in its binary, and has two direct
 dependencies: a pure-Go SQLite driver and Go's bcrypt implementation.
@@ -35,6 +35,18 @@ your choice, and initially follows your browser language. Gameplay and shared
 stats support right-to-left Arabic. The button occasionally changes its label
 to another language until the next click. Account forms, storage options, and
 administration remain English.
+
+**Achievements** begin with lifetime click milestones (1, 25, 100, and 500),
+daily streaks of 3 and 7 days, and weekly streaks of 2 and 4 weeks. One saved
+click counts for a week, Monday through Sunday in UTC. Earned achievements
+survive breaks. Online and offline saves track progress separately.
+
+**Fortnight activity** scores the 14 UTC days ending on your last saved click.
+An active day earns 5 points, and each adjacent pair of active days earns 2
+bonus points. The game scales the result to 100 and rounds it to the nearest
+integer. A full 14 days earns 100. The first saved click of a new UTC day
+advances the window. The reset meter counts down to 00:00 UTC and shows your
+local reset time on hover or keyboard focus.
 
 Documentation:
 
@@ -99,6 +111,11 @@ and aggregate statistics remain JSON numbers.
 | `GET` | `/api/clicks` | Read click and streak counters |
 | `POST` | `/api/clicks` | Add one click and update streaks |
 | `GET` | `/up` | Health check |
+
+The `/api/clicks` and `/api/game` counters include a `progress` object with `week_streak`,
+`best_day_streak`, `best_week_streak`, and `recent_days`. The last field
+is a 14-bit activity mask, with the last saved click's UTC date in bit zero
+and earlier dates in increasing bit positions.
 
 The browser rechecks the game snapshot when it regains focus. A later return
 supersedes an older read still in flight. Changing accounts also updates an open
@@ -216,9 +233,11 @@ Activity history starts with this release; migrated all-time counters remain
 intact. [`docs/administration.md`](docs/administration.md) covers bootstrap
 commands, the admin API, and production recovery details.
 
-Schema 5 adds a small index containing only sign-in events, so player lookups
-do not scan their click history. Upgrades preserve accounts, sessions, counters,
-and archives. The panel continues to accept schema-2 through schema-4 backups.
+Schema 6 stores recent activity and streak records. It uses existing click
+history and the saved daily streak to initialize progress for older accounts,
+and uses the saved daily streak to initialize older offline saves. Upgrades
+preserve accounts, sessions, counters, and archives. The panel accepts schema-2
+through schema-6 backups.
 
 See [`docs/backups.md`](docs/backups.md) for full SQLite backups, data checks,
 restore rehearsal, and session revocation during recovery. Deployment backups

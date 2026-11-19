@@ -89,12 +89,12 @@ Ordinary admin JSON responses never include password hashes or session digests.
 **Export database** downloads a consistent SQLite snapshot made with
 [SQLite's `VACUUM INTO`](https://www.sqlite.org/lang_vacuum.html).
 The file includes password hashes, session digests, users, counters, archive
-rows, player activity, and audit history. Store it privately; it is a recovery
-artifact, not a report to share publicly.
+rows, achievement progress, player activity, and audit history. Store this
+recovery artifact privately.
 
-**Restore a database** accepts a full version-2, version-3, version-4, or
-version-5 Go Click SQLite snapshot, up to 128 MiB. Enter the current
-administrator's password and type `RESTORE` to confirm. Password attempts are
+**Restore a database** accepts a full Go Click SQLite snapshot from schema
+versions 2 through 6, up to 128 MiB. Enter the current administrator's password
+and type `RESTORE` to confirm. Password attempts are
 rate limited. JSON endpoints retain their 8 KiB body limit; restore uses a
 separately bounded multipart upload. Rails databases and JSON exports are no
 longer accepted; see the [intermediate-version migration procedure](migration.md).
