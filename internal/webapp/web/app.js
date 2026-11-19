@@ -305,7 +305,8 @@
     saved: { pitch: 1, end: 1.16, gain: 0.2 },
     slow: { pitch: 0.64, end: 0.77, gain: 0.18 },
     error: { pitch: 0.25, end: 0.16, gain: 0.22 },
-    limited: { pitch: 0.35, end: 0.28, gain: 0.18 }
+    limited: { pitch: 0.35, end: 0.28, gain: 0.18 },
+    hold: { pitch: 0.56, end: 0.58, gain: 0.065 }
   };
   function renderSound(profile2, cue, sampleRate, variation, random = Math.random) {
     const recipe = recipes[profile2];
@@ -746,7 +747,14 @@
       rotation: [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy]
     };
   }
-  function projectButtonPower(state, buttonWidth, loose = false) {
+  var holdDuration = 1e4;
+  var holdBeat = 2e3;
+  function holdLighting(elapsed) {
+    const charge = Math.min(1, Math.max(0, elapsed / holdDuration));
+    const beat = 0.5 + 0.5 * Math.cos(2 * Math.PI * elapsed / holdBeat);
+    return charge * (0.085 + 0.018 * beat);
+  }
+  function projectButtonPower(state, buttonWidth, plug = "seated") {
     const pose = projectButtonPose(state, buttonWidth);
     const { scale, recession, lift, cx, sx, cy, sy } = pose;
     const x = -35 * scale, y = 10 * scale, z = -16 - recession;
@@ -756,14 +764,14 @@
     const outletX = 0;
     const outletY = -12;
     const pull = Math.max(buttonWidth * 0.52, Math.hypot(state.x, state.y), 1);
-    const leanX = loose ? state.x / pull : 0;
-    const leanY = loose ? state.y / pull : 0;
-    const plugX = outletX + 7 * leanX;
-    const plugY = outletY + (loose ? 4 + 5 * leanY : 0);
-    const angle = -16 * leanX;
-    const radians = angle * Math.PI / 180;
-    const startX = plugX - 12 * Math.sin(radians);
-    const startY = plugY + 12 * Math.cos(radians);
+    const leanX = state.x / pull;
+    const leanY = state.y / pull;
+    const unplugged = plug === "unplugged";
+    const startX = unplugged ? endX - 22 + 15 * leanX : outletX + (plug === "loose" ? 4 * leanX : 0);
+    const startY = unplugged ? endY + buttonWidth * 0.24 + 48 : outletY + 12 + (plug === "loose" ? 2 + 3 * leanY : 0);
+    const angle = unplugged ? 162 - 24 * leanX : -8 * leanX;
+    const yaw = plug === "loose" ? leanX : 0;
+    const plugTransform = plug === "seated" ? `translate(${outletX} ${outletY})` : `translate(${startX} ${startY}) rotate(${angle}) skewY(${yaw * 21}) scale(${1 - Math.abs(yaw) * 0.3} ${plug === "loose" ? 1 - Math.abs(leanY) * 0.14 : 1}) translate(0 -12)`;
     const dx = endX - startX;
     const dy = endY - startY;
     const distance = Math.hypot(dx, dy);
@@ -773,7 +781,7 @@
     return {
       outletX,
       outletY,
-      plugTransform: loose ? `translate(${plugX} ${plugY}) rotate(${angle})` : `translate(${outletX} ${outletY})`,
+      plugTransform,
       cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
       endX,
       endY,
@@ -785,20 +793,33 @@
     let previous = null;
     const directions = /* @__PURE__ */ new Set();
     let pulls = 0;
+    let state = "seated";
     return {
       endPull() {
         previous = null;
       },
       pull(x, y, width) {
         const distance = Math.hypot(x, y);
-        const threshold = Math.max(84, width * 0.52);
+        if (state === "unplugged") return;
+        const threshold = state === "seated" ? Math.max(84, width * 0.52) : Math.max(105, width * 0.66);
         if (distance < threshold * 0.55) previous = null;
-        if (distance < threshold) return false;
+        if (distance < threshold) return;
         const direction = { x: x / distance, y: y / distance };
-        if (previous && previous.x * direction.x + previous.y * direction.y > 0.25) return false;
+        if (previous && previous.x * direction.x + previous.y * direction.y > 0.25) return;
         previous = direction;
-        directions.add(Math.abs(x) >= Math.abs(y) ? x > 0 ? 0 : 1 : y > 0 ? 2 : 3);
-        return ++pulls >= 4 && directions.size >= 3;
+        pulls++;
+        if (state === "seated") {
+          directions.add(Math.abs(x) >= Math.abs(y) ? x > 0 ? 0 : 1 : y > 0 ? 2 : 3);
+          if (pulls < 4 || directions.size < 3) return;
+          pulls = 0;
+          state = "loose";
+          return state;
+        }
+        if (pulls === 3) {
+          state = "unplugged";
+          return state;
+        }
+        return;
       }
     };
   }
@@ -855,7 +876,8 @@
     };
   }
   function projectButtonLettering(state) {
-    const charge = state.reducedMotion ? 0 : Math.max(0, Math.min(1, state.labelCharge ?? state.press));
+    const powered2 = state.powered !== false;
+    const charge = !powered2 || state.reducedMotion ? 0 : Math.max(0, Math.min(1, state.labelCharge ?? state.press));
     return {
       scaleX: 1 + charge * 0.22,
       scaleY: 1 + charge * 0.22,
@@ -864,7 +886,7 @@
         0.55,
         state.response * 0.45 + charge * 0.25 + (state.reducedMotion ? 0 : state.flash * 0.18)
       ),
-      light: state.reducedMotion ? Math.min(0.3, state.press * 0.3 + state.response * 0.25) : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
+      light: !powered2 ? 0 : state.reducedMotion ? Math.min(0.3, state.press * 0.3 + state.response * 0.25) : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
       charge,
       sheen: state.reducedMotion ? 1.35 : 0.35 + Math.sin((state.labelPhase ?? 0) * 8.8) * 0.5 + (1 - charge)
     };
@@ -938,6 +960,7 @@
     uniform float flash;
     uniform float response;
     uniform float responseProgress;
+    uniform float holdLight;
     uniform vec3 responseColor;
     uniform vec4 letteringPose;
     uniform vec2 letteringAccent;
@@ -979,7 +1002,7 @@
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
-      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse);
+      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse + holdLight);
       vec3 lightColor = response > 0. ? responseColor : vec3(.22, .72, .46);
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
@@ -1049,6 +1072,7 @@
       "flash",
       "response",
       "responseProgress",
+      "holdLight",
       "responseColor",
       "letteringPose",
       "letteringAccent",
@@ -1268,6 +1292,7 @@
       gl.uniform1f(uniforms.flash, state.flash || 0);
       gl.uniform1f(uniforms.response, state.response || 0);
       gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
+      gl.uniform1f(uniforms.holdLight, state.holdLight ?? 0);
       gl.uniform3f(uniforms.responseColor, ...state.responseColor || [0.38, 0.84, 0.8]);
       const letterPose = projectButtonLettering(state);
       gl.uniform4f(
@@ -1340,6 +1365,7 @@
   var motion = createSoundMotion();
   var profile = "classic";
   var enabled = false;
+  var powered = true;
   var context = null;
   var output = null;
   var suspending = null;
@@ -1497,6 +1523,11 @@
   });
   var clickSound = {
     play(kind) {
+      if (!powered) return;
+      if (kind === "hold") {
+        withAudio(false, (audio) => synthesize(audio, kind));
+        return;
+      }
       const physical = kind === "press" || kind === "release";
       withAudio(physical, (audio) => {
         const now = performance.now();
@@ -1509,6 +1540,10 @@
           responseWasFailure = failure;
         }
       });
+    },
+    setPowered(value) {
+      powered = value;
+      if (!powered) stop();
     },
     preview() {
       stop();
@@ -1549,7 +1584,8 @@
     "saved-keyboard",
     "saved-pointer",
     "touch-100",
-    "wrong-button"
+    "wrong-button",
+    "achievements"
   ];
   var trickPrefix = "goclick.trick.";
   var earnedTricks = /* @__PURE__ */ new Set();
@@ -1584,6 +1620,7 @@
   });
   var activations = /* @__PURE__ */ new WeakMap();
   var touchClicks = 0;
+  var savedTouchClicks = () => touchClicks;
   function rememberButtonActivation(event, activation) {
     activations.set(event, activation);
   }
@@ -1604,7 +1641,7 @@
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let paint2 = function() {
-      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugLoose) : null;
+      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState) : null;
       if (power && cable) {
         power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
         power.setAttribute(
@@ -1641,7 +1678,7 @@
       );
       const glow = Math.min(
         1.4,
-        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8
+        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8 + (current.holdLight ?? 0)
       );
       rig.style.setProperty("--glow-intensity", glow.toFixed(3));
       const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
@@ -1650,6 +1687,7 @@
         `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`
       );
       renderer?.draw(current);
+      if (readout) moveReadout2(readout);
       if (gameButton && power && cable && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
         const frame2 = power.getBoundingClientRect();
         const face = button.getBoundingClientRect();
@@ -1658,6 +1696,23 @@
         if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - 15 > 0 && x - 15 < face.left || x + 15 < window.innerWidth && x + 15 > face.right || y - 25 > 0 && y - 25 < face.top || y + 25 < window.innerHeight && y + 25 > face.bottom))
           unlockTrick("outlet");
       }
+    }, moveReadout2 = function(readout2) {
+      let offset = 0;
+      if (Math.abs(current.y) > 8) {
+        const face = button.getBoundingClientRect();
+        const text = readout2.getBoundingClientRect();
+        const top = text.top - readoutOffset;
+        const bottom = text.bottom - readoutOffset;
+        const clearance = 22;
+        if (face.bottom + clearance > top && face.top - clearance < bottom) {
+          const below = Math.ceil(face.bottom + clearance - top);
+          const above = Math.floor(face.top - clearance - bottom);
+          offset = bottom + below <= window.innerHeight - 8 ? below : Math.max(8 - top, above);
+        }
+      }
+      if (readoutOffset === offset) return;
+      readoutOffset = offset;
+      readout2.style.setProperty("--readout-offset", `${offset}px`);
     }, tick2 = function(time) {
       const dt = lastFrame ? clamp((time - lastFrame) / (1e3 / 60), 0.25, 2) : 1;
       lastFrame = time;
@@ -1689,8 +1744,10 @@
         if (progress < 1) moving = true;
         else releasedAt = null;
       }
-      if (current.press && !reducedMotion.matches) {
-        current.labelPhase = (time - pressedAt) / 1e3;
+      if (current.press && !reducedMotion.matches && current.powered !== false) {
+        const elapsed = time - pressedAt;
+        current.labelPhase = elapsed / 1e3;
+        if (gameButton) current.holdLight = holdLighting(elapsed);
         moving = true;
       }
       current.flash *= Math.pow(0.68, dt);
@@ -1731,8 +1788,10 @@
       coastUntil = 0;
       pressedAt = performance.now();
       releasedAt = null;
-      current.press = current.copper = 1;
-      current.labelCharge = reducedMotion.matches ? 0 : 1;
+      current.press = 1;
+      current.copper = current.powered === false ? 0 : 1;
+      current.labelCharge = reducedMotion.matches ? 0 : current.copper;
+      current.holdLight = 0;
       current.labelPhase = 0;
       target.pop = reducedMotion.matches ? 0 : -0.045;
       current.pop = target.pop;
@@ -1744,10 +1803,24 @@
         animate2();
       } else burst2(true);
       holdTimer = window.setTimeout(() => setPhase2("held"), 180);
+      if (gameButton && current.powered !== false) {
+        let nextBeat = holdBeat;
+        const onBeat = () => {
+          if (phase === "idle" || button.disabled || document.hidden || current.powered === false)
+            return;
+          const elapsed = performance.now() - pressedAt;
+          if (elapsed >= nextBeat) {
+            clickSound.play("hold");
+            nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
+          }
+          beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed));
+        };
+        beatTimer = window.setTimeout(onBeat, holdBeat);
+      }
       if (gameButton && !hasTrick("hold")) {
         achievementTimer = window.setTimeout(() => {
           if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
-        }, 1e4);
+        }, holdDuration);
       }
     }, aim2 = function(event) {
       const rect = stage.getBoundingClientRect();
@@ -1763,10 +1836,21 @@
         const pulledY = points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length;
         target.x = dragFromX + pulledX;
         target.y = dragFromY + pulledY;
-        if (gameButton && power && !plugLoose && plugPulls.pull(pulledX, pulledY, button.offsetWidth)) {
-          plugLoose = true;
-          power.dataset.loose = "true";
-          unlockTrick("loose-plug");
+        if (gameButton && power) {
+          const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
+          if (nextPlug) {
+            plugState = nextPlug;
+            power.dataset.plug = nextPlug;
+            if (nextPlug === "loose") unlockTrick("loose-plug");
+            else {
+              current.powered = false;
+              current.copper = current.flash = current.holdLight = current.labelCharge = 0;
+              clearResponse2();
+              effects.replaceChildren();
+              window.clearTimeout(beatTimer);
+              clickSound.setPowered(false);
+            }
+          }
         }
       }
       animate2();
@@ -1776,13 +1860,15 @@
       activeKey = null;
       window.clearTimeout(holdTimer);
       window.clearTimeout(achievementTimer);
+      window.clearTimeout(beatTimer);
+      current.holdLight = 0;
       const wasPressed = phase !== "idle";
       const quick = performance.now() - pressedAt < QUICK_TAP_MS;
       current.press = 0;
       if (cancelled) current.labelCharge = 0;
       target.pop = current.pop = velocity.pop = 0;
       releaseDuration = quick ? TAP_RELEASE_MS : HOLD_RELEASE_MS;
-      releaseCopper = wasPressed && !cancelled && !reducedMotion.matches ? quick ? 0.72 : 1 : 0;
+      releaseCopper = wasPressed && !cancelled && !reducedMotion.matches && current.powered !== false ? quick ? 0.72 : 1 : 0;
       current.copper = releaseCopper;
       releasedAt = releaseCopper ? performance.now() : null;
       current.flash = 0;
@@ -1809,6 +1895,7 @@
       current.responseColor = [1, 0.78, 0.32];
       delete stage.dataset.response;
     }, respond2 = function(state, milliseconds = 0) {
+      if (current.powered === false) return;
       current.responseColor = state === "error" ? [1, 0.49, 0.47] : state === "slow" ? [0.64, 0.54, 1] : state === "limited" ? [1, 0.58, 0.26] : state === "pending" ? [1, 0.78, 0.32] : state === "fast" ? [0.38, 0.8, 0.65] : [0.35, 0.67, 0.94];
       stage.dataset.response = state;
       responseDuration = clamp(300 + milliseconds * 0.4, 320, 800);
@@ -1827,11 +1914,15 @@
     }, burst2 = function(press = false) {
       if (reducedMotion.matches) return;
       const quick = press || releaseDuration === TAP_RELEASE_MS;
-      current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
       if (!press) {
         current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
         velocity.pop = quick ? 0.035 : 0.022;
       }
+      if (current.powered === false) {
+        animate2();
+        return;
+      }
+      current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
       paint2();
       animate2();
       const count = press ? 8 : quick ? 12 : 8;
@@ -1885,7 +1976,10 @@
     }, endPointer2 = function(event, cancelled = false) {
       if (!pointers.has(event.pointerId)) return;
       const rect = button.getBoundingClientRect();
-      const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      const slop = event.pointerType === "touch" ? 24 : 12;
+      const near = (dx, dy) => event.clientX >= rect.left + dx - slop && event.clientX <= rect.right + dx + slop && event.clientY >= rect.top + dy - slop && event.clientY <= rect.bottom + dy + slop;
+      const inViewport = event.clientX >= 0 && event.clientX < window.innerWidth && event.clientY >= 0 && event.clientY < window.innerHeight;
+      const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
       const point = pointers.get(event.pointerId);
       if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
       pointers.delete(event.pointerId);
@@ -1914,7 +2008,7 @@
         animate2();
       }
     };
-    paint = paint2, tick = tick2, animate = animate2, setPhase = setPhase2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, endPointer = endPointer2;
+    paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, endPointer = endPointer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -1924,7 +2018,9 @@
     const [outlet, plug] = power?.querySelectorAll(".power-outlet, .power-plug") ?? [];
     const gameButton = button.id === "click-button";
     const plugPulls = createPlugPullTracker();
-    let plugLoose = false;
+    let plugState = "seated";
+    const readout = gameButton ? document.querySelector(".game-readout") : null;
+    let readoutOffset = 0;
     const effects = document.createElement("div");
     effects.className = "button-effects";
     effects.setAttribute("aria-hidden", "true");
@@ -1955,7 +2051,7 @@
     let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
     let activatingRelease = null;
-    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, achievementTimer = 0, phase = "idle";
+    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, achievementTimer = 0, beatTimer = 0, phase = "idle";
     let responseStarted = null;
     let responseDuration = 500;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -2086,6 +2182,7 @@
     tactileButtons.set(button, { reset: reset2, respond: respond2 });
   }
   var paint;
+  var moveReadout;
   var tick;
   var animate;
   var setPhase;
@@ -2175,7 +2272,7 @@
     motion: "Turn on motion effects",
     motionHint: "Reduced motion is on. Turn on motion effects.",
     reload: "Reload counter",
-    controls: "Press with a mouse or touch, then release inside the button. Each finger counts separately. With the button focused, Space or Enter adds one click on release. Holding never adds extra clicks.",
+    controls: "Press with a mouse or touch, then release on or near the button. Each finger counts separately. With the button focused, Space or Enter adds one click on release. Holding never adds extra clicks.",
     loadError: "Couldn\u2019t load your counter. Try reloading it.",
     unconfirmedClick: "Couldn\u2019t confirm your click. Reload your counter to check whether it saved.",
     unsavedClick: "Your click wasn\u2019t saved. Check your connection and try again.",
@@ -3607,25 +3704,37 @@
     const language2 = currentLanguage();
     const clicks = data.click_count?.count ?? 0;
     const calendar = data.achievements ?? emptyClickAchievements;
+    const last = Date.parse(data.click_count?.modified_time ?? "");
+    const now = Date.now();
+    const sameDay = utcDay(last) === utcDay(now);
+    const sameWeek = utcWeek(utcDay(last)) === utcWeek(utcDay(now));
+    const sameMonth = Number.isFinite(last) && new Date(last).toISOString().slice(0, 7) === new Date(now).toISOString().slice(0, 7);
+    let hours = 0;
+    if (sameDay) {
+      for (let bits = calendar.hours; bits; bits >>>= 1) hours += bits & 1;
+    }
     const localized = language2 === "en" ? [] : requirements(language2);
-    function badge(icon, name, hint, description, earned, translation) {
+    function badge(icon, name, hint, description, earned2, translation, current, total) {
       return {
         icon,
         name,
         hint,
         description: translation ?? description,
         descriptionLanguage: translation ? language2 : "en",
-        earned
+        earned: earned2,
+        meter: current !== void 0 && total !== void 0 ? { count: earned2 ? total : Math.min(total, current), total } : void 0
       };
     }
-    return [
+    const badges2 = [
       badge(
         "medal",
         "Gone Click",
         "Every collection has a first badge.",
         "Saved you a click.",
         clicks >= 1,
-        localized[0]
+        localized[0],
+        clicks,
+        1
       ),
       badge(
         "clicks",
@@ -3633,7 +3742,9 @@
         "Give your click total a little momentum.",
         "Save 25 clicks in total.",
         clicks >= 25,
-        localized[1]
+        localized[1],
+        clicks,
+        25
       ),
       badge(
         "clicks",
@@ -3641,7 +3752,9 @@
         "Your click total is starting to tell a story.",
         "Save 100 clicks in total.",
         clicks >= 100,
-        localized[2]
+        localized[2],
+        clicks,
+        100
       ),
       badge(
         "clicks",
@@ -3649,7 +3762,9 @@
         "Keep adding to your all-time click total.",
         "Save 500 clicks in total.",
         clicks >= 500,
-        localized[3]
+        localized[3],
+        clicks,
+        500
       ),
       badge(
         "calendar",
@@ -3657,7 +3772,9 @@
         "A few days in a row will do it.",
         "Save a click on 3 consecutive UTC days.",
         progress.best_day_streak >= 3,
-        localized[4]
+        localized[4],
+        progress.best_day_streak,
+        3
       ),
       badge(
         "calendar",
@@ -3665,7 +3782,9 @@
         "Make the button part of your daily routine.",
         "Save a click on 7 consecutive UTC days.",
         progress.best_day_streak >= 7,
-        localized[5]
+        localized[5],
+        progress.best_day_streak,
+        7
       ),
       badge(
         "calendar",
@@ -3673,7 +3792,9 @@
         "Come back and click again next week.",
         "Save a click in 2 consecutive UTC weeks.",
         progress.best_week_streak >= 2,
-        localized[6]
+        localized[6],
+        progress.best_week_streak,
+        2
       ),
       badge(
         "calendar",
@@ -3681,49 +3802,69 @@
         "Keep that weekly routine going.",
         "Save a click in 4 consecutive UTC weeks.",
         progress.best_week_streak >= 4,
-        localized[7]
+        localized[7],
+        progress.best_week_streak,
+        4
       ),
       badge(
         "pace",
         "Busy Day",
         "Make today's click total stand out.",
         "Save 100 clicks in one UTC day.",
-        Boolean(calendar.earned & century)
+        Boolean(calendar.earned & century),
+        void 0,
+        sameDay ? calendar.day_clicks : 0,
+        100
       ),
       badge(
         "pace",
         "Brisk Pace",
         "Keep the clicks coming this week.",
         "Save 1,000 clicks in one Monday\u2013Sunday UTC week.",
-        Boolean(calendar.earned & fourDigits)
+        Boolean(calendar.earned & fourDigits),
+        void 0,
+        sameWeek ? calendar.week_clicks : 0,
+        1e3
       ),
       badge(
         "pace",
         "High Score",
         "See how many clicks you can rack up in a month.",
         "Save 5,000 clicks in one UTC calendar month.",
-        Boolean(calendar.earned & fiveGrand)
+        Boolean(calendar.earned & fiveGrand),
+        void 0,
+        sameMonth ? calendar.month_clicks : 0,
+        5e3
       ),
       badge(
         "pace",
         "Three Visits",
         "Give the button a little company throughout the day.",
         "Save a click in 3 different UTC hours on the same day.",
-        Boolean(calendar.earned & threeVisits)
+        Boolean(calendar.earned & threeVisits),
+        void 0,
+        hours,
+        3
       ),
       badge(
         "calendar",
         "Returning Clicker",
         "Drop in when you feel like it. The days add up.",
         "Save clicks on 10 different UTC days, with gaps allowed.",
-        calendar.active_days >= 10
+        calendar.active_days >= 10,
+        void 0,
+        calendar.active_days,
+        10
       ),
       badge(
         "calendar",
         "Welcome Back",
         "Come back from time to time as the calendar turns.",
         "Save clicks in 3 different UTC calendar months, with gaps allowed.",
-        calendar.active_months >= 3
+        calendar.active_months >= 3,
+        void 0,
+        calendar.active_months,
+        3
       ),
       badge(
         "discovery",
@@ -3765,14 +3906,20 @@
         "Alternative Press",
         "Try a different way to save a click.",
         "Save one click with the keyboard and one with a pointer, in either order.",
-        hasTrick("saved-keyboard") && hasTrick("saved-pointer")
+        hasTrick("saved-keyboard") && hasTrick("saved-pointer"),
+        void 0,
+        Number(hasTrick("saved-keyboard")) + Number(hasTrick("saved-pointer")),
+        2
       ),
       badge(
         "discovery",
         "Mobile Mogul",
         "See what you can do on a touchscreen.",
         "Save 100 clicks using touch in one session.",
-        hasTrick("touch-100")
+        hasTrick("touch-100"),
+        void 0,
+        savedTouchClicks(),
+        100
       ),
       badge(
         "discovery",
@@ -3780,8 +3927,29 @@
         "The game button has a few surprises.",
         "Click the game button with the middle or right mouse button.",
         hasTrick("wrong-button")
+      ),
+      badge(
+        "medal",
+        "Curiosity",
+        "See what else the game has to offer.",
+        "Open the Achievements screen.",
+        hasTrick("achievements")
       )
     ];
+    const earned = badges2.filter((entry) => entry.earned).length;
+    badges2.push(
+      badge(
+        "medal",
+        "Recursion",
+        "Build up your collection.",
+        "Earn 10 other achievements.",
+        earned >= 10,
+        void 0,
+        earned,
+        10
+      )
+    );
+    return badges2;
   }
 
   // frontend/achievement-panel.ts
@@ -3836,6 +4004,19 @@
     state.className = "achievement-state";
     state.textContent = message2(badge.earned ? "earned" : "locked");
     text.append(name, description);
+    if (showDetail && badge.meter) {
+      const { count, total } = badge.meter;
+      const row = document.createElement("div");
+      row.className = "achievement-card-progress";
+      const meter = document.createElement("progress");
+      meter.max = total;
+      meter.value = count;
+      meter.setAttribute("aria-label", badge.name);
+      const amount = document.createElement("span");
+      amount.textContent = message2("outOf", { count: formatNumber(count), total: formatNumber(total) });
+      row.append(meter, amount);
+      text.append(row);
+    }
     item.append(icon, state, text);
     return item;
   }
@@ -3901,7 +4082,7 @@
   }
   function renderAchievements(data, progress, announce) {
     const next = badgesFor(data, progress);
-    const key = `${currentLanguage()}:${next.map(({ earned }) => Number(earned)).join("")}`;
+    const key = `${currentLanguage()}:${next.map(({ earned, meter: meter2 }) => `${Number(earned)}-${meter2?.count ?? ""}`).join(",")}`;
     if (key === badgeKey) return;
     if (announce && badges.length) {
       queueNotice(
@@ -3916,8 +4097,8 @@
       total: formatNumber(badges.length)
     });
     const meter = required("#achievement-meter");
-    meter.value = count;
     meter.max = badges.length;
+    meter.value = count;
     if (!screen.hidden) paintAchievementList();
   }
 
@@ -4100,6 +4281,9 @@
   var localMode = gameSettings.mode() === "local";
   var lastOnlineCounters = null;
   var displayedCounters = {};
+  var lastClicks = /* @__PURE__ */ new Map();
+  var lastClickKey = () => localMode ? "local" : `account:${user?.id ?? ""}`;
+  var lastClick = required("#last-click");
   var gameReady = false;
   var pendingClicks = 0;
   var localSaveReplacing = false;
@@ -4178,6 +4362,8 @@
       showReset(player);
       if (view === "achievements") {
         hideAchievementNotice();
+        renderProgress(displayedCounters);
+        unlockTrick("achievements");
         paintAchievementList();
         required("#achievement-title").focus();
       } else if (view === "game") {
@@ -4400,9 +4586,22 @@
       element.textContent = formatted;
       if (!allowDecrease) animateNumber(element);
     }
-    required("#last-click").textContent = clicks?.modified_time ? message2("lastClick", {
-      time: parseStoredTimestamp(clicks.modified_time).toLocaleString(currentLanguage())
-    }) : message2("noClicks");
+    paintLastClick();
+  }
+  function rememberLastClick(data) {
+    const key = lastClickKey();
+    if (!lastClicks.has(key))
+      lastClicks.set(key, { time: data.click_count?.modified_time ?? null, saved: 0 });
+  }
+  function paintLastClick(saved = false) {
+    const entry = lastClicks.get(lastClickKey());
+    lastClick.hidden = !entry;
+    if (!entry) return;
+    if (saved) entry.saved = Math.min(6, entry.saved + 1);
+    const time = entry.time;
+    lastClick.textContent = time ? message2("lastClick", { time: parseStoredTimestamp(time).toLocaleString(currentLanguage()) }) : message2("noClicks");
+    lastClick.style.setProperty("--last-click-opacity", String(1 - entry.saved / 6));
+    lastClick.setAttribute("aria-hidden", String(entry.saved >= 6));
   }
   function openGame(initialGame, backgroundRefresh = false) {
     if (localMode) {
@@ -4435,6 +4634,7 @@
         generation2 = clickGeneration;
         counterLoadOwner = owner;
         lastOnlineCounters = state.counters;
+        rememberLastClick(state.counters);
         renderCounters(state.counters, true);
         if (optionsDialog.open) updateOptions();
         gameReady = true;
@@ -4656,6 +4856,7 @@
         headers: { "X-GoClick-User-ID": user.id }
       });
       if (generation2 !== clickGeneration) return;
+      paintLastClick(true);
       renderCounters(data, false, true);
       recordSavedButtonClick(event);
       if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
@@ -4803,7 +5004,9 @@
     showError("#game-error", "");
     retryGameButton.hidden = true;
     try {
-      renderCounters(data ?? localGame.read(), true);
+      const counters = data ?? localGame.read();
+      rememberLastClick(counters);
+      renderCounters(counters, true);
       gameReady = true;
       counterCard.setAttribute("aria-busy", "false");
       updateGameControls();
@@ -4869,6 +5072,7 @@
     try {
       const data = await localGame.change(() => localGame.increment());
       if (generation2 !== clickGeneration) return;
+      paintLastClick(true);
       renderCounters(data, false, true);
       recordSavedButtonClick(event);
       showError("#game-error", "");

@@ -23,6 +23,9 @@ function harness(reducedMotion = true, withPower = false) {
     props = new Map();
     children = [];
     animations = [];
+    replaceChildren() {
+      this.children.length = 0;
+    }
     get childElementCount() {
       return this.children.length;
     }
@@ -97,6 +100,7 @@ function harness(reducedMotion = true, withPower = false) {
     selector === ".button-rig" ? rig : selector === ".button-power" && withPower ? power : null;
   const document = Object.assign(new Element(), {
     hidden: false,
+    querySelector: () => null,
     querySelectorAll: () => [button],
     createElement: () => new Element(),
   });
@@ -104,6 +108,8 @@ function harness(reducedMotion = true, withPower = false) {
   let timerID = 0;
   const timers = new Map();
   const window = Object.assign(new Element(), {
+    innerWidth: 960,
+    innerHeight: 720,
     clearTimeout(id) {
       timers.delete(id);
     },
@@ -120,6 +126,7 @@ function harness(reducedMotion = true, withPower = false) {
   let frameCallback = null,
     now = 0;
   const sounds = [];
+  let powered = true;
   let soundCancellations = 0;
   const runtime = frontend(
     {
@@ -143,7 +150,12 @@ function harness(reducedMotion = true, withPower = false) {
       preferences: { motionPreference: { matches: reducedMotion, addEventListener() {} } },
       sound: {
         clickSound: {
-          play: (kind) => sounds.push(kind),
+          play(kind) {
+            if (powered) sounds.push(kind);
+          },
+          setPowered(value) {
+            powered = value;
+          },
           cancelPending: () => {
             soundCancellations++;
           },
@@ -195,7 +207,8 @@ function harness(reducedMotion = true, withPower = false) {
     hasFrame: () => !!frameCallback,
     clicks,
     runTimer(delay) {
-      for (const [id, timer] of timers) {
+      const scheduled = [...timers];
+      for (const [id, timer] of scheduled) {
         if (timer.delay === delay) {
           timers.delete(id);
           timer.callback();
@@ -661,12 +674,76 @@ test("long pulls in different directions unseat the plug without scoring a click
   assert.equal(h.hasTrick("loose-plug"), false);
   move(0, 160);
   assert.equal(h.hasTrick("loose-plug"), true);
-  assert.equal(h.power.dataset.loose, "true");
+  assert.equal(h.power.dataset.plug, "loose");
   assert.equal(h.outlet[0].attributes.get("transform"), "translate(0 -12)");
   assert.notEqual(h.outlet[1].attributes.get("transform"), "translate(0 -12)");
   h.pointer("pointercancel", 1);
   assert.equal(h.clicks.length, 0);
-  assert.equal(h.power.dataset.loose, "true");
+  assert.equal(h.power.dataset.plug, "loose");
+});
+
+test("continued pulls unplug the button, darkening it without disabling clicks", () => {
+  const h = harness(true, true);
+  h.pointer("pointerdown", 1);
+  for (const [x, y] of [
+    [190, 0],
+    [-190, 0],
+    [0, -190],
+    [0, 190],
+    [220, 0],
+    [0, -220],
+    [0, 220],
+  ]) {
+    h.stage.fire("pointermove", { pointerId: 1, clientX: 170 + x, clientY: 150 + y });
+  }
+  assert.equal(h.power.dataset.plug, "unplugged");
+  assert.ok(h.outlet[1].attributes.get("transform").includes("rotate("));
+  assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
+  const before = h.sounds.length;
+  h.controller.respond("fast");
+  assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
+  h.pointer("pointercancel", 1);
+  h.pointer("pointerdown", 1);
+  h.pointer("pointerup", 1);
+  assert.equal(h.clicks.length, 1);
+  assert.equal(h.sounds.length, before);
+  assert.equal(h.power.dataset.plug, "unplugged");
+});
+
+test("nearby releases count and fast drags can release ahead of the painted face", () => {
+  for (const [pointerType, x] of [
+    ["mouse", 370],
+    ["touch", 381],
+  ]) {
+    const h = harness(false);
+    h.pointer("pointerdown", 1, { pointerType, clientX: 349 });
+    h.pointer("pointerup", 1, { pointerType, clientX: x });
+    assert.equal(h.clicks.length, 1);
+    h.pointer("pointerdown", 1, { pointerType });
+    h.stage.fire("pointermove", { pointerId: 1, pointerType, clientX: 460, clientY: 150 });
+    h.pointer("pointerup", 1, { pointerType, clientX: 460 });
+    assert.equal(h.clicks.length, 2);
+  }
+});
+
+test("hold glow and its audio beat repeat after the achievement has been earned", () => {
+  const h = harness(false);
+  h.pointer("pointerdown", 1);
+  h.setTime(10_000);
+  h.runTimer(10_000);
+  h.frame(10_000);
+  assert.equal(h.hasTrick("hold"), true);
+  h.pointer("pointerup", 1);
+  h.pointer("pointerdown", 1);
+  h.setTime(12_000);
+  h.runTimer(2000);
+  h.frame(12_000);
+  assert.equal(h.sounds.at(-1), "hold");
+  assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0.38);
+  h.pointer("pointercancel", 1);
+  h.setTime(14_000);
+  h.runTimer(2000);
+  assert.equal(h.sounds.filter((kind) => kind === "hold").length, 1);
 });
 
 test("an auxiliary mouse click earns Wrong Button without activating the button", () => {

@@ -8,6 +8,7 @@ const tricks = [
   "saved-pointer",
   "touch-100",
   "wrong-button",
+  "achievements",
 ] as const;
 type Trick = (typeof tricks)[number];
 const trickPrefix = "goclick.trick.";
@@ -56,6 +57,7 @@ export interface ButtonActivation {
 }
 const activations = new WeakMap<Event, ButtonActivation>();
 let touchClicks = 0;
+export const savedTouchClicks = () => touchClicks;
 
 export function rememberButtonActivation(event: Event, activation: ButtonActivation) {
   activations.set(event, activation);

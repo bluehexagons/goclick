@@ -1,4 +1,4 @@
-export type SoundCue = "press" | "release" | "saved" | "slow" | "error" | "limited";
+export type SoundCue = "press" | "release" | "saved" | "slow" | "error" | "limited" | "hold";
 
 // Keep the chooser and validation on the same small, dependency-free catalog.
 export const soundProfiles = [
@@ -134,6 +134,7 @@ const responses = {
   slow: { pitch: 0.64, end: 0.77, gain: 0.18 },
   error: { pitch: 0.25, end: 0.16, gain: 0.22 },
   limited: { pitch: 0.35, end: 0.28, gain: 0.18 },
+  hold: { pitch: 0.56, end: 0.58, gain: 0.065 },
 };
 
 // Pure PCM synthesis, also usable without an audio device in regression tests.

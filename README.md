@@ -9,7 +9,7 @@ The server uses SQLite, embeds the frontend in its binary, and has two direct
 dependencies: a pure-Go SQLite driver and Go's bcrypt implementation.
 
 Press the textured metal button with a mouse, touch, pen, Space, or Enter.
-Each release inside the button adds one click; holding and cancelled gestures
+Each release on or near the button adds one click; holding and cancelled gestures
 never add extra clicks. Raised lettering grows and lights up on press, then
 returns with the copper-to-gold finish on release. Etched channels and floating
 +1 feedback show pending, saved, slow, and failed requests. **Options** includes

@@ -194,17 +194,19 @@
               <path class="power-cord cord-highlight" />
             </svg>
             <canvas class="button-scene" aria-hidden="true"></canvas>
-            <div class="button-rig">
-              <button
-                id="guest-click-button"
-                class="click-button"
-                type="button"
-                data-tactile-button
-                data-view="login"
-                aria-label="Click to log in"
-              >
-                <span class="button-label">Click!</span>
-              </button>
+            <div class="button-face">
+              <div class="button-rig">
+                <button
+                  id="guest-click-button"
+                  class="click-button"
+                  type="button"
+                  data-tactile-button
+                  data-view="login"
+                  aria-label="Click to log in"
+                >
+                  <span class="button-label">Click!</span>
+                </button>
+              </div>
             </div>
           </div>
           <p class="home-signup">
@@ -422,8 +424,8 @@
           </p>
           <div class="play-layout">
             <div id="counter-card" class="counter-card">
-              <p id="counter-label" class="counter-label">Saved clicks</p>
-              <div class="counter-total">
+              <span id="counter-label" class="visually-hidden">Saved clicks</span>
+              <div class="counter-total" role="group" aria-labelledby="counter-label">
                 <p id="click-count" class="counter-value" aria-live="polite">0</p>
                 <span id="pending-clicks" class="pending-count" hidden></span>
               </div>
@@ -438,10 +440,15 @@
                     <rect class="outlet-socket" x="-13" y="-26" width="26" height="22" rx="7" />
                     <path class="outlet-slots" d="M-5-20v6m10-6v6" />
                     <path class="outlet-ground" d="M-3-10a3 3 0 0 1 6 0v1h-6Z" />
+                    <g transform="translate(0 27)">
+                      <rect class="outlet-socket" x="-13" y="-26" width="26" height="22" rx="7" />
+                      <path class="outlet-slots" d="M-5-20v6m10-6v6" />
+                      <path class="outlet-ground" d="M-3-10a3 3 0 0 1 6 0v1h-6Z" />
+                    </g>
                     <circle class="outlet-led" cx="23.5" cy="-15" r="1.4" />
                   </g>
                   <g class="power-plug">
-                    <path class="plug-prongs" d="M-6-6v6M6-6v6" />
+                    <rect class="plug-edge" x="-16" y="-2" width="32" height="28" rx="8" />
                     <rect class="plug-body" x="-15" y="-1" width="30" height="26" rx="7" />
                     <path class="plug-ridges" d="M-10 6h20m-20 5h20m-20 5h20" />
                     <circle class="plug-grommet" cy="12" r="5.5" />
@@ -452,28 +459,24 @@
                 </svg>
                 <div class="score-effects" aria-hidden="true"></div>
                 <canvas class="button-scene" aria-hidden="true"></canvas>
-                <div class="button-rig">
-                  <button
-                    id="click-button"
-                    class="click-button"
-                    type="button"
-                    data-tactile-button
-                    aria-label="Click to increment score"
-                    data-i18n-aria-label="clickAction"
-                    aria-describedby="button-hint"
-                  >
-                    <span class="button-label">Click!</span>
-                  </button>
+                <div class="button-face">
+                  <div class="button-rig">
+                    <button
+                      id="click-button"
+                      class="click-button"
+                      type="button"
+                      data-tactile-button
+                      aria-label="Click to increment score"
+                      data-i18n-aria-label="clickAction"
+                      aria-describedby="button-hint"
+                    >
+                      <span class="button-label">Click!</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-              <p
-                id="last-click"
-                class="last-click"
-                title="Shown in your local time zone"
-                data-i18n-title="timezone"
-              >
-                No saved clicks yet.
-              </p>
+            </div>
+            <div class="game-readout">
               <div class="counter-actions">
                 <button
                   id="refresh-counter"
@@ -519,81 +522,93 @@
                 <span data-i18n="cooldown">Cooling down</span>
                 <span id="cooldown-time" aria-hidden="true"></span>
               </p>
-            </div>
-
-            <aside
-              class="streak-panel"
-              aria-label="Click streaks"
-              data-i18n-aria-label="streakLabel"
-            >
-              <div class="streak-heading">
-                <h2 data-i18n="streaks">Streaks</h2>
-                <span class="time-zone">UTC</span>
-              </div>
-              <div
-                class="streak-grid"
+              <aside
+                class="streak-panel"
                 aria-label="Click streaks"
                 data-i18n-aria-label="streakLabel"
               >
-                <article class="streak-card">
-                  <span class="streak-icon" aria-hidden="true"
-                    ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day" /></svg
-                  ></span>
-                  <div><strong id="day-streak">0</strong><span data-i18n="days">days</span></div>
-                  <button
-                    id="streak-reset-button"
-                    class="streak-reset-button"
-                    type="button"
-                    aria-label="Next streak day"
-                    data-i18n-aria-label="nextDay"
-                    aria-controls="streak-reset-details"
-                    aria-describedby="streak-reset-utc streak-reset-left streak-reset-local"
-                    aria-expanded="false"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <circle cx="12" cy="12" r="9" />
-                      <circle
-                        id="streak-reset-ring"
-                        cx="12"
-                        cy="12"
-                        r="9"
-                        pathLength="1"
-                        stroke-dasharray="0 1"
-                        transform="rotate(-90 12 12)"
-                      />
-                    </svg>
-                  </button>
-                </article>
-                <article class="streak-card" data-i18n-title="weekRule">
-                  <span class="streak-icon" aria-hidden="true"
-                    ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#week" /></svg
-                  ></span>
-                  <div><strong id="week-streak">0</strong><span data-i18n="weeks">weeks</span></div>
-                </article>
-                <article class="streak-card">
-                  <span class="streak-icon" aria-hidden="true"
-                    ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month" /></svg
-                  ></span>
-                  <div>
-                    <strong id="month-streak">0</strong><span data-i18n="months">months</span>
-                  </div>
-                </article>
-                <article class="streak-card">
-                  <span class="streak-icon" aria-hidden="true"
-                    ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#year" /></svg
-                  ></span>
-                  <div><strong id="year-streak">0</strong><span data-i18n="years">years</span></div>
-                </article>
-              </div>
-              <div id="streak-reset-details" class="streak-reset-details" hidden>
-                <strong data-i18n="nextDay">Next streak day</strong>
-                <p class="streak-reset-timing">
-                  <span id="streak-reset-utc" class="progress-utc" dir="ltr">00:00 UTC</span>
-                  <span id="streak-reset-left"></span>
-                </p>
-                <p id="streak-reset-local"></p>
-              </div>
-            </aside>
+                <div class="streak-heading">
+                  <h2 data-i18n="streaks">Streaks</h2>
+                  <span class="time-zone">UTC</span>
+                </div>
+                <div
+                  class="streak-grid"
+                  aria-label="Click streaks"
+                  data-i18n-aria-label="streakLabel"
+                >
+                  <article class="streak-card">
+                    <span class="streak-icon" aria-hidden="true"
+                      ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day" /></svg
+                    ></span>
+                    <div><strong id="day-streak">0</strong><span data-i18n="days">days</span></div>
+                    <button
+                      id="streak-reset-button"
+                      class="streak-reset-button"
+                      type="button"
+                      aria-label="Next streak day"
+                      data-i18n-aria-label="nextDay"
+                      aria-controls="streak-reset-details"
+                      aria-describedby="streak-reset-utc streak-reset-left streak-reset-local"
+                      aria-expanded="false"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" />
+                        <circle
+                          id="streak-reset-ring"
+                          cx="12"
+                          cy="12"
+                          r="9"
+                          pathLength="1"
+                          stroke-dasharray="0 1"
+                          transform="rotate(-90 12 12)"
+                        />
+                      </svg>
+                    </button>
+                  </article>
+                  <article class="streak-card" data-i18n-title="weekRule">
+                    <span class="streak-icon" aria-hidden="true"
+                      ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#week" /></svg
+                    ></span>
+                    <div>
+                      <strong id="week-streak">0</strong><span data-i18n="weeks">weeks</span>
+                    </div>
+                  </article>
+                  <article class="streak-card">
+                    <span class="streak-icon" aria-hidden="true"
+                      ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#month" /></svg
+                    ></span>
+                    <div>
+                      <strong id="month-streak">0</strong><span data-i18n="months">months</span>
+                    </div>
+                  </article>
+                  <article class="streak-card">
+                    <span class="streak-icon" aria-hidden="true"
+                      ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#year" /></svg
+                    ></span>
+                    <div>
+                      <strong id="year-streak">0</strong><span data-i18n="years">years</span>
+                    </div>
+                  </article>
+                </div>
+                <div id="streak-reset-details" class="streak-reset-details" hidden>
+                  <strong data-i18n="nextDay">Next streak day</strong>
+                  <p class="streak-reset-timing">
+                    <span id="streak-reset-utc" class="progress-utc" dir="ltr">00:00 UTC</span>
+                    <span id="streak-reset-left"></span>
+                  </p>
+                  <p id="streak-reset-local"></p>
+                </div>
+              </aside>
+              <p
+                id="last-click"
+                class="last-click"
+                title="Shown in your local time zone"
+                data-i18n-title="timezone"
+                hidden
+              >
+                No saved clicks yet.
+              </p>
+            </div>
             <div
               id="achievement-notice"
               class="achievement-notice"
@@ -634,11 +649,11 @@
               <div>
                 <h1 id="achievement-title" data-i18n="achievements" tabindex="-1">Achievements</h1>
                 <div class="achievement-summary">
-                  <strong id="achievement-count">0 / 22</strong>
+                  <strong id="achievement-count">0 / 24</strong>
                   <progress
                     id="achievement-meter"
                     value="0"
-                    max="22"
+                    max="24"
                     aria-label="Achievements"
                     data-i18n-aria-label="achievements"
                   ></progress>

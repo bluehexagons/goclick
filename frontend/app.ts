@@ -34,7 +34,7 @@ import {
   paintAchievementList,
   showAchievementNotices,
 } from "./achievement-panel.js";
-import { recordSavedButtonClick } from "./button-tricks.js";
+import { recordSavedButtonClick, unlockTrick } from "./button-tricks.js";
 import { paintReset, renderProgress, showReset } from "./progress-panel.js";
 
 const views = {
@@ -119,6 +119,9 @@ let user: User | null = null;
 let localMode = gameSettings.mode() === "local";
 let lastOnlineCounters: Counters | null = null;
 let displayedCounters: Counters = {};
+const lastClicks = new Map<string, { time: string | null; saved: number }>();
+const lastClickKey = () => (localMode ? "local" : `account:${user?.id ?? ""}`);
+const lastClick = $("#last-click");
 let gameReady = false;
 let pendingClicks = 0;
 let localSaveReplacing = false;
@@ -215,6 +218,8 @@ function show(view: View) {
     showReset(player);
     if (view === "achievements") {
       hideAchievementNotice();
+      renderProgress(displayedCounters);
+      unlockTrick("achievements");
       paintAchievementList();
       $("#achievement-title").focus();
     } else if (view === "game") {
@@ -488,11 +493,26 @@ function renderCounters(data: Counters, allowDecrease = false, announce = false)
     element.textContent = formatted;
     if (!allowDecrease) animateNumber(element);
   }
-  $("#last-click").textContent = clicks?.modified_time
-    ? t("lastClick", {
-        time: parseStoredTimestamp(clicks.modified_time).toLocaleString(currentLanguage()),
-      })
+  paintLastClick();
+}
+
+function rememberLastClick(data: Counters) {
+  const key = lastClickKey();
+  if (!lastClicks.has(key))
+    lastClicks.set(key, { time: data.click_count?.modified_time ?? null, saved: 0 });
+}
+
+function paintLastClick(saved = false) {
+  const entry = lastClicks.get(lastClickKey());
+  lastClick.hidden = !entry;
+  if (!entry) return;
+  if (saved) entry.saved = Math.min(6, entry.saved + 1);
+  const time = entry.time;
+  lastClick.textContent = time
+    ? t("lastClick", { time: parseStoredTimestamp(time).toLocaleString(currentLanguage()) })
     : t("noClicks");
+  lastClick.style.setProperty("--last-click-opacity", String(1 - entry.saved / 6));
+  lastClick.setAttribute("aria-hidden", String(entry.saved >= 6));
 }
 
 function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<void> {
@@ -528,6 +548,7 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
       generation = clickGeneration;
       counterLoadOwner = owner;
       lastOnlineCounters = state.counters;
+      rememberLastClick(state.counters);
       renderCounters(state.counters, true);
       if (optionsDialog.open) updateOptions();
       gameReady = true;
@@ -768,6 +789,7 @@ clickButton.addEventListener("click", async (event) => {
       headers: { "X-GoClick-User-ID": user.id },
     });
     if (generation !== clickGeneration) return;
+    paintLastClick(true);
     renderCounters(data, false, true);
     recordSavedButtonClick(event);
     if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
@@ -923,7 +945,9 @@ function openLocalGame(data?: Counters) {
   showError("#game-error", "");
   retryGameButton.hidden = true;
   try {
-    renderCounters(data ?? localGame.read(), true);
+    const counters = data ?? localGame.read();
+    rememberLastClick(counters);
+    renderCounters(counters, true);
     gameReady = true;
     counterCard.setAttribute("aria-busy", "false");
     updateGameControls();
@@ -994,6 +1018,7 @@ async function clickLocal(event: MouseEvent) {
     // Save immediately; simulated ping affects only the visual acknowledgement.
     const data = await localGame.change(() => localGame.increment());
     if (generation !== clickGeneration) return;
+    paintLastClick(true);
     renderCounters(data, false, true);
     recordSavedButtonClick(event);
     showError("#game-error", "");

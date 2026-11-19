@@ -31,7 +31,7 @@ async function harness(options = {}) {
     attributes = new Map();
     classes = new Set();
     dataset = {};
-    style = {};
+    style = { setProperty: (key, value) => (this.style[key] = value) };
     textContent = "";
     hidden = false;
     disabled = false;
@@ -1311,13 +1311,13 @@ test("older click replies cannot roll back a more recent score or earned badges"
   await second;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
   assert.equal(h.element("#week-streak").textContent, "2");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 22");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 24");
   slower.resolve(
     response({ ...counters(24), progress: { ...progress, recent_days: 63, best_day_streak: 6 } }),
   );
   await first;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 22");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 24");
 });
 
 test("achievements use their own view and a pending unlock waits for gameplay", async () => {
@@ -1337,7 +1337,7 @@ test("achievements use their own view and a pending unlock waits for gameplay", 
 
   pending.resolve(response(counters(25)));
   await click;
-  assert.equal(h.element("#achievement-count").textContent, "2 / 22");
+  assert.equal(h.element("#achievement-count").textContent, "3 / 24");
   assert.equal(toast.hidden, true);
   h.fetch(async () => response(game(25)));
   await h.context.refreshGame();
@@ -1348,7 +1348,7 @@ test("achievements use their own view and a pending unlock waits for gameplay", 
   assert.equal(achievementView.hidden, true);
   assert.equal(h.document.activeElement, button);
   assert.equal(toast.hidden, false);
-  assert.equal(h.element("#achievement-notice-names").textContent, "Sentence");
+  assert.equal(h.element("#achievement-notice-names").textContent, "Curiosity · Sentence");
 });
 
 test("loading the achievements URL opens its screen and reset times match gameplay", async () => {
@@ -1375,6 +1375,58 @@ test("loading the achievements URL opens its screen and reset times match gamepl
   assert.equal(h.element("#streak-reset-ring").attributes.get("stroke-dasharray"), `${elapsed} 1`);
 });
 
+test("Curiosity can be the tenth other achievement and earn Recursion once", async () => {
+  const tricks = [
+    "hold",
+    "outlet",
+    "keyboard",
+    "u-turn",
+    "loose-plug",
+    "saved-keyboard",
+    "saved-pointer",
+    "touch-100",
+    "wrong-button",
+  ];
+  const h = await harness({
+    initialFetch: async () => response(game(1)),
+    expectedCount: 1,
+    storage: tricks.map((trick) => [`goclick.trick.${trick}`, "1"]),
+  });
+  assert.equal(h.element("#achievement-count").textContent, "9 / 24");
+  h.element("#open-achievements").fire("click", { button: 0 });
+  assert.equal(h.element("#achievement-count").textContent, "11 / 24");
+  h.element("#back-to-game").fire("click", { button: 0 });
+  await settle();
+  assert.equal(h.element("#achievement-notice-names").textContent, "Curiosity · Recursion");
+  h.runTimers();
+  h.element("#open-achievements").fire("click", { button: 0 });
+  h.element("#back-to-game").fire("click", { button: 0 });
+  await settle();
+  assert.equal(h.element("#achievement-notice").hidden, true);
+});
+
+test("the last-click timestamp stays fixed and fades only after six confirmed saves", async () => {
+  const initial = { click_count: { count: 10, modified_time: "2026-10-10T10:10:00Z" } };
+  const h = await harness({
+    initialFetch: async () => response({ user: player, counters: initial }),
+  });
+  const last = h.element("#last-click");
+  const original = last.textContent;
+  assert.match(original, /10/);
+  h.fetch(async () => response({ error: "Save failed" }, 500));
+  await h.element("#click-button").fire("click");
+  assert.equal(last.style["--last-click-opacity"], "1");
+  for (let i = 1; i <= 6; i++) {
+    h.fetch(async () =>
+      response({ click_count: { count: 10 + i, modified_time: "2026-11-19T23:00:00Z" } }),
+    );
+    await h.element("#click-button").fire("click");
+    assert.equal(last.textContent, original);
+    assert.equal(Number(last.style["--last-click-opacity"]), 1 - i / 6);
+  }
+  assert.equal(last.attributes.get("aria-hidden"), "true");
+});
+
 test("new achievements announce without replaying loaded or synchronized badges", async () => {
   const h = await harness();
   const notice = h.element("#achievement-notice");
@@ -1383,7 +1435,7 @@ test("new achievements announce without replaying loaded or synchronized badges"
   assert.equal(notice.hidden, true);
   assert.equal(live.textContent, "");
   h.window.fire("storage", { key: "goclick.trick.hold", newValue: "1" });
-  assert.equal(h.element("#achievement-count").textContent, "2 / 22");
+  assert.equal(h.element("#achievement-count").textContent, "2 / 24");
   assert.equal(notice.hidden, true);
   h.fetch(async () => response({ error: "Save failed" }, 500));
   await button.fire("click");

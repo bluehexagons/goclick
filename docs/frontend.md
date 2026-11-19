@@ -45,7 +45,8 @@ for deliberate presses. New presses replace the current release effect rather
 than queueing animations. Pointer cancellation, leaving the stage after release,
 focus loss, and hiding the page reset transient interaction state.
 
-Mouse, touch, pen, Space, and Enter score once on release inside the button.
+Mouse, touch, pen, Space, and Enter score once on release. Pointer releases have a small tolerance around the
+button and its drag destination.
 Each captured finger is independent; holding, repeated keydown events, and
 cancelled/outside releases do not add clicks. Dragging can move the solid beyond
 its layout stage. Auto motion follows the system preference. Reduced follows

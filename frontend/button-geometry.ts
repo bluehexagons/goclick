@@ -34,8 +34,23 @@ export function projectButtonPose(state: ButtonState, buttonWidth: number) {
   };
 }
 
+export const holdDuration = 10_000;
+export const holdBeat = 2_000;
+
+export function holdLighting(elapsed: number) {
+  const charge = Math.min(1, Math.max(0, elapsed / holdDuration));
+  const beat = 0.5 + 0.5 * Math.cos((2 * Math.PI * elapsed) / holdBeat);
+  return charge * (0.085 + 0.018 * beat);
+}
+
+export type PlugState = "seated" | "loose" | "unplugged";
+
 // Attach the cord to the plug's grommet and the projected rear of the solid.
-export function projectButtonPower(state: ButtonState, buttonWidth: number, loose = false) {
+export function projectButtonPower(
+  state: ButtonState,
+  buttonWidth: number,
+  plug: PlugState = "seated",
+) {
   const pose = projectButtonPose(state, buttonWidth);
   const { scale, recession, lift, cx, sx, cy, sy } = pose;
   const x = -35 * scale,
@@ -48,14 +63,21 @@ export function projectButtonPower(state: ButtonState, buttonWidth: number, loos
   const outletX = 0;
   const outletY = -12;
   const pull = Math.max(buttonWidth * 0.52, Math.hypot(state.x, state.y), 1);
-  const leanX = loose ? state.x / pull : 0;
-  const leanY = loose ? state.y / pull : 0;
-  const plugX = outletX + 7 * leanX;
-  const plugY = outletY + (loose ? 4 + 5 * leanY : 0);
-  const angle = -16 * leanX;
-  const radians = (angle * Math.PI) / 180;
-  const startX = plugX - 12 * Math.sin(radians);
-  const startY = plugY + 12 * Math.cos(radians);
+  const leanX = state.x / pull;
+  const leanY = state.y / pull;
+  const unplugged = plug === "unplugged";
+  const startX = unplugged ? endX - 22 + 15 * leanX : outletX + (plug === "loose" ? 4 * leanX : 0);
+  const startY = unplugged
+    ? endY + buttonWidth * 0.24 + 48
+    : outletY + 12 + (plug === "loose" ? 2 + 3 * leanY : 0);
+  // Pivot through the grommet, so the cord follows its attachment even as the
+  // plug turns edge-on. A disconnected plug hangs from its cord below the face.
+  const angle = unplugged ? 162 - 24 * leanX : -8 * leanX;
+  const yaw = plug === "loose" ? leanX : 0;
+  const plugTransform =
+    plug === "seated"
+      ? `translate(${outletX} ${outletY})`
+      : `translate(${startX} ${startY}) rotate(${angle}) skewY(${yaw * 21}) scale(${1 - Math.abs(yaw) * 0.3} ${plug === "loose" ? 1 - Math.abs(leanY) * 0.14 : 1}) translate(0 -12)`;
   const dx = endX - startX;
   const dy = endY - startY;
   const distance = Math.hypot(dx, dy);
@@ -67,9 +89,7 @@ export function projectButtonPower(state: ButtonState, buttonWidth: number, loos
   return {
     outletX,
     outletY,
-    plugTransform: loose
-      ? `translate(${plugX} ${plugY}) rotate(${angle})`
-      : `translate(${outletX} ${outletY})`,
+    plugTransform,
     cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
     endX,
     endY,
@@ -84,20 +104,34 @@ export function createPlugPullTracker() {
   let previous: { x: number; y: number } | null = null;
   const directions = new Set<number>();
   let pulls = 0;
+  let state: PlugState = "seated";
   return {
     endPull() {
       previous = null;
     },
     pull(x: number, y: number, width: number) {
       const distance = Math.hypot(x, y);
-      const threshold = Math.max(84, width * 0.52);
+      if (state === "unplugged") return;
+      const threshold =
+        state === "seated" ? Math.max(84, width * 0.52) : Math.max(105, width * 0.66);
       if (distance < threshold * 0.55) previous = null;
-      if (distance < threshold) return false;
+      if (distance < threshold) return;
       const direction = { x: x / distance, y: y / distance };
-      if (previous && previous.x * direction.x + previous.y * direction.y > 0.25) return false;
+      if (previous && previous.x * direction.x + previous.y * direction.y > 0.25) return;
       previous = direction;
-      directions.add(Math.abs(x) >= Math.abs(y) ? (x > 0 ? 0 : 1) : y > 0 ? 2 : 3);
-      return ++pulls >= 4 && directions.size >= 3;
+      pulls++;
+      if (state === "seated") {
+        directions.add(Math.abs(x) >= Math.abs(y) ? (x > 0 ? 0 : 1) : y > 0 ? 2 : 3);
+        if (pulls < 4 || directions.size < 3) return;
+        pulls = 0;
+        state = "loose";
+        return state;
+      }
+      if (pulls === 3) {
+        state = "unplugged";
+        return state;
+      }
+      return;
     },
   };
 }
@@ -172,9 +206,11 @@ export function projectButtonScene(
 // Shared lettering pose keeps the DOM fallback and GPU atlas in step. Motion
 // comes from the existing press/rebound, so repeated clicks never queue effects.
 export function projectButtonLettering(state: ButtonState) {
-  const charge = state.reducedMotion
-    ? 0
-    : Math.max(0, Math.min(1, state.labelCharge ?? state.press));
+  const powered = state.powered !== false;
+  const charge =
+    !powered || state.reducedMotion
+      ? 0
+      : Math.max(0, Math.min(1, state.labelCharge ?? state.press));
   return {
     scaleX: 1 + charge * 0.22,
     scaleY: 1 + charge * 0.22,
@@ -183,9 +219,11 @@ export function projectButtonLettering(state: ButtonState) {
       0.55,
       state.response * 0.45 + charge * 0.25 + (state.reducedMotion ? 0 : state.flash * 0.18),
     ),
-    light: state.reducedMotion
-      ? Math.min(0.3, state.press * 0.3 + state.response * 0.25)
-      : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
+    light: !powered
+      ? 0
+      : state.reducedMotion
+        ? Math.min(0.3, state.press * 0.3 + state.response * 0.25)
+        : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
     charge,
     sheen: state.reducedMotion
       ? 1.35

@@ -1,10 +1,14 @@
 import { motionPreference } from "./preferences.js";
 import {
   createPlugPullTracker,
+  holdBeat,
+  holdDuration,
+  holdLighting,
   projectButtonLettering,
   projectButtonPose,
   projectButtonPower,
 } from "./button-geometry.js";
+import type { PlugState } from "./button-geometry.js";
 import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
 import { clickSound } from "./sound.js";
@@ -28,7 +32,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const [outlet, plug] = power?.querySelectorAll<SVGGElement>(".power-outlet, .power-plug") ?? [];
   const gameButton = button.id === "click-button";
   const plugPulls = createPlugPullTracker();
-  let plugLoose = false;
+  let plugState: PlugState = "seated";
+  const readout = gameButton ? document.querySelector<HTMLElement>(".game-readout") : null;
+  let readoutOffset = 0;
   const effects = document.createElement("div");
   effects.className = "button-effects";
   effects.setAttribute("aria-hidden", "true");
@@ -82,6 +88,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     releaseDuration = TAP_RELEASE_MS,
     holdTimer = 0,
     achievementTimer = 0,
+    beatTimer = 0,
     phase: "idle" | "pressed" | "held" = "idle";
   let responseStarted: number | null = null;
   let responseDuration = 500;
@@ -90,7 +97,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function paint() {
     const cable =
       power && stage.clientWidth && stage.clientHeight
-        ? projectButtonPower(current, button.offsetWidth, plugLoose)
+        ? projectButtonPower(current, button.offsetWidth, plugState)
         : null;
     if (power && cable) {
       power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
@@ -128,7 +135,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     );
     const glow = Math.min(
       1.4,
-      current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8,
+      current.copper * 0.38 +
+        current.flash * 0.65 +
+        current.response * 0.8 +
+        (current.holdLight ?? 0),
     );
     rig.style.setProperty("--glow-intensity", glow.toFixed(3));
     const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
@@ -137,6 +147,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`,
     );
     renderer?.draw(current);
+    if (readout) moveReadout(readout);
     if (
       gameButton &&
       power &&
@@ -163,6 +174,24 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       )
         unlockTrick("outlet");
     }
+  }
+  function moveReadout(readout: HTMLElement) {
+    let offset = 0;
+    if (Math.abs(current.y) > 8) {
+      const face = button.getBoundingClientRect();
+      const text = readout.getBoundingClientRect();
+      const top = text.top - readoutOffset;
+      const bottom = text.bottom - readoutOffset;
+      const clearance = 22;
+      if (face.bottom + clearance > top && face.top - clearance < bottom) {
+        const below = Math.ceil(face.bottom + clearance - top);
+        const above = Math.floor(face.top - clearance - bottom);
+        offset = bottom + below <= window.innerHeight - 8 ? below : Math.max(8 - top, above);
+      }
+    }
+    if (readoutOffset === offset) return;
+    readoutOffset = offset;
+    readout.style.setProperty("--readout-offset", `${offset}px`);
   }
   function tick(time: number) {
     const dt = lastFrame ? clamp((time - lastFrame) / (1000 / 60), 0.25, 2) : 1;
@@ -201,8 +230,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       if (progress < 1) moving = true;
       else releasedAt = null;
     }
-    if (current.press && !reducedMotion.matches) {
-      current.labelPhase = (time - pressedAt) / 1000;
+    if (current.press && !reducedMotion.matches && current.powered !== false) {
+      const elapsed = time - pressedAt;
+      current.labelPhase = elapsed / 1000;
+      if (gameButton) current.holdLight = holdLighting(elapsed);
       moving = true;
     }
     current.flash *= Math.pow(0.68, dt);
@@ -248,8 +279,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     coastUntil = 0;
     pressedAt = performance.now();
     releasedAt = null;
-    current.press = current.copper = 1;
-    current.labelCharge = reducedMotion.matches ? 0 : 1;
+    current.press = 1;
+    current.copper = current.powered === false ? 0 : 1;
+    current.labelCharge = reducedMotion.matches ? 0 : current.copper;
+    current.holdLight = 0;
     current.labelPhase = 0;
     target.pop = reducedMotion.matches ? 0 : -0.045;
     current.pop = target.pop;
@@ -261,10 +294,24 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       animate();
     } else burst(true);
     holdTimer = window.setTimeout(() => setPhase("held"), 180);
+    if (gameButton && current.powered !== false) {
+      let nextBeat = holdBeat;
+      const onBeat = () => {
+        if (phase === "idle" || button.disabled || document.hidden || current.powered === false)
+          return;
+        const elapsed = performance.now() - pressedAt;
+        if (elapsed >= nextBeat) {
+          clickSound.play("hold");
+          nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
+        }
+        beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed));
+      };
+      beatTimer = window.setTimeout(onBeat, holdBeat);
+    }
     if (gameButton && !hasTrick("hold")) {
       achievementTimer = window.setTimeout(() => {
         if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
-      }, 10_000);
+      }, holdDuration);
     }
   }
   function aim(event: Pick<PointerEvent, "clientX" | "clientY">) {
@@ -285,15 +332,21 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length;
       target.x = dragFromX + pulledX;
       target.y = dragFromY + pulledY;
-      if (
-        gameButton &&
-        power &&
-        !plugLoose &&
-        plugPulls.pull(pulledX, pulledY, button.offsetWidth)
-      ) {
-        plugLoose = true;
-        power.dataset.loose = "true";
-        unlockTrick("loose-plug");
+      if (gameButton && power) {
+        const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
+        if (nextPlug) {
+          plugState = nextPlug;
+          power.dataset.plug = nextPlug;
+          if (nextPlug === "loose") unlockTrick("loose-plug");
+          else {
+            current.powered = false;
+            current.copper = current.flash = current.holdLight = current.labelCharge = 0;
+            clearResponse();
+            effects.replaceChildren();
+            window.clearTimeout(beatTimer);
+            clickSound.setPowered(false);
+          }
+        }
       }
     }
     animate();
@@ -304,6 +357,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     activeKey = null;
     window.clearTimeout(holdTimer);
     window.clearTimeout(achievementTimer);
+    window.clearTimeout(beatTimer);
+    current.holdLight = 0;
     const wasPressed = phase !== "idle";
     const quick = performance.now() - pressedAt < QUICK_TAP_MS;
     current.press = 0;
@@ -312,7 +367,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     // Even a tap between frames gets a brief copper trace, without holding the
     // button down. A new press replaces this fade synchronously.
     releaseDuration = quick ? TAP_RELEASE_MS : HOLD_RELEASE_MS;
-    releaseCopper = wasPressed && !cancelled && !reducedMotion.matches ? (quick ? 0.72 : 1) : 0;
+    releaseCopper =
+      wasPressed && !cancelled && !reducedMotion.matches && current.powered !== false
+        ? quick
+          ? 0.72
+          : 1
+        : 0;
     current.copper = releaseCopper;
     releasedAt = releaseCopper ? performance.now() : null;
     current.flash = 0;
@@ -344,6 +404,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     delete stage.dataset.response;
   }
   function respond(state: ResponseState, milliseconds = 0) {
+    if (current.powered === false) return;
     current.responseColor =
       state === "error"
         ? [1, 0.49, 0.47]
@@ -376,11 +437,16 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function burst(press = false) {
     if (reducedMotion.matches) return;
     const quick = press || releaseDuration === TAP_RELEASE_MS;
-    current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
+
     if (!press) {
       current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
       velocity.pop = quick ? 0.035 : 0.022;
     }
+    if (current.powered === false) {
+      animate();
+      return;
+    }
+    current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
     paint();
     animate();
     // Small round sparks survive successive presses. Recolor the recent cloud
@@ -501,11 +567,20 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function endPointer(event: PointerEvent, cancelled = false) {
     if (!pointers.has(event.pointerId)) return;
     const rect = button.getBoundingClientRect();
-    const inside =
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom;
+    const slop = event.pointerType === "touch" ? 24 : 12;
+    const near = (dx: number, dy: number) =>
+      event.clientX >= rect.left + dx - slop &&
+      event.clientX <= rect.right + dx + slop &&
+      event.clientY >= rect.top + dy - slop &&
+      event.clientY <= rect.bottom + dy + slop;
+    // The release may beat the last frame of the spring. Accept the painted
+    // face and the face at the most recent drag target.
+    const inViewport =
+      event.clientX >= 0 &&
+      event.clientX < window.innerWidth &&
+      event.clientY >= 0 &&
+      event.clientY < window.innerHeight;
+    const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
     const point = pointers.get(event.pointerId)!;
     // A cancelled finger can be independent of another one still holding the
     // button. Neither cancellation nor an outside release may replay its press

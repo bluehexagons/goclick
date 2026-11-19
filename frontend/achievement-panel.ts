@@ -61,6 +61,19 @@ function card(badge: Badge) {
   state.className = "achievement-state";
   state.textContent = t(badge.earned ? "earned" : "locked");
   text.append(name, description);
+  if (showDetail && badge.meter) {
+    const { count, total } = badge.meter;
+    const row = document.createElement("div");
+    row.className = "achievement-card-progress";
+    const meter = document.createElement("progress");
+    meter.max = total;
+    meter.value = count;
+    meter.setAttribute("aria-label", badge.name);
+    const amount = document.createElement("span");
+    amount.textContent = t("outOf", { count: formatNumber(count), total: formatNumber(total) });
+    row.append(meter, amount);
+    text.append(row);
+  }
   item.append(icon, state, text);
   return item;
 }
@@ -136,7 +149,9 @@ export function showAchievementNotices() {
 
 export function renderAchievements(data: Counters, progress: ClickProgress, announce: boolean) {
   const next = badgesFor(data, progress);
-  const key = `${currentLanguage()}:${next.map(({ earned }) => Number(earned)).join("")}`;
+  const key = `${currentLanguage()}:${next
+    .map(({ earned, meter }) => `${Number(earned)}-${meter?.count ?? ""}`)
+    .join(",")}`;
   if (key === badgeKey) return;
   if (announce && badges.length) {
     queueNotice(
@@ -151,7 +166,7 @@ export function renderAchievements(data: Counters, progress: ClickProgress, anno
     total: formatNumber(badges.length),
   });
   const meter = $<HTMLProgressElement>("#achievement-meter");
-  meter.value = count;
   meter.max = badges.length;
+  meter.value = count;
   if (!screen.hidden) paintAchievementList();
 }

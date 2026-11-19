@@ -6,6 +6,7 @@ import type { SoundCue, SoundProfile } from "./sound-design.js";
 const motion = createSoundMotion();
 let profile: SoundProfile = "classic";
 let enabled = false;
+let powered = true;
 let context: AudioContext | null = null;
 let output: GainNode | null = null;
 let suspending: Promise<void> | null = null;
@@ -202,6 +203,11 @@ document.addEventListener("visibilitychange", () => {
 
 export const clickSound = {
   play(kind: SoundCue) {
+    if (!powered) return;
+    if (kind === "hold") {
+      withAudio(false, (audio) => synthesize(audio, kind));
+      return;
+    }
     const physical = kind === "press" || kind === "release";
     withAudio(physical, (audio) => {
       const now = performance.now();
@@ -217,6 +223,10 @@ export const clickSound = {
         responseWasFailure = failure;
       }
     });
+  },
+  setPowered(value: boolean) {
+    powered = value;
+    if (!powered) stop();
   },
   preview() {
     // Schedule on the audio clock; mute, hiding, and profile changes can stop

@@ -181,8 +181,8 @@ test("the lettering lights immediately on press, stays lit through a hold, and f
 
 test("the loose plug follows the drag while the cord stays attached to its grommet", () => {
   const { projectButtonPower } = frontend({}).load("button-geometry");
-  const right = projectButtonPower({ ...idle, x: 260 }, 420, true);
-  const left = projectButtonPower({ ...idle, x: -260 }, 420, true);
+  const right = projectButtonPower({ ...idle, x: 260 }, 420, "loose");
+  const left = projectButtonPower({ ...idle, x: -260 }, 420, "loose");
   const seated = projectButtonPower(idle, 420);
   assert.equal(seated.plugTransform, "translate(0 -12)");
   assert.ok(seated.cord.startsWith("M 0 0 "));
@@ -191,8 +191,18 @@ test("the loose plug follows the drag while the cord stays attached to its gromm
     [left, -1],
   ]) {
     assert.equal(cable.outletY, seated.outletY);
-    assert.equal(cable.plugTransform, `translate(${sign * 7} -8) rotate(${-sign * 16})`);
-    const anchorX = sign * (7 + 12 * Math.sin((16 * Math.PI) / 180));
-    assert.ok(Math.abs(Number(cable.cord.split(" ")[1]) - anchorX) < 0.001);
+    assert.equal(
+      cable.plugTransform,
+      `translate(${sign * 4} 2) rotate(${-sign * 8}) skewY(${sign * 21}) scale(0.7 1) translate(0 -12)`,
+    );
+    assert.ok(cable.cord.startsWith(`M ${sign * 4} 2 `));
   }
+});
+
+test("the disconnected plug moves with the button and hangs below its attachment", () => {
+  const { projectButtonPower } = frontend({}).load("button-geometry");
+  const cable = projectButtonPower({ ...idle, x: 210, y: 140 }, 420, "unplugged");
+  const [, , plugY] = cable.cord.split(" ").map(Number);
+  assert.ok(plugY - cable.endY > 140);
+  assert.equal(cable.outletY, -12);
 });

@@ -49,6 +49,8 @@ export interface Activation {
 }
 export interface ButtonState {
   reducedMotion?: boolean;
+  powered?: boolean;
+  holdLight?: number;
   labelCharge?: number;
   labelPhase?: number;
   x: number;

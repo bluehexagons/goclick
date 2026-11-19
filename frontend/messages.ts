@@ -77,7 +77,7 @@ export const english = {
   motionHint: "Reduced motion is on. Turn on motion effects.",
   reload: "Reload counter",
   controls:
-    "Press with a mouse or touch, then release inside the button. Each finger counts separately. With the button focused, Space or Enter adds one click on release. Holding never adds extra clicks.",
+    "Press with a mouse or touch, then release on or near the button. Each finger counts separately. With the button focused, Space or Enter adds one click on release. Holding never adds extra clicks.",
   loadError: "Couldn’t load your counter. Try reloading it.",
   unconfirmedClick: "Couldn’t confirm your click. Reload your counter to check whether it saved.",
   unsavedClick: "Your click wasn’t saved. Check your connection and try again.",

@@ -564,13 +564,6 @@ input:focus {
 .counter-card[aria-busy="true"] {
   opacity: 0.7;
 }
-.counter-label {
-  margin: 0;
-  color: var(--muted);
-  font: 11px var(--mono);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 .counter-value {
   margin: 6px 0 0;
   font-size: clamp(48px, 8vw, 68px);
@@ -604,12 +597,19 @@ input:focus {
   width: min(340px, 100%);
   height: 240px;
   margin: 6px auto 24px;
+}
+.button-face {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: grid;
   place-items: center;
   perspective: 850px;
+  pointer-events: none;
 }
 .button-scene {
   position: absolute;
+  z-index: 1;
   left: 0;
   top: 0;
   width: 100%;
@@ -683,15 +683,13 @@ input:focus {
   transform: translate(-1px, -1px);
   opacity: 0.7;
 }
-.plug-prongs {
-  display: none;
-  fill: none;
-  stroke: #9e8868;
-  stroke-width: 2.5;
-  stroke-linecap: round;
+.plug-edge {
+  fill: #0b111a;
+  stroke: #606b79;
 }
-.button-power[data-loose="true"] .plug-prongs {
-  display: block;
+.button-power[data-plug="unplugged"] .outlet-led {
+  fill: #465361;
+  filter: none;
 }
 .plug-grommet {
   fill: #080d15;
@@ -744,6 +742,7 @@ input:focus {
   color: #432d0d;
   transform: translateZ(calc(18px - var(--press, 0) * 24px));
   cursor: pointer;
+  pointer-events: auto;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -827,7 +826,7 @@ input:focus {
 .button-effects {
   position: absolute;
   inset: -20px 0;
-  z-index: 2;
+  z-index: 3;
   overflow: hidden;
   pointer-events: none;
 }
@@ -841,7 +840,16 @@ input:focus {
   background: var(--spark-color, var(--gold));
   box-shadow: 0 0 5px var(--spark-color, var(--gold));
 }
+.game-readout {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+  translate: 0 var(--readout-offset, 0px);
+}
 .last-click {
+  opacity: var(--last-click-opacity, 1);
+  transition: opacity 0.38s ease;
+  text-align: center;
   color: var(--muted);
   font: 11px/1.5 var(--mono);
   margin: 0;
@@ -1560,7 +1568,6 @@ select {
 .share-dialog[dir="rtl"] textarea {
   text-align: start;
 }
-[lang="ar"] .counter-label,
 [lang="ar"] .last-click,
 [lang="ar"] .local-mode-note,
 [lang="ar"] .streak-heading h2 {
@@ -1732,7 +1739,8 @@ select {
   font: 600 13px var(--mono);
   white-space: nowrap;
 }
-#achievement-meter {
+#achievement-meter,
+.achievement-card-progress progress {
   appearance: none;
   width: clamp(45px, 9vw, 112px);
   height: 5px;
@@ -1742,13 +1750,16 @@ select {
   background: #493d27;
   color: var(--gold);
 }
-#achievement-meter::-webkit-progress-bar {
+#achievement-meter::-webkit-progress-bar,
+.achievement-card-progress progress::-webkit-progress-bar {
   background: #493d27;
 }
-#achievement-meter::-webkit-progress-value {
+#achievement-meter::-webkit-progress-value,
+.achievement-card-progress progress::-webkit-progress-value {
   background: var(--gold);
 }
-#achievement-meter::-moz-progress-bar {
+#achievement-meter::-moz-progress-bar,
+.achievement-card-progress progress::-moz-progress-bar {
   background: var(--gold);
 }
 .achievement-page {
@@ -1783,6 +1794,18 @@ select {
 }
 [dir="rtl"] #back-to-game .icon {
   transform: scaleX(-1);
+}
+.achievement-card-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block-start: 9px;
+  color: var(--muted);
+  font: 11px var(--mono);
+}
+.achievement-card-progress progress {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .achievement-title h1 {
   margin: 0;

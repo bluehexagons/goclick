@@ -75,6 +75,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     uniform float flash;
     uniform float response;
     uniform float responseProgress;
+    uniform float holdLight;
     uniform vec3 responseColor;
     uniform vec4 letteringPose;
     uniform vec2 letteringAccent;
@@ -116,7 +117,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
-      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse);
+      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse + holdLight);
       vec3 lightColor = response > 0. ? responseColor : vec3(.22, .72, .46);
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
@@ -187,6 +188,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     "flash",
     "response",
     "responseProgress",
+    "holdLight",
     "responseColor",
     "letteringPose",
     "letteringAccent",
@@ -423,6 +425,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     gl.uniform1f(uniforms.flash, state.flash || 0);
     gl.uniform1f(uniforms.response, state.response || 0);
     gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
+    gl.uniform1f(uniforms.holdLight, state.holdLight ?? 0);
     gl.uniform3f(uniforms.responseColor, ...(state.responseColor || [0.38, 0.84, 0.8]));
     const letterPose = projectButtonLettering(state);
     gl.uniform4f(
