@@ -30,6 +30,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const power = stage.querySelector<SVGSVGElement>(".button-power");
   const cords = power?.querySelectorAll<SVGPathElement>(".power-cord");
   const [outlet, plug] = power?.querySelectorAll<SVGGElement>(".power-outlet, .power-plug") ?? [];
+  const plugEdge = stage.querySelector<SVGRectElement>(".plug-edge");
   const gameButton = button.id === "click-button";
   const plugPulls = createPlugPullTracker();
   let plugState: PlugState = "seated";
@@ -108,6 +109,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       for (const cord of cords ?? []) cord.setAttribute("d", cable.cord);
       outlet?.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
       plug?.setAttribute("transform", cable.plugTransform);
+      plugEdge?.setAttribute("transform", cable.plugEdgeTransform);
     }
     current.reducedMotion = reducedMotion.matches;
     const lettering = projectButtonLettering(current);

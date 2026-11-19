@@ -62,22 +62,37 @@ export function projectButtonPower(
   // The outlet itself is fixed under the resting face.
   const outletX = 0;
   const outletY = -12;
-  const pull = Math.max(buttonWidth * 0.52, Math.hypot(state.x, state.y), 1);
+  const pullDistance = Math.hypot(state.x, state.y);
+  const pull = Math.max(buttonWidth * 0.52, pullDistance, 1);
   const leanX = state.x / pull;
-  const leanY = state.y / pull;
-  const unplugged = plug === "unplugged";
-  const startX = unplugged ? endX - 22 + 15 * leanX : outletX + (plug === "loose" ? 4 * leanX : 0);
-  const startY = unplugged
-    ? endY + buttonWidth * 0.24 + 48
-    : outletY + 12 + (plug === "loose" ? 2 + 3 * leanY : 0);
-  // Pivot through the grommet, so the cord follows its attachment even as the
-  // plug turns edge-on. A disconnected plug hangs from its cord below the face.
-  const angle = unplugged ? 162 - 24 * leanX : -8 * leanX;
-  const yaw = plug === "loose" ? leanX : 0;
-  const plugTransform =
-    plug === "seated"
-      ? `translate(${outletX} ${outletY})`
-      : `translate(${startX} ${startY}) rotate(${angle}) skewY(${yaw * 21}) scale(${1 - Math.abs(yaw) * 0.3} ${plug === "loose" ? 1 - Math.abs(leanY) * 0.14 : 1}) translate(0 -12)`;
+  let startX = outletX;
+  let startY = outletY + 12;
+  let plugTransform = `translate(${outletX} ${outletY})`;
+  let plugEdgeTransform = "";
+  if (plug === "loose") {
+    // Tip around the axis perpendicular to the pull. The orthographic
+    // projection foreshortens the face only along the pull direction.
+    const towardX = state.x / (pullDistance || 1);
+    const towardY = state.y / (pullDistance || 1);
+    const tilt = (Math.PI / 5) * (pullDistance / pull);
+    const foreshortening = 1 - Math.cos(tilt);
+    const a = 1 - foreshortening * towardX * towardX;
+    const b = -foreshortening * towardX * towardY;
+    const d = 1 - foreshortening * towardY * towardY;
+    const depth = 8;
+    const reach = depth * Math.sin(tilt);
+    startX += reach * towardX;
+    startY += reach * towardY;
+    plugTransform = `translate(${startX} ${startY}) matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
+    // Counter the front's offset in local coordinates to keep the back seated
+    // over the socket. The cord starts at the projected front grommet.
+    const setback = -depth * Math.tan(tilt);
+    plugEdgeTransform = `translate(${setback * towardX} ${setback * towardY})`;
+  } else if (plug === "unplugged") {
+    startX = endX - 22 + 15 * leanX;
+    startY = endY + buttonWidth * 0.24 + 48;
+    plugTransform = `translate(${startX} ${startY}) rotate(${162 - 24 * leanX}) translate(0 -12)`;
+  }
   const dx = endX - startX;
   const dy = endY - startY;
   const distance = Math.hypot(dx, dy);
@@ -90,6 +105,7 @@ export function projectButtonPower(
     outletX,
     outletY,
     plugTransform,
+    plugEdgeTransform,
     cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
     endX,
     endY,

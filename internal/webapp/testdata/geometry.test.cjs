@@ -179,23 +179,38 @@ test("the lettering lights immediately on press, stays lit through a hold, and f
   assert.equal(reduced.scaleX, 1);
 });
 
-test("the loose plug follows the drag while the cord stays attached to its grommet", () => {
+test("the loose plug tips toward the pull with its back over the socket and cord on its face", () => {
   const { projectButtonPower } = frontend({}).load("button-geometry");
-  const right = projectButtonPower({ ...idle, x: 260 }, 420, "loose");
-  const left = projectButtonPower({ ...idle, x: -260 }, 420, "loose");
   const seated = projectButtonPower(idle, 420);
   assert.equal(seated.plugTransform, "translate(0 -12)");
   assert.ok(seated.cord.startsWith("M 0 0 "));
-  for (const [cable, sign] of [
-    [right, 1],
-    [left, -1],
+  for (const [x, y] of [
+    [260, 0],
+    [-260, 0],
+    [0, -260],
+    [-180, 180],
   ]) {
+    const cable = projectButtonPower({ ...idle, x, y }, 420, "loose");
+    assert.equal(cable.outletX, seated.outletX);
     assert.equal(cable.outletY, seated.outletY);
-    assert.equal(
-      cable.plugTransform,
-      `translate(${sign * 4} 2) rotate(${-sign * 8}) skewY(${sign * 21}) scale(0.7 1) translate(0 -12)`,
-    );
-    assert.ok(cable.cord.startsWith(`M ${sign * 4} 2 `));
+    const [frontX, frontY] = cable.plugTransform
+      .match(/^translate\(([^)]+)\)/)[1]
+      .split(" ")
+      .map(Number);
+    const [a, b, c, d] = cable.plugTransform
+      .match(/matrix\(([^)]+)\)/)[1]
+      .split(" ")
+      .map(Number);
+    const [backX, backY] = cable.plugEdgeTransform
+      .match(/translate\(([^)]+)\)/)[1]
+      .split(" ")
+      .map(Number);
+    assert.ok(cable.cord.startsWith(`M ${frontX} ${frontY} `));
+    assert.ok(frontX * x + frontY * y > 0, "The plug's front moves toward the pull");
+    assert.ok(Math.abs(frontX + a * backX + c * backY) < 1e-9);
+    assert.ok(Math.abs(frontY + b * backX + d * backY) < 1e-9);
+    assert.ok(Math.hypot(a * x + c * y, b * x + d * y) < Math.hypot(x, y));
+    assert.ok(Math.abs(Math.hypot(-a * y + c * x, -b * y + d * x) - Math.hypot(x, y)) < 1e-9);
   }
 });
 

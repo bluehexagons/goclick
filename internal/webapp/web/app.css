@@ -687,6 +687,9 @@ input:focus {
   fill: #0b111a;
   stroke: #606b79;
 }
+.button-power[data-plug="loose"] .plug-edge {
+  stroke: #3a4452;
+}
 .button-power[data-plug="unplugged"] .outlet-led {
   fill: #465361;
   filter: none;
