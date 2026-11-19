@@ -643,3 +643,35 @@ test("a continuous hold unlocks after ten seconds while cancellation clears the 
   h.pointer("pointerup", 1);
   assert.equal(h.clicks.length, 1);
 });
+
+test("long pulls in different directions unseat the plug without scoring a click", () => {
+  const h = harness(true, true);
+  const move = (x, y) =>
+    h.stage.fire("pointermove", {
+      pointerId: 1,
+      pointerType: "touch",
+      clientX: 170 + x,
+      clientY: 150 + y,
+    });
+  h.pointer("pointerdown", 1);
+  move(150, 0);
+  for (const x of [180, 145, 160, 165, 185]) move(x, 0);
+  move(-160, 0);
+  move(0, -160);
+  assert.equal(h.hasTrick("loose-plug"), false);
+  move(0, 160);
+  assert.equal(h.hasTrick("loose-plug"), true);
+  assert.equal(h.power.dataset.loose, "true");
+  assert.equal(h.outlet[0].attributes.get("transform"), "translate(0 -12)");
+  assert.notEqual(h.outlet[1].attributes.get("transform"), "translate(0 -12)");
+  h.pointer("pointercancel", 1);
+  assert.equal(h.clicks.length, 0);
+  assert.equal(h.power.dataset.loose, "true");
+});
+
+test("an auxiliary mouse click earns Wrong Button without activating the button", () => {
+  const h = harness();
+  assert.equal(h.button.fire("auxclick", { button: 2 }), false);
+  assert.equal(h.hasTrick("wrong-button"), true);
+  assert.equal(h.clicks.length, 0);
+});

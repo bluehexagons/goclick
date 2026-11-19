@@ -27,7 +27,8 @@ import {
 import type { Language } from "./i18n.js";
 import type { MessageKey } from "./messages.js";
 import { parseStoredTimestamp } from "./timestamp.js";
-import type { User, Counters, GameState, Activation } from "./types.js";
+import type { User, Counters, GameState } from "./types.js";
+import { recordSavedButtonClick } from "./button-tricks.js";
 import { paintReset, renderProgress, showReset } from "./progress-panel.js";
 
 const views = {
@@ -706,6 +707,7 @@ clickButton.addEventListener("click", async (event) => {
     });
     if (generation !== clickGeneration) return;
     renderCounters(data);
+    recordSavedButtonClick(event);
     if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
       lastOnlineCounters = data;
     feedback.success(performance.now() - started);
@@ -914,7 +916,7 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
     optionsDialog.showModal();
   }
 });
-async function clickLocal(event: Activation) {
+async function clickLocal(event: MouseEvent) {
   if (!gameReady || localSaveReplacing) return;
   const feedback = clickFeedback.start(clickButton, event, true),
     generation = clickGeneration,
@@ -929,6 +931,7 @@ async function clickLocal(event: Activation) {
     const data = await localGame.change(() => localGame.increment());
     if (generation !== clickGeneration) return;
     renderCounters(data);
+    recordSavedButtonClick(event);
     showError("#game-error", "");
     window.setTimeout(() => {
       if (generation !== clickGeneration) return;

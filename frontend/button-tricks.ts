@@ -1,4 +1,14 @@
-const tricks = ["hold", "outlet", "keyboard"] as const;
+const tricks = [
+  "hold",
+  "outlet",
+  "keyboard",
+  "u-turn",
+  "loose-plug",
+  "saved-keyboard",
+  "saved-pointer",
+  "touch-100",
+  "wrong-button",
+] as const;
 type Trick = (typeof tricks)[number];
 const trickPrefix = "goclick.trick.";
 const earnedTricks = new Set<Trick>();
@@ -36,3 +46,27 @@ window.addEventListener("storage", (event) => {
     for (const listener of listeners) listener();
   }
 });
+
+// Metadata is attached only to the controller's release event and is counted
+// after the game confirms the save. A native or synthetic click alone has no
+// input information, and rejected clicks cannot advance these achievements.
+export interface ButtonActivation {
+  source: "keyboard" | "pointer" | "touch";
+  uTurn?: boolean;
+}
+const activations = new WeakMap<Event, ButtonActivation>();
+let touchClicks = 0;
+
+export function rememberButtonActivation(event: Event, activation: ButtonActivation) {
+  activations.set(event, activation);
+}
+
+export function recordSavedButtonClick(event: Event) {
+  const activation = activations.get(event);
+  if (!activation) return;
+  activations.delete(event);
+  unlockTrick(activation.source === "keyboard" ? "saved-keyboard" : "saved-pointer");
+  if (activation.uTurn) unlockTrick("u-turn");
+  if (activation.source === "touch" && !hasTrick("touch-100") && ++touchClicks === 100)
+    unlockTrick("touch-100");
+}

@@ -39,42 +39,42 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
     };
   }
   return [
-    badge("First Click", "Save your first click.", clicks >= 1, localized[0]),
-    badge("Warm-Up", "Save 25 clicks in total.", clicks >= 25, localized[1]),
-    badge("Getting the Hang of It", "Save 100 clicks in total.", clicks >= 100, localized[2]),
-    badge("Old Reliable", "Save 500 clicks in total.", clicks >= 500, localized[3]),
+    badge("Gone Click", "Saved you a click.", clicks >= 1, localized[0]),
+    badge("Sentence", "Save 25 clicks in total.", clicks >= 25, localized[1]),
+    badge("Paragraph", "Save 100 clicks in total.", clicks >= 100, localized[2]),
+    badge("Essay", "Save 500 clicks in total.", clicks >= 500, localized[3]),
     badge(
-      "Three in a Row",
+      "Clicks for Days",
       "Save a click on 3 consecutive UTC days.",
       progress.best_day_streak >= 3,
       localized[4],
     ),
     badge(
-      "Seven in a Row",
+      "One-Week Streak",
       "Save a click on 7 consecutive UTC days.",
       progress.best_day_streak >= 7,
       localized[5],
     ),
     badge(
-      "See You Next Week",
+      "Good to See You Again",
       "Save a click in 2 consecutive UTC weeks.",
       progress.best_week_streak >= 2,
       localized[6],
     ),
     badge(
-      "Weekly Regular",
+      "Double Fortnight",
       "Save a click in 4 consecutive UTC weeks.",
       progress.best_week_streak >= 4,
       localized[7],
     ),
-    badge("Century", "Save 100 clicks in one UTC day.", Boolean(calendar.earned & century)),
+    badge("Busy Day", "Save 100 clicks in one UTC day.", Boolean(calendar.earned & century)),
     badge(
-      "Four Digits",
+      "Brisk Pace",
       "Save 1,000 clicks in one Monday–Sunday UTC week.",
       Boolean(calendar.earned & fourDigits),
     ),
     badge(
-      "Five Grand",
+      "High Score",
       "Save 5,000 clicks in one UTC calendar month.",
       Boolean(calendar.earned & fiveGrand),
     ),
@@ -84,29 +84,42 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       Boolean(calendar.earned & threeVisits),
     ),
     badge(
-      "Ten Days Your Way",
+      "Returning Clicker",
       "Save clicks on 10 different UTC days, with gaps allowed.",
       calendar.active_days >= 10,
     ),
     badge(
-      "Familiar Face",
+      "Welcome Back",
       "Save clicks in 3 different UTC calendar months, with gaps allowed.",
       calendar.active_months >= 3,
     ),
-    badge(
-      "Hold That Thought",
-      "Keep the button pressed for 10 seconds without releasing it.",
-      hasTrick("hold"),
-    ),
-    badge(
-      "Behind the Button",
-      "Drag the button far enough to reveal the outlet.",
-      hasTrick("outlet"),
-    ),
+    badge("Hold It", "Hold the button down for a while.", hasTrick("hold")),
+    badge("Behind the Button", "Drag the button far enough.", hasTrick("outlet")),
     badge(
       "Key Player",
       "Press and release Space or Enter with the game button focused.",
       hasTrick("keyboard"),
+    ),
+    badge(
+      "U-Turn",
+      "Drag the button away, bring it back to where it started, and release to save a click.",
+      hasTrick("u-turn"),
+    ),
+    badge(
+      "That Seems Unsafe",
+      "Pull the button in different directions until the plug comes loose.",
+      hasTrick("loose-plug"),
+    ),
+    badge(
+      "Alternative Press",
+      "Save one click with the keyboard and one with a pointer, in either order.",
+      hasTrick("saved-keyboard") && hasTrick("saved-pointer"),
+    ),
+    badge("Mobile Mogul", "Save 100 clicks using touch in one session.", hasTrick("touch-100")),
+    badge(
+      "Wrong Button",
+      "Click the game button with the middle or right mouse button.",
+      hasTrick("wrong-button"),
     ),
   ];
 }

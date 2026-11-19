@@ -746,16 +746,26 @@
       rotation: [cy, sx * sy, -cx * sy, 0, cx, sx, sy, -sx * cy, cx * cy]
     };
   }
-  function projectButtonPower(state, buttonWidth) {
+  function projectButtonPower(state, buttonWidth, loose = false) {
     const pose = projectButtonPose(state, buttonWidth);
     const { scale, recession, lift, cx, sx, cy, sy } = pose;
     const x = -35 * scale, y = 10 * scale, z = -16 - recession;
     const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
     const endX = (cy * x + sy * z + pose.x) * factor;
     const endY = (sx * sy * x + cx * y - sx * cy * z + pose.y) * factor;
-    const outletX = 0, outletY = -12;
-    const startY = outletY + 12;
-    const dx = endX - outletX, dy = endY - startY;
+    const outletX = 0;
+    const outletY = -12;
+    const pull = Math.max(buttonWidth * 0.52, Math.hypot(state.x, state.y), 1);
+    const leanX = loose ? state.x / pull : 0;
+    const leanY = loose ? state.y / pull : 0;
+    const plugX = outletX + 7 * leanX;
+    const plugY = outletY + (loose ? 4 + 5 * leanY : 0);
+    const angle = -16 * leanX;
+    const radians = angle * Math.PI / 180;
+    const startX = plugX - 12 * Math.sin(radians);
+    const startY = plugY + 12 * Math.cos(radians);
+    const dx = endX - startX;
+    const dy = endY - startY;
     const distance = Math.hypot(dx, dy);
     const length = Math.max(90, buttonWidth * 0.42);
     const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
@@ -763,11 +773,33 @@
     return {
       outletX,
       outletY,
-      cord: `M ${outletX} ${startY} C ${outletX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
+      plugTransform: loose ? `translate(${plugX} ${plugY}) rotate(${angle})` : `translate(${outletX} ${outletY})`,
+      cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
       endX,
       endY,
       sag,
       thickness
+    };
+  }
+  function createPlugPullTracker() {
+    let previous = null;
+    const directions = /* @__PURE__ */ new Set();
+    let pulls = 0;
+    return {
+      endPull() {
+        previous = null;
+      },
+      pull(x, y, width) {
+        const distance = Math.hypot(x, y);
+        const threshold = Math.max(84, width * 0.52);
+        if (distance < threshold * 0.55) previous = null;
+        if (distance < threshold) return false;
+        const direction = { x: x / distance, y: y / distance };
+        if (previous && previous.x * direction.x + previous.y * direction.y > 0.25) return false;
+        previous = direction;
+        directions.add(Math.abs(x) >= Math.abs(y) ? x > 0 ? 0 : 1 : y > 0 ? 2 : 3);
+        return ++pulls >= 4 && directions.size >= 3;
+      }
     };
   }
   function projectButtonScene(state, buttonWidth, stage, viewport) {
@@ -1508,7 +1540,17 @@
   };
 
   // frontend/button-tricks.ts
-  var tricks = ["hold", "outlet", "keyboard"];
+  var tricks = [
+    "hold",
+    "outlet",
+    "keyboard",
+    "u-turn",
+    "loose-plug",
+    "saved-keyboard",
+    "saved-pointer",
+    "touch-100",
+    "wrong-button"
+  ];
   var trickPrefix = "goclick.trick.";
   var earnedTricks = /* @__PURE__ */ new Set();
   var listeners = /* @__PURE__ */ new Set();
@@ -1540,6 +1582,20 @@
       for (const listener of listeners) listener();
     }
   });
+  var activations = /* @__PURE__ */ new WeakMap();
+  var touchClicks = 0;
+  function rememberButtonActivation(event, activation) {
+    activations.set(event, activation);
+  }
+  function recordSavedButtonClick(event) {
+    const activation = activations.get(event);
+    if (!activation) return;
+    activations.delete(event);
+    unlockTrick(activation.source === "keyboard" ? "saved-keyboard" : "saved-pointer");
+    if (activation.uTurn) unlockTrick("u-turn");
+    if (activation.source === "touch" && !hasTrick("touch-100") && ++touchClicks === 100)
+      unlockTrick("touch-100");
+  }
 
   // frontend/button.ts
   var QUICK_TAP_MS = 90;
@@ -1548,7 +1604,7 @@
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let paint2 = function() {
-      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth) : null;
+      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugLoose) : null;
       if (power && cable) {
         power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
         power.setAttribute(
@@ -1556,8 +1612,8 @@
           `${-stage.clientWidth / 2} ${-stage.clientHeight / 2} ${stage.clientWidth} ${stage.clientHeight}`
         );
         for (const cord of cords ?? []) cord.setAttribute("d", cable.cord);
-        for (const part of power.querySelectorAll(".power-outlet, .power-plug"))
-          part.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
+        outlet?.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
+        plug?.setAttribute("transform", cable.plugTransform);
       }
       current.reducedMotion = reducedMotion.matches;
       const lettering = projectButtonLettering(current);
@@ -1594,7 +1650,7 @@
         `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`
       );
       renderer?.draw(current);
-      if (button.id === "click-button" && power && cable && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
+      if (gameButton && power && cable && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
         const frame2 = power.getBoundingClientRect();
         const face = button.getBoundingClientRect();
         const x = frame2.left + frame2.width / 2 + cable.outletX;
@@ -1669,7 +1725,7 @@
       stage.classList.toggle("is-held", phase === "held");
       button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
     }, begin2 = function() {
-      if (button.id === "click-button") clickSound.play("press");
+      if (gameButton) clickSound.play("press");
       window.clearTimeout(holdTimer);
       clearResponse2();
       coastUntil = 0;
@@ -1688,7 +1744,7 @@
         animate2();
       } else burst2(true);
       holdTimer = window.setTimeout(() => setPhase2("held"), 180);
-      if (button.id === "click-button" && !hasTrick("hold")) {
+      if (gameButton && !hasTrick("hold")) {
         achievementTimer = window.setTimeout(() => {
           if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
         }, 1e4);
@@ -1703,12 +1759,20 @@
       target.y = y * 4;
       if (pointers.size) {
         const points = [...pointers.values()];
-        target.x = dragFromX + points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length;
-        target.y = dragFromY + points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length;
+        const pulledX = points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length;
+        const pulledY = points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length;
+        target.x = dragFromX + pulledX;
+        target.y = dragFromY + pulledY;
+        if (gameButton && power && !plugLoose && plugPulls.pull(pulledX, pulledY, button.offsetWidth)) {
+          plugLoose = true;
+          power.dataset.loose = "true";
+          unlockTrick("loose-plug");
+        }
       }
       animate2();
     }, release2 = function(cancelled = false) {
-      if (cancelled && button.id === "click-button") clickSound.cancelPending();
+      plugPulls.endPull();
+      if (cancelled && gameButton) clickSound.cancelPending();
       activeKey = null;
       window.clearTimeout(holdTimer);
       window.clearTimeout(achievementTimer);
@@ -1801,8 +1865,8 @@
           () => particle.remove()
         );
       }
-    }, activateRelease2 = function(event) {
-      activatingRelease = true;
+    }, activateRelease2 = function(activation, event) {
+      activatingRelease = activation;
       try {
         if (event)
           button.dispatchEvent(
@@ -1816,20 +1880,25 @@
           );
         else button.click();
       } finally {
-        activatingRelease = false;
+        activatingRelease = null;
       }
     }, endPointer2 = function(event, cancelled = false) {
       if (!pointers.has(event.pointerId)) return;
       const rect = button.getBoundingClientRect();
       const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
       const point = pointers.get(event.pointerId);
-      if ((cancelled || !inside) && pointers.size > 1 && button.id === "click-button")
-        clickSound.cancelPending();
+      if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
       pointers.delete(event.pointerId);
       if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
       if (!pointers.size) release2(cancelled || !inside);
       else aimPointers2();
-      if (!cancelled && inside && !button.disabled) activateRelease2(event);
+      if (!cancelled && inside && !button.disabled) {
+        const uTurn = point.wentAway && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) <= Math.max(12, button.offsetWidth * 0.05);
+        activateRelease2(
+          { source: event.pointerType === "touch" ? "touch" : "pointer", uTurn },
+          event
+        );
+      }
       if (!pointers.size && !cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
         coastUntil = performance.now() + 80;
         coastFromX = current.x;
@@ -1852,6 +1921,10 @@
     const rig = required(".button-rig", stage);
     const power = stage.querySelector(".button-power");
     const cords = power?.querySelectorAll(".power-cord");
+    const [outlet, plug] = power?.querySelectorAll(".power-outlet, .power-plug") ?? [];
+    const gameButton = button.id === "click-button";
+    const plugPulls = createPlugPullTracker();
+    let plugLoose = false;
     const effects = document.createElement("div");
     effects.className = "button-effects";
     effects.setAttribute("aria-hidden", "true");
@@ -1881,7 +1954,7 @@
     let coastUntil = 0;
     let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
-    let activatingRelease = false;
+    let activatingRelease = null;
     let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, achievementTimer = 0, phase = "idle";
     let responseStarted = null;
     let responseDuration = 500;
@@ -1897,6 +1970,8 @@
         point.movedAt = now;
         point.x = event.clientX;
         point.y = event.clientY;
+        if (gameButton && !point.wentAway && Math.hypot(point.x - point.startX, point.y - point.startY) >= Math.max(45, button.offsetWidth * 0.35))
+          point.wentAway = true;
         aimPointers2();
       } else if (!pointers.size && activeKey === null && event.pointerType === "mouse") aim2(event);
     });
@@ -1904,6 +1979,7 @@
       if (!pointers.size && activeKey === null && performance.now() >= coastUntil) reset2(false);
     });
     button.addEventListener("pointerdown", (event) => {
+      if (gameButton && event.pointerType === "mouse" && event.button === 1) event.preventDefault();
       if (button.disabled || event.button !== 0 || activeKey !== null || pointers.has(event.pointerId))
         return;
       event.preventDefault();
@@ -1916,14 +1992,15 @@
         startY: event.clientY,
         vx: 0,
         vy: 0,
-        movedAt: performance.now()
+        movedAt: performance.now(),
+        wentAway: false
       });
       if (pointers.size === 1) {
         dragFromX = current.x;
         dragFromY = current.y;
         velocity.x = velocity.y = 0;
         begin2();
-      } else if (button.id === "click-button") clickSound.play("press");
+      } else if (gameButton) clickSound.play("press");
       button.setPointerCapture(event.pointerId);
       aimPointers2();
     });
@@ -1932,6 +2009,12 @@
     button.addEventListener("lostpointercapture", (event) => endPointer2(event, true));
     button.addEventListener("dragstart", (event) => event.preventDefault());
     button.addEventListener("contextmenu", (event) => event.preventDefault());
+    button.addEventListener("auxclick", (event) => {
+      if (gameButton && !button.disabled && (event.button === 1 || event.button === 2)) {
+        event.preventDefault();
+        unlockTrick("wrong-button");
+      }
+    });
     button.addEventListener("keydown", (event) => {
       if (button.disabled || event.key !== " " && event.key !== "Enter") return;
       event.preventDefault();
@@ -1946,8 +2029,8 @@
       if (event.key !== activeKey) return;
       release2();
       if (!button.disabled) {
-        if (button.id === "click-button") unlockTrick("keyboard");
-        activateRelease2();
+        if (gameButton) unlockTrick("keyboard");
+        activateRelease2({ source: "keyboard" });
       }
     });
     button.addEventListener("blur", () => {
@@ -1960,11 +2043,12 @@
         return;
       }
       if (button.disabled) return;
+      if (gameButton && activatingRelease) rememberButtonActivation(event, activatingRelease);
       if (event.detail === 0 && !activatingRelease) {
         begin2();
         release2();
       }
-      if (button.id === "click-button") clickSound.play("release");
+      if (gameButton) clickSound.play("release");
       burst2();
     });
     new MutationObserver(() => {
@@ -3533,42 +3617,42 @@
       };
     }
     return [
-      badge("First Click", "Save your first click.", clicks >= 1, localized[0]),
-      badge("Warm-Up", "Save 25 clicks in total.", clicks >= 25, localized[1]),
-      badge("Getting the Hang of It", "Save 100 clicks in total.", clicks >= 100, localized[2]),
-      badge("Old Reliable", "Save 500 clicks in total.", clicks >= 500, localized[3]),
+      badge("Gone Click", "Saved you a click.", clicks >= 1, localized[0]),
+      badge("Sentence", "Save 25 clicks in total.", clicks >= 25, localized[1]),
+      badge("Paragraph", "Save 100 clicks in total.", clicks >= 100, localized[2]),
+      badge("Essay", "Save 500 clicks in total.", clicks >= 500, localized[3]),
       badge(
-        "Three in a Row",
+        "Clicks for Days",
         "Save a click on 3 consecutive UTC days.",
         progress.best_day_streak >= 3,
         localized[4]
       ),
       badge(
-        "Seven in a Row",
+        "One-Week Streak",
         "Save a click on 7 consecutive UTC days.",
         progress.best_day_streak >= 7,
         localized[5]
       ),
       badge(
-        "See You Next Week",
+        "Good to See You Again",
         "Save a click in 2 consecutive UTC weeks.",
         progress.best_week_streak >= 2,
         localized[6]
       ),
       badge(
-        "Weekly Regular",
+        "Double Fortnight",
         "Save a click in 4 consecutive UTC weeks.",
         progress.best_week_streak >= 4,
         localized[7]
       ),
-      badge("Century", "Save 100 clicks in one UTC day.", Boolean(calendar.earned & century)),
+      badge("Busy Day", "Save 100 clicks in one UTC day.", Boolean(calendar.earned & century)),
       badge(
-        "Four Digits",
+        "Brisk Pace",
         "Save 1,000 clicks in one Monday\u2013Sunday UTC week.",
         Boolean(calendar.earned & fourDigits)
       ),
       badge(
-        "Five Grand",
+        "High Score",
         "Save 5,000 clicks in one UTC calendar month.",
         Boolean(calendar.earned & fiveGrand)
       ),
@@ -3578,29 +3662,42 @@
         Boolean(calendar.earned & threeVisits)
       ),
       badge(
-        "Ten Days Your Way",
+        "Returning Clicker",
         "Save clicks on 10 different UTC days, with gaps allowed.",
         calendar.active_days >= 10
       ),
       badge(
-        "Familiar Face",
+        "Welcome Back",
         "Save clicks in 3 different UTC calendar months, with gaps allowed.",
         calendar.active_months >= 3
       ),
-      badge(
-        "Hold That Thought",
-        "Keep the button pressed for 10 seconds without releasing it.",
-        hasTrick("hold")
-      ),
-      badge(
-        "Behind the Button",
-        "Drag the button far enough to reveal the outlet.",
-        hasTrick("outlet")
-      ),
+      badge("Hold It", "Hold the button down for a while.", hasTrick("hold")),
+      badge("Behind the Button", "Drag the button far enough.", hasTrick("outlet")),
       badge(
         "Key Player",
         "Press and release Space or Enter with the game button focused.",
         hasTrick("keyboard")
+      ),
+      badge(
+        "U-Turn",
+        "Drag the button away, bring it back to where it started, and release to save a click.",
+        hasTrick("u-turn")
+      ),
+      badge(
+        "That Seems Unsafe",
+        "Pull the button in different directions until the plug comes loose.",
+        hasTrick("loose-plug")
+      ),
+      badge(
+        "Alternative Press",
+        "Save one click with the keyboard and one with a pointer, in either order.",
+        hasTrick("saved-keyboard") && hasTrick("saved-pointer")
+      ),
+      badge("Mobile Mogul", "Save 100 clicks using touch in one session.", hasTrick("touch-100")),
+      badge(
+        "Wrong Button",
+        "Click the game button with the middle or right mouse button.",
+        hasTrick("wrong-button")
       )
     ];
   }
@@ -4293,6 +4390,7 @@
       });
       if (generation2 !== clickGeneration) return;
       renderCounters(data);
+      recordSavedButtonClick(event);
       if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
         lastOnlineCounters = data;
       feedback.success(performance.now() - started);
@@ -4503,6 +4601,7 @@
       const data = await localGame.change(() => localGame.increment());
       if (generation2 !== clickGeneration) return;
       renderCounters(data);
+      recordSavedButtonClick(event);
       showError("#game-error", "");
       window.setTimeout(() => {
         if (generation2 !== clickGeneration) return;

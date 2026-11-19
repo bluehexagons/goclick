@@ -178,3 +178,21 @@ test("the lettering lights immediately on press, stays lit through a hold, and f
   assert.ok(reduced.light > 0 && reduced.light <= 0.3);
   assert.equal(reduced.scaleX, 1);
 });
+
+test("the loose plug follows the drag while the cord stays attached to its grommet", () => {
+  const { projectButtonPower } = frontend({}).load("button-geometry");
+  const right = projectButtonPower({ ...idle, x: 260 }, 420, true);
+  const left = projectButtonPower({ ...idle, x: -260 }, 420, true);
+  const seated = projectButtonPower(idle, 420);
+  assert.equal(seated.plugTransform, "translate(0 -12)");
+  assert.ok(seated.cord.startsWith("M 0 0 "));
+  for (const [cable, sign] of [
+    [right, 1],
+    [left, -1],
+  ]) {
+    assert.equal(cable.outletY, seated.outletY);
+    assert.equal(cable.plugTransform, `translate(${sign * 7} -8) rotate(${-sign * 16})`);
+    const anchorX = sign * (7 + 12 * Math.sin((16 * Math.PI) / 180));
+    assert.ok(Math.abs(Number(cable.cord.split(" ")[1]) - anchorX) < 0.001);
+  }
+});

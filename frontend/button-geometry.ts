@@ -34,9 +34,8 @@ export function projectButtonPose(state: ButtonState, buttonWidth: number) {
   };
 }
 
-// The wall plug stays fixed. The other end attaches to the rear of the solid,
-// using the same camera as its hit surface, including tilt and press depth.
-export function projectButtonPower(state: ButtonState, buttonWidth: number) {
+// Attach the cord to the plug's grommet and the projected rear of the solid.
+export function projectButtonPower(state: ButtonState, buttonWidth: number, loose = false) {
   const pose = projectButtonPose(state, buttonWidth);
   const { scale, recession, lift, cx, sx, cy, sy } = pose;
   const x = -35 * scale,
@@ -45,14 +44,20 @@ export function projectButtonPower(state: ButtonState, buttonWidth: number) {
   const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
   const endX = (cy * x + sy * z + pose.x) * factor;
   const endY = (sx * sy * x + cx * y - sx * cy * z + pose.y) * factor;
-  // Tuck the entire outlet and relaxed cable beneath the resting face. Only
-  // the button moves: dragging reveals the fixed outlet without a visibility toggle.
-  const outletX = 0,
-    outletY = -12;
-  // The cable exits the front-face grommet, above the plug body in SVG order.
-  const startY = outletY + 12;
-  const dx = endX - outletX,
-    dy = endY - startY;
+  // The outlet itself is fixed under the resting face.
+  const outletX = 0;
+  const outletY = -12;
+  const pull = Math.max(buttonWidth * 0.52, Math.hypot(state.x, state.y), 1);
+  const leanX = loose ? state.x / pull : 0;
+  const leanY = loose ? state.y / pull : 0;
+  const plugX = outletX + 7 * leanX;
+  const plugY = outletY + (loose ? 4 + 5 * leanY : 0);
+  const angle = -16 * leanX;
+  const radians = (angle * Math.PI) / 180;
+  const startX = plugX - 12 * Math.sin(radians);
+  const startY = plugY + 12 * Math.cos(radians);
+  const dx = endX - startX;
+  const dy = endY - startY;
   const distance = Math.hypot(dx, dy);
   const length = Math.max(90, buttonWidth * 0.42);
   // Slack vanishes smoothly at the cable's natural length. Further pulling
@@ -62,11 +67,38 @@ export function projectButtonPower(state: ButtonState, buttonWidth: number) {
   return {
     outletX,
     outletY,
-    cord: `M ${outletX} ${startY} C ${outletX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
+    plugTransform: loose
+      ? `translate(${plugX} ${plugY}) rotate(${angle})`
+      : `translate(${outletX} ${outletY})`,
+    cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
     endX,
     endY,
     sag,
     thickness,
+  };
+}
+
+// Four strong pulls over at least three sides loosen the plug. Travel back
+// toward center or turn sharply to start a new pull without releasing.
+export function createPlugPullTracker() {
+  let previous: { x: number; y: number } | null = null;
+  const directions = new Set<number>();
+  let pulls = 0;
+  return {
+    endPull() {
+      previous = null;
+    },
+    pull(x: number, y: number, width: number) {
+      const distance = Math.hypot(x, y);
+      const threshold = Math.max(84, width * 0.52);
+      if (distance < threshold * 0.55) previous = null;
+      if (distance < threshold) return false;
+      const direction = { x: x / distance, y: y / distance };
+      if (previous && previous.x * direction.x + previous.y * direction.y > 0.25) return false;
+      previous = direction;
+      directions.add(Math.abs(x) >= Math.abs(y) ? (x > 0 ? 0 : 1) : y > 0 ? 2 : 3);
+      return ++pulls >= 4 && directions.size >= 3;
+    },
   };
 }
 

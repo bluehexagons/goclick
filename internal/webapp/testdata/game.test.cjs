@@ -204,6 +204,7 @@ async function harness(options = {}) {
   requests.length = 0;
   return {
     context,
+    rememberButtonActivation: runtime.load("button-tricks").rememberButtonActivation,
     element,
     document,
     window,
@@ -1297,11 +1298,37 @@ test("older click replies cannot roll back a more recent score or earned badges"
   await second;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
   assert.equal(h.element("#week-streak").textContent, "2");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 17");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 22");
   slower.resolve(
     response({ ...counters(24), progress: { ...progress, recent_days: 63, best_day_streak: 6 } }),
   );
   await first;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 17");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 22");
+});
+
+test("saved input badges count only confirmed releases and count touch clicks once", async () => {
+  const h = await harness();
+  const click = async (source, uTurn = false) => {
+    const event = { detail: source === "keyboard" ? 0 : 1 };
+    h.rememberButtonActivation(event, { source, uTurn });
+    await h.element("#click-button").events.get("click")(event);
+  };
+  const earned = (key) => h.storage.get("goclick.trick." + key);
+  h.fetch(async () => response({ error: "Save failed" }, 500));
+  await click("touch", true);
+  assert.equal(earned("u-turn"), undefined);
+  assert.equal(earned("saved-pointer"), undefined);
+
+  let count = 10;
+  h.fetch(async () => response(counters(++count)));
+  for (let i = 0; i < 99; i++) await click("touch");
+  assert.equal(earned("touch-100"), undefined);
+  assert.equal(earned("saved-pointer"), "1");
+  await click("keyboard");
+  assert.equal(earned("saved-keyboard"), "1");
+  assert.equal(earned("touch-100"), undefined);
+  await click("touch", true);
+  assert.equal(earned("touch-100"), "1");
+  assert.equal(earned("u-turn"), "1");
 });
