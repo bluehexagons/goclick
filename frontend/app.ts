@@ -28,7 +28,12 @@ import type { Language } from "./i18n.js";
 import type { MessageKey } from "./messages.js";
 import { parseStoredTimestamp } from "./timestamp.js";
 import type { User, Counters, GameState } from "./types.js";
-import { closeAchievements, clearAchievementNotice } from "./achievement-panel.js";
+import {
+  clearAchievementNotice,
+  hideAchievementNotice,
+  paintAchievementList,
+  showAchievementNotices,
+} from "./achievement-panel.js";
 import { recordSavedButtonClick } from "./button-tricks.js";
 import { paintReset, renderProgress, showReset } from "./progress-panel.js";
 
@@ -37,10 +42,13 @@ const views = {
   home: $("#home-view"),
   auth: $("#auth-view"),
   game: $("#game-view"),
+  achievements: $("#achievement-view"),
 };
 const loginForm = $<HTMLFormElement>("#login-form");
 const signupForm = $<HTMLFormElement>("#signup-form");
 const clickButton = $<HTMLButtonElement>("#click-button");
+const achievementsLink = $<HTMLAnchorElement>("#open-achievements");
+const playLink = $<HTMLAnchorElement>("#back-to-game");
 const buttonLanguage = createButtonLanguage(currentLanguage());
 const buttonLabel = $(".button-label", clickButton);
 const counterCard = $("#counter-card");
@@ -87,7 +95,7 @@ soundToggle.addEventListener("click", () => {
 });
 const connection = $("#connection");
 const pendingIndicator = $("#pending-clicks");
-type View = "loading" | "home" | "login" | "signup" | "game";
+type View = "loading" | "home" | "login" | "signup" | "game" | "achievements";
 let currentView: View | "" = "";
 let lastGameError: MessageKey | null = null;
 let connectionState: "" | "loading" | "error" = "";
@@ -149,6 +157,43 @@ function startCooldown(retryAfter: string | null) {
   paintCooldown();
 }
 
+function isPlayerView(view = currentView) {
+  return view === "game" || view === "achievements";
+}
+
+function pageFromLocation() {
+  return new URLSearchParams(window.location.search).get("view") === "achievements"
+    ? "achievements"
+    : "game";
+}
+
+function navigatePlayerPage() {
+  if (!isPlayerView()) return;
+  const view = pageFromLocation();
+  if (view === currentView) return;
+  show(view);
+  if (view === "game") (clickButton.disabled ? $("#main-content") : clickButton).focus();
+}
+
+for (const link of [achievementsLink, playLink]) {
+  link.addEventListener("click", (event) => {
+    if (
+      !isPlayerView() ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    event.preventDefault();
+    if ((link === achievementsLink) === (currentView === "achievements")) return;
+    window.history.pushState(null, "", link.href);
+    navigatePlayerPage();
+  });
+}
+window.addEventListener("popstate", navigatePlayerPage);
+
 function show(view: View) {
   const changed = view !== currentView;
   if (changed) {
@@ -156,25 +201,33 @@ function show(view: View) {
     viewAnimation?.cancel();
   }
   currentView = view;
-  document.documentElement.lang = view === "game" ? currentLanguage() : "en";
+  const player = isPlayerView(view);
+  document.documentElement.lang = player ? currentLanguage() : "en";
   if (changed) window.scrollTo(0, 0);
-  const authenticated = view === "game";
   views.loading.hidden = view !== "loading";
   views.home.hidden = view !== "home";
   views.auth.hidden = view !== "login" && view !== "signup";
-  views.game.hidden = !authenticated;
+  views.game.hidden = view !== "game";
+  views.achievements.hidden = view !== "achievements";
+  achievementsLink.hidden = !player;
+  achievementsLink.setAttribute("aria-current", view === "achievements" ? "page" : "false");
   if (changed) {
-    showReset(authenticated);
-    if (!authenticated) {
-      closeAchievements();
+    showReset(player);
+    if (view === "achievements") {
+      hideAchievementNotice();
+      paintAchievementList();
+      $("#achievement-title").focus();
+    } else if (view === "game") {
+      showAchievementNotices();
+    } else {
       clearAchievementNotice();
     }
   }
   loginForm.hidden = view !== "login";
   signupForm.hidden = view !== "signup";
-  $("#guest-nav").hidden = authenticated || view === "loading";
-  $("#user-nav").hidden = !authenticated || localMode;
-  $("#local-nav").hidden = !authenticated || !localMode;
+  $("#guest-nav").hidden = player || view === "loading";
+  $("#user-nav").hidden = !player || localMode;
+  $("#local-nav").hidden = !player || !localMode;
   if (changed && view !== "loading" && !motionPreference.matches) {
     const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
     viewAnimation = incoming.animate(
@@ -454,7 +507,7 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
   }
   let generation = clickGeneration;
   const focusButton = currentView === "login" || currentView === "signup";
-  show("game");
+  show(pageFromLocation());
   showError("#game-error", "");
   retryGameButton.hidden = true;
   gameReady = false;
@@ -479,7 +532,7 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
       if (optionsDialog.open) updateOptions();
       gameReady = true;
       updateGameControls();
-      if (focusButton && !clickButton.disabled) clickButton.focus();
+      if (focusButton && currentView === "game" && !clickButton.disabled) clickButton.focus();
       setConnection();
     } catch (caught) {
       const error = requestError(caught);
@@ -507,10 +560,10 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
 
 function refreshGame() {
   if (localMode) {
-    if (currentView === "game") openLocalGame();
+    if (isPlayerView()) openLocalGame();
     return;
   }
-  if (currentView !== "game" || !user || signingOut || offline || document.hidden) return;
+  if (!isPlayerView() || !user || signingOut || offline || document.hidden) return;
   refreshQueued = false;
   return openGame(undefined, true);
 }
@@ -527,6 +580,7 @@ window.addEventListener("online", () => {
 });
 function resumeGame() {
   if (cooldownUntil) paintCooldown();
+  showAchievementNotices();
   // Cookies are shared across tabs. Even a brief switch can change accounts;
   // openGame coalesces the paired visibility/focus events into one refresh.
   refreshGame();
@@ -537,7 +591,7 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("blur", () => identityEpoch++);
 window.addEventListener("focus", () => {
-  if (currentView === "game") paintReset(true);
+  if (isPlayerView()) paintReset(true);
   resumeGame();
 });
 window.addEventListener("pageshow", (event) => {
@@ -676,7 +730,7 @@ logoutButton.addEventListener("click", async () => {
 });
 
 clickButton.addEventListener("click", async (event) => {
-  if (clickButton.disabled) return;
+  if (currentView !== "game" || clickButton.disabled) return;
   paintButtonLanguage(buttonLanguage.click(performance.now(), currentLanguage()));
   if (localMode) {
     await clickLocal(event);
@@ -865,7 +919,7 @@ $<HTMLSelectElement>("#simulated-ping").addEventListener("change", () => {
     saveOption({ simulatedPing });
 });
 function openLocalGame(data?: Counters) {
-  show("game");
+  show(pageFromLocation());
   showError("#game-error", "");
   retryGameButton.hidden = true;
   try {
@@ -891,7 +945,7 @@ function startLocalGame() {
     resetClickState();
     optionsDialog.close();
     openLocalGame(data);
-    clickButton.focus();
+    if (currentView === "game") clickButton.focus();
   } catch (caught) {
     const error = requestError(caught);
     optionsNotice(`Couldn’t open the local save. ${error.message}`, true);
@@ -1064,11 +1118,11 @@ function applyLanguage() {
   translatePage();
   updateSoundToggle();
   languageSetting.value = currentLanguage();
-  document.documentElement.lang = currentView === "game" ? currentLanguage() : "en";
+  document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
   buttonLanguage.reset(currentLanguage());
   paintButtonLanguage(currentLanguage());
   renderCounters(displayedCounters, true);
-  if (currentView === "game") paintReset(true);
+  if (isPlayerView()) paintReset(true);
   updatePendingIndicator();
   updateGameControls();
   if (lastGameError) showGameError(lastGameError);

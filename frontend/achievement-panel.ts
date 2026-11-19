@@ -4,8 +4,7 @@ import { required as $ } from "./dom.js";
 import { currentLanguage, formatNumber, languageDirection, message as t } from "./i18n.js";
 import type { ClickProgress, Counters } from "./types.js";
 
-const launcher = $<HTMLButtonElement>("#open-achievements");
-const dialog = $<HTMLDialogElement>("#achievement-dialog");
+const screen = $("#achievement-view");
 const list = $("#achievement-list");
 const empty = $("#achievement-empty");
 const spoiler = $<HTMLInputElement>("#achievement-spoilers");
@@ -18,13 +17,13 @@ const notice = $("#achievement-notice");
 const noticeTitle = $("#achievement-notice-title");
 const noticeNames = $("#achievement-notice-names");
 const live = $("#achievement-announcement");
-const dialogLive = $("#achievement-dialog-announcement");
 const game = $("#game-view");
 const spoilerKey = "goclick.achievements.reveal.v1";
 let filter: keyof typeof filters = "all";
 let badges: Badge[] = [];
 let badgeKey = "";
 let noticeTimer = 0;
+let noticeScheduled = false;
 const pending = new Set<string>();
 const visible = new Set<string>();
 
@@ -66,7 +65,7 @@ function card(badge: Badge) {
   return item;
 }
 
-function paintList() {
+export function paintAchievementList() {
   const cards = badges.filter(
     (badge) => filter === "all" || badge.earned === (filter === "earned"),
   );
@@ -84,8 +83,8 @@ for (const key of Object.keys(filters) as (keyof typeof filters)[]) {
     filters[filter].setAttribute("aria-pressed", "false");
     filter = key;
     filters[key].setAttribute("aria-pressed", "true");
-    paintList();
-    dialog.scrollTop = 0;
+    paintAchievementList();
+    if (list.getBoundingClientRect().top < 0) window.scrollTo(0, 0);
   });
 }
 spoiler.addEventListener("change", () => {
@@ -94,53 +93,44 @@ spoiler.addEventListener("change", () => {
   } catch {
     // The checkbox still applies when storage is blocked.
   }
-  paintList();
+  paintAchievementList();
 });
-launcher.addEventListener("click", () => {
-  paintList();
-  if (!dialog.open) {
-    dialog.append(notice);
-    dialog.showModal();
-  }
-});
-dialog.addEventListener("close", () => {
-  if (!dialog.open) game.append(notice);
-});
-$("#close-achievements").addEventListener("click", closeAchievements);
 
-export function closeAchievements() {
-  if (dialog.open) dialog.close();
-}
-
-export function clearAchievementNotice() {
+export function hideAchievementNotice() {
   window.clearTimeout(noticeTimer);
-  pending.clear();
   visible.clear();
   notice.hidden = true;
   live.textContent = "";
-  dialogLive.textContent = "";
+}
+
+export function clearAchievementNotice() {
+  pending.clear();
+  hideAchievementNotice();
 }
 
 function queueNotice(names: string[]) {
-  if (!names.length || game.hidden || document.hidden) return;
-  const queued = pending.size > 0;
+  if (!names.length || (game.hidden && screen.hidden) || document.hidden) return;
   for (const name of names) pending.add(name);
-  if (queued) return;
+  showAchievementNotices();
+}
+
+export function showAchievementNotices() {
+  if (noticeScheduled || !pending.size || game.hidden || document.hidden) return;
+  noticeScheduled = true;
   // A saved click can also earn a button trick in the same turn.
   void Promise.resolve().then(() => {
-    if (!pending.size) return;
+    noticeScheduled = false;
+    if (!pending.size || game.hidden || document.hidden) return;
     const earned = [...pending];
     pending.clear();
-    if (game.hidden || document.hidden) return;
     for (const name of earned) visible.add(name);
     noticeTitle.textContent = visible.size === 1 ? "Achievement unlocked" : "Achievements unlocked";
     noticeNames.textContent = [...visible].join(" · ");
     notice.hidden = false;
     const title = earned.length === 1 ? "Achievement unlocked" : "Achievements unlocked";
-    const announcement = dialog.open ? dialogLive : live;
-    announcement.textContent = `${title}. ${earned.join(". ")}.`;
+    live.textContent = `${title}. ${earned.join(". ")}.`;
     window.clearTimeout(noticeTimer);
-    noticeTimer = window.setTimeout(clearAchievementNotice, 6500);
+    noticeTimer = window.setTimeout(hideAchievementNotice, 6500);
   });
 }
 
@@ -163,5 +153,5 @@ export function renderAchievements(data: Counters, progress: ClickProgress, anno
   const meter = $<HTMLProgressElement>("#achievement-meter");
   meter.value = count;
   meter.max = badges.length;
-  if (dialog.open) paintList();
+  if (!screen.hidden) paintAchievementList();
 }

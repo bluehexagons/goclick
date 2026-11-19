@@ -13,17 +13,30 @@
     <a draggable="false" class="skip-link" href="#main-content" data-i18n="skip">Skip to content</a>
     <div class="shell">
       <header class="site-header">
-        <a draggable="false" class="brand" href="/" aria-label="Go Click home">
-          <img
-            draggable="false"
-            class="brand-mark"
-            src="/favicon.svg"
-            width="36"
-            height="36"
-            alt=""
-          />
-          <span>Go Click</span>
-        </a>
+        <div class="site-links">
+          <a draggable="false" class="brand" href="/" aria-label="Go Click home">
+            <img
+              draggable="false"
+              class="brand-mark"
+              src="/favicon.svg"
+              width="36"
+              height="36"
+              alt=""
+            />
+            <span>Go Click</span>
+          </a>
+          <a
+            id="open-achievements"
+            class="button button-quiet achievement-nav"
+            href="/?view=achievements"
+            hidden
+          >
+            <svg class="achievement-icon" viewBox="0 0 48 48" aria-hidden="true">
+              <use href="/achievement-icons.svg#medal" />
+            </svg>
+            <span data-i18n="achievements">Achievements</span>
+          </a>
+        </div>
         <div class="header-actions">
           <label class="language-selector" data-game-language>
             <svg class="icon language-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -527,6 +540,29 @@
                     ><svg class="icon" viewBox="0 0 24 24"><use href="/icons.svg#day" /></svg
                   ></span>
                   <div><strong id="day-streak">0</strong><span data-i18n="days">days</span></div>
+                  <button
+                    id="streak-reset-button"
+                    class="streak-reset-button"
+                    type="button"
+                    aria-label="Next streak day"
+                    data-i18n-aria-label="nextDay"
+                    aria-controls="streak-reset-details"
+                    aria-describedby="streak-reset-utc streak-reset-left streak-reset-local"
+                    aria-expanded="false"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" />
+                      <circle
+                        id="streak-reset-ring"
+                        cx="12"
+                        cy="12"
+                        r="9"
+                        pathLength="1"
+                        stroke-dasharray="0 1"
+                        transform="rotate(-90 12 12)"
+                      />
+                    </svg>
+                  </button>
                 </article>
                 <article class="streak-card" data-i18n-title="weekRule">
                   <span class="streak-icon" aria-hidden="true"
@@ -549,57 +585,15 @@
                   <div><strong id="year-streak">0</strong><span data-i18n="years">years</span></div>
                 </article>
               </div>
-            </aside>
-            <div class="progress-panel">
-              <section class="progress-section" aria-labelledby="fortnight-label">
-                <div class="progress-heading">
-                  <h2 id="fortnight-label" data-i18n="fortnightActivity">Fortnight activity</h2>
-                  <strong id="fortnight-score">0 / 100</strong>
-                </div>
-                <div id="activity-days" class="activity-days" aria-hidden="true"></div>
-                <p class="progress-caption" id="activity-count"></p>
-                <p class="progress-caption" data-i18n="activityNote">
-                  Based on the 14 days ending with your last click. Consecutive days earn bonus
-                  points.
+              <div id="streak-reset-details" class="streak-reset-details" hidden>
+                <strong data-i18n="nextDay">Next streak day</strong>
+                <p class="streak-reset-timing">
+                  <span id="streak-reset-utc" class="progress-utc" dir="ltr">00:00 UTC</span>
+                  <span id="streak-reset-left"></span>
                 </p>
-              </section>
-              <section
-                class="progress-section day-reset"
-                tabindex="0"
-                aria-labelledby="day-reset-label"
-                aria-describedby="day-reset-local"
-              >
-                <div class="progress-heading">
-                  <h2 id="day-reset-label" data-i18n="nextDay">Next streak day</h2>
-                  <span class="progress-utc" dir="ltr">00:00 UTC</span>
-                </div>
-                <progress
-                  id="day-reset-meter"
-                  value="0"
-                  max="1"
-                  aria-labelledby="day-reset-label"
-                ></progress>
-                <p class="progress-caption" id="day-reset-left"></p>
-                <span class="reset-tooltip" id="day-reset-local" role="tooltip"></span>
-              </section>
-              <button
-                id="open-achievements"
-                class="progress-section achievement-launcher"
-                type="button"
-                aria-haspopup="dialog"
-                aria-controls="achievement-dialog"
-              >
-                <svg class="achievement-icon" viewBox="0 0 48 48" aria-hidden="true">
-                  <use href="/achievement-icons.svg#medal" />
-                </svg>
-                <span data-i18n="achievements">Achievements</span>
-                <progress id="achievement-meter" value="0" max="22" aria-hidden="true"></progress>
-                <strong id="achievement-count">0 / 22</strong>
-                <svg class="achievement-chevron" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
-                </svg>
-              </button>
-            </div>
+                <p id="streak-reset-local"></p>
+              </div>
+            </aside>
             <div
               id="achievement-notice"
               class="achievement-notice"
@@ -625,6 +619,93 @@
             ></p>
           </div>
         </section>
+        <section
+          id="achievement-view"
+          class="achievement-page"
+          aria-labelledby="achievement-title"
+          data-game-language
+          hidden
+        >
+          <div class="achievement-heading">
+            <div class="achievement-title">
+              <svg class="achievement-icon" viewBox="0 0 48 48" aria-hidden="true">
+                <use href="/achievement-icons.svg#medal" />
+              </svg>
+              <div>
+                <h1 id="achievement-title" data-i18n="achievements" tabindex="-1">Achievements</h1>
+                <div class="achievement-summary">
+                  <strong id="achievement-count">0 / 22</strong>
+                  <progress
+                    id="achievement-meter"
+                    value="0"
+                    max="22"
+                    aria-label="Achievements"
+                    data-i18n-aria-label="achievements"
+                  ></progress>
+                </div>
+              </div>
+            </div>
+            <a id="back-to-game" class="button button-quiet" href="/">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons.svg#arrow" />
+              </svg>
+              <span data-i18n="game">Play Go Click</span>
+            </a>
+          </div>
+          <div class="progress-panel">
+            <section class="progress-section" aria-labelledby="fortnight-label">
+              <div class="progress-heading">
+                <h2 id="fortnight-label" data-i18n="fortnightActivity">Fortnight activity</h2>
+                <strong id="fortnight-score">0 / 100</strong>
+              </div>
+              <div id="activity-days" class="activity-days" aria-hidden="true"></div>
+              <p class="progress-caption" id="activity-count"></p>
+              <p class="progress-caption" data-i18n="activityNote">
+                Based on the 14 days ending with your last click. Consecutive days earn bonus
+                points.
+              </p>
+            </section>
+            <section class="progress-section day-reset" aria-labelledby="day-reset-label">
+              <div class="progress-heading">
+                <h2 id="day-reset-label" data-i18n="nextDay">Next streak day</h2>
+                <span class="progress-utc" dir="ltr">00:00 UTC</span>
+              </div>
+              <progress
+                id="day-reset-meter"
+                value="0"
+                max="1"
+                aria-labelledby="day-reset-label"
+              ></progress>
+              <p class="progress-caption" id="day-reset-left"></p>
+              <p class="progress-caption" id="day-reset-local"></p>
+            </section>
+          </div>
+          <div class="achievement-tools">
+            <div
+              class="achievement-filters"
+              role="group"
+              aria-label="Filter achievements"
+              lang="en"
+            >
+              <button id="achievement-all" type="button" aria-pressed="true" lang="en">All</button>
+              <button id="achievement-earned" type="button" aria-pressed="false" data-i18n="earned">
+                Earned
+              </button>
+              <button id="achievement-locked" type="button" aria-pressed="false" data-i18n="locked">
+                Locked
+              </button>
+            </div>
+            <label class="achievement-spoilers" lang="en">
+              <input id="achievement-spoilers" type="checkbox" />
+              Reveal locked requirements
+            </label>
+          </div>
+          <ul id="achievement-list" class="achievement-list" role="list"></ul>
+          <p id="achievement-empty" class="achievement-empty" lang="en" dir="ltr" hidden></p>
+          <p class="achievement-footnote" lang="en" dir="ltr">
+            Button tricks are saved in this browser.
+          </p>
+        </section>
       </main>
 
       <footer lang="en">
@@ -637,58 +718,6 @@
         >
       </footer>
     </div>
-    <dialog
-      id="achievement-dialog"
-      class="options-dialog achievement-dialog"
-      aria-labelledby="achievement-title"
-      data-game-language
-    >
-      <div class="achievement-header">
-        <div class="options-heading">
-          <div class="achievement-title">
-            <svg class="achievement-icon" viewBox="0 0 48 48" aria-hidden="true">
-              <use href="/achievement-icons.svg#medal" />
-            </svg>
-            <h1 id="achievement-title" data-i18n="achievements">Achievements</h1>
-          </div>
-          <button
-            id="close-achievements"
-            class="button button-quiet"
-            type="button"
-            data-i18n="done"
-          >
-            Done
-          </button>
-        </div>
-        <div class="achievement-tools">
-          <div class="achievement-filters" role="group" aria-label="Filter achievements">
-            <button id="achievement-all" type="button" aria-pressed="true" lang="en">All</button>
-            <button id="achievement-earned" type="button" aria-pressed="false" data-i18n="earned">
-              Earned
-            </button>
-            <button id="achievement-locked" type="button" aria-pressed="false" data-i18n="locked">
-              Locked
-            </button>
-          </div>
-          <label class="achievement-spoilers" lang="en">
-            <input id="achievement-spoilers" type="checkbox" />
-            Reveal locked requirements
-          </label>
-        </div>
-      </div>
-      <p
-        id="achievement-dialog-announcement"
-        class="visually-hidden"
-        lang="en"
-        dir="ltr"
-        role="status"
-      ></p>
-      <ul id="achievement-list" class="achievement-list" role="list"></ul>
-      <p id="achievement-empty" class="achievement-empty" lang="en" dir="ltr" hidden></p>
-      <p class="achievement-footnote" lang="en" dir="ltr">
-        Button tricks are saved in this browser.
-      </p>
-    </dialog>
     <dialog
       lang="en"
       dir="ltr"

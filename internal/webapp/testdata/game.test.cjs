@@ -36,6 +36,9 @@ async function harness(options = {}) {
     hidden = false;
     disabled = false;
     checked = false;
+    contains(element) {
+      return element === this;
+    }
     closest() {
       return this;
     }
@@ -113,8 +116,16 @@ async function harness(options = {}) {
   });
   const timers = new Map();
   let timerID = 0;
+  const location = new URL(options.url ?? "https://goclick.example/");
+  element("#open-achievements").href = new URL("/?view=achievements", location).href;
+  element("#back-to-game").href = new URL("/", location).href;
   const window = Object.assign(new Element(), {
-    location: { origin: "https://goclick.example" },
+    location,
+    history: {
+      pushState(_, __, href) {
+        location.href = href;
+      },
+    },
     matchMedia: () => ({ matches: true, addEventListener() {} }),
     scrollTo() {},
     setInterval() {
@@ -139,6 +150,7 @@ async function harness(options = {}) {
     console,
     Headers,
     AbortController,
+    URLSearchParams,
     FormData: class {
       get(name) {
         return options.form?.[name] ?? (name === "identifier_type" ? "auto" : "password");
@@ -1306,6 +1318,61 @@ test("older click replies cannot roll back a more recent score or earned badges"
   await first;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
   assert.equal(h.element("#achievement-count").textContent, "5 / 22");
+});
+
+test("achievements use their own view and a pending unlock waits for gameplay", async () => {
+  const h = await harness({ initialFetch: async () => response(game(24)), expectedCount: 24 });
+  const gameView = h.element("#game-view");
+  const achievementView = h.element("#achievement-view");
+  const button = h.element("#click-button");
+  const toast = h.element("#achievement-notice");
+  const pending = deferred();
+  h.fetch(() => pending.promise);
+  const click = button.fire("click");
+  h.element("#open-achievements").fire("click", { button: 0 });
+  assert.equal(h.window.location.search, "?view=achievements");
+  assert.equal(gameView.hidden, true);
+  assert.equal(achievementView.hidden, false);
+  assert.equal(h.document.activeElement, h.element("#achievement-title"));
+
+  pending.resolve(response(counters(25)));
+  await click;
+  assert.equal(h.element("#achievement-count").textContent, "2 / 22");
+  assert.equal(toast.hidden, true);
+  h.fetch(async () => response(game(25)));
+  await h.context.refreshGame();
+  assert.equal(achievementView.hidden, false);
+  h.element("#back-to-game").fire("click", { button: 0 });
+  await settle();
+  assert.equal(gameView.hidden, false);
+  assert.equal(achievementView.hidden, true);
+  assert.equal(h.document.activeElement, button);
+  assert.equal(toast.hidden, false);
+  assert.equal(h.element("#achievement-notice-names").textContent, "Sentence");
+});
+
+test("loading the achievements URL opens its screen and reset times match gameplay", async () => {
+  const h = await harness({ url: "https://goclick.example/?view=achievements" });
+  assert.equal(h.element("#game-view").hidden, true);
+  assert.equal(h.element("#achievement-view").hidden, false);
+  h.window.location.search = "";
+  h.window.fire("popstate");
+  const reset = h.element("#streak-reset-button");
+  const details = h.element("#streak-reset-details");
+  assert.equal(details.hidden, true);
+  reset.fire("pointerenter", { pointerType: "mouse" });
+  assert.equal(details.hidden, false);
+  assert.equal(
+    h.element("#streak-reset-local").textContent,
+    h.element("#day-reset-local").textContent,
+  );
+  reset.fire("click");
+  h.element(".streak-panel").fire("pointerleave");
+  assert.equal(details.hidden, false);
+  h.document.fire("keydown", { key: "Escape" });
+  assert.equal(details.hidden, true);
+  const elapsed = h.element("#day-reset-meter").value;
+  assert.equal(h.element("#streak-reset-ring").attributes.get("stroke-dasharray"), `${elapsed} 1`);
 });
 
 test("new achievements announce without replaying loaded or synchronized badges", async () => {

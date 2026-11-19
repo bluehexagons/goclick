@@ -327,7 +327,7 @@
       const time = i / sampleRate;
       const phase = 2 * Math.PI * variation.pitch * (end * time + (pitch - end) * 0.012 * (1 - Math.exp(-time / 0.012)));
       const envelope = Math.exp(-time / decay);
-      const ring = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
+      const ring2 = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
       const noise = random() * 2 - 1;
       lowNoise += (noise - lowNoise) * noiseBlend;
       const highNoise = noise - previousNoise;
@@ -336,7 +336,7 @@
       let wave;
       switch (profile2) {
         case "classic":
-          wave = 0.6 * Math.sin(phase) * envelope + 0.14 * ring * Math.exp(-time / 8e-3) + 0.1 * highNoise * texture * Math.exp(-time / 3e-3);
+          wave = 0.6 * Math.sin(phase) * envelope + 0.14 * ring2 * Math.exp(-time / 8e-3) + 0.1 * highNoise * texture * Math.exp(-time / 3e-3);
           break;
         case "blip": {
           const stepPhase = phase + Math.max(0, time - 0.018) * stepPitch * 0.35 * Math.PI * 2;
@@ -346,10 +346,10 @@
           break;
         }
         case "clack":
-          wave = 0.3 * Math.sin(phase) * envelope + 0.12 * ring * Math.exp(-time / 6e-3) + 0.22 * highNoise * texture * Math.exp(-time / 25e-4);
+          wave = 0.3 * Math.sin(phase) * envelope + 0.12 * ring2 * Math.exp(-time / 6e-3) + 0.22 * highNoise * texture * Math.exp(-time / 25e-4);
           break;
         case "clunk":
-          wave = 0.6 * Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) * envelope + 0.14 * ring * Math.exp(-time / 0.014) + 0.08 * lowNoise * texture * Math.exp(-time / 5e-3);
+          wave = 0.6 * Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) * envelope + 0.14 * ring2 * Math.exp(-time / 0.014) + 0.08 * lowNoise * texture * Math.exp(-time / 5e-3);
           break;
         case "low-beep":
           wave = (0.6 * Math.sin(phase) + 0.1 * Math.sin(phase * 2) + 0.04 * Math.sin(phase / 2)) * envelope;
@@ -1092,17 +1092,17 @@
       vertex([0, 0, -16], [0, 0, -1]);
       vertex(contours[3][next].p, [0, 0, -1]);
       vertex(contours[3][i].p, [0, 0, -1]);
-      for (let ring = 0; ring < rings.length - 1; ring++) {
-        const dz = rings[ring].z - rings[ring + 1].z;
-        const bevel = rings[ring].inset - rings[ring + 1].inset;
+      for (let ring2 = 0; ring2 < rings.length - 1; ring2++) {
+        const dz = rings[ring2].z - rings[ring2 + 1].z;
+        const bevel = rings[ring2].inset - rings[ring2 + 1].inset;
         const length = Math.hypot(dz, bevel);
         const normal = (point) => [
           point.n[0] * dz / length,
           point.n[1] * dz / length,
           bevel / length
         ];
-        const a = contours[ring][i], b = contours[ring + 1][i];
-        const c = contours[ring + 1][next], d = contours[ring][next];
+        const a = contours[ring2][i], b = contours[ring2 + 1][i];
+        const c = contours[ring2 + 1][next], d = contours[ring2][next];
         vertex(a.p, normal(a));
         vertex(b.p, normal(b));
         vertex(c.p, normal(c));
@@ -3462,7 +3462,7 @@
   var statsShare = (() => {
     const button = required("#share-stats");
     const status = required("#share-status");
-    const dialog2 = required("#share-dialog");
+    const dialog = required("#share-dialog");
     const text = required("#share-text");
     const copyButton = required("#copy-share-text");
     const options = {
@@ -3519,14 +3519,14 @@
       } catch {
         clipboardWrite = Promise.reject(new Error("Clipboard unavailable"));
       }
-      if (openDialog && !dialog2.open) dialog2.showModal();
+      if (openDialog && !dialog.open) dialog.showModal();
       try {
         await clipboardWrite;
         if (current === generation2) announce(summary === text.value ? "copied" : "copyChanged");
       } catch {
         if (current !== generation2) return;
         announce("clipboardUnavailable");
-        if (dialog2.open && summary === text.value) {
+        if (dialog.open && summary === text.value) {
           text.focus();
           text.select();
         }
@@ -3542,12 +3542,12 @@
       updatePreview();
       if (announcement) status.textContent = message2(announcement);
     });
-    required("#close-share").addEventListener("click", () => dialog2.close());
-    dialog2.addEventListener("click", (event) => {
-      if (event.target !== dialog2) return;
-      const bounds = dialog2.getBoundingClientRect();
+    required("#close-share").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (event) => {
+      if (event.target !== dialog) return;
+      const bounds = dialog.getBoundingClientRect();
       const outside = event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
-      if (outside) dialog2.close();
+      if (outside) dialog.close();
     });
     copyButton.addEventListener("click", () => void copyCurrent(false));
     for (const option of Object.values(options)) option.addEventListener("change", updatePreview);
@@ -3562,7 +3562,7 @@
         copyButton.setAttribute("aria-busy", "false");
         announce(null);
         text.value = "";
-        if (dialog2.open) dialog2.close();
+        if (dialog.open) dialog.close();
       },
       copy(counters, local) {
         currentStats = { counters, local };
@@ -3785,8 +3785,7 @@
   }
 
   // frontend/achievement-panel.ts
-  var launcher = required("#open-achievements");
-  var dialog = required("#achievement-dialog");
+  var screen = required("#achievement-view");
   var list = required("#achievement-list");
   var empty = required("#achievement-empty");
   var spoiler = required("#achievement-spoilers");
@@ -3799,13 +3798,13 @@
   var noticeTitle = required("#achievement-notice-title");
   var noticeNames = required("#achievement-notice-names");
   var live = required("#achievement-announcement");
-  var dialogLive = required("#achievement-dialog-announcement");
   var game = required("#game-view");
   var spoilerKey = "goclick.achievements.reveal.v1";
   var filter = "all";
   var badges = [];
   var badgeKey = "";
   var noticeTimer = 0;
+  var noticeScheduled = false;
   var pending = /* @__PURE__ */ new Set();
   var visible = /* @__PURE__ */ new Set();
   try {
@@ -3840,7 +3839,7 @@
     item.append(icon, state, text);
     return item;
   }
-  function paintList() {
+  function paintAchievementList() {
     const cards = badges.filter(
       (badge) => filter === "all" || badge.earned === (filter === "earned")
     );
@@ -3856,8 +3855,8 @@
       filters[filter].setAttribute("aria-pressed", "false");
       filter = key;
       filters[key].setAttribute("aria-pressed", "true");
-      paintList();
-      dialog.scrollTop = 0;
+      paintAchievementList();
+      if (list.getBoundingClientRect().top < 0) window.scrollTo(0, 0);
     });
   }
   spoiler.addEventListener("change", () => {
@@ -3865,49 +3864,39 @@
       localStorage.setItem(spoilerKey, spoiler.checked ? "1" : "0");
     } catch {
     }
-    paintList();
+    paintAchievementList();
   });
-  launcher.addEventListener("click", () => {
-    paintList();
-    if (!dialog.open) {
-      dialog.append(notice);
-      dialog.showModal();
-    }
-  });
-  dialog.addEventListener("close", () => {
-    if (!dialog.open) game.append(notice);
-  });
-  required("#close-achievements").addEventListener("click", closeAchievements);
-  function closeAchievements() {
-    if (dialog.open) dialog.close();
-  }
-  function clearAchievementNotice() {
+  function hideAchievementNotice() {
     window.clearTimeout(noticeTimer);
-    pending.clear();
     visible.clear();
     notice.hidden = true;
     live.textContent = "";
-    dialogLive.textContent = "";
+  }
+  function clearAchievementNotice() {
+    pending.clear();
+    hideAchievementNotice();
   }
   function queueNotice(names) {
-    if (!names.length || game.hidden || document.hidden) return;
-    const queued = pending.size > 0;
+    if (!names.length || game.hidden && screen.hidden || document.hidden) return;
     for (const name of names) pending.add(name);
-    if (queued) return;
+    showAchievementNotices();
+  }
+  function showAchievementNotices() {
+    if (noticeScheduled || !pending.size || game.hidden || document.hidden) return;
+    noticeScheduled = true;
     void Promise.resolve().then(() => {
-      if (!pending.size) return;
+      noticeScheduled = false;
+      if (!pending.size || game.hidden || document.hidden) return;
       const earned = [...pending];
       pending.clear();
-      if (game.hidden || document.hidden) return;
       for (const name of earned) visible.add(name);
       noticeTitle.textContent = visible.size === 1 ? "Achievement unlocked" : "Achievements unlocked";
       noticeNames.textContent = [...visible].join(" \xB7 ");
       notice.hidden = false;
       const title = earned.length === 1 ? "Achievement unlocked" : "Achievements unlocked";
-      const announcement = dialog.open ? dialogLive : live;
-      announcement.textContent = `${title}. ${earned.join(". ")}.`;
+      live.textContent = `${title}. ${earned.join(". ")}.`;
       window.clearTimeout(noticeTimer);
-      noticeTimer = window.setTimeout(clearAchievementNotice, 6500);
+      noticeTimer = window.setTimeout(hideAchievementNotice, 6500);
     });
   }
   function renderAchievements(data, progress, announce) {
@@ -3929,7 +3918,7 @@
     const meter = required("#achievement-meter");
     meter.value = count;
     meter.max = badges.length;
-    if (dialog.open) paintList();
+    if (!screen.hidden) paintAchievementList();
   }
 
   // frontend/progress-panel.ts
@@ -3942,6 +3931,37 @@
   var resetMeter = required("#day-reset-meter");
   var resetTime = required("#day-reset-local");
   var timeLeft = required("#day-reset-left");
+  var streaks = required(".streak-panel");
+  var resetButton = required("#streak-reset-button");
+  var resetDetails = required("#streak-reset-details");
+  var compactTime = required("#streak-reset-local");
+  var compactTimeLeft = required("#streak-reset-left");
+  var ring = document.querySelector("#streak-reset-ring");
+  var resetPinned = false;
+  function setResetDetails(open) {
+    resetDetails.hidden = !open;
+    resetButton.setAttribute("aria-expanded", String(open));
+  }
+  function closeResetDetails() {
+    resetPinned = false;
+    setResetDetails(false);
+  }
+  resetButton.addEventListener("pointerenter", (event) => {
+    if (event.pointerType === "mouse") setResetDetails(true);
+  });
+  streaks.addEventListener("pointerleave", () => {
+    if (!resetPinned) setResetDetails(false);
+  });
+  resetButton.addEventListener("click", () => {
+    resetPinned = !resetPinned;
+    setResetDetails(resetPinned);
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!resetDetails.hidden && !streaks.contains(event.target)) closeResetDetails();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !resetDetails.hidden) closeResetDetails();
+  });
   var lastActivity = "";
   var resetMinute = NaN;
   var resetTimer = 0;
@@ -3977,10 +3997,12 @@
     const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
     const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;
     const countdown = message2("timeUntilReset", { time: remaining });
-    timeLeft.textContent = countdown;
-    resetMeter.value = elapsed / dayMilliseconds;
+    timeLeft.textContent = compactTimeLeft.textContent = countdown;
+    const fraction = elapsed / dayMilliseconds;
+    resetMeter.value = fraction;
+    ring.setAttribute("stroke-dasharray", `${fraction} 1`);
     resetMeter.setAttribute("aria-valuetext", countdown);
-    resetTime.textContent = message2("localReset", {
+    resetTime.textContent = compactTime.textContent = message2("localReset", {
       time: new Date(next).toLocaleString(currentLanguage(), {
         weekday: "short",
         month: "short",
@@ -3993,6 +4015,7 @@
   }
   function showReset(show2) {
     window.clearInterval(resetTimer);
+    closeResetDetails();
     if (!show2) return;
     paintReset(true);
     resetTimer = window.setInterval(paintReset, 1e3);
@@ -4003,11 +4026,14 @@
     loading: required("#loading-view"),
     home: required("#home-view"),
     auth: required("#auth-view"),
-    game: required("#game-view")
+    game: required("#game-view"),
+    achievements: required("#achievement-view")
   };
   var loginForm = required("#login-form");
   var signupForm = required("#signup-form");
   var clickButton = required("#click-button");
+  var achievementsLink = required("#open-achievements");
+  var playLink = required("#back-to-game");
   var buttonLanguage = createButtonLanguage(currentLanguage());
   var buttonLabel = required(".button-label", clickButton);
   var counterCard = required("#counter-card");
@@ -4107,6 +4133,30 @@
     cooldownUntil = Math.max(cooldownUntil, performance.now() + retryAfterMilliseconds(retryAfter));
     paintCooldown();
   }
+  function isPlayerView(view = currentView) {
+    return view === "game" || view === "achievements";
+  }
+  function pageFromLocation() {
+    return new URLSearchParams(window.location.search).get("view") === "achievements" ? "achievements" : "game";
+  }
+  function navigatePlayerPage() {
+    if (!isPlayerView()) return;
+    const view = pageFromLocation();
+    if (view === currentView) return;
+    show(view);
+    if (view === "game") (clickButton.disabled ? required("#main-content") : clickButton).focus();
+  }
+  for (const link of [achievementsLink, playLink]) {
+    link.addEventListener("click", (event) => {
+      if (!isPlayerView() || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
+      event.preventDefault();
+      if (link === achievementsLink === (currentView === "achievements")) return;
+      window.history.pushState(null, "", link.href);
+      navigatePlayerPage();
+    });
+  }
+  window.addEventListener("popstate", navigatePlayerPage);
   function show(view) {
     const changed = view !== currentView;
     if (changed) {
@@ -4114,25 +4164,33 @@
       viewAnimation?.cancel();
     }
     currentView = view;
-    document.documentElement.lang = view === "game" ? currentLanguage() : "en";
+    const player = isPlayerView(view);
+    document.documentElement.lang = player ? currentLanguage() : "en";
     if (changed) window.scrollTo(0, 0);
-    const authenticated = view === "game";
     views.loading.hidden = view !== "loading";
     views.home.hidden = view !== "home";
     views.auth.hidden = view !== "login" && view !== "signup";
-    views.game.hidden = !authenticated;
+    views.game.hidden = view !== "game";
+    views.achievements.hidden = view !== "achievements";
+    achievementsLink.hidden = !player;
+    achievementsLink.setAttribute("aria-current", view === "achievements" ? "page" : "false");
     if (changed) {
-      showReset(authenticated);
-      if (!authenticated) {
-        closeAchievements();
+      showReset(player);
+      if (view === "achievements") {
+        hideAchievementNotice();
+        paintAchievementList();
+        required("#achievement-title").focus();
+      } else if (view === "game") {
+        showAchievementNotices();
+      } else {
         clearAchievementNotice();
       }
     }
     loginForm.hidden = view !== "login";
     signupForm.hidden = view !== "signup";
-    required("#guest-nav").hidden = authenticated || view === "loading";
-    required("#user-nav").hidden = !authenticated || localMode;
-    required("#local-nav").hidden = !authenticated || !localMode;
+    required("#guest-nav").hidden = player || view === "loading";
+    required("#user-nav").hidden = !player || localMode;
+    required("#local-nav").hidden = !player || !localMode;
     if (changed && view !== "loading" && !motionPreference.matches) {
       const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
       viewAnimation = incoming.animate(
@@ -4358,7 +4416,7 @@
     }
     let generation2 = clickGeneration;
     const focusButton = currentView === "login" || currentView === "signup";
-    show("game");
+    show(pageFromLocation());
     showError("#game-error", "");
     retryGameButton.hidden = true;
     gameReady = false;
@@ -4381,7 +4439,7 @@
         if (optionsDialog.open) updateOptions();
         gameReady = true;
         updateGameControls();
-        if (focusButton && !clickButton.disabled) clickButton.focus();
+        if (focusButton && currentView === "game" && !clickButton.disabled) clickButton.focus();
         setConnection();
       } catch (caught) {
         const error = requestError(caught);
@@ -4408,10 +4466,10 @@
   }
   function refreshGame() {
     if (localMode) {
-      if (currentView === "game") openLocalGame();
+      if (isPlayerView()) openLocalGame();
       return;
     }
-    if (currentView !== "game" || !user || signingOut || offline || document.hidden) return;
+    if (!isPlayerView() || !user || signingOut || offline || document.hidden) return;
     refreshQueued = false;
     return openGame(void 0, true);
   }
@@ -4427,6 +4485,7 @@
   });
   function resumeGame() {
     if (cooldownUntil) paintCooldown();
+    showAchievementNotices();
     refreshGame();
   }
   document.addEventListener("visibilitychange", () => {
@@ -4435,7 +4494,7 @@
   });
   window.addEventListener("blur", () => identityEpoch++);
   window.addEventListener("focus", () => {
-    if (currentView === "game") paintReset(true);
+    if (isPlayerView()) paintReset(true);
     resumeGame();
   });
   window.addEventListener("pageshow", (event) => {
@@ -4566,7 +4625,7 @@
     }
   });
   clickButton.addEventListener("click", async (event) => {
-    if (clickButton.disabled) return;
+    if (currentView !== "game" || clickButton.disabled) return;
     paintButtonLanguage(buttonLanguage.click(performance.now(), currentLanguage()));
     if (localMode) {
       await clickLocal(event);
@@ -4740,7 +4799,7 @@
       saveOption({ simulatedPing });
   });
   function openLocalGame(data) {
-    show("game");
+    show(pageFromLocation());
     showError("#game-error", "");
     retryGameButton.hidden = true;
     try {
@@ -4766,7 +4825,7 @@
       resetClickState();
       optionsDialog.close();
       openLocalGame(data);
-      clickButton.focus();
+      if (currentView === "game") clickButton.focus();
     } catch (caught) {
       const error = requestError(caught);
       optionsNotice(`Couldn\u2019t open the local save. ${error.message}`, true);
@@ -4934,11 +4993,11 @@
     translatePage();
     updateSoundToggle();
     languageSetting.value = currentLanguage();
-    document.documentElement.lang = currentView === "game" ? currentLanguage() : "en";
+    document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
     buttonLanguage.reset(currentLanguage());
     paintButtonLanguage(currentLanguage());
     renderCounters(displayedCounters, true);
-    if (currentView === "game") paintReset(true);
+    if (isPlayerView()) paintReset(true);
     updatePendingIndicator();
     updateGameControls();
     if (lastGameError) showGameError(lastGameError);

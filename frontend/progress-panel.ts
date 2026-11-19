@@ -21,6 +21,41 @@ const resetMeter = $<HTMLProgressElement>("#day-reset-meter");
 const resetTime = $("#day-reset-local");
 const timeLeft = $("#day-reset-left");
 
+const streaks = $(".streak-panel");
+const resetButton = $<HTMLButtonElement>("#streak-reset-button");
+const resetDetails = $("#streak-reset-details");
+const compactTime = $("#streak-reset-local");
+const compactTimeLeft = $("#streak-reset-left");
+const ring = document.querySelector<SVGCircleElement>("#streak-reset-ring")!;
+let resetPinned = false;
+
+function setResetDetails(open: boolean) {
+  resetDetails.hidden = !open;
+  resetButton.setAttribute("aria-expanded", String(open));
+}
+
+function closeResetDetails() {
+  resetPinned = false;
+  setResetDetails(false);
+}
+
+resetButton.addEventListener("pointerenter", (event) => {
+  if (event.pointerType === "mouse") setResetDetails(true);
+});
+streaks.addEventListener("pointerleave", () => {
+  if (!resetPinned) setResetDetails(false);
+});
+resetButton.addEventListener("click", () => {
+  resetPinned = !resetPinned;
+  setResetDetails(resetPinned);
+});
+document.addEventListener("pointerdown", (event) => {
+  if (!resetDetails.hidden && !streaks.contains(event.target as Node)) closeResetDetails();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !resetDetails.hidden) closeResetDetails();
+});
+
 let lastActivity = "";
 let resetMinute = NaN;
 let resetTimer = 0;
@@ -62,10 +97,12 @@ export function paintReset(force = false) {
   const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
   const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;
   const countdown = t("timeUntilReset", { time: remaining });
-  timeLeft.textContent = countdown;
-  resetMeter.value = elapsed / dayMilliseconds;
+  timeLeft.textContent = compactTimeLeft.textContent = countdown;
+  const fraction = elapsed / dayMilliseconds;
+  resetMeter.value = fraction;
+  ring.setAttribute("stroke-dasharray", `${fraction} 1`);
   resetMeter.setAttribute("aria-valuetext", countdown);
-  resetTime.textContent = t("localReset", {
+  resetTime.textContent = compactTime.textContent = t("localReset", {
     time: new Date(next).toLocaleString(currentLanguage(), {
       weekday: "short",
       month: "short",
@@ -79,6 +116,7 @@ export function paintReset(force = false) {
 
 export function showReset(show: boolean) {
   window.clearInterval(resetTimer);
+  closeResetDetails();
   if (!show) return;
   paintReset(true);
   resetTimer = window.setInterval(paintReset, 1000);
