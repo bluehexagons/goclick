@@ -785,7 +785,7 @@ test("the outlet's test and reset cycle power without scoring a click", () => {
   assert.deepEqual(h.sounds, ["press", "press", "release"]);
 });
 
-test("a long mouse drag leaves the outlet exposed briefly after release", () => {
+test("a long mouse drag lets the connected button return immediately", () => {
   const h = harness(true, true);
   const face = h.button.getBoundingClientRect();
   h.button.getBoundingClientRect = () => {
@@ -797,12 +797,68 @@ test("a long mouse drag leaves the outlet exposed briefly after release", () => 
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 350, clientY: 150 });
   h.pointer("pointerup", 1, { pointerType: "mouse", clientX: 350 });
   assert.equal(h.clicks.length, 1);
-  assert.equal(Math.round(h.position().x), 180);
-  h.outletControl.click();
-  assert.equal(h.outletControl.dataset.press, "test");
-  assert.equal(Math.round(h.position().x), 180);
-  h.runTimer(1500);
   assert.equal(h.position().x, 0);
+});
+
+test("the unplugged button stays where it is released and remains reachable after resize", () => {
+  for (const [pointerType, reduced] of [
+    ["mouse", false],
+    ["touch", true],
+  ]) {
+    const h = harness(reduced, true);
+    const move = (x, y) =>
+      h.stage.fire("pointermove", {
+        pointerId: 1,
+        pointerType,
+        clientX: 170 + x,
+        clientY: 150 + y,
+      });
+    let time = 0;
+    const settle = () => {
+      for (let i = 0; i < 130; i++) {
+        time += 17;
+        h.setTime(time);
+        h.frame(time);
+      }
+    };
+    const position = () => {
+      const { x, y } = h.position();
+      return [Math.round(x), Math.round(y)];
+    };
+    h.pointer("pointerdown", 1, { pointerType });
+    for (const [x, y] of [
+      [190, 0],
+      [-190, 0],
+      [0, -190],
+      [0, 190],
+      [220, 0],
+      [0, -220],
+      [185, 96],
+    ])
+      move(x, y);
+    assert.equal(h.power.dataset.plug, "unplugged");
+    h.pointer("pointerup", 1, { pointerType, clientX: 355, clientY: 246 });
+    settle();
+    assert.deepEqual(position(), [185, 96]);
+    assert.equal(h.clicks.length, 1);
+
+    h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 100, clientY: 150 });
+    h.stage.fire("pointerleave");
+    h.window.fire("blur");
+    settle();
+    assert.deepEqual(position(), [185, 96]);
+
+    h.pointer("pointerdown", 1, { pointerType, clientX: 355, clientY: 246 });
+    move(225, 110);
+    h.pointer("pointerup", 1, { pointerType, clientX: 395, clientY: 260 });
+    settle();
+    assert.deepEqual(position(), [225, 110]);
+
+    h.window.innerWidth = 400;
+    h.window.fire("resize");
+    settle();
+    assert.deepEqual(position(), [154, 110]);
+  }
 });
 
 test("the dangling plug can reconnect to either socket by holding or tapping", () => {
@@ -823,7 +879,8 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
       move(x, y);
     assert.equal(h.power.dataset.plug, "unplugged");
   };
-  const start = () => h.pointer("pointerdown", 1, { clientY: 220 });
+  const start = (x = 0, y = 0) =>
+    h.pointer("pointerdown", 1, { clientX: 170 + x, clientY: 220 + y });
   start();
   pullFree();
   move(35, -125);
@@ -837,7 +894,7 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   h.runTimer(3000);
   assert.equal(h.power.dataset.plug, "unplugged");
 
-  start();
+  start(35, -125);
   move(35, -125);
   const drag = h.position();
   h.runTimer(3000);

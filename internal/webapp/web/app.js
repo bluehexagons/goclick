@@ -1732,7 +1732,6 @@
   var HOLD_RELEASE_MS = 110;
   var PLUG_DWELL_MS = 3e3;
   var PLUG_SEAT_MS = 200;
-  var OUTLET_ACCESS_MS = 1500;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let plugProgress2 = function(time) {
@@ -1780,16 +1779,6 @@
         effects.replaceChildren();
         window.clearTimeout(beatTimer);
       }
-    }, clearOutletAccess2 = function() {
-      window.clearTimeout(outletAccessTimer);
-      outletAccessTimer = 0;
-    }, keepOutletAccessible2 = function() {
-      clearOutletAccess2();
-      outletAccessTimer = window.setTimeout(() => {
-        outletAccessTimer = 0;
-        target.x = target.y = target.rx = target.ry = 0;
-        animate2();
-      }, OUTLET_ACCESS_MS);
     }, reconnectPlug2 = function() {
       if (!power || !docking || !pointers.size || button.disabled || document.hidden || !stage.clientWidth || !stage.clientHeight)
         return;
@@ -1964,7 +1953,7 @@
     }, animate2 = function() {
       if (reducedMotion.matches) {
         for (const key of keys) {
-          current[key] = (pointers.size || outletAccessTimer) && (key === "x" || key === "y") ? target[key] : 0;
+          current[key] = (pointers.size || plugState === "unplugged") && (key === "x" || key === "y") ? target[key] : 0;
           velocity[key] = 0;
         }
         current.flash = 0;
@@ -1997,8 +1986,6 @@
       };
       beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
     }, begin2 = function() {
-      if (outletAccessTimer && !pointers.size) target.x = target.y = target.rx = target.ry = 0;
-      clearOutletAccess2();
       if (gameButton) clickSound.play("press");
       window.clearTimeout(holdTimer);
       clearResponse2();
@@ -2083,8 +2070,19 @@
       setPhase2("idle");
       paint2();
       animate2();
+    }, keepDetachedButtonInView2 = function() {
+      const stageRect = stage.getBoundingClientRect();
+      if (!stageRect.width || !stageRect.height) return false;
+      const margin = 16;
+      const x = stageRect.left + stageRect.width / 2;
+      const y = stageRect.top + stageRect.height / 2;
+      const nextX = clamp(target.x, margin - x, window.innerWidth - margin - x);
+      const nextY = clamp(target.y, margin - y, window.innerHeight - margin - y);
+      if (nextX === target.x && nextY === target.y) return false;
+      target.x = nextX;
+      target.y = nextY;
+      return true;
     }, reset2 = function(cancelled = true) {
-      clearOutletAccess2();
       outletTouch = null;
       clearResponse2();
       const captured = [...pointers.keys()];
@@ -2096,7 +2094,8 @@
       current.copper = 0;
       current.labelCharge = 0;
       current.labelPhase = 0;
-      for (const key of keys) target[key] = 0;
+      if (plugState !== "unplugged") target.x = target.y = 0;
+      target.rx = target.ry = 0;
       animate2();
     }, clearResponse2 = function() {
       responseStarted = null;
@@ -2190,7 +2189,6 @@
       outletTripped = !outletTripped;
       outletControl.setAttribute("aria-pressed", String(outletTripped));
       outletControl.dataset.press = outletTripped ? "test" : "reset";
-      if (outletAccessTimer) keepOutletAccessible2();
       updatePower2(performance.now());
       if (!reducedMotion.matches) paint2();
       animate2();
@@ -2205,17 +2203,14 @@
       if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
       pointers.delete(event.pointerId);
       if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
-      if (outletControl && !outletControl.disabled && point.wentAway && !pointers.size && !cancelled && inside && event.pointerType === "mouse") {
-        const plate = outletControl.getBoundingClientRect();
-        if (rect.right <= plate.left || rect.left >= plate.right || rect.bottom <= plate.top || rect.top >= plate.bottom) {
-          target.x = current.x;
-          target.y = current.y;
+      if (!pointers.size) {
+        if (plugState === "unplugged") {
+          keepDetachedButtonInView2();
+          target.rx = target.ry = 0;
           velocity.x = velocity.y = 0;
-          keepOutletAccessible2();
         }
-      }
-      if (!pointers.size) release2(cancelled || !inside);
-      else aimPointers2();
+        release2(cancelled || !inside);
+      } else aimPointers2();
       if (!cancelled && inside && !button.disabled) {
         const uTurn = point.wentAway && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) <= Math.max(12, button.offsetWidth * 0.05);
         activateRelease2(
@@ -2223,8 +2218,8 @@
           event
         );
       }
-      if (outletAccessTimer) return;
-      if (!pointers.size && !cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
+      if (pointers.size || plugState === "unplugged") return;
+      if (!cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
         coastUntil = performance.now() + 80;
         coastFromX = current.x;
         coastFromY = current.y;
@@ -2233,13 +2228,13 @@
       }
       const stageRect = stage.getBoundingClientRect();
       const overStage = event.clientX >= stageRect.left && event.clientX <= stageRect.left + stageRect.width && event.clientY >= stageRect.top && event.clientY <= stageRect.top + stageRect.height;
-      if (!pointers.size && !cancelled && event.pointerType === "mouse" && overStage) aim2(event);
-      else if (!pointers.size) {
+      if (!cancelled && event.pointerType === "mouse" && overStage) aim2(event);
+      else {
         for (const key of ["x", "y", "rx", "ry"]) target[key] = 0;
         animate2();
       }
     };
-    plugProgress = plugProgress2, alignPlug = alignPlug2, updatePower = updatePower2, clearOutletAccess = clearOutletAccess2, keepOutletAccessible = keepOutletAccessible2, reconnectPlug = reconnectPlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
+    plugProgress = plugProgress2, alignPlug = alignPlug2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aim = aim2, release = release2, keepDetachedButtonInView = keepDetachedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -2258,7 +2253,6 @@
     let looseBeforeDetach = 1;
     let outletTripped = false;
     let drainStartedAt = null;
-    let outletAccessTimer = 0;
     let outletTouch = null;
     let socket = "bottom";
     let docking = null;
@@ -2367,11 +2361,11 @@
         if (gameButton && !point.wentAway && Math.hypot(point.x - point.startX, point.y - point.startY) >= Math.max(45, button.offsetWidth * 0.35))
           point.wentAway = true;
         aimPointers2(true);
-      } else if (!pointers.size && !outletAccessTimer && activeKey === null && event.pointerType === "mouse")
+      } else if (!pointers.size && plugState !== "unplugged" && activeKey === null && event.pointerType === "mouse")
         aim2(event);
     });
     stage.addEventListener("pointerleave", () => {
-      if (!pointers.size && !outletAccessTimer && activeKey === null && performance.now() >= coastUntil)
+      if (!pointers.size && plugState !== "unplugged" && activeKey === null && performance.now() >= coastUntil)
         reset2(false);
     });
     button.addEventListener("pointerdown", (event) => {
@@ -2472,7 +2466,10 @@
       }
     });
     window.addEventListener("blur", () => reset2());
-    window.addEventListener("resize", () => reset2());
+    window.addEventListener("resize", () => {
+      if (plugState === "unplugged") keepDetachedButtonInView2();
+      reset2();
+    });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         plugStartedAt = null;
@@ -2483,6 +2480,7 @@
       }
     });
     new ResizeObserver(() => {
+      if (plugState === "unplugged" && !pointers.size && keepDetachedButtonInView2()) animate2();
       if (!renderer && !setupFrame && stage.clientWidth && stage.clientHeight) {
         setupFrame = requestAnimationFrame(() => {
           setupFrame = 0;
@@ -2498,8 +2496,6 @@
   var plugProgress;
   var alignPlug;
   var updatePower;
-  var clearOutletAccess;
-  var keepOutletAccessible;
   var reconnectPlug;
   var paint;
   var moveReadout;
@@ -2510,6 +2506,7 @@
   var begin;
   var aim;
   var release;
+  var keepDetachedButtonInView;
   var reset;
   var clearResponse;
   var respond;

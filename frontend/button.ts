@@ -28,7 +28,6 @@ const TAP_RELEASE_MS = 70;
 const HOLD_RELEASE_MS = 110;
 const PLUG_DWELL_MS = 3000;
 const PLUG_SEAT_MS = 200;
-const OUTLET_ACCESS_MS = 1500;
 const tactileButtons = new Map<HTMLButtonElement, ButtonController>();
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile-button]")) {
   const maybeStage = button.closest<HTMLElement>(".button-stage");
@@ -49,7 +48,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let looseBeforeDetach = 1;
   let outletTripped = false;
   let drainStartedAt: number | null = null;
-  let outletAccessTimer = 0;
   let outletTouch: { id: number; x: number; y: number } | null = null;
   let socket: OutletSocket = "bottom";
   let docking: { socket: OutletSocket; x: number; y: number; angle: number } | null = null;
@@ -174,20 +172,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       effects.replaceChildren();
       window.clearTimeout(beatTimer);
     }
-  }
-
-  function clearOutletAccess() {
-    window.clearTimeout(outletAccessTimer);
-    outletAccessTimer = 0;
-  }
-
-  function keepOutletAccessible() {
-    clearOutletAccess();
-    outletAccessTimer = window.setTimeout(() => {
-      outletAccessTimer = 0;
-      target.x = target.y = target.rx = target.ry = 0;
-      animate();
-    }, OUTLET_ACCESS_MS);
   }
 
   function reconnectPlug() {
@@ -428,7 +412,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         // Deliberate drag follows the pointer directly in reduced motion.
         // Hover, tilt, springs, and release animation remain suppressed.
         current[key] =
-          (pointers.size || outletAccessTimer) && (key === "x" || key === "y") ? target[key] : 0;
+          (pointers.size || plugState === "unplugged") && (key === "x" || key === "y")
+            ? target[key]
+            : 0;
         velocity[key] = 0;
       }
       current.flash = 0;
@@ -464,8 +450,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
   }
   function begin() {
-    if (outletAccessTimer && !pointers.size) target.x = target.y = target.rx = target.ry = 0;
-    clearOutletAccess();
     if (gameButton) clickSound.play("press");
     window.clearTimeout(holdTimer);
     clearResponse();
@@ -562,8 +546,21 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     paint();
     animate();
   }
+  function keepDetachedButtonInView() {
+    const stageRect = stage.getBoundingClientRect();
+    if (!stageRect.width || !stageRect.height) return false;
+    // Leave the center reachable after letting go outside the window or resizing it.
+    const margin = 16;
+    const x = stageRect.left + stageRect.width / 2;
+    const y = stageRect.top + stageRect.height / 2;
+    const nextX = clamp(target.x, margin - x, window.innerWidth - margin - x);
+    const nextY = clamp(target.y, margin - y, window.innerHeight - margin - y);
+    if (nextX === target.x && nextY === target.y) return false;
+    target.x = nextX;
+    target.y = nextY;
+    return true;
+  }
   function reset(cancelled = true) {
-    clearOutletAccess();
     outletTouch = null;
     clearResponse();
     const captured = [...pointers.keys()];
@@ -577,7 +574,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     // Its lettering must return to rest when that release clock is cancelled.
     current.labelCharge = 0;
     current.labelPhase = 0;
-    for (const key of keys) target[key] = 0;
+    if (plugState !== "unplugged") target.x = target.y = 0;
+    target.rx = target.ry = 0;
     animate();
   }
   function clearResponse() {
@@ -700,7 +698,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     outletTripped = !outletTripped;
     outletControl.setAttribute("aria-pressed", String(outletTripped));
     outletControl.dataset.press = outletTripped ? "test" : "reset";
-    if (outletAccessTimer) keepOutletAccessible();
     updatePower(performance.now());
     if (!reducedMotion.matches) paint();
     animate();
@@ -776,7 +773,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       aimPointers(true);
     } else if (
       !pointers.size &&
-      !outletAccessTimer &&
+      plugState !== "unplugged" &&
       activeKey === null &&
       event.pointerType === "mouse"
     )
@@ -785,7 +782,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   stage.addEventListener("pointerleave", () => {
     if (
       !pointers.size &&
-      !outletAccessTimer &&
+      plugState !== "unplugged" &&
       activeKey === null &&
       performance.now() >= coastUntil
     )
@@ -848,31 +845,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
     pointers.delete(event.pointerId);
     if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
-    if (
-      outletControl &&
-      !outletControl.disabled &&
-      point.wentAway &&
-      !pointers.size &&
-      !cancelled &&
-      inside &&
-      event.pointerType === "mouse"
-    ) {
-      const plate = outletControl.getBoundingClientRect();
-      if (
-        rect.right <= plate.left ||
-        rect.left >= plate.right ||
-        rect.bottom <= plate.top ||
-        rect.top >= plate.bottom
-      ) {
-        // Give a single mouse pointer time to move from the released button to the outlet.
-        target.x = current.x;
-        target.y = current.y;
+    if (!pointers.size) {
+      if (plugState === "unplugged") {
+        keepDetachedButtonInView();
+        target.rx = target.ry = 0;
         velocity.x = velocity.y = 0;
-        keepOutletAccessible();
       }
-    }
-    if (!pointers.size) release(cancelled || !inside);
-    else aimPointers();
+      release(cancelled || !inside);
+    } else aimPointers();
     if (!cancelled && inside && !button.disabled) {
       const uTurn =
         point.wentAway &&
@@ -883,9 +863,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         event,
       );
     }
-    if (outletAccessTimer) return;
+    if (pointers.size || plugState === "unplugged") return;
     if (
-      !pointers.size &&
       !cancelled &&
       inside &&
       !reducedMotion.matches &&
@@ -905,8 +884,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       event.clientX <= stageRect.left + stageRect.width &&
       event.clientY >= stageRect.top &&
       event.clientY <= stageRect.top + stageRect.height;
-    if (!pointers.size && !cancelled && event.pointerType === "mouse" && overStage) aim(event);
-    else if (!pointers.size) {
+    if (!cancelled && event.pointerType === "mouse" && overStage) aim(event);
+    else {
       for (const key of ["x", "y", "rx", "ry"] as const) target[key] = 0;
       animate();
     }
@@ -982,7 +961,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
   });
   window.addEventListener("blur", () => reset());
-  window.addEventListener("resize", () => reset());
+  window.addEventListener("resize", () => {
+    if (plugState === "unplugged") keepDetachedButtonInView();
+    reset();
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       plugStartedAt = null;
@@ -996,6 +978,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   // The CSS button is usable immediately. Compile graphics only for a visible
   // stage, after its first paint; hidden login/game buttons do no startup work.
   new ResizeObserver(() => {
+    if (plugState === "unplugged" && !pointers.size && keepDetachedButtonInView()) animate();
     if (!renderer && !setupFrame && stage.clientWidth && stage.clientHeight) {
       setupFrame = requestAnimationFrame(() => {
         setupFrame = 0;
