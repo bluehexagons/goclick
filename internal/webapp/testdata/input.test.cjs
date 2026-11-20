@@ -62,6 +62,9 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     setAttribute(name, value) {
       this.attributes.set(name, value);
     }
+    removeAttribute(name) {
+      this.attributes.delete(name);
+    }
     animate(keyframes, options) {
       this.animations.push({ keyframes, options });
       return { finished: new Promise(() => {}) };
@@ -96,11 +99,14 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
   power.querySelectorAll = () => cords;
   power.querySelector = (selector) => (selector === ".power-outlet" ? outlet[0] : outlet[1]);
   const outletControl = new Element();
+  const plugControl = Object.assign(new Element(), { hidden: true });
+  plugControl.setAttribute("aria-pressed", "false");
   stage.clientWidth = 680;
   stage.clientHeight = 290;
   stage.querySelector = (selector) => {
     if (selector === ".button-rig") return rig;
     if (selector === ".button-power" && withPower) return power;
+    if (selector === ".plug-control" && withPower) return plugControl;
     return selector === ".outlet-control" && withPower ? outletControl : null;
   };
   const readout = withReadout ? new Element() : null;
@@ -142,6 +148,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
   });
   let frameCallback = null,
     now = 0;
+  let onDisabledChanged;
   const sounds = [];
   let powered = true;
   let soundCancellations = 0;
@@ -152,7 +159,13 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
       MouseEvent: Event,
       CustomEvent: Event,
       MutationObserver: class {
-        observe() {}
+        constructor(callback) {
+          this.callback = callback;
+        }
+        observe(target, { attributeFilter }) {
+          if (target === button && attributeFilter.includes("disabled"))
+            onDisabledChanged = this.callback;
+        }
       },
       ResizeObserver: class {
         observe() {}
@@ -202,6 +215,11 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     cords,
     outlet,
     outletControl,
+    plugControl,
+    setDisabled(disabled) {
+      button.disabled = disabled;
+      onDisabledChanged();
+    },
     // Project the native hit surface's face center back to screen pixels.
     // Raw CSS translation alone is magnified by the 850px perspective.
     position: () => {
@@ -927,11 +945,11 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   assert.equal(h.outletControl.attributes.get("aria-pressed"), "true");
   move(35, -173);
   assert.equal(h.power.dataset.dock, "top");
-  plug.fire("pointerdown", { pointerId: 2, clientX: 228, clientY: 150 });
-  plug.fire("pointerup", { pointerId: 2, clientX: 248, clientY: 150 });
+  h.plugControl.fire("pointerdown", { pointerId: 2, clientX: 228, clientY: 150 });
+  h.plugControl.fire("pointerup", { pointerId: 2, clientX: 248, clientY: 150 });
   assert.equal(h.power.dataset.plug, "unplugged");
-  plug.fire("pointerdown", { pointerId: 2, clientX: 228, clientY: 150 });
-  plug.fire("pointerup", { pointerId: 2, clientX: 228, clientY: 150 });
+  h.plugControl.fire("pointerdown", { pointerId: 2, clientX: 228, clientY: 150 });
+  h.plugControl.fire("pointerup", { pointerId: 2, clientX: 228, clientY: 150 });
   assert.equal(h.power.dataset.plug, "seated");
   assert.equal(plug.attributes.get("transform"), "translate(0 -58)");
   assert.equal(h.outletControl.disabled, false);
@@ -971,8 +989,8 @@ test("the plug can reconnect after a drop, and losing focus cancels the wait", (
 
     if (action === "tap") {
       const tap = { ...mouse, pointerId: 1 };
-      h.outlet[1].fire("pointerdown", tap);
-      h.outlet[1].fire("pointerup", tap);
+      h.plugControl.fire("pointerdown", tap);
+      h.plugControl.fire("pointerup", tap);
     } else {
       if (action === "blur") h.window.fire("blur");
       h.runTimer(3000);
@@ -987,6 +1005,126 @@ test("the plug can reconnect after a drop, and losing focus cancels the wait", (
       assert.equal(h.position().y, 0);
     }
   }
+});
+
+test("slack keeps the button parked after reconnecting and tension restores the return", () => {
+  const h = harness(true, true);
+  const releaseAt = (x, y) => h.pointer("pointerup", 1, { clientX: 170 + x, clientY: 220 + y });
+  const move = (x, y) =>
+    h.stage.fire("pointermove", { pointerId: 1, clientX: 170 + x, clientY: 220 + y });
+  const position = () => [Math.round(h.position().x), Math.round(h.position().y)];
+  const bounds = h.button.getBoundingClientRect();
+  h.button.getBoundingClientRect = () => {
+    const { x, y } = h.position();
+    return {
+      ...bounds,
+      left: bounds.left + x,
+      right: bounds.right + x,
+      top: bounds.top + y,
+      bottom: bounds.bottom + y,
+    };
+  };
+  const startAt = (x, y) => h.pointer("pointerdown", 1, { clientX: 170 + x, clientY: 220 + y });
+  const pullFree = (x, y) => {
+    startAt(x, y);
+    for (const [dx, dy] of [
+      [190, 0],
+      [-190, 0],
+      [0, -190],
+      [0, 190],
+      [220, 0],
+      [0, -220],
+      [0, 220],
+    ])
+      move(x + dx, y + dy);
+    assert.equal(h.power.dataset.plug, "unplugged");
+    assert.equal(h.plugControl.hidden, false);
+  };
+  assert.equal(h.plugControl.hidden, true);
+  pullFree(0, 0);
+  h.setDisabled(true);
+  assert.equal(h.plugControl.hidden, true);
+  h.plugControl.click();
+  assert.equal(h.plugControl.attributes.get("aria-pressed"), "false");
+  h.setDisabled(false);
+  assert.equal(h.plugControl.hidden, false);
+  startAt(0, 220);
+  const tap = { pointerId: 2, pointerType: "touch", clientX: 80, clientY: 150 };
+  h.plugControl.fire("pointerdown", tap);
+  h.plugControl.fire("pointerup", tap);
+  h.plugControl.fire("click", { ...tap, detail: 1 });
+  assert.equal(h.plugControl.attributes.get("aria-pressed"), "true");
+  assert.equal(h.clicks.length, 0);
+  move(35, -140);
+  assert.equal(h.power.dataset.dock, "bottom");
+  assert.equal(h.plugControl.attributes.get("aria-label"), "Reconnect plug");
+  assert.equal(h.plugControl.attributes.has("aria-pressed"), false);
+  releaseAt(35, -140);
+  h.plugControl.click();
+  assert.equal(h.power.dataset.plug, "seated");
+  assert.equal(h.plugControl.hidden, true);
+  assert.deepEqual(position(), [35, -140]);
+  assert.equal(h.clicks.length, 1);
+
+  startAt(35, -140);
+  move(125, -85);
+  assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
+  releaseAt(125, -85);
+  h.stage.fire("pointermove", { pointerType: "mouse", clientX: 130, clientY: 130 });
+  h.stage.fire("pointerleave");
+  h.window.fire("blur");
+  assert.deepEqual(position(), [125, -85]);
+  assert.equal(h.clicks.length, 2);
+
+  pullFree(125, -85);
+  assert.equal(h.plugControl.attributes.get("aria-pressed"), "true");
+  h.plugControl.click();
+  assert.equal(h.plugControl.attributes.get("aria-pressed"), "false");
+  move(35, -125);
+  releaseAt(35, -125);
+  assert.equal(h.power.dataset.dock, "bottom");
+  h.runTimer(3000);
+  assert.equal(h.power.dataset.plug, "seated");
+  assert.deepEqual(position(), [0, 0]);
+  assert.equal(h.clicks.length, 3);
+});
+
+test("the hanging cord changes length smoothly and can reverse before settling", () => {
+  const h = harness(false, true);
+  h.pointer("pointerdown", 1);
+  for (const [x, y] of [
+    [190, 0],
+    [-190, 0],
+    [0, -190],
+    [0, 190],
+    [220, 0],
+    [0, -220],
+    [0, 220],
+  ])
+    h.stage.fire("pointermove", { pointerId: 1, clientX: 170 + x, clientY: 150 + y });
+  h.pointer("pointercancel", 1);
+  const frame = (time) => {
+    h.setTime(time);
+    h.frame(time);
+  };
+  for (let i = 1; i <= 90; i++) frame(i * 17);
+  const plugY = () => parseFloat(h.plugControl.props.get("--plug-y"));
+  const normal = plugY();
+  h.plugControl.click();
+  frame(1530);
+  assert.equal(plugY(), normal);
+  frame(1610);
+  const extending = plugY();
+  assert.ok(extending > normal + 4 && extending < normal + 14);
+  h.plugControl.click();
+  frame(1610);
+  assert.equal(plugY(), extending);
+  frame(1680);
+  assert.ok(plugY() < extending && plugY() > normal);
+  frame(1880);
+  assert.equal(plugY(), normal);
+  assert.equal(h.hasFrame(), false);
+  assert.equal(h.clicks.length, 0);
 });
 
 test("the plug rocks free and the drained lights stay dark after release and new clicks", () => {

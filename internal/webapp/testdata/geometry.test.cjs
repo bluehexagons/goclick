@@ -230,18 +230,32 @@ test("a dangling cord ignores the button's press depth and rebound", () => {
   const { projectButtonPower } = frontend({}).load("button-geometry");
   const resting = { ...idle, x: 180, y: -90 };
   for (const width of [228, 420]) {
-    const options = { hangAngle: 0.28 };
-    const cable = projectButtonPower(resting, width, "unplugged", options);
-    for (const [press, pop] of [
-      [1, -0.045],
-      [0, 0.065],
-    ]) {
-      assert.deepEqual(
-        projectButtonPower({ ...resting, press, pop }, width, "unplugged", options),
-        cable,
-      );
+    for (const slack of [0, 1]) {
+      const options = { hangAngle: 0.28, slack };
+      const cable = projectButtonPower(resting, width, "unplugged", options);
+      for (const [press, pop] of [
+        [1, -0.045],
+        [0, 0.065],
+      ]) {
+        assert.deepEqual(
+          projectButtonPower({ ...resting, press, pop }, width, "unplugged", options),
+          cable,
+        );
+      }
     }
   }
+});
+
+test("a plugged-in slack cord sags at a distance without stretching", () => {
+  const { projectButtonPower } = frontend({}).load("button-geometry");
+  const pulled = { ...idle, x: 330, y: 100 };
+  const tension = projectButtonPower(pulled, 420);
+  const slack = projectButtonPower(pulled, 420, "seated", { slack: 1 });
+  assert.equal(tension.sag, 0);
+  assert.ok(tension.thickness < 1);
+  assert.ok(slack.sag > 40);
+  assert.equal(slack.thickness, 1);
+  assert.equal(slack.plugTransform, tension.plugTransform);
 });
 
 test("plug transitions keep the cord attached from the socket to the hanging pose", () => {

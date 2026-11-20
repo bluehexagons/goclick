@@ -795,6 +795,7 @@
     looseBeforeDetach = 1,
     hangAngle = 0,
     socket = "bottom",
+    slack = 0,
     seating
   } = {}) {
     const disconnecting = plug === "unplugged";
@@ -836,7 +837,7 @@
       startY += reach * towardY;
       let rotation = "";
       if (disconnecting) {
-        const length2 = hangingCordLength(buttonWidth);
+        const length2 = hangingCordLength(buttonWidth) + buttonWidth * 0.055 * slack;
         const hangX = endX + length2 * Math.sin(hangAngle);
         const hangY = endY + length2 * Math.cos(hangAngle);
         const tug = 32 * Math.sin(Math.PI * progress) * (1 - progress);
@@ -859,9 +860,11 @@
     const dy = endY - startY;
     const distance = Math.hypot(dx, dy);
     const length = Math.max(90, buttonWidth * 0.42);
-    const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2) * (1 - hanging);
+    const restSag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
+    const extraSag = Math.min(buttonWidth * 0.32, buttonWidth * 0.11 + distance * 0.12);
+    const sag = (restSag + slack * extraSag) * (1 - hanging);
     const stretch = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
-    const thickness = stretch + (1 - stretch) * hanging;
+    const thickness = stretch + (1 - stretch) * (hanging + (1 - hanging) * slack);
     return {
       outletX,
       outletY,
@@ -1731,796 +1734,6 @@
       unlockTrick("touch-100");
   }
 
-  // frontend/button.ts
-  var QUICK_TAP_MS = 90;
-  var TAP_RELEASE_MS = 70;
-  var HOLD_RELEASE_MS = 110;
-  var PLUG_DWELL_MS = 3e3;
-  var PLUG_SEAT_MS = 200;
-  var tactileButtons = /* @__PURE__ */ new Map();
-  for (const button of document.querySelectorAll("[data-tactile-button]")) {
-    let plugProgress2 = function(time) {
-      if (plugState === "seated" || plugStartedAt === null) return 1;
-      return clamp((time - plugStartedAt) / plugTransitionDuration[plugState], 0, 1);
-    }, alignPlug2 = function(cable) {
-      if (!power) return;
-      let next = null;
-      if (cable) {
-        const y = cable.startY - cable.outletY - 12;
-        const nearest = y < (outletSockets.top + outletSockets.bottom) / 2 ? "top" : "bottom";
-        if (Math.abs(cable.startX - cable.outletX) <= 18 && Math.abs(y - outletSockets[nearest]) <= 14)
-          next = { socket: nearest, x: cable.startX, y: cable.startY, angle: cable.plugAngle };
-      }
-      const previous = docking?.socket;
-      docking = next;
-      if (next?.socket === previous) return;
-      window.clearTimeout(dockTimer);
-      plugTap = null;
-      if (next) {
-        power.dataset.dock = next.socket;
-        if (outletControl) outletControl.dataset.dock = next.socket;
-        dockTimer = window.setTimeout(reconnectPlug2, PLUG_DWELL_MS);
-      } else {
-        delete power.dataset.dock;
-        if (outletControl) delete outletControl.dataset.dock;
-      }
-    }, updatePower2 = function(time) {
-      const powered2 = !outletTripped && plugState !== "unplugged";
-      if (current.powered !== false === powered2) return;
-      current.powered = powered2;
-      clickSound.setPowered(powered2);
-      if (powered2) {
-        drainStartedAt = null;
-        if (phase !== "idle") {
-          current.copper = 1;
-          current.labelCharge = reducedMotion.matches ? 0 : 1;
-          scheduleHoldBeat2();
-        }
-      } else {
-        drainStartedAt = reducedMotion.matches ? null : time;
-        releasedAt = null;
-        current.copper = current.flash = current.holdLight = current.labelCharge = 0;
-        clearResponse2();
-        effects.replaceChildren();
-        window.clearTimeout(beatTimer);
-      }
-    }, reconnectPlug2 = function() {
-      if (!power || !docking || !pointers.size && !dockWhileParked || button.disabled || document.hidden || !stage.clientWidth || !stage.clientHeight)
-        return;
-      const { socket: nextSocket, x, y, angle } = docking;
-      alignPlug2(null);
-      dockWhileParked = false;
-      socket = nextSocket;
-      seating = reducedMotion.matches ? null : { x, y, angle, startedAt: performance.now() };
-      plugState = power.dataset.plug = "seated";
-      plugStartedAt = null;
-      plugPulls.reseat();
-      if (outletControl) outletControl.disabled = false;
-      updatePower2(performance.now());
-      if (pointers.size) {
-        dragFromX = target.x;
-        dragFromY = target.y;
-        aimPointers2();
-      } else {
-        target.x = target.y = 0;
-        animate2();
-      }
-      if (!reducedMotion.matches) paint2();
-    }, paint2 = function(time = performance.now(), dt = 0) {
-      if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
-      const progress = plugProgress2(time);
-      current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
-      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
-        progress,
-        looseBeforeDetach,
-        hangAngle: plugSwing.angle,
-        socket,
-        seating: seating ? {
-          ...seating,
-          remaining: (1 - clamp((time - seating.startedAt) / PLUG_SEAT_MS, 0, 1)) ** 2
-        } : void 0
-      }) : null;
-      if (power && cable) {
-        power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
-        power.setAttribute(
-          "viewBox",
-          `${-stage.clientWidth / 2} ${-stage.clientHeight / 2} ${stage.clientWidth} ${stage.clientHeight}`
-        );
-        for (const cord of cords ?? []) cord.setAttribute("d", cable.cord);
-        outlet?.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
-        plug?.setAttribute("transform", cable.plugTransform);
-        plugEdge?.setAttribute("transform", cable.plugEdgeTransform);
-      }
-      if (gameButton && plugState === "unplugged")
-        alignPlug2(
-          progress === 1 && (pointers.size || dockWhileParked) && !button.disabled && !document.hidden ? cable : null
-        );
-      current.reducedMotion = reducedMotion.matches;
-      const lettering = projectButtonLettering(current);
-      rig.style.setProperty("--label-scale-x", lettering.scaleX.toFixed(3));
-      rig.style.setProperty("--label-scale-y", lettering.scaleY.toFixed(3));
-      rig.style.setProperty(
-        "--label-shift",
-        `${(lettering.shiftY * button.offsetHeight).toFixed(3)}px`
-      );
-      rig.style.setProperty("--label-ink", lettering.ink.toFixed(3));
-      rig.style.setProperty("--label-charge", lettering.charge.toFixed(3));
-      rig.style.setProperty("--label-light", lettering.light.toFixed(3));
-      const pose = projectButtonPose(current, button.offsetWidth);
-      rig.style.setProperty("--shift-x", `${pose.x.toFixed(3)}px`);
-      rig.style.setProperty("--shift-y", `${pose.y.toFixed(3)}px`);
-      rig.style.setProperty("--lift", `${pose.lift.toFixed(3)}px`);
-      rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
-      rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
-      rig.style.setProperty("--press", String(current.press));
-      rig.style.setProperty("--copper", current.copper.toFixed(3));
-      rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -0.065, 0.1)).toFixed(3));
-      stage.style.setProperty(
-        "--spark-color",
-        `rgb(${current.responseColor.map((value) => Math.round(value * 255)).join(" ")})`
-      );
-      const glow = Math.min(
-        1.4,
-        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8 + (current.holdLight ?? 0) + current.drainLight
-      );
-      rig.style.setProperty("--glow-intensity", glow.toFixed(3));
-      const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
-      rig.style.setProperty(
-        "--glow-color",
-        `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`
-      );
-      renderer?.draw(current);
-      const readoutMoving = readout && (dt > 0 || reducedMotion.matches) && moveReadout2(readout, dt);
-      if (gameButton && power && cable && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
-        const frame2 = power.getBoundingClientRect();
-        const face = button.getBoundingClientRect();
-        const x = frame2.left + frame2.width / 2 + cable.outletX;
-        const y = frame2.top + frame2.height / 2 + cable.outletY;
-        if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - 15 > 0 && x - 15 < face.left || x + 15 < window.innerWidth && x + 15 > face.right || y - 42 > 0 && y - 42 < face.top || y + 34 < window.innerHeight && y + 34 > face.bottom))
-          unlockTrick("outlet");
-      }
-      return readoutMoving;
-    }, moveReadout2 = function(readout2, dt) {
-      let offset = 0;
-      if (Math.abs(current.y) > 8) {
-        const face = button.getBoundingClientRect();
-        const text = readout2.getBoundingClientRect();
-        const top = text.top - readoutOffset;
-        const bottom = text.bottom - readoutOffset;
-        const clearance = 22;
-        if (face.bottom + clearance > top && face.top - clearance < bottom) {
-          const below = Math.ceil(face.bottom + clearance - top);
-          const above = Math.floor(face.top - clearance - bottom);
-          offset = bottom + below <= window.innerHeight - 8 ? below : Math.max(8 - top, above);
-        }
-      }
-      const distance = offset - readoutOffset;
-      const reduce = reducedMotion.matches;
-      const nextOffset = reduce || Math.abs(distance) < 0.5 ? offset : readoutOffset + distance * (1 - Math.exp(-0.2 * dt));
-      const shade = reduce ? 1 : 1 - 0.65 * clamp(Math.abs(distance) / 90, 0, 1);
-      const nextOpacity = reduce || Math.abs(shade - readoutOpacity) < 5e-3 ? shade : readoutOpacity + (shade - readoutOpacity) * (1 - Math.exp(-0.42 * dt));
-      if (readoutOffset !== nextOffset) {
-        readoutOffset = nextOffset;
-        readout2.style.setProperty("--readout-offset", `${nextOffset}px`);
-      }
-      if (readoutOpacity !== nextOpacity) {
-        readoutOpacity = nextOpacity;
-        readout2.style.setProperty("--readout-opacity", nextOpacity.toFixed(3));
-      }
-      return nextOffset !== offset || nextOpacity !== 1;
-    }, tick2 = function(time) {
-      const dt = lastFrame ? clamp((time - lastFrame) / (1e3 / 60), 0.25, 2) : 1;
-      lastFrame = time;
-      let moving = false;
-      for (const key of keys) {
-        const coasting = time < coastUntil && (key === "x" || key === "y");
-        const from = key === "x" ? coastFromX : coastFromY;
-        const springTarget = coasting ? target[key] + (from - target[key]) * Math.max(0, (coastUntil - time) / 80) : target[key];
-        if (pointers.size && (key === "x" || key === "y")) {
-          const movement = (target[key] - current[key]) * (1 - Math.exp(-0.4 * dt));
-          current[key] += movement;
-          velocity[key] = movement / dt;
-        } else {
-          velocity[key] = (velocity[key] + (springTarget - current[key]) * (coasting ? 0.045 : 0.16) * dt) * Math.pow(coasting ? 0.88 : 0.64, dt);
-          current[key] += velocity[key] * dt;
-        }
-        if (Math.abs(target[key] - current[key]) > 2e-3 || Math.abs(velocity[key]) > 2e-3)
-          moving = true;
-        else {
-          current[key] = target[key];
-          velocity[key] = 0;
-        }
-      }
-      if (releasedAt !== null) {
-        const progress = clamp((time - releasedAt) / releaseDuration, 0, 1);
-        const returnAmount = Math.pow(1 - progress, 2);
-        current.copper = releaseCopper * returnAmount;
-        current.labelCharge = returnAmount;
-        if (progress < 1) moving = true;
-        else releasedAt = null;
-      }
-      if (current.press && !reducedMotion.matches && current.powered !== false) {
-        const elapsed = time - pressedAt;
-        current.labelPhase = elapsed / 1e3;
-        if (gameButton) current.holdLight = holdLighting(elapsed);
-        moving = true;
-      }
-      current.flash *= Math.pow(0.68, dt);
-      if (current.flash > 5e-3) moving = true;
-      else current.flash = 0;
-      if (responseStarted !== null) {
-        current.responseProgress = clamp((time - responseStarted) / responseDuration, 0, 1);
-        current.response = Math.pow(1 - current.responseProgress, 0.65);
-        if (current.responseProgress < 1) moving = true;
-        else responseStarted = null;
-      }
-      const animatingPower = plugProgress2(time) < 1 || drainStartedAt !== null && time - drainStartedAt < powerDrainDuration;
-      const swinging = plugState === "unplugged" && !reducedMotion.matches && plugSwing.step(current.x, button.offsetWidth, dt);
-      const readoutMoving = paint2(time, dt);
-      frame = (moving || animatingPower || swinging || seating || readoutMoving) && !document.hidden ? requestAnimationFrame(tick2) : 0;
-      if (!frame) lastFrame = 0;
-    }, animate2 = function() {
-      if (reducedMotion.matches) {
-        for (const key of keys) {
-          current[key] = (pointers.size || plugState === "unplugged") && (key === "x" || key === "y") ? target[key] : 0;
-          velocity[key] = 0;
-        }
-        current.flash = 0;
-        current.labelCharge = 0;
-        plugSwing.reset(current.x);
-        paint2();
-        return;
-      }
-      if (!frame && !document.hidden) frame = requestAnimationFrame(tick2);
-    }, setPhase2 = function(next) {
-      if (phase === next) return;
-      phase = next;
-      button.classList.toggle("is-pressed", phase !== "idle");
-      stage.classList.toggle("is-pressed", phase !== "idle");
-      stage.classList.toggle("is-held", phase === "held");
-      button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
-    }, scheduleHoldBeat2 = function() {
-      if (!gameButton || current.powered === false) return;
-      const elapsed = performance.now() - pressedAt;
-      let nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
-      const onBeat = () => {
-        if (phase === "idle" || button.disabled || document.hidden || current.powered === false)
-          return;
-        const elapsed2 = performance.now() - pressedAt;
-        if (elapsed2 >= nextBeat) {
-          clickSound.play("hold");
-          nextBeat = (Math.floor(elapsed2 / holdBeat) + 1) * holdBeat;
-        }
-        beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed2));
-      };
-      beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
-    }, begin2 = function() {
-      if (gameButton) clickSound.play("press");
-      window.clearTimeout(holdTimer);
-      clearResponse2();
-      coastUntil = 0;
-      pressedAt = performance.now();
-      releasedAt = null;
-      current.press = 1;
-      current.copper = current.powered === false ? 0 : 1;
-      current.labelCharge = reducedMotion.matches ? 0 : current.copper;
-      current.holdLight = 0;
-      current.labelPhase = 0;
-      target.pop = reducedMotion.matches ? 0 : -0.045;
-      current.pop = target.pop;
-      velocity.pop = 0;
-      current.flash = 0;
-      setPhase2("pressed");
-      if (reducedMotion.matches) {
-        paint2();
-        animate2();
-      } else burst2(true);
-      holdTimer = window.setTimeout(() => setPhase2("held"), 180);
-      scheduleHoldBeat2();
-      if (gameButton && !hasTrick("hold")) {
-        achievementTimer = window.setTimeout(() => {
-          if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
-        }, holdDuration);
-      }
-    }, aimHover2 = function(event) {
-      const rect = stage.getBoundingClientRect();
-      const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
-      const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
-      target.rx = -y * 16;
-      target.ry = x * 22;
-      target.x = x * 4;
-      target.y = y * 4;
-      animate2();
-    }, release2 = function(cancelled = false) {
-      plugPulls.endPull();
-      if (cancelled && gameButton) clickSound.cancelPending();
-      activeKey = null;
-      window.clearTimeout(holdTimer);
-      window.clearTimeout(achievementTimer);
-      window.clearTimeout(beatTimer);
-      current.holdLight = 0;
-      const wasPressed = phase !== "idle";
-      const quick = performance.now() - pressedAt < QUICK_TAP_MS;
-      current.press = 0;
-      if (cancelled) current.labelCharge = 0;
-      target.pop = current.pop = velocity.pop = 0;
-      releaseDuration = quick ? TAP_RELEASE_MS : HOLD_RELEASE_MS;
-      releaseCopper = wasPressed && !cancelled && !reducedMotion.matches && current.powered !== false ? quick ? 0.72 : 1 : 0;
-      current.copper = releaseCopper;
-      releasedAt = releaseCopper ? performance.now() : null;
-      current.flash = 0;
-      setPhase2("idle");
-      paint2();
-      animate2();
-    }, keepDetachedButtonInView2 = function() {
-      const stageRect = stage.getBoundingClientRect();
-      if (!stageRect.width || !stageRect.height) return false;
-      const margin = 16;
-      const x = stageRect.left + stageRect.width / 2;
-      const y = stageRect.top + stageRect.height / 2;
-      const nextX = clamp(target.x, margin - x, window.innerWidth - margin - x);
-      const nextY = clamp(target.y, margin - y, window.innerHeight - margin - y);
-      if (nextX === target.x && nextY === target.y) return false;
-      target.x = nextX;
-      target.y = nextY;
-      return true;
-    }, reset2 = function(cancelled = true) {
-      dockWhileParked = false;
-      outletTouch = null;
-      clearResponse2();
-      const captured = [...pointers.keys()];
-      pointers.clear();
-      for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
-      release2(cancelled);
-      releasedAt = null;
-      coastUntil = 0;
-      current.copper = 0;
-      current.labelCharge = 0;
-      current.labelPhase = 0;
-      if (plugState !== "unplugged") target.x = target.y = 0;
-      target.rx = target.ry = 0;
-      animate2();
-    }, clearResponse2 = function() {
-      responseStarted = null;
-      current.response = 0;
-      current.responseProgress = 0;
-      current.responseColor = [1, 0.78, 0.32];
-      delete stage.dataset.response;
-    }, respond2 = function(state, milliseconds = 0) {
-      if (current.powered === false) return;
-      current.responseColor = state === "error" ? [1, 0.49, 0.47] : state === "slow" ? [0.64, 0.54, 1] : state === "limited" ? [1, 0.58, 0.26] : state === "pending" ? [1, 0.78, 0.32] : state === "fast" ? [0.38, 0.8, 0.65] : [0.35, 0.67, 0.94];
-      stage.dataset.response = state;
-      responseDuration = clamp(300 + milliseconds * 0.4, 320, 800);
-      current.responseProgress = reducedMotion.matches ? 0.5 : 0;
-      current.response = state === "pending" ? 0.18 : reducedMotion.matches ? 0.22 : 1;
-      responseStarted = state === "pending" || reducedMotion.matches ? null : performance.now();
-      paint2();
-      animate2();
-    }, aimPointers2 = function(trackPull = false) {
-      const points = [...pointers.values()];
-      const clientX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
-      const clientY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
-      if (!trackPull) {
-        dragOriginX = clientX - (target.x - dragFromX);
-        dragOriginY = clientY - (target.y - dragFromY);
-      }
-      const pulledX = clientX - dragOriginX;
-      const pulledY = clientY - dragOriginY;
-      target.x = dragFromX + pulledX;
-      target.y = dragFromY + pulledY;
-      if (trackPull && gameButton && power && !seating) {
-        const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
-        if (nextPlug) {
-          const now = performance.now();
-          if (nextPlug === "unplugged") {
-            looseBeforeDetach = plugProgress2(now);
-            plugSwing.reset(current.x);
-          }
-          plugState = nextPlug;
-          plugStartedAt = reducedMotion.matches ? null : now;
-          power.dataset.plug = nextPlug;
-          if (nextPlug === "loose") unlockTrick("loose-plug");
-          else {
-            outletTouch = null;
-            if (outletControl) outletControl.disabled = true;
-            updatePower2(now);
-          }
-        }
-      }
-      animate2();
-    }, burst2 = function(press = false) {
-      if (reducedMotion.matches) return;
-      const quick = press || releaseDuration === TAP_RELEASE_MS;
-      if (!press) {
-        current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
-        velocity.pop = quick ? 0.035 : 0.022;
-      }
-      if (current.powered === false) {
-        animate2();
-        return;
-      }
-      current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
-      paint2();
-      animate2();
-      const count = press ? 8 : quick ? 12 : 8;
-      while (effects.childElementCount > 64 - count) effects.firstElementChild?.remove();
-      const width = button.offsetWidth, height = button.offsetHeight;
-      for (let i = 0; i < count; i++) {
-        const particle = document.createElement("span");
-        particle.className = "click-particle";
-        const side = i % 4, along = (Math.random() - 0.5) * 0.75;
-        const nx = side === 1 ? 1 : side === 3 ? -1 : 0;
-        const ny = side === 0 ? -1 : side === 2 ? 1 : 0;
-        const x = current.x + (nx ? nx * width / 2 : along * width);
-        const y = current.y + (ny ? ny * height / 2 : along * height);
-        const drift = (press ? 12 : 22) + Math.random() * (press ? 18 : 28);
-        effects.append(particle);
-        particle.animate(
-          [
-            { opacity: 0.95, transform: `translate(${x}px, ${y}px) scale(${quick ? 1.3 : 1})` },
-            { opacity: 0.6, offset: 0.22 },
-            {
-              opacity: 0,
-              transform: `translate(${x + nx * drift + along * 15}px, ${y + ny * drift - (press ? 12 : 22)}px) scale(.35)`
-            }
-          ],
-          {
-            duration: press ? 520 + Math.random() * 260 : 850 + Math.random() * 650,
-            easing: "cubic-bezier(.1,.5,.3,1)"
-          }
-        ).finished.then(
-          () => particle.remove(),
-          () => particle.remove()
-        );
-      }
-    }, activateRelease2 = function(activation, event) {
-      activatingRelease = activation;
-      try {
-        if (event)
-          button.dispatchEvent(
-            new MouseEvent("click", {
-              bubbles: true,
-              cancelable: true,
-              clientX: event.clientX,
-              clientY: event.clientY,
-              detail: 1
-            })
-          );
-        else button.click();
-      } finally {
-        activatingRelease = null;
-      }
-    }, pressOutlet2 = function() {
-      if (!outletControl || plugState === "unplugged" || document.hidden) return;
-      outletTripped = !outletTripped;
-      outletControl.setAttribute("aria-pressed", String(outletTripped));
-      outletControl.dataset.press = outletTripped ? "test" : "reset";
-      updatePower2(performance.now());
-      if (!reducedMotion.matches) paint2();
-      animate2();
-    }, endPointer2 = function(event, cancelled = false) {
-      if (!pointers.has(event.pointerId)) return;
-      const rect = button.getBoundingClientRect();
-      const slop = event.pointerType === "touch" ? 24 : 12;
-      const near = (dx, dy) => event.clientX >= rect.left + dx - slop && event.clientX <= rect.right + dx + slop && event.clientY >= rect.top + dy - slop && event.clientY <= rect.bottom + dy + slop;
-      const inViewport = event.clientX >= 0 && event.clientX < window.innerWidth && event.clientY >= 0 && event.clientY < window.innerHeight;
-      const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
-      const point = pointers.get(event.pointerId);
-      if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
-      pointers.delete(event.pointerId);
-      if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
-      if (!pointers.size) {
-        if (plugState === "unplugged") {
-          dockWhileParked = !cancelled && inside;
-          keepDetachedButtonInView2();
-          velocity.x = velocity.y = 0;
-        }
-        release2(cancelled || !inside);
-      } else aimPointers2();
-      if (!cancelled && inside && !button.disabled) {
-        const uTurn = point.wentAway && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) <= Math.max(12, button.offsetWidth * 0.05);
-        activateRelease2(
-          { source: event.pointerType === "touch" ? "touch" : "pointer", uTurn },
-          event
-        );
-      }
-      if (pointers.size || plugState === "unplugged") return;
-      if (!cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
-        coastUntil = performance.now() + 80;
-        coastFromX = current.x;
-        coastFromY = current.y;
-        velocity.x = clamp(point.vx * 10, -14, 14);
-        velocity.y = clamp(point.vy * 10, -14, 14);
-      }
-      target.x = target.y = 0;
-      animate2();
-    };
-    plugProgress = plugProgress2, alignPlug = alignPlug2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepDetachedButtonInView = keepDetachedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
-    const maybeStage = button.closest(".button-stage");
-    if (!maybeStage) throw new Error("Tactile button needs a stage");
-    const stage = maybeStage;
-    const rig = required(".button-rig", stage);
-    const power = stage.querySelector(".button-power");
-    const cords = power?.querySelectorAll(".power-cord");
-    const outlet = power?.querySelector(".power-outlet");
-    const plug = power?.querySelector(".power-plug");
-    const outletControl = stage.querySelector(".outlet-control");
-    const plugEdge = stage.querySelector(".plug-edge");
-    const gameButton = button.id === "click-button";
-    const plugPulls = createPlugPullTracker();
-    const plugSwing = createPlugSwing();
-    let plugState = "seated";
-    let plugStartedAt = null;
-    let looseBeforeDetach = 1;
-    let outletTripped = false;
-    let drainStartedAt = null;
-    let outletTouch = null;
-    let socket = "bottom";
-    let docking = null;
-    let dockWhileParked = false;
-    let dockTimer = 0;
-    let plugTap = null;
-    let seating = null;
-    const readout = gameButton ? document.querySelector(".game-readout") : null;
-    let readoutOffset = 0;
-    let readoutOpacity = 1;
-    const effects = document.createElement("div");
-    effects.className = "button-effects";
-    effects.setAttribute("aria-hidden", "true");
-    stage.append(effects);
-    const reducedMotion = motionPreference;
-    const keys = ["x", "y", "rx", "ry", "pop"];
-    const current = {
-      x: 0,
-      y: 0,
-      rx: 0,
-      ry: 0,
-      press: 0,
-      labelCharge: 0,
-      labelPhase: 0,
-      copper: 0,
-      pop: 0,
-      flash: 0,
-      response: 0,
-      responseProgress: 0,
-      responseColor: [0.35, 0.67, 0.94]
-    };
-    const target = { ...current }, velocity = { ...current };
-    let renderer = null;
-    let setupFrame = 0, frame = 0, lastFrame = 0;
-    const pointers = /* @__PURE__ */ new Map();
-    let dragFromX = 0, dragFromY = 0;
-    let dragOriginX = 0, dragOriginY = 0;
-    let coastUntil = 0;
-    let coastFromX = 0, coastFromY = 0;
-    let activeKey = null;
-    let activatingRelease = null;
-    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, achievementTimer = 0, beatTimer = 0, phase = "idle";
-    let responseStarted = null;
-    let responseDuration = 500;
-    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-    if (outletControl) {
-      outletControl.addEventListener("click", (event) => {
-        if (event.pointerType !== "touch" || event.isPrimary || event.detail === 0) pressOutlet2();
-      });
-      outletControl.addEventListener("pointerdown", (event) => {
-        if (event.pointerType !== "touch" || event.isPrimary || event.button !== 0 || outletTouch)
-          return;
-        event.preventDefault();
-        outletControl.setPointerCapture(event.pointerId);
-        outletTouch = { id: event.pointerId, x: event.clientX, y: event.clientY };
-      });
-      outletControl.addEventListener("pointermove", (event) => {
-        if (event.pointerId === outletTouch?.id && Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) > 12)
-          outletTouch = null;
-      });
-      outletControl.addEventListener("pointerup", (event) => {
-        if (event.pointerId !== outletTouch?.id) return;
-        const tapped = Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) <= 12;
-        outletTouch = null;
-        if (tapped) pressOutlet2();
-      });
-      const cancelOutletTouch = (event) => {
-        if (event.pointerId === outletTouch?.id) outletTouch = null;
-      };
-      outletControl.addEventListener("pointercancel", cancelOutletTouch);
-      outletControl.addEventListener("lostpointercapture", cancelOutletTouch);
-    }
-    if (gameButton && plug) {
-      let movedOffPlug2 = function(event) {
-        return !!plugTap && Math.hypot(event.clientX - plugTap.x, event.clientY - plugTap.y) > 12;
-      };
-      movedOffPlug = movedOffPlug2;
-      plug.addEventListener("pointerdown", (event) => {
-        if (!docking || plugTap || event.button !== 0 || pointers.has(event.pointerId)) return;
-        event.preventDefault();
-        plug.setPointerCapture(event.pointerId);
-        plugTap = { id: event.pointerId, x: event.clientX, y: event.clientY };
-      });
-      plug.addEventListener("pointermove", (event) => {
-        if (plugTap?.id === event.pointerId && movedOffPlug2(event)) plugTap = null;
-      });
-      plug.addEventListener("pointerup", (event) => {
-        if (plugTap?.id !== event.pointerId) return;
-        const tapped = !movedOffPlug2(event);
-        plugTap = null;
-        if (tapped) reconnectPlug2();
-      });
-      const cancelTap = (event) => {
-        if (plugTap?.id === event.pointerId) plugTap = null;
-      };
-      plug.addEventListener("pointercancel", cancelTap);
-      plug.addEventListener("lostpointercapture", cancelTap);
-    }
-    stage.addEventListener("pointermove", (event) => {
-      if (button.disabled) return;
-      const point = pointers.get(event.pointerId);
-      if (point) {
-        const now = performance.now(), elapsed = now - point.movedAt;
-        const dt = clamp(elapsed, 8, 50);
-        point.vx = elapsed > 80 ? 0 : point.vx * 0.35 + (event.clientX - point.x) / dt * 0.65;
-        point.vy = elapsed > 80 ? 0 : point.vy * 0.35 + (event.clientY - point.y) / dt * 0.65;
-        point.movedAt = now;
-        point.x = event.clientX;
-        point.y = event.clientY;
-        if (gameButton && !point.wentAway && Math.hypot(point.x - point.startX, point.y - point.startY) >= Math.max(45, button.offsetWidth * 0.35))
-          point.wentAway = true;
-        aimPointers2(true);
-      } else if (!pointers.size && plugState !== "unplugged" && activeKey === null && event.pointerType === "mouse")
-        aimHover2(event);
-    });
-    stage.addEventListener("pointerleave", () => {
-      if (!pointers.size && plugState !== "unplugged" && activeKey === null && performance.now() >= coastUntil)
-        reset2(false);
-    });
-    button.addEventListener("pointerdown", (event) => {
-      if (gameButton && event.pointerType === "mouse" && event.button === 1) event.preventDefault();
-      if (button.disabled || event.button !== 0 || activeKey !== null || pointers.has(event.pointerId))
-        return;
-      event.preventDefault();
-      window.getSelection()?.removeAllRanges();
-      button.focus({ preventScroll: true });
-      pointers.set(event.pointerId, {
-        x: event.clientX,
-        y: event.clientY,
-        startX: event.clientX,
-        startY: event.clientY,
-        vx: 0,
-        vy: 0,
-        movedAt: performance.now(),
-        wentAway: false
-      });
-      if (pointers.size === 1) {
-        dragFromX = target.x = current.x;
-        dragFromY = target.y = current.y;
-        current.rx = target.rx = velocity.rx = 0;
-        current.ry = target.ry = velocity.ry = 0;
-        velocity.x = velocity.y = 0;
-        begin2();
-      } else if (gameButton) clickSound.play("press");
-      button.setPointerCapture(event.pointerId);
-      aimPointers2();
-    });
-    button.addEventListener("pointerup", (event) => endPointer2(event));
-    button.addEventListener("pointercancel", (event) => endPointer2(event, true));
-    button.addEventListener("lostpointercapture", (event) => endPointer2(event, true));
-    button.addEventListener("dragstart", (event) => event.preventDefault());
-    button.addEventListener("contextmenu", (event) => event.preventDefault());
-    button.addEventListener("auxclick", (event) => {
-      if (gameButton && !button.disabled && (event.button === 1 || event.button === 2)) {
-        event.preventDefault();
-        unlockTrick("wrong-button");
-      }
-    });
-    button.addEventListener("keydown", (event) => {
-      if (button.disabled || event.key !== " " && event.key !== "Enter") return;
-      event.preventDefault();
-      if (event.repeat || activeKey !== null || pointers.size) return;
-      window.getSelection()?.removeAllRanges();
-      activeKey = event.key;
-      begin2();
-    });
-    button.addEventListener("keyup", (event) => {
-      if (event.key !== " " && event.key !== "Enter") return;
-      event.preventDefault();
-      if (event.key !== activeKey) return;
-      release2();
-      if (!button.disabled) {
-        if (gameButton) unlockTrick("keyboard");
-        activateRelease2({ source: "keyboard" });
-      }
-    });
-    button.addEventListener("blur", () => {
-      if (activeKey !== null) reset2();
-    });
-    button.addEventListener("click", (event) => {
-      if (!activatingRelease && (event.detail > 0 || event.pointerType)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-      }
-      if (button.disabled) return;
-      if (gameButton && activatingRelease) rememberButtonActivation(event, activatingRelease);
-      if (event.detail === 0 && !activatingRelease) {
-        begin2();
-        release2();
-      }
-      if (gameButton) clickSound.play("release");
-      burst2();
-    });
-    new MutationObserver(() => {
-      if (button.disabled) reset2();
-    }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
-    new MutationObserver(() => paint2()).observe(required(".button-label", button), {
-      childList: true,
-      characterData: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["lang", "dir"]
-    });
-    reducedMotion.addEventListener("change", () => {
-      if (reducedMotion.matches) {
-        plugStartedAt = null;
-        drainStartedAt = null;
-        seating = null;
-      }
-      reset2();
-      if (reducedMotion.matches) {
-        for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
-        effects.replaceChildren();
-      }
-    });
-    window.addEventListener("blur", () => reset2());
-    window.addEventListener("resize", () => {
-      if (plugState === "unplugged") keepDetachedButtonInView2();
-      reset2();
-    });
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        plugStartedAt = null;
-        drainStartedAt = null;
-        seating = null;
-        plugSwing.reset(current.x);
-        reset2();
-      }
-    });
-    new ResizeObserver(() => {
-      if (plugState === "unplugged" && !pointers.size && keepDetachedButtonInView2()) animate2();
-      if (!renderer && !setupFrame && stage.clientWidth && stage.clientHeight) {
-        setupFrame = requestAnimationFrame(() => {
-          setupFrame = 0;
-          if (!stage.clientWidth || !stage.clientHeight) return;
-          renderer = createButtonRenderer(stage, button);
-          paint2();
-        });
-      } else paint2();
-    }).observe(stage);
-    tactileButtons.set(button, { reset: reset2, respond: respond2 });
-  }
-  var movedOffPlug;
-  var plugProgress;
-  var alignPlug;
-  var updatePower;
-  var reconnectPlug;
-  var paint;
-  var moveReadout;
-  var tick;
-  var animate;
-  var setPhase;
-  var scheduleHoldBeat;
-  var begin;
-  var aimHover;
-  var release;
-  var keepDetachedButtonInView;
-  var reset;
-  var clearResponse;
-  var respond;
-  var aimPointers;
-  var burst;
-  var activateRelease;
-  var pressOutlet;
-  var endPointer;
-
   // frontend/messages.ts
   var english = {
     fortnightActivity: "Fortnight activity",
@@ -2549,6 +1762,8 @@
     click: "Click",
     clickAction: "Add a click",
     outletTest: "Outlet test",
+    cordSlack: "Slack cord",
+    reconnectPlug: "Reconnect plug",
     feedbackWaiting: "waiting",
     feedbackUnconfirmed: "unconfirmed",
     feedbackUnsaved: "not saved",
@@ -2644,6 +1859,8 @@
       click: "\u70B9\u51FB",
       clickAction: "\u70B9\u51FB\u589E\u52A0\u5206\u6570",
       outletTest: "\u63D2\u5EA7\u6D4B\u8BD5",
+      cordSlack: "\u677E\u5F1B\u7684\u7535\u7EBF",
+      reconnectPlug: "\u91CD\u65B0\u63D2\u4E0A\u63D2\u5934",
       feedbackWaiting: "\u7B49\u5F85\u4E2D",
       feedbackUnconfirmed: "\u672A\u786E\u8BA4",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
@@ -2738,6 +1955,8 @@
       click: "Clic",
       clickAction: "Haz clic para sumar un punto",
       outletTest: "Prueba del enchufe",
+      cordSlack: "Cable flojo",
+      reconnectPlug: "Volver a conectar la clavija",
       feedbackWaiting: "esperando",
       feedbackUnconfirmed: "sin confirmar",
       feedbackUnsaved: "no guardado",
@@ -2832,6 +2051,8 @@
       click: "\u0627\u0646\u0642\u0631",
       clickAction: "\u0627\u0646\u0642\u0631 \u0644\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0637\u0629",
       outletTest: "\u0627\u062E\u062A\u0628\u0627\u0631 \u0627\u0644\u0645\u0642\u0628\u0633",
+      cordSlack: "\u0625\u0631\u062E\u0627\u0621 \u0627\u0644\u0633\u0644\u0643",
+      reconnectPlug: "\u0625\u0639\u0627\u062F\u0629 \u062A\u0648\u0635\u064A\u0644 \u0627\u0644\u0642\u0627\u0628\u0633",
       feedbackWaiting: "\u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631",
       feedbackUnconfirmed: "\u063A\u064A\u0631 \u0645\u0624\u0643\u062F\u0629",
       feedbackUnsaved: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638",
@@ -2926,6 +2147,8 @@
       click: "\u0915\u094D\u0932\u093F\u0915",
       clickAction: "\u0905\u0902\u0915 \u092C\u0922\u093C\u093E\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902",
       outletTest: "\u0938\u0949\u0915\u0947\u091F \u0915\u0940 \u091C\u093E\u0901\u091A",
+      cordSlack: "\u0922\u0940\u0932\u0940 \u0924\u093E\u0930",
+      reconnectPlug: "\u092A\u094D\u0932\u0917 \u092B\u093F\u0930 \u0938\u0947 \u0932\u0917\u093E\u090F\u0901",
       feedbackWaiting: "\u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \u091C\u093E\u0930\u0940",
       feedbackUnconfirmed: "\u0905\u092A\u0941\u0937\u094D\u091F",
       feedbackUnsaved: "\u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E",
@@ -3020,6 +2243,8 @@
       click: "Klik",
       clickAction: "Klik untuk menambah skor",
       outletTest: "Uji stopkontak",
+      cordSlack: "Kabel kendur",
+      reconnectPlug: "Pasang kembali steker",
       feedbackWaiting: "menunggu",
       feedbackUnconfirmed: "belum terkonfirmasi",
       feedbackUnsaved: "tidak tersimpan",
@@ -3114,6 +2339,8 @@
       click: "Clique",
       clickAction: "Clique para aumentar a pontua\xE7\xE3o",
       outletTest: "Teste da tomada",
+      cordSlack: "Cabo frouxo",
+      reconnectPlug: "Reconectar o plugue",
       feedbackWaiting: "aguardando",
       feedbackUnconfirmed: "n\xE3o confirmado",
       feedbackUnsaved: "n\xE3o salvo",
@@ -3208,6 +2435,8 @@
       click: "Cliquez",
       clickAction: "Cliquer pour ajouter un point",
       outletTest: "Test de la prise",
+      cordSlack: "C\xE2ble d\xE9tendu",
+      reconnectPlug: "Rebrancher la fiche",
       feedbackWaiting: "en attente",
       feedbackUnconfirmed: "non confirm\xE9",
       feedbackUnsaved: "non enregistr\xE9",
@@ -3302,6 +2531,8 @@
       click: "\u30AF\u30EA\u30C3\u30AF",
       clickAction: "\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u30B9\u30B3\u30A2\u3092\u5897\u3084\u3059",
       outletTest: "\u30B3\u30F3\u30BB\u30F3\u30C8\u306E\u30C6\u30B9\u30C8",
+      cordSlack: "\u30B3\u30FC\u30C9\u3092\u305F\u308B\u307E\u305B\u308B",
+      reconnectPlug: "\u30D7\u30E9\u30B0\u3092\u5DEE\u3057\u76F4\u3059",
       feedbackWaiting: "\u5F85\u6A5F\u4E2D",
       feedbackUnconfirmed: "\u672A\u78BA\u8A8D",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
@@ -3396,6 +2627,8 @@
       click: "\u041D\u0430\u0436\u0430\u0442\u044C",
       clickAction: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0447\u043A\u043E",
       outletTest: "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0440\u043E\u0437\u0435\u0442\u043A\u0438",
+      cordSlack: "\u041E\u0441\u043B\u0430\u0431\u043B\u0435\u043D\u043D\u044B\u0439 \u0448\u043D\u0443\u0440",
+      reconnectPlug: "\u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u0432\u0438\u043B\u043A\u0443 \u043E\u0431\u0440\u0430\u0442\u043D\u043E",
       feedbackWaiting: "\u043E\u0436\u0438\u0434\u0430\u043D\u0438\u0435",
       feedbackUnconfirmed: "\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
       feedbackUnsaved: "\u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E",
@@ -3490,6 +2723,8 @@
       click: "Klick",
       clickAction: "Klicken, um den Punktestand zu erh\xF6hen",
       outletTest: "Steckdosentest",
+      cordSlack: "Lockeres Kabel",
+      reconnectPlug: "Stecker wieder einstecken",
       feedbackWaiting: "wartet",
       feedbackUnconfirmed: "unbest\xE4tigt",
       feedbackUnsaved: "nicht gespeichert",
@@ -3692,6 +2927,853 @@
       }
     };
   }
+
+  // frontend/button.ts
+  var QUICK_TAP_MS = 90;
+  var TAP_RELEASE_MS = 70;
+  var HOLD_RELEASE_MS = 110;
+  var PLUG_DWELL_MS = 3e3;
+  var PLUG_SEAT_MS = 200;
+  var CORD_MODE_MS = 260;
+  var tactileButtons = /* @__PURE__ */ new Map();
+  for (const button of document.querySelectorAll("[data-tactile-button]")) {
+    let plugProgress2 = function(time) {
+      if (plugState === "seated" || plugStartedAt === null) return 1;
+      return clamp((time - plugStartedAt) / plugTransitionDuration[plugState], 0, 1);
+    }, buttonStaysPut2 = function() {
+      return plugState === "unplugged" || cordSlack;
+    }, cordSlackAmount2 = function(time) {
+      const destination = cordSlack ? 1 : 0;
+      if (!slackChange) return destination;
+      const { from, startedAt } = slackChange;
+      const progress = clamp((time - startedAt) / CORD_MODE_MS, 0, 1);
+      if (progress === 1) slackChange = null;
+      return destination + (from - destination) * (1 - progress) ** 2;
+    }, alignPlug2 = function(cable) {
+      if (!power) return;
+      let next = null;
+      if (cable) {
+        const y = cable.startY - cable.outletY - 12;
+        const nearest = y < (outletSockets.top + outletSockets.bottom) / 2 ? "top" : "bottom";
+        if (Math.abs(cable.startX - cable.outletX) <= 18 && Math.abs(y - outletSockets[nearest]) <= 14)
+          next = { socket: nearest, x: cable.startX, y: cable.startY, angle: cable.plugAngle };
+      }
+      const previous = docking?.socket;
+      docking = next;
+      if (next?.socket === previous) return;
+      window.clearTimeout(dockTimer);
+      plugTap = null;
+      if (plugControl) {
+        const key = next ? "reconnectPlug" : "cordSlack";
+        const label = message2(key);
+        plugControl.setAttribute("data-i18n-aria-label", key);
+        plugControl.setAttribute("data-i18n-title", key);
+        plugControl.setAttribute("aria-label", label);
+        plugControl.setAttribute("title", label);
+        if (next) plugControl.removeAttribute("aria-pressed");
+        else plugControl.setAttribute("aria-pressed", String(cordSlack));
+      }
+      if (next) {
+        power.dataset.dock = next.socket;
+        if (outletControl) outletControl.dataset.dock = next.socket;
+        dockTimer = window.setTimeout(reconnectPlug2, PLUG_DWELL_MS);
+      } else {
+        delete power.dataset.dock;
+        if (outletControl) delete outletControl.dataset.dock;
+      }
+    }, updatePower2 = function(time) {
+      const powered2 = !outletTripped && plugState !== "unplugged";
+      if (current.powered !== false === powered2) return;
+      current.powered = powered2;
+      clickSound.setPowered(powered2);
+      if (powered2) {
+        drainStartedAt = null;
+        if (phase !== "idle") {
+          current.copper = 1;
+          current.labelCharge = reducedMotion.matches ? 0 : 1;
+          scheduleHoldBeat2();
+        }
+      } else {
+        drainStartedAt = reducedMotion.matches ? null : time;
+        releasedAt = null;
+        current.copper = current.flash = current.holdLight = current.labelCharge = 0;
+        clearResponse2();
+        effects.replaceChildren();
+        window.clearTimeout(beatTimer);
+      }
+    }, reconnectPlug2 = function() {
+      if (!power || !docking || !pointers.size && !dockWhileParked || button.disabled || document.hidden || !stage.clientWidth || !stage.clientHeight)
+        return;
+      const { socket: nextSocket, x, y, angle } = docking;
+      const restoreFocus = plugControl && document.activeElement === plugControl;
+      alignPlug2(null);
+      dockWhileParked = false;
+      socket = nextSocket;
+      seating = reducedMotion.matches ? null : { x, y, angle, startedAt: performance.now() };
+      plugState = power.dataset.plug = "seated";
+      plugStartedAt = null;
+      plugPulls.reseat();
+      if (outletControl) outletControl.disabled = false;
+      updatePower2(performance.now());
+      if (pointers.size) {
+        dragFromX = target.x;
+        dragFromY = target.y;
+        aimPointers2();
+      } else {
+        if (!buttonStaysPut2()) target.x = target.y = 0;
+        animate2();
+      }
+      if (!reducedMotion.matches) paint2();
+      if (restoreFocus) button.focus({ preventScroll: true });
+    }, activatePlug2 = function() {
+      if (plugState !== "unplugged" || !plugControl || plugControl.hidden || button.disabled || document.hidden)
+        return;
+      if (docking) {
+        reconnectPlug2();
+        return;
+      }
+      const startedAt = performance.now();
+      const from = cordSlackAmount2(startedAt);
+      cordSlack = !cordSlack;
+      slackChange = reducedMotion.matches ? null : { from, startedAt };
+      plugControl.setAttribute("aria-pressed", String(cordSlack));
+      animate2();
+    }, paint2 = function(time = performance.now(), dt = 0) {
+      if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
+      const progress = plugProgress2(time);
+      current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
+      const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
+        progress,
+        looseBeforeDetach,
+        hangAngle: plugSwing.angle,
+        socket,
+        slack: cordSlackAmount2(time),
+        seating: seating ? {
+          ...seating,
+          remaining: (1 - clamp((time - seating.startedAt) / PLUG_SEAT_MS, 0, 1)) ** 2
+        } : void 0
+      }) : null;
+      if (power && cable) {
+        power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
+        power.setAttribute(
+          "viewBox",
+          `${-stage.clientWidth / 2} ${-stage.clientHeight / 2} ${stage.clientWidth} ${stage.clientHeight}`
+        );
+        for (const cord of cords ?? []) cord.setAttribute("d", cable.cord);
+        outlet?.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
+        plug?.setAttribute("transform", cable.plugTransform);
+        plugEdge?.setAttribute("transform", cable.plugEdgeTransform);
+      }
+      if (plugControl) {
+        const available = !!cable && plugState === "unplugged" && progress === 1 && !button.disabled;
+        if (plugControl.hidden === available) plugControl.hidden = !available;
+        if (available) {
+          plugControl.style.setProperty("--plug-x", `${cable.startX}px`);
+          plugControl.style.setProperty("--plug-y", `${cable.startY}px`);
+        }
+      }
+      if (gameButton && plugState === "unplugged")
+        alignPlug2(
+          progress === 1 && (pointers.size || dockWhileParked) && !button.disabled && !document.hidden ? cable : null
+        );
+      current.reducedMotion = reducedMotion.matches;
+      const lettering = projectButtonLettering(current);
+      rig.style.setProperty("--label-scale-x", lettering.scaleX.toFixed(3));
+      rig.style.setProperty("--label-scale-y", lettering.scaleY.toFixed(3));
+      rig.style.setProperty(
+        "--label-shift",
+        `${(lettering.shiftY * button.offsetHeight).toFixed(3)}px`
+      );
+      rig.style.setProperty("--label-ink", lettering.ink.toFixed(3));
+      rig.style.setProperty("--label-charge", lettering.charge.toFixed(3));
+      rig.style.setProperty("--label-light", lettering.light.toFixed(3));
+      const pose = projectButtonPose(current, button.offsetWidth);
+      rig.style.setProperty("--shift-x", `${pose.x.toFixed(3)}px`);
+      rig.style.setProperty("--shift-y", `${pose.y.toFixed(3)}px`);
+      rig.style.setProperty("--lift", `${pose.lift.toFixed(3)}px`);
+      rig.style.setProperty("--tilt-x", `${current.rx.toFixed(3)}deg`);
+      rig.style.setProperty("--tilt-y", `${current.ry.toFixed(3)}deg`);
+      rig.style.setProperty("--press", String(current.press));
+      rig.style.setProperty("--copper", current.copper.toFixed(3));
+      rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -0.065, 0.1)).toFixed(3));
+      stage.style.setProperty(
+        "--spark-color",
+        `rgb(${current.responseColor.map((value) => Math.round(value * 255)).join(" ")})`
+      );
+      const glow = Math.min(
+        1.4,
+        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8 + (current.holdLight ?? 0) + current.drainLight
+      );
+      rig.style.setProperty("--glow-intensity", glow.toFixed(3));
+      const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
+      rig.style.setProperty(
+        "--glow-color",
+        `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`
+      );
+      renderer?.draw(current);
+      const readoutMoving = readout && (dt > 0 || reducedMotion.matches) && moveReadout2(readout, dt);
+      if (gameButton && power && cable && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
+        const frame2 = power.getBoundingClientRect();
+        const face = button.getBoundingClientRect();
+        const x = frame2.left + frame2.width / 2 + cable.outletX;
+        const y = frame2.top + frame2.height / 2 + cable.outletY;
+        if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - 15 > 0 && x - 15 < face.left || x + 15 < window.innerWidth && x + 15 > face.right || y - 42 > 0 && y - 42 < face.top || y + 34 < window.innerHeight && y + 34 > face.bottom))
+          unlockTrick("outlet");
+      }
+      return readoutMoving;
+    }, moveReadout2 = function(readout2, dt) {
+      let offset = 0;
+      if (Math.abs(current.y) > 8) {
+        const face = button.getBoundingClientRect();
+        const text = readout2.getBoundingClientRect();
+        const top = text.top - readoutOffset;
+        const bottom = text.bottom - readoutOffset;
+        const clearance = 22;
+        if (face.bottom + clearance > top && face.top - clearance < bottom) {
+          const below = Math.ceil(face.bottom + clearance - top);
+          const above = Math.floor(face.top - clearance - bottom);
+          offset = bottom + below <= window.innerHeight - 8 ? below : Math.max(8 - top, above);
+        }
+      }
+      const distance = offset - readoutOffset;
+      const reduce = reducedMotion.matches;
+      const nextOffset = reduce || Math.abs(distance) < 0.5 ? offset : readoutOffset + distance * (1 - Math.exp(-0.2 * dt));
+      const shade = reduce ? 1 : 1 - 0.65 * clamp(Math.abs(distance) / 90, 0, 1);
+      const nextOpacity = reduce || Math.abs(shade - readoutOpacity) < 5e-3 ? shade : readoutOpacity + (shade - readoutOpacity) * (1 - Math.exp(-0.42 * dt));
+      if (readoutOffset !== nextOffset) {
+        readoutOffset = nextOffset;
+        readout2.style.setProperty("--readout-offset", `${nextOffset}px`);
+      }
+      if (readoutOpacity !== nextOpacity) {
+        readoutOpacity = nextOpacity;
+        readout2.style.setProperty("--readout-opacity", nextOpacity.toFixed(3));
+      }
+      return nextOffset !== offset || nextOpacity !== 1;
+    }, tick2 = function(time) {
+      const dt = lastFrame ? clamp((time - lastFrame) / (1e3 / 60), 0.25, 2) : 1;
+      lastFrame = time;
+      let moving = false;
+      for (const key of keys) {
+        const coasting = time < coastUntil && (key === "x" || key === "y");
+        const from = key === "x" ? coastFromX : coastFromY;
+        const springTarget = coasting ? target[key] + (from - target[key]) * Math.max(0, (coastUntil - time) / 80) : target[key];
+        if (pointers.size && (key === "x" || key === "y")) {
+          const movement = (target[key] - current[key]) * (1 - Math.exp(-0.4 * dt));
+          current[key] += movement;
+          velocity[key] = movement / dt;
+        } else {
+          velocity[key] = (velocity[key] + (springTarget - current[key]) * (coasting ? 0.045 : 0.16) * dt) * Math.pow(coasting ? 0.88 : 0.64, dt);
+          current[key] += velocity[key] * dt;
+        }
+        if (Math.abs(target[key] - current[key]) > 2e-3 || Math.abs(velocity[key]) > 2e-3)
+          moving = true;
+        else {
+          current[key] = target[key];
+          velocity[key] = 0;
+        }
+      }
+      if (releasedAt !== null) {
+        const progress = clamp((time - releasedAt) / releaseDuration, 0, 1);
+        const returnAmount = Math.pow(1 - progress, 2);
+        current.copper = releaseCopper * returnAmount;
+        current.labelCharge = returnAmount;
+        if (progress < 1) moving = true;
+        else releasedAt = null;
+      }
+      if (current.press && !reducedMotion.matches && current.powered !== false) {
+        const elapsed = time - pressedAt;
+        current.labelPhase = elapsed / 1e3;
+        if (gameButton) current.holdLight = holdLighting(elapsed);
+        moving = true;
+      }
+      current.flash *= Math.pow(0.68, dt);
+      if (current.flash > 5e-3) moving = true;
+      else current.flash = 0;
+      if (responseStarted !== null) {
+        current.responseProgress = clamp((time - responseStarted) / responseDuration, 0, 1);
+        current.response = Math.pow(1 - current.responseProgress, 0.65);
+        if (current.responseProgress < 1) moving = true;
+        else responseStarted = null;
+      }
+      const animatingPower = plugProgress2(time) < 1 || drainStartedAt !== null && time - drainStartedAt < powerDrainDuration;
+      const swinging = plugState === "unplugged" && !reducedMotion.matches && plugSwing.step(current.x, button.offsetWidth, dt);
+      const readoutMoving = paint2(time, dt);
+      frame = (moving || animatingPower || swinging || seating || slackChange || readoutMoving) && !document.hidden ? requestAnimationFrame(tick2) : 0;
+      if (!frame) lastFrame = 0;
+    }, animate2 = function() {
+      if (reducedMotion.matches) {
+        for (const key of keys) {
+          current[key] = (pointers.size || buttonStaysPut2()) && (key === "x" || key === "y") ? target[key] : 0;
+          velocity[key] = 0;
+        }
+        current.flash = 0;
+        current.labelCharge = 0;
+        plugSwing.reset(current.x);
+        paint2();
+        return;
+      }
+      if (!frame && !document.hidden) frame = requestAnimationFrame(tick2);
+    }, setPhase2 = function(next) {
+      if (phase === next) return;
+      phase = next;
+      button.classList.toggle("is-pressed", phase !== "idle");
+      stage.classList.toggle("is-pressed", phase !== "idle");
+      stage.classList.toggle("is-held", phase === "held");
+      button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
+    }, scheduleHoldBeat2 = function() {
+      if (!gameButton || current.powered === false) return;
+      const elapsed = performance.now() - pressedAt;
+      let nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
+      const onBeat = () => {
+        if (phase === "idle" || button.disabled || document.hidden || current.powered === false)
+          return;
+        const elapsed2 = performance.now() - pressedAt;
+        if (elapsed2 >= nextBeat) {
+          clickSound.play("hold");
+          nextBeat = (Math.floor(elapsed2 / holdBeat) + 1) * holdBeat;
+        }
+        beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed2));
+      };
+      beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
+    }, begin2 = function() {
+      if (gameButton) clickSound.play("press");
+      window.clearTimeout(holdTimer);
+      clearResponse2();
+      coastUntil = 0;
+      pressedAt = performance.now();
+      releasedAt = null;
+      current.press = 1;
+      current.copper = current.powered === false ? 0 : 1;
+      current.labelCharge = reducedMotion.matches ? 0 : current.copper;
+      current.holdLight = 0;
+      current.labelPhase = 0;
+      target.pop = reducedMotion.matches ? 0 : -0.045;
+      current.pop = target.pop;
+      velocity.pop = 0;
+      current.flash = 0;
+      setPhase2("pressed");
+      if (reducedMotion.matches) {
+        paint2();
+        animate2();
+      } else burst2(true);
+      holdTimer = window.setTimeout(() => setPhase2("held"), 180);
+      scheduleHoldBeat2();
+      if (gameButton && !hasTrick("hold")) {
+        achievementTimer = window.setTimeout(() => {
+          if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
+        }, holdDuration);
+      }
+    }, aimHover2 = function(event) {
+      const rect = stage.getBoundingClientRect();
+      const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
+      const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
+      target.rx = -y * 16;
+      target.ry = x * 22;
+      target.x = x * 4;
+      target.y = y * 4;
+      animate2();
+    }, release2 = function(cancelled = false) {
+      plugPulls.endPull();
+      if (cancelled && gameButton) clickSound.cancelPending();
+      activeKey = null;
+      window.clearTimeout(holdTimer);
+      window.clearTimeout(achievementTimer);
+      window.clearTimeout(beatTimer);
+      current.holdLight = 0;
+      const wasPressed = phase !== "idle";
+      const quick = performance.now() - pressedAt < QUICK_TAP_MS;
+      current.press = 0;
+      if (cancelled) current.labelCharge = 0;
+      target.pop = current.pop = velocity.pop = 0;
+      releaseDuration = quick ? TAP_RELEASE_MS : HOLD_RELEASE_MS;
+      releaseCopper = wasPressed && !cancelled && !reducedMotion.matches && current.powered !== false ? quick ? 0.72 : 1 : 0;
+      current.copper = releaseCopper;
+      releasedAt = releaseCopper ? performance.now() : null;
+      current.flash = 0;
+      setPhase2("idle");
+      paint2();
+      animate2();
+    }, keepParkedButtonInView2 = function() {
+      const stageRect = stage.getBoundingClientRect();
+      if (!stageRect.width || !stageRect.height) return false;
+      const margin = 16;
+      const x = stageRect.left + stageRect.width / 2;
+      const y = stageRect.top + stageRect.height / 2;
+      const nextX = clamp(target.x, margin - x, window.innerWidth - margin - x);
+      const nextY = clamp(target.y, margin - y, window.innerHeight - margin - y);
+      if (nextX === target.x && nextY === target.y) return false;
+      target.x = nextX;
+      target.y = nextY;
+      return true;
+    }, reset2 = function(cancelled = true) {
+      dockWhileParked = false;
+      outletTouch = null;
+      plugTap = null;
+      clearResponse2();
+      const captured = [...pointers.keys()];
+      pointers.clear();
+      for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
+      release2(cancelled);
+      releasedAt = null;
+      coastUntil = 0;
+      current.copper = 0;
+      current.labelCharge = 0;
+      current.labelPhase = 0;
+      if (!buttonStaysPut2()) target.x = target.y = 0;
+      target.rx = target.ry = 0;
+      animate2();
+    }, clearResponse2 = function() {
+      responseStarted = null;
+      current.response = 0;
+      current.responseProgress = 0;
+      current.responseColor = [1, 0.78, 0.32];
+      delete stage.dataset.response;
+    }, respond2 = function(state, milliseconds = 0) {
+      if (current.powered === false) return;
+      current.responseColor = state === "error" ? [1, 0.49, 0.47] : state === "slow" ? [0.64, 0.54, 1] : state === "limited" ? [1, 0.58, 0.26] : state === "pending" ? [1, 0.78, 0.32] : state === "fast" ? [0.38, 0.8, 0.65] : [0.35, 0.67, 0.94];
+      stage.dataset.response = state;
+      responseDuration = clamp(300 + milliseconds * 0.4, 320, 800);
+      current.responseProgress = reducedMotion.matches ? 0.5 : 0;
+      current.response = state === "pending" ? 0.18 : reducedMotion.matches ? 0.22 : 1;
+      responseStarted = state === "pending" || reducedMotion.matches ? null : performance.now();
+      paint2();
+      animate2();
+    }, aimPointers2 = function(trackPull = false) {
+      const points = [...pointers.values()];
+      const clientX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+      const clientY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+      if (!trackPull) {
+        dragOriginX = clientX - (target.x - dragFromX);
+        dragOriginY = clientY - (target.y - dragFromY);
+      }
+      const pulledX = clientX - dragOriginX;
+      const pulledY = clientY - dragOriginY;
+      target.x = dragFromX + pulledX;
+      target.y = dragFromY + pulledY;
+      if (trackPull && gameButton && power && !seating) {
+        const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
+        if (nextPlug) {
+          const now = performance.now();
+          if (nextPlug === "unplugged") {
+            looseBeforeDetach = plugProgress2(now);
+            plugSwing.reset(current.x);
+          }
+          plugState = nextPlug;
+          plugStartedAt = reducedMotion.matches ? null : now;
+          power.dataset.plug = nextPlug;
+          if (nextPlug === "loose") unlockTrick("loose-plug");
+          else {
+            outletTouch = null;
+            if (outletControl) outletControl.disabled = true;
+            updatePower2(now);
+          }
+        }
+      }
+      animate2();
+    }, burst2 = function(press = false) {
+      if (reducedMotion.matches) return;
+      const quick = press || releaseDuration === TAP_RELEASE_MS;
+      if (!press) {
+        current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
+        velocity.pop = quick ? 0.035 : 0.022;
+      }
+      if (current.powered === false) {
+        animate2();
+        return;
+      }
+      current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
+      paint2();
+      animate2();
+      const count = press ? 8 : quick ? 12 : 8;
+      while (effects.childElementCount > 64 - count) effects.firstElementChild?.remove();
+      const width = button.offsetWidth, height = button.offsetHeight;
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement("span");
+        particle.className = "click-particle";
+        const side = i % 4, along = (Math.random() - 0.5) * 0.75;
+        const nx = side === 1 ? 1 : side === 3 ? -1 : 0;
+        const ny = side === 0 ? -1 : side === 2 ? 1 : 0;
+        const x = current.x + (nx ? nx * width / 2 : along * width);
+        const y = current.y + (ny ? ny * height / 2 : along * height);
+        const drift = (press ? 12 : 22) + Math.random() * (press ? 18 : 28);
+        effects.append(particle);
+        particle.animate(
+          [
+            { opacity: 0.95, transform: `translate(${x}px, ${y}px) scale(${quick ? 1.3 : 1})` },
+            { opacity: 0.6, offset: 0.22 },
+            {
+              opacity: 0,
+              transform: `translate(${x + nx * drift + along * 15}px, ${y + ny * drift - (press ? 12 : 22)}px) scale(.35)`
+            }
+          ],
+          {
+            duration: press ? 520 + Math.random() * 260 : 850 + Math.random() * 650,
+            easing: "cubic-bezier(.1,.5,.3,1)"
+          }
+        ).finished.then(
+          () => particle.remove(),
+          () => particle.remove()
+        );
+      }
+    }, activateRelease2 = function(activation, event) {
+      activatingRelease = activation;
+      try {
+        if (event)
+          button.dispatchEvent(
+            new MouseEvent("click", {
+              bubbles: true,
+              cancelable: true,
+              clientX: event.clientX,
+              clientY: event.clientY,
+              detail: 1
+            })
+          );
+        else button.click();
+      } finally {
+        activatingRelease = null;
+      }
+    }, pressOutlet2 = function() {
+      if (!outletControl || plugState === "unplugged" || document.hidden) return;
+      outletTripped = !outletTripped;
+      outletControl.setAttribute("aria-pressed", String(outletTripped));
+      outletControl.dataset.press = outletTripped ? "test" : "reset";
+      updatePower2(performance.now());
+      if (!reducedMotion.matches) paint2();
+      animate2();
+    }, endPointer2 = function(event, cancelled = false) {
+      if (!pointers.has(event.pointerId)) return;
+      const rect = button.getBoundingClientRect();
+      const slop = event.pointerType === "touch" ? 24 : 12;
+      const near = (dx, dy) => event.clientX >= rect.left + dx - slop && event.clientX <= rect.right + dx + slop && event.clientY >= rect.top + dy - slop && event.clientY <= rect.bottom + dy + slop;
+      const inViewport = event.clientX >= 0 && event.clientX < window.innerWidth && event.clientY >= 0 && event.clientY < window.innerHeight;
+      const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
+      const point = pointers.get(event.pointerId);
+      if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
+      pointers.delete(event.pointerId);
+      if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
+      if (!pointers.size) {
+        if (buttonStaysPut2()) {
+          dockWhileParked = plugState === "unplugged" && !cancelled && inside;
+          keepParkedButtonInView2();
+          velocity.x = velocity.y = 0;
+        }
+        release2(cancelled || !inside);
+      } else aimPointers2();
+      if (!cancelled && inside && !button.disabled) {
+        const uTurn = point.wentAway && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) <= Math.max(12, button.offsetWidth * 0.05);
+        activateRelease2(
+          { source: event.pointerType === "touch" ? "touch" : "pointer", uTurn },
+          event
+        );
+      }
+      if (pointers.size || buttonStaysPut2()) return;
+      if (!cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
+        coastUntil = performance.now() + 80;
+        coastFromX = current.x;
+        coastFromY = current.y;
+        velocity.x = clamp(point.vx * 10, -14, 14);
+        velocity.y = clamp(point.vy * 10, -14, 14);
+      }
+      target.x = target.y = 0;
+      animate2();
+    };
+    plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
+    const maybeStage = button.closest(".button-stage");
+    if (!maybeStage) throw new Error("Tactile button needs a stage");
+    const stage = maybeStage;
+    const rig = required(".button-rig", stage);
+    const power = stage.querySelector(".button-power");
+    const cords = power?.querySelectorAll(".power-cord");
+    const outlet = power?.querySelector(".power-outlet");
+    const plug = power?.querySelector(".power-plug");
+    const plugControl = stage.querySelector(".plug-control");
+    const outletControl = stage.querySelector(".outlet-control");
+    const plugEdge = stage.querySelector(".plug-edge");
+    const gameButton = button.id === "click-button";
+    const plugPulls = createPlugPullTracker();
+    const plugSwing = createPlugSwing();
+    let plugState = "seated";
+    let cordSlack = false;
+    let slackChange = null;
+    let plugStartedAt = null;
+    let looseBeforeDetach = 1;
+    let outletTripped = false;
+    let drainStartedAt = null;
+    let outletTouch = null;
+    let socket = "bottom";
+    let docking = null;
+    let dockWhileParked = false;
+    let dockTimer = 0;
+    let plugTap = null;
+    let seating = null;
+    const readout = gameButton ? document.querySelector(".game-readout") : null;
+    let readoutOffset = 0;
+    let readoutOpacity = 1;
+    const effects = document.createElement("div");
+    effects.className = "button-effects";
+    effects.setAttribute("aria-hidden", "true");
+    stage.append(effects);
+    const reducedMotion = motionPreference;
+    const keys = ["x", "y", "rx", "ry", "pop"];
+    const current = {
+      x: 0,
+      y: 0,
+      rx: 0,
+      ry: 0,
+      press: 0,
+      labelCharge: 0,
+      labelPhase: 0,
+      copper: 0,
+      pop: 0,
+      flash: 0,
+      response: 0,
+      responseProgress: 0,
+      responseColor: [0.35, 0.67, 0.94]
+    };
+    const target = { ...current }, velocity = { ...current };
+    let renderer = null;
+    let setupFrame = 0, frame = 0, lastFrame = 0;
+    const pointers = /* @__PURE__ */ new Map();
+    let dragFromX = 0, dragFromY = 0;
+    let dragOriginX = 0, dragOriginY = 0;
+    let coastUntil = 0;
+    let coastFromX = 0, coastFromY = 0;
+    let activeKey = null;
+    let activatingRelease = null;
+    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, achievementTimer = 0, beatTimer = 0, phase = "idle";
+    let responseStarted = null;
+    let responseDuration = 500;
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    if (outletControl) {
+      outletControl.addEventListener("click", (event) => {
+        if (event.pointerType !== "touch" || event.isPrimary || event.detail === 0) pressOutlet2();
+      });
+      outletControl.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch" || event.isPrimary || event.button !== 0 || outletTouch)
+          return;
+        event.preventDefault();
+        outletControl.setPointerCapture(event.pointerId);
+        outletTouch = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      outletControl.addEventListener("pointermove", (event) => {
+        if (event.pointerId === outletTouch?.id && Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) > 12)
+          outletTouch = null;
+      });
+      outletControl.addEventListener("pointerup", (event) => {
+        if (event.pointerId !== outletTouch?.id) return;
+        const tapped = Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) <= 12;
+        outletTouch = null;
+        if (tapped) pressOutlet2();
+      });
+      const cancelOutletTouch = (event) => {
+        if (event.pointerId === outletTouch?.id) outletTouch = null;
+      };
+      outletControl.addEventListener("pointercancel", cancelOutletTouch);
+      outletControl.addEventListener("lostpointercapture", cancelOutletTouch);
+    }
+    if (plugControl) {
+      let movedOffPlug2 = function(event) {
+        return !!plugTap && Math.hypot(event.clientX - plugTap.x, event.clientY - plugTap.y) > 12;
+      };
+      movedOffPlug = movedOffPlug2;
+      plugControl.addEventListener("click", (event) => {
+        if (event.detail === 0) activatePlug2();
+      });
+      plugControl.addEventListener("pointerdown", (event) => {
+        if (plugControl.hidden || plugTap || event.button !== 0 || pointers.has(event.pointerId))
+          return;
+        event.preventDefault();
+        plugControl.setPointerCapture(event.pointerId);
+        plugTap = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      plugControl.addEventListener("pointermove", (event) => {
+        if (plugTap?.id === event.pointerId && movedOffPlug2(event)) plugTap = null;
+      });
+      plugControl.addEventListener("pointerup", (event) => {
+        if (plugTap?.id !== event.pointerId) return;
+        const tapped = !movedOffPlug2(event);
+        plugTap = null;
+        if (tapped) activatePlug2();
+      });
+      const cancelTap = (event) => {
+        if (plugTap?.id === event.pointerId) plugTap = null;
+      };
+      plugControl.addEventListener("pointercancel", cancelTap);
+      plugControl.addEventListener("lostpointercapture", cancelTap);
+    }
+    stage.addEventListener("pointermove", (event) => {
+      if (button.disabled) return;
+      const point = pointers.get(event.pointerId);
+      if (point) {
+        const now = performance.now(), elapsed = now - point.movedAt;
+        const dt = clamp(elapsed, 8, 50);
+        point.vx = elapsed > 80 ? 0 : point.vx * 0.35 + (event.clientX - point.x) / dt * 0.65;
+        point.vy = elapsed > 80 ? 0 : point.vy * 0.35 + (event.clientY - point.y) / dt * 0.65;
+        point.movedAt = now;
+        point.x = event.clientX;
+        point.y = event.clientY;
+        if (gameButton && !point.wentAway && Math.hypot(point.x - point.startX, point.y - point.startY) >= Math.max(45, button.offsetWidth * 0.35))
+          point.wentAway = true;
+        aimPointers2(true);
+      } else if (!pointers.size && !buttonStaysPut2() && activeKey === null && event.pointerType === "mouse")
+        aimHover2(event);
+    });
+    stage.addEventListener("pointerleave", () => {
+      if (!pointers.size && !buttonStaysPut2() && activeKey === null && performance.now() >= coastUntil)
+        reset2(false);
+    });
+    button.addEventListener("pointerdown", (event) => {
+      if (gameButton && event.pointerType === "mouse" && event.button === 1) event.preventDefault();
+      if (button.disabled || event.button !== 0 || activeKey !== null || pointers.has(event.pointerId))
+        return;
+      event.preventDefault();
+      window.getSelection()?.removeAllRanges();
+      button.focus({ preventScroll: true });
+      pointers.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+        startX: event.clientX,
+        startY: event.clientY,
+        vx: 0,
+        vy: 0,
+        movedAt: performance.now(),
+        wentAway: false
+      });
+      if (pointers.size === 1) {
+        dragFromX = target.x = current.x;
+        dragFromY = target.y = current.y;
+        current.rx = target.rx = velocity.rx = 0;
+        current.ry = target.ry = velocity.ry = 0;
+        velocity.x = velocity.y = 0;
+        begin2();
+      } else if (gameButton) clickSound.play("press");
+      button.setPointerCapture(event.pointerId);
+      aimPointers2();
+    });
+    button.addEventListener("pointerup", (event) => endPointer2(event));
+    button.addEventListener("pointercancel", (event) => endPointer2(event, true));
+    button.addEventListener("lostpointercapture", (event) => endPointer2(event, true));
+    button.addEventListener("dragstart", (event) => event.preventDefault());
+    button.addEventListener("contextmenu", (event) => event.preventDefault());
+    button.addEventListener("auxclick", (event) => {
+      if (gameButton && !button.disabled && (event.button === 1 || event.button === 2)) {
+        event.preventDefault();
+        unlockTrick("wrong-button");
+      }
+    });
+    button.addEventListener("keydown", (event) => {
+      if (button.disabled || event.key !== " " && event.key !== "Enter") return;
+      event.preventDefault();
+      if (event.repeat || activeKey !== null || pointers.size) return;
+      window.getSelection()?.removeAllRanges();
+      activeKey = event.key;
+      begin2();
+    });
+    button.addEventListener("keyup", (event) => {
+      if (event.key !== " " && event.key !== "Enter") return;
+      event.preventDefault();
+      if (event.key !== activeKey) return;
+      release2();
+      if (!button.disabled) {
+        if (gameButton) unlockTrick("keyboard");
+        activateRelease2({ source: "keyboard" });
+      }
+    });
+    button.addEventListener("blur", () => {
+      if (activeKey !== null) reset2();
+    });
+    button.addEventListener("click", (event) => {
+      if (!activatingRelease && (event.detail > 0 || event.pointerType)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      if (button.disabled) return;
+      if (gameButton && activatingRelease) rememberButtonActivation(event, activatingRelease);
+      if (event.detail === 0 && !activatingRelease) {
+        begin2();
+        release2();
+      }
+      if (gameButton) clickSound.play("release");
+      burst2();
+    });
+    new MutationObserver(() => {
+      if (button.disabled) reset2();
+      else if (plugState === "unplugged") paint2();
+    }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
+    new MutationObserver(() => paint2()).observe(required(".button-label", button), {
+      childList: true,
+      characterData: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["lang", "dir"]
+    });
+    reducedMotion.addEventListener("change", () => {
+      if (reducedMotion.matches) {
+        plugStartedAt = null;
+        drainStartedAt = null;
+        seating = null;
+        slackChange = null;
+      }
+      reset2();
+      if (reducedMotion.matches) {
+        for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
+        effects.replaceChildren();
+      }
+    });
+    window.addEventListener("blur", () => reset2());
+    window.addEventListener("resize", () => {
+      if (buttonStaysPut2()) keepParkedButtonInView2();
+      reset2();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        plugStartedAt = null;
+        drainStartedAt = null;
+        seating = null;
+        plugSwing.reset(current.x);
+        reset2();
+      }
+    });
+    new ResizeObserver(() => {
+      if (buttonStaysPut2() && !pointers.size && keepParkedButtonInView2()) animate2();
+      if (!renderer && !setupFrame && stage.clientWidth && stage.clientHeight) {
+        setupFrame = requestAnimationFrame(() => {
+          setupFrame = 0;
+          if (!stage.clientWidth || !stage.clientHeight) return;
+          renderer = createButtonRenderer(stage, button);
+          paint2();
+        });
+      } else paint2();
+    }).observe(stage);
+    tactileButtons.set(button, { reset: reset2, respond: respond2 });
+  }
+  var movedOffPlug;
+  var plugProgress;
+  var buttonStaysPut;
+  var cordSlackAmount;
+  var alignPlug;
+  var updatePower;
+  var reconnectPlug;
+  var activatePlug;
+  var paint;
+  var moveReadout;
+  var tick;
+  var animate;
+  var setPhase;
+  var scheduleHoldBeat;
+  var begin;
+  var aimHover;
+  var release;
+  var keepParkedButtonInView;
+  var reset;
+  var clearResponse;
+  var respond;
+  var aimPointers;
+  var burst;
+  var activateRelease;
+  var pressOutlet;
+  var endPointer;
 
   // frontend/click-feedback.ts
   var feedbackLabels = {

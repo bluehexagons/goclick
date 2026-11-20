@@ -100,12 +100,14 @@ export function projectButtonPower(
     looseBeforeDetach = 1,
     hangAngle = 0,
     socket = "bottom",
+    slack = 0,
     seating,
   }: {
     progress?: number;
     looseBeforeDetach?: number;
     hangAngle?: number;
     socket?: OutletSocket;
+    slack?: number;
     seating?: { x: number; y: number; angle: number; remaining: number };
   } = {},
 ) {
@@ -156,7 +158,7 @@ export function projectButtonPower(
     startY += reach * towardY;
     let rotation = "";
     if (disconnecting) {
-      const length = hangingCordLength(buttonWidth);
+      const length = hangingCordLength(buttonWidth) + buttonWidth * 0.055 * slack;
       const hangX = endX + length * Math.sin(hangAngle);
       const hangY = endY + length * Math.cos(hangAngle);
       const tug = 32 * Math.sin(Math.PI * progress) * (1 - progress);
@@ -186,9 +188,11 @@ export function projectButtonPower(
   const length = Math.max(90, buttonWidth * 0.42);
   // Slack vanishes smoothly at the cable's natural length. Further pulling
   // extends the taut cable and narrows its jacket like stretched rubber.
-  const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2) * (1 - hanging);
+  const restSag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
+  const extraSag = Math.min(buttonWidth * 0.32, buttonWidth * 0.11 + distance * 0.12);
+  const sag = (restSag + slack * extraSag) * (1 - hanging);
   const stretch = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
-  const thickness = stretch + (1 - stretch) * hanging;
+  const thickness = stretch + (1 - stretch) * (hanging + (1 - hanging) * slack);
   return {
     outletX,
     outletY,
