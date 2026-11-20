@@ -93,11 +93,16 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
   const power = new Element();
   const cords = [new Element(), new Element(), new Element()];
   const outlet = [new Element(), new Element()];
-  power.querySelectorAll = (selector) => (selector === ".power-cord" ? cords : outlet);
+  power.querySelectorAll = () => cords;
+  power.querySelector = (selector) => (selector === ".power-outlet" ? outlet[0] : outlet[1]);
+  const outletControl = new Element();
   stage.clientWidth = 680;
   stage.clientHeight = 290;
-  stage.querySelector = (selector) =>
-    selector === ".button-rig" ? rig : selector === ".button-power" && withPower ? power : null;
+  stage.querySelector = (selector) => {
+    if (selector === ".button-rig") return rig;
+    if (selector === ".button-power" && withPower) return power;
+    return selector === ".outlet-control" && withPower ? outletControl : null;
+  };
   const readout = withReadout ? new Element() : null;
   if (readout) {
     const bounds = button.getBoundingClientRect();
@@ -196,6 +201,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     power,
     cords,
     outlet,
+    outletControl,
     // Project the native hit surface's face center back to screen pixels.
     // Raw CSS translation alone is magnified by the 850px perspective.
     position: () => {
@@ -747,6 +753,58 @@ test("continued pulls unplug the button, darkening it without disabling clicks",
   assert.equal(h.power.dataset.plug, "unplugged");
 });
 
+test("the outlet's test and reset cycle power without scoring a click", () => {
+  const h = harness(true, true);
+  h.pointer("pointerdown", 1);
+  assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
+  const tap = { pointerId: 2, pointerType: "touch", isPrimary: false, clientX: 230, clientY: 175 };
+  h.outletControl.fire("pointerdown", tap);
+  h.outletControl.fire("pointercancel", tap);
+  h.outletControl.fire("pointerup", tap);
+  assert.equal(h.outletControl.dataset.press, undefined);
+  h.outletControl.fire("pointerdown", tap);
+  h.outletControl.fire("pointerup", tap);
+  h.outletControl.fire("click", { ...tap, detail: 1 });
+  assert.equal(h.outletControl.attributes.get("aria-pressed"), "true");
+  assert.equal(h.outletControl.dataset.press, "test");
+  assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
+  assert.equal(h.clicks.length, 0);
+  h.pointer("pointerup", 1);
+  h.pointer("pointerdown", 1);
+  h.pointer("pointerup", 1);
+  assert.equal(h.clicks.length, 2);
+  assert.deepEqual(h.sounds, ["press"]);
+
+  h.outletControl.click();
+  assert.equal(h.outletControl.attributes.get("aria-pressed"), "false");
+  assert.equal(h.outletControl.dataset.press, "reset");
+  assert.equal(h.clicks.length, 2);
+  h.pointer("pointerdown", 1);
+  assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
+  h.pointer("pointerup", 1);
+  assert.deepEqual(h.sounds, ["press", "press", "release"]);
+});
+
+test("a long mouse drag leaves the outlet exposed briefly after release", () => {
+  const h = harness(true, true);
+  const face = h.button.getBoundingClientRect();
+  h.button.getBoundingClientRect = () => {
+    const x = h.position().x;
+    return { ...face, left: face.left + x, right: face.right + x };
+  };
+  h.outletControl.getBoundingClientRect = () => ({ left: 203, right: 257, top: 128, bottom: 224 });
+  h.pointer("pointerdown", 1, { pointerType: "mouse" });
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 350, clientY: 150 });
+  h.pointer("pointerup", 1, { pointerType: "mouse", clientX: 350 });
+  assert.equal(h.clicks.length, 1);
+  assert.equal(Math.round(h.position().x), 180);
+  h.outletControl.click();
+  assert.equal(h.outletControl.dataset.press, "test");
+  assert.equal(Math.round(h.position().x), 180);
+  h.runTimer(1500);
+  assert.equal(h.position().x, 0);
+});
+
 test("the dangling plug can reconnect to either socket by holding or tapping", () => {
   const h = harness(true, true);
   const plug = h.outlet[1];
@@ -790,9 +848,13 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
   h.pointer("pointercancel", 1);
 
+  h.outletControl.click();
   start();
   pullFree();
-  move(35, -153);
+  assert.equal(h.outletControl.disabled, true);
+  h.outletControl.click();
+  assert.equal(h.outletControl.attributes.get("aria-pressed"), "true");
+  move(35, -173);
   assert.equal(h.power.dataset.dock, "top");
   plug.fire("pointerdown", { pointerId: 2, clientX: 228, clientY: 150 });
   plug.fire("pointerup", { pointerId: 2, clientX: 248, clientY: 150 });
@@ -800,7 +862,11 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   plug.fire("pointerdown", { pointerId: 2, clientX: 228, clientY: 150 });
   plug.fire("pointerup", { pointerId: 2, clientX: 228, clientY: 150 });
   assert.equal(h.power.dataset.plug, "seated");
-  assert.equal(plug.attributes.get("transform"), "translate(0 -39)");
+  assert.equal(plug.attributes.get("transform"), "translate(0 -58)");
+  assert.equal(h.outletControl.disabled, false);
+  assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
+  h.outletControl.click();
+  assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
   assert.equal(h.clicks.length, 0);
   assert.equal(h.button.hasPointerCapture(1), true);
   h.pointer("pointercancel", 1);

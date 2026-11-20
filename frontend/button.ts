@@ -28,6 +28,7 @@ const TAP_RELEASE_MS = 70;
 const HOLD_RELEASE_MS = 110;
 const PLUG_DWELL_MS = 3000;
 const PLUG_SEAT_MS = 200;
+const OUTLET_ACCESS_MS = 1500;
 const tactileButtons = new Map<HTMLButtonElement, ButtonController>();
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile-button]")) {
   const maybeStage = button.closest<HTMLElement>(".button-stage");
@@ -36,7 +37,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const rig = required(".button-rig", stage);
   const power = stage.querySelector<SVGSVGElement>(".button-power");
   const cords = power?.querySelectorAll<SVGPathElement>(".power-cord");
-  const [outlet, plug] = power?.querySelectorAll<SVGGElement>(".power-outlet, .power-plug") ?? [];
+  const outlet = power?.querySelector<SVGGElement>(".power-outlet");
+  const plug = power?.querySelector<SVGGElement>(".power-plug");
+  const outletControl = stage.querySelector<HTMLButtonElement>(".outlet-control");
   const plugEdge = stage.querySelector<SVGRectElement>(".plug-edge");
   const gameButton = button.id === "click-button";
   const plugPulls = createPlugPullTracker();
@@ -44,6 +47,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let plugState: PlugState = "seated";
   let plugStartedAt: number | null = null;
   let looseBeforeDetach = 1;
+  let outletTripped = false;
+  let drainStartedAt: number | null = null;
+  let outletAccessTimer = 0;
+  let outletTouch: { id: number; x: number; y: number } | null = null;
   let socket: OutletSocket = "bottom";
   let docking: { socket: OutletSocket; x: number; y: number; angle: number } | null = null;
   let dockTimer = 0;
@@ -139,10 +146,48 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     plugTap = null;
     if (next) {
       power.dataset.dock = next.socket;
+      if (outletControl) outletControl.dataset.dock = next.socket;
       dockTimer = window.setTimeout(reconnectPlug, PLUG_DWELL_MS);
     } else {
       delete power.dataset.dock;
+      if (outletControl) delete outletControl.dataset.dock;
     }
+  }
+
+  function updatePower(time: number) {
+    const powered = !outletTripped && plugState !== "unplugged";
+    if ((current.powered !== false) === powered) return;
+    current.powered = powered;
+    clickSound.setPowered(powered);
+    if (powered) {
+      drainStartedAt = null;
+      if (phase !== "idle") {
+        current.copper = 1;
+        current.labelCharge = reducedMotion.matches ? 0 : 1;
+        scheduleHoldBeat();
+      }
+    } else {
+      drainStartedAt = reducedMotion.matches ? null : time;
+      releasedAt = null;
+      current.copper = current.flash = current.holdLight = current.labelCharge = 0;
+      clearResponse();
+      effects.replaceChildren();
+      window.clearTimeout(beatTimer);
+    }
+  }
+
+  function clearOutletAccess() {
+    window.clearTimeout(outletAccessTimer);
+    outletAccessTimer = 0;
+  }
+
+  function keepOutletAccessible() {
+    clearOutletAccess();
+    outletAccessTimer = window.setTimeout(() => {
+      outletAccessTimer = 0;
+      target.x = target.y = target.rx = target.ry = 0;
+      animate();
+    }, OUTLET_ACCESS_MS);
   }
 
   function reconnectPlug() {
@@ -163,11 +208,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     plugState = power.dataset.plug = "seated";
     plugStartedAt = null;
     plugPulls.reseat();
-    current.powered = true;
-    current.copper = 1;
-    current.labelCharge = reducedMotion.matches ? 0 : 1;
-    clickSound.setPowered(true);
-    scheduleHoldBeat();
+    if (outletControl) outletControl.disabled = false;
+    updatePower(performance.now());
     // Start measuring fresh tugs here while preserving the drag and its tilt.
     dragStartX += target.x - dragFromX;
     dragStartY += target.y - dragFromY;
@@ -180,10 +222,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function paint(time = performance.now(), dt = 0) {
     if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
     const progress = plugProgress(time);
-    current.drainLight =
-      plugState === "unplugged" && plugStartedAt !== null
-        ? powerDrainLighting(time - plugStartedAt)
-        : 0;
+    current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
     const cable =
       power && stage.clientWidth && stage.clientHeight
         ? projectButtonPower(current, button.offsetWidth, plugState, {
@@ -275,8 +314,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         y < window.innerHeight &&
         ((x - 15 > 0 && x - 15 < face.left) ||
           (x + 15 < window.innerWidth && x + 15 > face.right) ||
-          (y - 25 > 0 && y - 25 < face.top) ||
-          (y + 25 < window.innerHeight && y + 25 > face.bottom))
+          (y - 42 > 0 && y - 42 < face.top) ||
+          (y + 34 < window.innerHeight && y + 34 > face.bottom))
       )
         unlockTrick("outlet");
     }
@@ -371,9 +410,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
     const animatingPower =
       plugProgress(time) < 1 ||
-      (plugState === "unplugged" &&
-        plugStartedAt !== null &&
-        time - plugStartedAt < powerDrainDuration);
+      (drainStartedAt !== null && time - drainStartedAt < powerDrainDuration);
     const swinging =
       plugState === "unplugged" &&
       !reducedMotion.matches &&
@@ -390,7 +427,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       for (const key of keys) {
         // Deliberate drag follows the pointer directly in reduced motion.
         // Hover, tilt, springs, and release animation remain suppressed.
-        current[key] = pointers.size && (key === "x" || key === "y") ? target[key] : 0;
+        current[key] =
+          (pointers.size || outletAccessTimer) && (key === "x" || key === "y") ? target[key] : 0;
         velocity[key] = 0;
       }
       current.flash = 0;
@@ -426,6 +464,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
   }
   function begin() {
+    if (outletAccessTimer && !pointers.size) target.x = target.y = target.rx = target.ry = 0;
+    clearOutletAccess();
     if (gameButton) clickSound.play("press");
     window.clearTimeout(holdTimer);
     clearResponse();
@@ -484,12 +524,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
           power.dataset.plug = nextPlug;
           if (nextPlug === "loose") unlockTrick("loose-plug");
           else {
-            current.powered = false;
-            current.copper = current.flash = current.holdLight = current.labelCharge = 0;
-            clearResponse();
-            effects.replaceChildren();
-            window.clearTimeout(beatTimer);
-            clickSound.setPowered(false);
+            outletTouch = null;
+            if (outletControl) outletControl.disabled = true;
+            updatePower(now);
           }
         }
       }
@@ -526,6 +563,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     animate();
   }
   function reset(cancelled = true) {
+    clearOutletAccess();
+    outletTouch = null;
     clearResponse();
     const captured = [...pointers.keys()];
     pointers.clear();
@@ -656,6 +695,40 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       activatingRelease = null;
     }
   }
+  function pressOutlet() {
+    if (!outletControl || plugState === "unplugged" || document.hidden) return;
+    outletTripped = !outletTripped;
+    outletControl.setAttribute("aria-pressed", String(outletTripped));
+    outletControl.dataset.press = outletTripped ? "test" : "reset";
+    if (outletAccessTimer) keepOutletAccessible();
+    updatePower(performance.now());
+    if (!reducedMotion.matches) paint();
+    animate();
+  }
+  if (outletControl) {
+    outletControl.addEventListener("click", (event) => {
+      if (event.pointerType !== "touch" || event.isPrimary || event.detail === 0) pressOutlet();
+    });
+    // Browsers can omit click for a second finger while the first holds the button.
+    outletControl.addEventListener("pointerdown", (event) => {
+      if (event.pointerType !== "touch" || event.isPrimary || event.button !== 0 || outletTouch)
+        return;
+      event.preventDefault();
+      outletControl.setPointerCapture(event.pointerId);
+      outletTouch = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    });
+    outletControl.addEventListener("pointerup", (event) => {
+      if (event.pointerId !== outletTouch?.id) return;
+      const tapped = Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) <= 12;
+      outletTouch = null;
+      if (tapped) pressOutlet();
+    });
+    const cancelOutletTouch = (event: PointerEvent) => {
+      if (event.pointerId === outletTouch?.id) outletTouch = null;
+    };
+    outletControl.addEventListener("pointercancel", cancelOutletTouch);
+    outletControl.addEventListener("lostpointercapture", cancelOutletTouch);
+  }
   if (gameButton && plug) {
     plug.addEventListener("pointerdown", (event) => {
       if (!docking || plugTap || event.button !== 0 || pointers.has(event.pointerId)) return;
@@ -701,10 +774,22 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       )
         point.wentAway = true;
       aimPointers(true);
-    } else if (!pointers.size && activeKey === null && event.pointerType === "mouse") aim(event);
+    } else if (
+      !pointers.size &&
+      !outletAccessTimer &&
+      activeKey === null &&
+      event.pointerType === "mouse"
+    )
+      aim(event);
   });
   stage.addEventListener("pointerleave", () => {
-    if (!pointers.size && activeKey === null && performance.now() >= coastUntil) reset(false);
+    if (
+      !pointers.size &&
+      !outletAccessTimer &&
+      activeKey === null &&
+      performance.now() >= coastUntil
+    )
+      reset(false);
   });
   button.addEventListener("pointerdown", (event) => {
     if (gameButton && event.pointerType === "mouse" && event.button === 1) event.preventDefault();
@@ -763,6 +848,29 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
     pointers.delete(event.pointerId);
     if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
+    if (
+      outletControl &&
+      !outletControl.disabled &&
+      point.wentAway &&
+      !pointers.size &&
+      !cancelled &&
+      inside &&
+      event.pointerType === "mouse"
+    ) {
+      const plate = outletControl.getBoundingClientRect();
+      if (
+        rect.right <= plate.left ||
+        rect.left >= plate.right ||
+        rect.bottom <= plate.top ||
+        rect.top >= plate.bottom
+      ) {
+        // Give a single mouse pointer time to move from the released button to the outlet.
+        target.x = current.x;
+        target.y = current.y;
+        velocity.x = velocity.y = 0;
+        keepOutletAccessible();
+      }
+    }
     if (!pointers.size) release(cancelled || !inside);
     else aimPointers();
     if (!cancelled && inside && !button.disabled) {
@@ -775,6 +883,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         event,
       );
     }
+    if (outletAccessTimer) return;
     if (
       !pointers.size &&
       !cancelled &&
@@ -863,6 +972,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   reducedMotion.addEventListener("change", () => {
     if (reducedMotion.matches) {
       plugStartedAt = null;
+      drainStartedAt = null;
       seating = null;
     }
     reset();
@@ -876,6 +986,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       plugStartedAt = null;
+      drainStartedAt = null;
       seating = null;
       plugSwing.reset(current.x);
       reset();

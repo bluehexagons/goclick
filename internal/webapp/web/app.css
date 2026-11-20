@@ -625,6 +625,43 @@ input:focus {
   overflow: visible;
   pointer-events: none;
 }
+.game .button-power {
+  z-index: 1;
+}
+.outlet-control {
+  position: absolute;
+  /* The plate begins 52px above the outlet's SVG origin, 12px above stage center. */
+  top: calc(50% - 64px);
+  left: 50%;
+  width: 54px;
+  height: 96px;
+  translate: -50% 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.outlet-control svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.outlet-control:disabled {
+  cursor: default;
+}
+.outlet-control:focus-visible,
+:root[data-focus-input="keyboard"] .outlet-control:focus {
+  z-index: 3;
+}
+.game .button-stage:has(.outlet-control:focus-visible) .button-power,
+:root[data-focus-input="keyboard"] .button-stage:has(.outlet-control:focus) .button-power {
+  z-index: 4;
+  clip-path: inset(calc(50% - 64px) calc(50% - 27px) calc(50% - 32px) round 8px);
+}
 .outlet-shadow {
   fill: #080c13;
   filter: drop-shadow(2px 5px 5px #0009);
@@ -642,8 +679,8 @@ input:focus {
   fill: #39424d;
   stroke: #59636e;
 }
-.button-power[data-dock="top"] [data-socket="top"],
-.button-power[data-dock="bottom"] [data-socket="bottom"] {
+.outlet-control[data-dock="top"] [data-socket="top"],
+.outlet-control[data-dock="bottom"] [data-socket="bottom"] {
   stroke: var(--teal);
   stroke-width: 2;
   filter: drop-shadow(0 0 3px #62d5cc99);
@@ -673,6 +710,41 @@ input:focus {
   fill: var(--teal);
   filter: drop-shadow(0 0 3px #62d5cc99);
 }
+.outlet-test rect {
+  fill: #573c45;
+  stroke: #89626f;
+}
+.outlet-reset rect {
+  fill: #35464a;
+  stroke: #617a80;
+}
+.outlet-control text {
+  fill: #f2eff0;
+  font: 700 6px var(--mono);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.outlet-control[aria-pressed="true"] .outlet-led {
+  fill: var(--gold);
+  filter: drop-shadow(0 0 3px #ffc83d99);
+}
+.outlet-control[aria-pressed="true"] .outlet-reset rect {
+  stroke: #c5a56e;
+}
+.outlet-control:disabled .outlet-led {
+  fill: #465361;
+  filter: none;
+}
+.outlet-control[data-press="test"] .outlet-test,
+.outlet-control[data-press="reset"] .outlet-reset {
+  animation: outlet-button-press 180ms ease-out;
+}
+@keyframes outlet-button-press {
+  from {
+    translate: 0 1px;
+    opacity: 0.7;
+  }
+}
 .power-cord {
   fill: none;
   stroke-linecap: round;
@@ -700,10 +772,6 @@ input:focus {
 }
 .button-power[data-plug="loose"] .plug-edge {
   stroke: #3a4452;
-}
-.button-power[data-plug="unplugged"] .outlet-led {
-  fill: #465361;
-  filter: none;
 }
 .plug-grommet {
   fill: #080d15;

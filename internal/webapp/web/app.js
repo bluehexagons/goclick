@@ -754,7 +754,7 @@
     const beat = 0.5 + 0.5 * Math.cos(2 * Math.PI * elapsed / holdBeat);
     return charge * (0.085 + 0.018 * beat);
   }
-  var outletSockets = { top: -27, bottom: 0 };
+  var outletSockets = { top: -46, bottom: 0 };
   var plugTransitionDuration = { loose: 280, unplugged: 680 };
   var powerDrainDuration = 920;
   var hangingCordLength = (buttonWidth) => buttonWidth * 0.24 + 48;
@@ -1732,6 +1732,7 @@
   var HOLD_RELEASE_MS = 110;
   var PLUG_DWELL_MS = 3e3;
   var PLUG_SEAT_MS = 200;
+  var OUTLET_ACCESS_MS = 1500;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let plugProgress2 = function(time) {
@@ -1753,10 +1754,42 @@
       plugTap = null;
       if (next) {
         power.dataset.dock = next.socket;
+        if (outletControl) outletControl.dataset.dock = next.socket;
         dockTimer = window.setTimeout(reconnectPlug2, PLUG_DWELL_MS);
       } else {
         delete power.dataset.dock;
+        if (outletControl) delete outletControl.dataset.dock;
       }
+    }, updatePower2 = function(time) {
+      const powered2 = !outletTripped && plugState !== "unplugged";
+      if (current.powered !== false === powered2) return;
+      current.powered = powered2;
+      clickSound.setPowered(powered2);
+      if (powered2) {
+        drainStartedAt = null;
+        if (phase !== "idle") {
+          current.copper = 1;
+          current.labelCharge = reducedMotion.matches ? 0 : 1;
+          scheduleHoldBeat2();
+        }
+      } else {
+        drainStartedAt = reducedMotion.matches ? null : time;
+        releasedAt = null;
+        current.copper = current.flash = current.holdLight = current.labelCharge = 0;
+        clearResponse2();
+        effects.replaceChildren();
+        window.clearTimeout(beatTimer);
+      }
+    }, clearOutletAccess2 = function() {
+      window.clearTimeout(outletAccessTimer);
+      outletAccessTimer = 0;
+    }, keepOutletAccessible2 = function() {
+      clearOutletAccess2();
+      outletAccessTimer = window.setTimeout(() => {
+        outletAccessTimer = 0;
+        target.x = target.y = target.rx = target.ry = 0;
+        animate2();
+      }, OUTLET_ACCESS_MS);
     }, reconnectPlug2 = function() {
       if (!power || !docking || !pointers.size || button.disabled || document.hidden || !stage.clientWidth || !stage.clientHeight)
         return;
@@ -1767,11 +1800,8 @@
       plugState = power.dataset.plug = "seated";
       plugStartedAt = null;
       plugPulls.reseat();
-      current.powered = true;
-      current.copper = 1;
-      current.labelCharge = reducedMotion.matches ? 0 : 1;
-      clickSound.setPowered(true);
-      scheduleHoldBeat2();
+      if (outletControl) outletControl.disabled = false;
+      updatePower2(performance.now());
       dragStartX += target.x - dragFromX;
       dragStartY += target.y - dragFromY;
       dragFromX = target.x;
@@ -1781,7 +1811,7 @@
     }, paint2 = function(time = performance.now(), dt = 0) {
       if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
       const progress = plugProgress2(time);
-      current.drainLight = plugState === "unplugged" && plugStartedAt !== null ? powerDrainLighting(time - plugStartedAt) : 0;
+      current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
       const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
         progress,
         looseBeforeDetach,
@@ -1848,7 +1878,7 @@
         const face = button.getBoundingClientRect();
         const x = frame2.left + frame2.width / 2 + cable.outletX;
         const y = frame2.top + frame2.height / 2 + cable.outletY;
-        if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - 15 > 0 && x - 15 < face.left || x + 15 < window.innerWidth && x + 15 > face.right || y - 25 > 0 && y - 25 < face.top || y + 25 < window.innerHeight && y + 25 > face.bottom))
+        if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - 15 > 0 && x - 15 < face.left || x + 15 < window.innerWidth && x + 15 > face.right || y - 42 > 0 && y - 42 < face.top || y + 34 < window.innerHeight && y + 34 > face.bottom))
           unlockTrick("outlet");
       }
       return readoutMoving;
@@ -1926,7 +1956,7 @@
         if (current.responseProgress < 1) moving = true;
         else responseStarted = null;
       }
-      const animatingPower = plugProgress2(time) < 1 || plugState === "unplugged" && plugStartedAt !== null && time - plugStartedAt < powerDrainDuration;
+      const animatingPower = plugProgress2(time) < 1 || drainStartedAt !== null && time - drainStartedAt < powerDrainDuration;
       const swinging = plugState === "unplugged" && !reducedMotion.matches && plugSwing.step(current.x, button.offsetWidth, dt);
       const readoutMoving = paint2(time, dt);
       frame = (moving || animatingPower || swinging || seating || readoutMoving) && !document.hidden ? requestAnimationFrame(tick2) : 0;
@@ -1934,7 +1964,7 @@
     }, animate2 = function() {
       if (reducedMotion.matches) {
         for (const key of keys) {
-          current[key] = pointers.size && (key === "x" || key === "y") ? target[key] : 0;
+          current[key] = (pointers.size || outletAccessTimer) && (key === "x" || key === "y") ? target[key] : 0;
           velocity[key] = 0;
         }
         current.flash = 0;
@@ -1967,6 +1997,8 @@
       };
       beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
     }, begin2 = function() {
+      if (outletAccessTimer && !pointers.size) target.x = target.y = target.rx = target.ry = 0;
+      clearOutletAccess2();
       if (gameButton) clickSound.play("press");
       window.clearTimeout(holdTimer);
       clearResponse2();
@@ -2022,12 +2054,9 @@
             power.dataset.plug = nextPlug;
             if (nextPlug === "loose") unlockTrick("loose-plug");
             else {
-              current.powered = false;
-              current.copper = current.flash = current.holdLight = current.labelCharge = 0;
-              clearResponse2();
-              effects.replaceChildren();
-              window.clearTimeout(beatTimer);
-              clickSound.setPowered(false);
+              outletTouch = null;
+              if (outletControl) outletControl.disabled = true;
+              updatePower2(now);
             }
           }
         }
@@ -2055,6 +2084,8 @@
       paint2();
       animate2();
     }, reset2 = function(cancelled = true) {
+      clearOutletAccess2();
+      outletTouch = null;
       clearResponse2();
       const captured = [...pointers.keys()];
       pointers.clear();
@@ -2154,6 +2185,15 @@
       } finally {
         activatingRelease = null;
       }
+    }, pressOutlet2 = function() {
+      if (!outletControl || plugState === "unplugged" || document.hidden) return;
+      outletTripped = !outletTripped;
+      outletControl.setAttribute("aria-pressed", String(outletTripped));
+      outletControl.dataset.press = outletTripped ? "test" : "reset";
+      if (outletAccessTimer) keepOutletAccessible2();
+      updatePower2(performance.now());
+      if (!reducedMotion.matches) paint2();
+      animate2();
     }, endPointer2 = function(event, cancelled = false) {
       if (!pointers.has(event.pointerId)) return;
       const rect = button.getBoundingClientRect();
@@ -2165,6 +2205,15 @@
       if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
       pointers.delete(event.pointerId);
       if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
+      if (outletControl && !outletControl.disabled && point.wentAway && !pointers.size && !cancelled && inside && event.pointerType === "mouse") {
+        const plate = outletControl.getBoundingClientRect();
+        if (rect.right <= plate.left || rect.left >= plate.right || rect.bottom <= plate.top || rect.top >= plate.bottom) {
+          target.x = current.x;
+          target.y = current.y;
+          velocity.x = velocity.y = 0;
+          keepOutletAccessible2();
+        }
+      }
       if (!pointers.size) release2(cancelled || !inside);
       else aimPointers2();
       if (!cancelled && inside && !button.disabled) {
@@ -2174,6 +2223,7 @@
           event
         );
       }
+      if (outletAccessTimer) return;
       if (!pointers.size && !cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
         coastUntil = performance.now() + 80;
         coastFromX = current.x;
@@ -2189,14 +2239,16 @@
         animate2();
       }
     };
-    plugProgress = plugProgress2, alignPlug = alignPlug2, reconnectPlug = reconnectPlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, endPointer = endPointer2;
+    plugProgress = plugProgress2, alignPlug = alignPlug2, updatePower = updatePower2, clearOutletAccess = clearOutletAccess2, keepOutletAccessible = keepOutletAccessible2, reconnectPlug = reconnectPlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
     const rig = required(".button-rig", stage);
     const power = stage.querySelector(".button-power");
     const cords = power?.querySelectorAll(".power-cord");
-    const [outlet, plug] = power?.querySelectorAll(".power-outlet, .power-plug") ?? [];
+    const outlet = power?.querySelector(".power-outlet");
+    const plug = power?.querySelector(".power-plug");
+    const outletControl = stage.querySelector(".outlet-control");
     const plugEdge = stage.querySelector(".plug-edge");
     const gameButton = button.id === "click-button";
     const plugPulls = createPlugPullTracker();
@@ -2204,6 +2256,10 @@
     let plugState = "seated";
     let plugStartedAt = null;
     let looseBeforeDetach = 1;
+    let outletTripped = false;
+    let drainStartedAt = null;
+    let outletAccessTimer = 0;
+    let outletTouch = null;
     let socket = "bottom";
     let docking = null;
     let dockTimer = 0;
@@ -2248,6 +2304,29 @@
     let responseStarted = null;
     let responseDuration = 500;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    if (outletControl) {
+      outletControl.addEventListener("click", (event) => {
+        if (event.pointerType !== "touch" || event.isPrimary || event.detail === 0) pressOutlet2();
+      });
+      outletControl.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch" || event.isPrimary || event.button !== 0 || outletTouch)
+          return;
+        event.preventDefault();
+        outletControl.setPointerCapture(event.pointerId);
+        outletTouch = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      outletControl.addEventListener("pointerup", (event) => {
+        if (event.pointerId !== outletTouch?.id) return;
+        const tapped = Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) <= 12;
+        outletTouch = null;
+        if (tapped) pressOutlet2();
+      });
+      const cancelOutletTouch = (event) => {
+        if (event.pointerId === outletTouch?.id) outletTouch = null;
+      };
+      outletControl.addEventListener("pointercancel", cancelOutletTouch);
+      outletControl.addEventListener("lostpointercapture", cancelOutletTouch);
+    }
     if (gameButton && plug) {
       let movedOffPlug2 = function(event) {
         return !!plugTap && Math.hypot(event.clientX - plugTap.x, event.clientY - plugTap.y) > 12;
@@ -2288,10 +2367,12 @@
         if (gameButton && !point.wentAway && Math.hypot(point.x - point.startX, point.y - point.startY) >= Math.max(45, button.offsetWidth * 0.35))
           point.wentAway = true;
         aimPointers2(true);
-      } else if (!pointers.size && activeKey === null && event.pointerType === "mouse") aim2(event);
+      } else if (!pointers.size && !outletAccessTimer && activeKey === null && event.pointerType === "mouse")
+        aim2(event);
     });
     stage.addEventListener("pointerleave", () => {
-      if (!pointers.size && activeKey === null && performance.now() >= coastUntil) reset2(false);
+      if (!pointers.size && !outletAccessTimer && activeKey === null && performance.now() >= coastUntil)
+        reset2(false);
     });
     button.addEventListener("pointerdown", (event) => {
       if (gameButton && event.pointerType === "mouse" && event.button === 1) event.preventDefault();
@@ -2381,6 +2462,7 @@
     reducedMotion.addEventListener("change", () => {
       if (reducedMotion.matches) {
         plugStartedAt = null;
+        drainStartedAt = null;
         seating = null;
       }
       reset2();
@@ -2394,6 +2476,7 @@
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         plugStartedAt = null;
+        drainStartedAt = null;
         seating = null;
         plugSwing.reset(current.x);
         reset2();
@@ -2414,6 +2497,9 @@
   var movedOffPlug;
   var plugProgress;
   var alignPlug;
+  var updatePower;
+  var clearOutletAccess;
+  var keepOutletAccessible;
   var reconnectPlug;
   var paint;
   var moveReadout;
@@ -2430,6 +2516,7 @@
   var aimPointers;
   var burst;
   var activateRelease;
+  var pressOutlet;
   var endPointer;
 
   // frontend/messages.ts
@@ -2459,6 +2546,7 @@
     localClicks: "Local clicks",
     click: "Click",
     clickAction: "Add a click",
+    outletTest: "Outlet test",
     feedbackWaiting: "waiting",
     feedbackUnconfirmed: "unconfirmed",
     feedbackUnsaved: "not saved",
@@ -2553,6 +2641,7 @@
       localClicks: "\u672C\u5730\u70B9\u51FB",
       click: "\u70B9\u51FB",
       clickAction: "\u70B9\u51FB\u589E\u52A0\u5206\u6570",
+      outletTest: "\u63D2\u5EA7\u6D4B\u8BD5",
       feedbackWaiting: "\u7B49\u5F85\u4E2D",
       feedbackUnconfirmed: "\u672A\u786E\u8BA4",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
@@ -2646,6 +2735,7 @@
       localClicks: "Clics locales",
       click: "Clic",
       clickAction: "Haz clic para sumar un punto",
+      outletTest: "Prueba del enchufe",
       feedbackWaiting: "esperando",
       feedbackUnconfirmed: "sin confirmar",
       feedbackUnsaved: "no guardado",
@@ -2739,6 +2829,7 @@
       localClicks: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0644\u064A\u0629",
       click: "\u0627\u0646\u0642\u0631",
       clickAction: "\u0627\u0646\u0642\u0631 \u0644\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0637\u0629",
+      outletTest: "\u0627\u062E\u062A\u0628\u0627\u0631 \u0627\u0644\u0645\u0642\u0628\u0633",
       feedbackWaiting: "\u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631",
       feedbackUnconfirmed: "\u063A\u064A\u0631 \u0645\u0624\u0643\u062F\u0629",
       feedbackUnsaved: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638",
@@ -2832,6 +2923,7 @@
       localClicks: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0915\u094D\u0932\u093F\u0915",
       click: "\u0915\u094D\u0932\u093F\u0915",
       clickAction: "\u0905\u0902\u0915 \u092C\u0922\u093C\u093E\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902",
+      outletTest: "\u0938\u0949\u0915\u0947\u091F \u0915\u0940 \u091C\u093E\u0901\u091A",
       feedbackWaiting: "\u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \u091C\u093E\u0930\u0940",
       feedbackUnconfirmed: "\u0905\u092A\u0941\u0937\u094D\u091F",
       feedbackUnsaved: "\u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E",
@@ -2925,6 +3017,7 @@
       localClicks: "Klik lokal",
       click: "Klik",
       clickAction: "Klik untuk menambah skor",
+      outletTest: "Uji stopkontak",
       feedbackWaiting: "menunggu",
       feedbackUnconfirmed: "belum terkonfirmasi",
       feedbackUnsaved: "tidak tersimpan",
@@ -3018,6 +3111,7 @@
       localClicks: "Cliques locais",
       click: "Clique",
       clickAction: "Clique para aumentar a pontua\xE7\xE3o",
+      outletTest: "Teste da tomada",
       feedbackWaiting: "aguardando",
       feedbackUnconfirmed: "n\xE3o confirmado",
       feedbackUnsaved: "n\xE3o salvo",
@@ -3111,6 +3205,7 @@
       localClicks: "Clics locaux",
       click: "Cliquez",
       clickAction: "Cliquer pour ajouter un point",
+      outletTest: "Test de la prise",
       feedbackWaiting: "en attente",
       feedbackUnconfirmed: "non confirm\xE9",
       feedbackUnsaved: "non enregistr\xE9",
@@ -3204,6 +3299,7 @@
       localClicks: "\u30ED\u30FC\u30AB\u30EB\u30AF\u30EA\u30C3\u30AF",
       click: "\u30AF\u30EA\u30C3\u30AF",
       clickAction: "\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u30B9\u30B3\u30A2\u3092\u5897\u3084\u3059",
+      outletTest: "\u30B3\u30F3\u30BB\u30F3\u30C8\u306E\u30C6\u30B9\u30C8",
       feedbackWaiting: "\u5F85\u6A5F\u4E2D",
       feedbackUnconfirmed: "\u672A\u78BA\u8A8D",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
@@ -3297,6 +3393,7 @@
       localClicks: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043A\u043B\u0438\u043A\u0438",
       click: "\u041D\u0430\u0436\u0430\u0442\u044C",
       clickAction: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0447\u043A\u043E",
+      outletTest: "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0440\u043E\u0437\u0435\u0442\u043A\u0438",
       feedbackWaiting: "\u043E\u0436\u0438\u0434\u0430\u043D\u0438\u0435",
       feedbackUnconfirmed: "\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
       feedbackUnsaved: "\u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E",
@@ -3390,6 +3487,7 @@
       localClicks: "Lokale Klicks",
       click: "Klick",
       clickAction: "Klicken, um den Punktestand zu erh\xF6hen",
+      outletTest: "Steckdosentest",
       feedbackWaiting: "wartet",
       feedbackUnconfirmed: "unbest\xE4tigt",
       feedbackUnsaved: "nicht gespeichert",

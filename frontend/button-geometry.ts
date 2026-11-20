@@ -44,7 +44,8 @@ export function holdLighting(elapsed: number) {
 }
 
 export type PlugState = "seated" | "loose" | "unplugged";
-export const outletSockets = { top: -27, bottom: 0 };
+// Socket centers relative to the bottom socket in the game outlet SVG.
+export const outletSockets = { top: -46, bottom: 0 };
 export type OutletSocket = keyof typeof outletSockets;
 export const plugTransitionDuration = { loose: 280, unplugged: 680 };
 export const powerDrainDuration = 920;
