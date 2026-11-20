@@ -5,6 +5,7 @@ import {
   holdBeat,
   holdDuration,
   holdLighting,
+  outletSockets,
   plugTransitionDuration,
   powerDrainDuration,
   powerDrainLighting,
@@ -12,7 +13,7 @@ import {
   projectButtonPose,
   projectButtonPower,
 } from "./button-geometry.js";
-import type { PlugState } from "./button-geometry.js";
+import type { OutletSocket, PlugState } from "./button-geometry.js";
 import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
 import { clickSound } from "./sound.js";
@@ -25,6 +26,8 @@ import type { ButtonController, ButtonState, ResponseState, Renderer } from "./t
 const QUICK_TAP_MS = 90;
 const TAP_RELEASE_MS = 70;
 const HOLD_RELEASE_MS = 110;
+const PLUG_DWELL_MS = 3000;
+const PLUG_SEAT_MS = 200;
 const tactileButtons = new Map<HTMLButtonElement, ButtonController>();
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile-button]")) {
   const maybeStage = button.closest<HTMLElement>(".button-stage");
@@ -41,6 +44,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let plugState: PlugState = "seated";
   let plugStartedAt: number | null = null;
   let looseBeforeDetach = 1;
+  let socket: OutletSocket = "bottom";
+  let docking: { socket: OutletSocket; x: number; y: number; angle: number } | null = null;
+  let dockTimer = 0;
+  let plugTap: { id: number; x: number; y: number } | null = null;
+  let seating: { x: number; y: number; angle: number; startedAt: number } | null = null;
   const readout = gameButton ? document.querySelector<HTMLElement>(".game-readout") : null;
   let readoutOffset = 0;
   const effects = document.createElement("div");
@@ -111,7 +119,68 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     return clamp((time - plugStartedAt) / plugTransitionDuration[plugState], 0, 1);
   }
 
+  function alignPlug(cable: ReturnType<typeof projectButtonPower> | null) {
+    if (!power) return;
+    let next: typeof docking = null;
+    if (cable) {
+      const y = cable.startY - cable.outletY - 12;
+      const nearest = y < (outletSockets.top + outletSockets.bottom) / 2 ? "top" : "bottom";
+      if (
+        Math.abs(cable.startX - cable.outletX) <= 18 &&
+        Math.abs(y - outletSockets[nearest]) <= 14
+      )
+        next = { socket: nearest, x: cable.startX, y: cable.startY, angle: cable.plugAngle };
+    }
+    const previous = docking?.socket;
+    docking = next;
+    if (next?.socket === previous) return;
+    window.clearTimeout(dockTimer);
+    plugTap = null;
+    if (next) {
+      power.dataset.dock = next.socket;
+      dockTimer = window.setTimeout(reconnectPlug, PLUG_DWELL_MS);
+    } else {
+      delete power.dataset.dock;
+    }
+  }
+
+  function reconnectPlug() {
+    if (
+      !power ||
+      !docking ||
+      !pointers.size ||
+      button.disabled ||
+      document.hidden ||
+      !stage.clientWidth ||
+      !stage.clientHeight
+    )
+      return;
+    const { socket: nextSocket, x, y, angle } = docking;
+    alignPlug(null);
+    socket = nextSocket;
+    seating = reducedMotion.matches
+      ? null
+      : { x, y, angle: angle > 180 ? angle - 360 : angle, startedAt: performance.now() };
+    plugState = power.dataset.plug = "seated";
+    plugStartedAt = null;
+    plugPulls.reseat();
+    current.powered = true;
+    current.copper = 1;
+    current.labelCharge = reducedMotion.matches ? 0 : 1;
+    clickSound.setPowered(true);
+    scheduleHoldBeat();
+    // Start measuring fresh tugs here while preserving the drag and its tilt.
+    dragStartX += target.x - dragFromX;
+    dragStartY += target.y - dragFromY;
+    dragFromX = target.x;
+    dragFromY = target.y;
+    aimPointers();
+    if (!reducedMotion.matches) paint();
+  }
+
   function paint(time = performance.now()) {
+    if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
+    const progress = plugProgress(time);
     current.drainLight =
       plugState === "unplugged" && plugStartedAt !== null
         ? powerDrainLighting(time - plugStartedAt)
@@ -119,9 +188,16 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const cable =
       power && stage.clientWidth && stage.clientHeight
         ? projectButtonPower(current, button.offsetWidth, plugState, {
-            progress: plugProgress(time),
+            progress,
             looseBeforeDetach,
             hangAngle: plugSwing.angle,
+            socket,
+            seating: seating
+              ? {
+                  ...seating,
+                  remaining: (1 - clamp((time - seating.startedAt) / PLUG_SEAT_MS, 0, 1)) ** 2,
+                }
+              : undefined,
           })
         : null;
     if (power && cable) {
@@ -135,6 +211,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       plug?.setAttribute("transform", cable.plugTransform);
       plugEdge?.setAttribute("transform", cable.plugEdgeTransform);
     }
+    if (gameButton && plugState === "unplugged")
+      alignPlug(
+        progress === 1 && pointers.size && !button.disabled && !document.hidden ? cable : null,
+      );
     current.reducedMotion = reducedMotion.matches;
     const lettering = projectButtonLettering(current);
     rig.style.setProperty("--label-scale-x", lettering.scaleX.toFixed(3));
@@ -283,7 +363,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       plugSwing.step(current.x, button.offsetWidth, dt);
     paint(time);
     frame =
-      (moving || animatingPower || swinging) && !document.hidden ? requestAnimationFrame(tick) : 0;
+      (moving || animatingPower || swinging || seating) && !document.hidden
+        ? requestAnimationFrame(tick)
+        : 0;
     if (!frame) lastFrame = 0;
   }
   function animate() {
@@ -310,6 +392,22 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     stage.classList.toggle("is-held", phase === "held");
     button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
   }
+  function scheduleHoldBeat() {
+    if (!gameButton || current.powered === false) return;
+    const elapsed = performance.now() - pressedAt;
+    let nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
+    const onBeat = () => {
+      if (phase === "idle" || button.disabled || document.hidden || current.powered === false)
+        return;
+      const elapsed = performance.now() - pressedAt;
+      if (elapsed >= nextBeat) {
+        clickSound.play("hold");
+        nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
+      }
+      beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed));
+    };
+    beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
+  }
   function begin() {
     if (gameButton) clickSound.play("press");
     window.clearTimeout(holdTimer);
@@ -332,20 +430,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       animate();
     } else burst(true);
     holdTimer = window.setTimeout(() => setPhase("held"), 180);
-    if (gameButton && current.powered !== false) {
-      let nextBeat = holdBeat;
-      const onBeat = () => {
-        if (phase === "idle" || button.disabled || document.hidden || current.powered === false)
-          return;
-        const elapsed = performance.now() - pressedAt;
-        if (elapsed >= nextBeat) {
-          clickSound.play("hold");
-          nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
-        }
-        beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed));
-      };
-      beatTimer = window.setTimeout(onBeat, holdBeat);
-    }
+    scheduleHoldBeat();
     if (gameButton && !hasTrick("hold")) {
       achievementTimer = window.setTimeout(() => {
         if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
@@ -369,7 +454,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       // boundary. Pointer capture keeps movement arriving outside that stage.
       target.x = dragFromX + pulledX;
       target.y = dragFromY + pulledY;
-      if (trackPull && gameButton && power) {
+      if (trackPull && gameButton && power && !seating) {
         const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
         if (nextPlug) {
           const now = performance.now();
@@ -554,6 +639,31 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       activatingRelease = null;
     }
   }
+  if (gameButton && plug) {
+    plug.addEventListener("pointerdown", (event) => {
+      if (!docking || plugTap || event.button !== 0 || pointers.has(event.pointerId)) return;
+      event.preventDefault();
+      plug.setPointerCapture(event.pointerId);
+      plugTap = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    });
+    function movedOffPlug(event: PointerEvent) {
+      return !!plugTap && Math.hypot(event.clientX - plugTap.x, event.clientY - plugTap.y) > 12;
+    }
+    plug.addEventListener("pointermove", (event) => {
+      if (plugTap?.id === event.pointerId && movedOffPlug(event)) plugTap = null;
+    });
+    plug.addEventListener("pointerup", (event) => {
+      if (plugTap?.id !== event.pointerId) return;
+      const tapped = !movedOffPlug(event);
+      plugTap = null;
+      if (tapped) reconnectPlug();
+    });
+    const cancelTap = (event: PointerEvent) => {
+      if (plugTap?.id === event.pointerId) plugTap = null;
+    };
+    plug.addEventListener("pointercancel", cancelTap);
+    plug.addEventListener("lostpointercapture", cancelTap);
+  }
   stage.addEventListener("pointermove", (event) => {
     if (button.disabled) return;
     const point = pointers.get(event.pointerId);
@@ -734,7 +844,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     attributeFilter: ["lang", "dir"],
   });
   reducedMotion.addEventListener("change", () => {
-    if (reducedMotion.matches) plugStartedAt = null;
+    if (reducedMotion.matches) {
+      plugStartedAt = null;
+      seating = null;
+    }
     reset();
     if (reducedMotion.matches) {
       for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
@@ -746,6 +859,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       plugStartedAt = null;
+      seating = null;
       plugSwing.reset(current.x);
       reset();
     }

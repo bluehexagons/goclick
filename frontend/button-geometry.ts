@@ -44,6 +44,8 @@ export function holdLighting(elapsed: number) {
 }
 
 export type PlugState = "seated" | "loose" | "unplugged";
+export const outletSockets = { top: -27, bottom: 0 };
+export type OutletSocket = keyof typeof outletSockets;
 export const plugTransitionDuration = { loose: 280, unplugged: 680 };
 export const powerDrainDuration = 920;
 
@@ -92,7 +94,19 @@ export function projectButtonPower(
   state: ButtonState,
   buttonWidth: number,
   plug: PlugState = "seated",
-  { progress = 1, looseBeforeDetach = 1, hangAngle = 0 } = {},
+  {
+    progress = 1,
+    looseBeforeDetach = 1,
+    hangAngle = 0,
+    socket = "bottom",
+    seating,
+  }: {
+    progress?: number;
+    looseBeforeDetach?: number;
+    hangAngle?: number;
+    socket?: OutletSocket;
+    seating?: { x: number; y: number; angle: number; remaining: number };
+  } = {},
 ) {
   const pose = projectButtonPose(state, buttonWidth);
   const { scale, recession, lift, cx, sx, cy, sy } = pose;
@@ -109,9 +123,11 @@ export function projectButtonPower(
   const pull = Math.max(buttonWidth * 0.52, pullDistance, 1);
   const disconnecting = plug === "unplugged";
   const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
+  const socketY = outletY + outletSockets[socket];
   let startX = outletX;
-  let startY = outletY + 12;
-  let plugTransform = `translate(${outletX} ${outletY})`;
+  let startY = socketY + 12;
+  let plugAngle = 0;
+  let plugTransform = `translate(${outletX} ${socketY})`;
   let plugEdgeTransform = "";
   if (plug !== "seated") {
     const loosening = disconnecting ? looseBeforeDetach : progress;
@@ -139,14 +155,18 @@ export function projectButtonPower(
       startY += (hangY - startY) * travel + tug * towardY;
       const swing = 30 * Math.sin(2 * Math.PI * progress) * (1 - progress);
       // Align the plug with the cable, which is taut when it hangs freely.
-      const angle = (180 - (hangAngle * 180) / Math.PI) * travel;
-      rotation = `rotate(${angle + swing}) `;
+      plugAngle = (180 - (hangAngle * 180) / Math.PI) * travel + swing;
+      rotation = `rotate(${plugAngle}) `;
     }
     plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
     // Counter the front's offset so the back stays over the socket while loose.
     // Both parts move together once the plug is free.
     const setback = -depth * Math.tan(tilt);
     plugEdgeTransform = `translate(${setback * towardX} ${setback * towardY})`;
+  } else if (seating) {
+    startX += (seating.x - startX) * seating.remaining;
+    startY += (seating.y - startY) * seating.remaining;
+    plugTransform = `translate(${startX} ${startY}) rotate(${seating.angle * seating.remaining}) translate(0 -12)`;
   }
   const dx = endX - startX;
   const dy = endY - startY;
@@ -162,6 +182,9 @@ export function projectButtonPower(
     outletY,
     plugTransform,
     plugEdgeTransform,
+    plugAngle,
+    startX,
+    startY,
     cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
     endX,
     endY,
@@ -178,6 +201,12 @@ export function createPlugPullTracker() {
   let pulls = 0;
   let state: PlugState = "seated";
   return {
+    reseat() {
+      state = "seated";
+      previous = null;
+      directions.clear();
+      pulls = 0;
+    },
     endPull() {
       previous = null;
     },

@@ -642,6 +642,17 @@ input:focus {
   fill: #39424d;
   stroke: #59636e;
 }
+.button-power[data-dock="top"] [data-socket="top"],
+.button-power[data-dock="bottom"] [data-socket="bottom"] {
+  stroke: var(--teal);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 3px #62d5cc99);
+}
+.button-power[data-dock] .power-plug {
+  pointer-events: visiblePainted;
+  cursor: pointer;
+  touch-action: none;
+}
 .outlet-screw {
   fill: #92999e;
 }
@@ -703,6 +714,9 @@ input:focus {
   fill: #151c26;
   stroke: #505967;
   stroke-width: 1;
+}
+.button-power[data-dock] .plug-body {
+  stroke: var(--teal);
 }
 .plug-ridges {
   fill: none;

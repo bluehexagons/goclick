@@ -734,6 +734,69 @@ test("continued pulls unplug the button, darkening it without disabling clicks",
   assert.equal(h.power.dataset.plug, "unplugged");
 });
 
+test("the dangling plug can reconnect to either socket by holding or tapping", () => {
+  const h = harness(true, true);
+  const plug = h.outlet[1];
+  const move = (x, y) =>
+    h.stage.fire("pointermove", { pointerId: 1, clientX: 170 + x, clientY: 220 + y });
+  const pullFree = () => {
+    for (const [x, y] of [
+      [190, 0],
+      [-190, 0],
+      [0, -190],
+      [0, 190],
+      [220, 0],
+      [0, -220],
+      [0, 220],
+    ])
+      move(x, y);
+    assert.equal(h.power.dataset.plug, "unplugged");
+  };
+  const start = () => h.pointer("pointerdown", 1, { clientY: 220 });
+  start();
+  pullFree();
+  move(35, -125);
+  assert.equal(h.power.dataset.dock, "bottom");
+  move(80, -125);
+  assert.equal(h.power.dataset.dock, undefined);
+  h.runTimer(3000);
+  assert.equal(h.power.dataset.plug, "unplugged");
+  move(35, -125);
+  h.pointer("pointercancel", 1);
+  h.runTimer(3000);
+  assert.equal(h.power.dataset.plug, "unplugged");
+
+  start();
+  move(35, -125);
+  const drag = h.position();
+  h.runTimer(3000);
+  assert.equal(h.power.dataset.plug, "seated");
+  assert.equal(h.power.dataset.dock, undefined);
+  assert.equal(plug.attributes.get("transform"), "translate(0 -12)");
+  assert.deepEqual(h.position(), drag);
+  assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
+  h.pointer("pointercancel", 1);
+
+  start();
+  pullFree();
+  move(35, -153);
+  assert.equal(h.power.dataset.dock, "top");
+  plug.fire("pointerdown", { pointerId: 2, clientX: 228, clientY: 150 });
+  plug.fire("pointerup", { pointerId: 2, clientX: 248, clientY: 150 });
+  assert.equal(h.power.dataset.plug, "unplugged");
+  plug.fire("pointerdown", { pointerId: 2, clientX: 228, clientY: 150 });
+  plug.fire("pointerup", { pointerId: 2, clientX: 228, clientY: 150 });
+  assert.equal(h.power.dataset.plug, "seated");
+  assert.equal(plug.attributes.get("transform"), "translate(0 -39)");
+  assert.equal(h.clicks.length, 0);
+  assert.equal(h.button.hasPointerCapture(1), true);
+  h.pointer("pointercancel", 1);
+  start();
+  h.pointer("pointerup", 1, { clientY: 220 });
+  assert.equal(h.clicks.length, 1);
+  assert.deepEqual(h.sounds.slice(-2), ["press", "release"]);
+});
+
 test("the plug rocks free and the drained lights stay dark after release and new clicks", () => {
   const h = harness(false, true);
   const move = (x, y) =>

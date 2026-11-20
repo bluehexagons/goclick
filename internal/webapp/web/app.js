@@ -754,6 +754,7 @@
     const beat = 0.5 + 0.5 * Math.cos(2 * Math.PI * elapsed / holdBeat);
     return charge * (0.085 + 0.018 * beat);
   }
+  var outletSockets = { top: -27, bottom: 0 };
   var plugTransitionDuration = { loose: 280, unplugged: 680 };
   var powerDrainDuration = 920;
   var hangingCordLength = (buttonWidth) => buttonWidth * 0.24 + 48;
@@ -789,7 +790,13 @@
     const dropout = (center, radius) => Math.max(0, 1 - Math.abs(elapsed - center) / radius);
     return 0.5 * remaining ** 2.2 * (1 - 0.8 * dropout(56, 30) - 0.65 * dropout(146, 38));
   }
-  function projectButtonPower(state, buttonWidth, plug = "seated", { progress = 1, looseBeforeDetach = 1, hangAngle = 0 } = {}) {
+  function projectButtonPower(state, buttonWidth, plug = "seated", {
+    progress = 1,
+    looseBeforeDetach = 1,
+    hangAngle = 0,
+    socket = "bottom",
+    seating
+  } = {}) {
     const pose = projectButtonPose(state, buttonWidth);
     const { scale, recession, lift, cx, sx, cy, sy } = pose;
     const x = -35 * scale, y = 10 * scale, z = -16 - recession;
@@ -802,9 +809,11 @@
     const pull = Math.max(buttonWidth * 0.52, pullDistance, 1);
     const disconnecting = plug === "unplugged";
     const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
+    const socketY = outletY + outletSockets[socket];
     let startX = outletX;
-    let startY = outletY + 12;
-    let plugTransform = `translate(${outletX} ${outletY})`;
+    let startY = socketY + 12;
+    let plugAngle = 0;
+    let plugTransform = `translate(${outletX} ${socketY})`;
     let plugEdgeTransform = "";
     if (plug !== "seated") {
       const loosening = disconnecting ? looseBeforeDetach : progress;
@@ -829,12 +838,16 @@
         startX += (hangX - startX) * travel + tug * towardX;
         startY += (hangY - startY) * travel + tug * towardY;
         const swing = 30 * Math.sin(2 * Math.PI * progress) * (1 - progress);
-        const angle = (180 - hangAngle * 180 / Math.PI) * travel;
-        rotation = `rotate(${angle + swing}) `;
+        plugAngle = (180 - hangAngle * 180 / Math.PI) * travel + swing;
+        rotation = `rotate(${plugAngle}) `;
       }
       plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
       const setback = -depth * Math.tan(tilt);
       plugEdgeTransform = `translate(${setback * towardX} ${setback * towardY})`;
+    } else if (seating) {
+      startX += (seating.x - startX) * seating.remaining;
+      startY += (seating.y - startY) * seating.remaining;
+      plugTransform = `translate(${startX} ${startY}) rotate(${seating.angle * seating.remaining}) translate(0 -12)`;
     }
     const dx = endX - startX;
     const dy = endY - startY;
@@ -848,6 +861,9 @@
       outletY,
       plugTransform,
       plugEdgeTransform,
+      plugAngle,
+      startX,
+      startY,
       cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
       endX,
       endY,
@@ -861,6 +877,12 @@
     let pulls = 0;
     let state = "seated";
     return {
+      reseat() {
+        state = "seated";
+        previous = null;
+        directions.clear();
+        pulls = 0;
+      },
       endPull() {
         previous = null;
       },
@@ -1707,17 +1729,67 @@
   var QUICK_TAP_MS = 90;
   var TAP_RELEASE_MS = 70;
   var HOLD_RELEASE_MS = 110;
+  var PLUG_DWELL_MS = 3e3;
+  var PLUG_SEAT_MS = 200;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let plugProgress2 = function(time) {
       if (plugState === "seated" || plugStartedAt === null) return 1;
       return clamp((time - plugStartedAt) / plugTransitionDuration[plugState], 0, 1);
+    }, alignPlug2 = function(cable) {
+      if (!power) return;
+      let next = null;
+      if (cable) {
+        const y = cable.startY - cable.outletY - 12;
+        const nearest = y < (outletSockets.top + outletSockets.bottom) / 2 ? "top" : "bottom";
+        if (Math.abs(cable.startX - cable.outletX) <= 18 && Math.abs(y - outletSockets[nearest]) <= 14)
+          next = { socket: nearest, x: cable.startX, y: cable.startY, angle: cable.plugAngle };
+      }
+      const previous = docking?.socket;
+      docking = next;
+      if (next?.socket === previous) return;
+      window.clearTimeout(dockTimer);
+      plugTap = null;
+      if (next) {
+        power.dataset.dock = next.socket;
+        dockTimer = window.setTimeout(reconnectPlug2, PLUG_DWELL_MS);
+      } else {
+        delete power.dataset.dock;
+      }
+    }, reconnectPlug2 = function() {
+      if (!power || !docking || !pointers.size || button.disabled || document.hidden || !stage.clientWidth || !stage.clientHeight)
+        return;
+      const { socket: nextSocket, x, y, angle } = docking;
+      alignPlug2(null);
+      socket = nextSocket;
+      seating = reducedMotion.matches ? null : { x, y, angle: angle > 180 ? angle - 360 : angle, startedAt: performance.now() };
+      plugState = power.dataset.plug = "seated";
+      plugStartedAt = null;
+      plugPulls.reseat();
+      current.powered = true;
+      current.copper = 1;
+      current.labelCharge = reducedMotion.matches ? 0 : 1;
+      clickSound.setPowered(true);
+      scheduleHoldBeat2();
+      dragStartX += target.x - dragFromX;
+      dragStartY += target.y - dragFromY;
+      dragFromX = target.x;
+      dragFromY = target.y;
+      aimPointers2();
+      if (!reducedMotion.matches) paint2();
     }, paint2 = function(time = performance.now()) {
+      if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
+      const progress = plugProgress2(time);
       current.drainLight = plugState === "unplugged" && plugStartedAt !== null ? powerDrainLighting(time - plugStartedAt) : 0;
       const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
-        progress: plugProgress2(time),
+        progress,
         looseBeforeDetach,
-        hangAngle: plugSwing.angle
+        hangAngle: plugSwing.angle,
+        socket,
+        seating: seating ? {
+          ...seating,
+          remaining: (1 - clamp((time - seating.startedAt) / PLUG_SEAT_MS, 0, 1)) ** 2
+        } : void 0
       }) : null;
       if (power && cable) {
         power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
@@ -1730,6 +1802,10 @@
         plug?.setAttribute("transform", cable.plugTransform);
         plugEdge?.setAttribute("transform", cable.plugEdgeTransform);
       }
+      if (gameButton && plugState === "unplugged")
+        alignPlug2(
+          progress === 1 && pointers.size && !button.disabled && !document.hidden ? cable : null
+        );
       current.reducedMotion = reducedMotion.matches;
       const lettering = projectButtonLettering(current);
       rig.style.setProperty("--label-scale-x", lettering.scaleX.toFixed(3));
@@ -1840,7 +1916,7 @@
       const animatingPower = plugProgress2(time) < 1 || plugState === "unplugged" && plugStartedAt !== null && time - plugStartedAt < powerDrainDuration;
       const swinging = plugState === "unplugged" && !reducedMotion.matches && plugSwing.step(current.x, button.offsetWidth, dt);
       paint2(time);
-      frame = (moving || animatingPower || swinging) && !document.hidden ? requestAnimationFrame(tick2) : 0;
+      frame = (moving || animatingPower || swinging || seating) && !document.hidden ? requestAnimationFrame(tick2) : 0;
       if (!frame) lastFrame = 0;
     }, animate2 = function() {
       if (reducedMotion.matches) {
@@ -1862,6 +1938,21 @@
       stage.classList.toggle("is-pressed", phase !== "idle");
       stage.classList.toggle("is-held", phase === "held");
       button.dispatchEvent(new CustomEvent("buttonstate", { detail: phase }));
+    }, scheduleHoldBeat2 = function() {
+      if (!gameButton || current.powered === false) return;
+      const elapsed = performance.now() - pressedAt;
+      let nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
+      const onBeat = () => {
+        if (phase === "idle" || button.disabled || document.hidden || current.powered === false)
+          return;
+        const elapsed2 = performance.now() - pressedAt;
+        if (elapsed2 >= nextBeat) {
+          clickSound.play("hold");
+          nextBeat = (Math.floor(elapsed2 / holdBeat) + 1) * holdBeat;
+        }
+        beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed2));
+      };
+      beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
     }, begin2 = function() {
       if (gameButton) clickSound.play("press");
       window.clearTimeout(holdTimer);
@@ -1884,20 +1975,7 @@
         animate2();
       } else burst2(true);
       holdTimer = window.setTimeout(() => setPhase2("held"), 180);
-      if (gameButton && current.powered !== false) {
-        let nextBeat = holdBeat;
-        const onBeat = () => {
-          if (phase === "idle" || button.disabled || document.hidden || current.powered === false)
-            return;
-          const elapsed = performance.now() - pressedAt;
-          if (elapsed >= nextBeat) {
-            clickSound.play("hold");
-            nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
-          }
-          beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed));
-        };
-        beatTimer = window.setTimeout(onBeat, holdBeat);
-      }
+      scheduleHoldBeat2();
       if (gameButton && !hasTrick("hold")) {
         achievementTimer = window.setTimeout(() => {
           if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
@@ -1918,7 +1996,7 @@
       if (pointers.size) {
         target.x = dragFromX + pulledX;
         target.y = dragFromY + pulledY;
-        if (trackPull && gameButton && power) {
+        if (trackPull && gameButton && power && !seating) {
           const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
           if (nextPlug) {
             const now = performance.now();
@@ -2098,7 +2176,7 @@
         animate2();
       }
     };
-    plugProgress = plugProgress2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, endPointer = endPointer2;
+    plugProgress = plugProgress2, alignPlug = alignPlug2, reconnectPlug = reconnectPlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aim = aim2, release = release2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, endPointer = endPointer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -2113,6 +2191,11 @@
     let plugState = "seated";
     let plugStartedAt = null;
     let looseBeforeDetach = 1;
+    let socket = "bottom";
+    let docking = null;
+    let dockTimer = 0;
+    let plugTap = null;
+    let seating = null;
     const readout = gameButton ? document.querySelector(".game-readout") : null;
     let readoutOffset = 0;
     const effects = document.createElement("div");
@@ -2151,6 +2234,32 @@
     let responseStarted = null;
     let responseDuration = 500;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    if (gameButton && plug) {
+      let movedOffPlug2 = function(event) {
+        return !!plugTap && Math.hypot(event.clientX - plugTap.x, event.clientY - plugTap.y) > 12;
+      };
+      movedOffPlug = movedOffPlug2;
+      plug.addEventListener("pointerdown", (event) => {
+        if (!docking || plugTap || event.button !== 0 || pointers.has(event.pointerId)) return;
+        event.preventDefault();
+        plug.setPointerCapture(event.pointerId);
+        plugTap = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      plug.addEventListener("pointermove", (event) => {
+        if (plugTap?.id === event.pointerId && movedOffPlug2(event)) plugTap = null;
+      });
+      plug.addEventListener("pointerup", (event) => {
+        if (plugTap?.id !== event.pointerId) return;
+        const tapped = !movedOffPlug2(event);
+        plugTap = null;
+        if (tapped) reconnectPlug2();
+      });
+      const cancelTap = (event) => {
+        if (plugTap?.id === event.pointerId) plugTap = null;
+      };
+      plug.addEventListener("pointercancel", cancelTap);
+      plug.addEventListener("lostpointercapture", cancelTap);
+    }
     stage.addEventListener("pointermove", (event) => {
       if (button.disabled) return;
       const point = pointers.get(event.pointerId);
@@ -2256,7 +2365,10 @@
       attributeFilter: ["lang", "dir"]
     });
     reducedMotion.addEventListener("change", () => {
-      if (reducedMotion.matches) plugStartedAt = null;
+      if (reducedMotion.matches) {
+        plugStartedAt = null;
+        seating = null;
+      }
       reset2();
       if (reducedMotion.matches) {
         for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
@@ -2268,6 +2380,7 @@
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         plugStartedAt = null;
+        seating = null;
         plugSwing.reset(current.x);
         reset2();
       }
@@ -2284,12 +2397,16 @@
     }).observe(stage);
     tactileButtons.set(button, { reset: reset2, respond: respond2 });
   }
+  var movedOffPlug;
   var plugProgress;
+  var alignPlug;
+  var reconnectPlug;
   var paint;
   var moveReadout;
   var tick;
   var animate;
   var setPhase;
+  var scheduleHoldBeat;
   var begin;
   var aim;
   var release;
