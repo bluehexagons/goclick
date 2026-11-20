@@ -1903,21 +1903,22 @@
           if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
         }, holdDuration);
       }
-    }, aim2 = function(event) {
+    }, aim2 = function(event, trackPull = false) {
       const rect = stage.getBoundingClientRect();
-      const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
-      const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
+      const pulledX = event.clientX - dragOriginX;
+      const pulledY = event.clientY - dragOriginY;
+      const aimX = pointers.size ? dragStartX + pulledX : event.clientX;
+      const aimY = pointers.size ? dragStartY + pulledY : event.clientY;
+      const x = clamp((aimX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
+      const y = clamp((aimY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
       target.rx = -y * 16;
       target.ry = x * 22;
       target.x = x * 4;
       target.y = y * 4;
       if (pointers.size) {
-        const points = [...pointers.values()];
-        const pulledX = points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length;
-        const pulledY = points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length;
         target.x = dragFromX + pulledX;
         target.y = dragFromY + pulledY;
-        if (gameButton && power) {
+        if (trackPull && gameButton && power) {
           const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
           if (nextPlug) {
             const now = performance.now();
@@ -1991,13 +1992,15 @@
       responseStarted = state === "pending" || reducedMotion.matches ? null : performance.now();
       paint2();
       animate2();
-    }, aimPointers2 = function() {
-      if (!pointers.size) return;
+    }, aimPointers2 = function(trackPull = false) {
       const points = [...pointers.values()];
-      aim2({
-        clientX: points.reduce((sum, point) => sum + point.x, 0) / points.length,
-        clientY: points.reduce((sum, point) => sum + point.y, 0) / points.length
-      });
+      const clientX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+      const clientY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+      if (!trackPull) {
+        dragOriginX = clientX - (target.x - dragFromX);
+        dragOriginY = clientY - (target.y - dragFromY);
+      }
+      aim2({ clientX, clientY }, trackPull);
     }, burst2 = function(press = false) {
       if (reducedMotion.matches) return;
       const quick = press || releaseDuration === TAP_RELEASE_MS;
@@ -2138,6 +2141,8 @@
     let setupFrame = 0, frame = 0, lastFrame = 0;
     const pointers = /* @__PURE__ */ new Map();
     let dragFromX = 0, dragFromY = 0;
+    let dragStartX = 0, dragStartY = 0;
+    let dragOriginX = 0, dragOriginY = 0;
     let coastUntil = 0;
     let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
@@ -2159,7 +2164,7 @@
         point.y = event.clientY;
         if (gameButton && !point.wentAway && Math.hypot(point.x - point.startX, point.y - point.startY) >= Math.max(45, button.offsetWidth * 0.35))
           point.wentAway = true;
-        aimPointers2();
+        aimPointers2(true);
       } else if (!pointers.size && activeKey === null && event.pointerType === "mouse") aim2(event);
     });
     stage.addEventListener("pointerleave", () => {
@@ -2183,8 +2188,10 @@
         wentAway: false
       });
       if (pointers.size === 1) {
-        dragFromX = current.x;
-        dragFromY = current.y;
+        dragFromX = target.x = current.x;
+        dragFromY = target.y = current.y;
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
         velocity.x = velocity.y = 0;
         begin2();
       } else if (gameButton) clickSound.play("press");

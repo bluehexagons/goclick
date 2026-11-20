@@ -85,6 +85,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   >();
   let dragFromX = 0,
     dragFromY = 0;
+  let dragStartX = 0,
+    dragStartY = 0;
+  let dragOriginX = 0,
+    dragOriginY = 0;
   let coastUntil = 0;
   let coastFromX = 0,
     coastFromY = 0;
@@ -348,25 +352,24 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       }, holdDuration);
     }
   }
-  function aim(event: Pick<PointerEvent, "clientX" | "clientY">) {
+  function aim(event: Pick<PointerEvent, "clientX" | "clientY">, trackPull = false) {
     const rect = stage.getBoundingClientRect();
-    const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
-    const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
+    const pulledX = event.clientX - dragOriginX;
+    const pulledY = event.clientY - dragOriginY;
+    const aimX = pointers.size ? dragStartX + pulledX : event.clientX;
+    const aimY = pointers.size ? dragStartY + pulledY : event.clientY;
+    const x = clamp((aimX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
+    const y = clamp((aimY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
     target.rx = -y * 16;
     target.ry = x * 22;
     target.x = x * 4;
     target.y = y * 4;
     if (pointers.size) {
-      const points = [...pointers.values()];
       // Track the gesture across the screen; the layout stage is not a drag
       // boundary. Pointer capture keeps movement arriving outside that stage.
-      const pulledX =
-        points.reduce((sum, point) => sum + point.x - point.startX, 0) / points.length;
-      const pulledY =
-        points.reduce((sum, point) => sum + point.y - point.startY, 0) / points.length;
       target.x = dragFromX + pulledX;
       target.y = dragFromY + pulledY;
-      if (gameButton && power) {
+      if (trackPull && gameButton && power) {
         const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
         if (nextPlug) {
           const now = performance.now();
@@ -466,13 +469,16 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     paint();
     animate();
   }
-  function aimPointers() {
-    if (!pointers.size) return;
+  function aimPointers(trackPull = false) {
     const points = [...pointers.values()];
-    aim({
-      clientX: points.reduce((sum, point) => sum + point.x, 0) / points.length,
-      clientY: points.reduce((sum, point) => sum + point.y, 0) / points.length,
-    });
+    const clientX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+    const clientY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+    if (!trackPull) {
+      // A finger landing or lifting changes the average without moving the drag.
+      dragOriginX = clientX - (target.x - dragFromX);
+      dragOriginY = clientY - (target.y - dragFromY);
+    }
+    aim({ clientX, clientY }, trackPull);
   }
   function burst(press = false) {
     if (reducedMotion.matches) return;
@@ -567,7 +573,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
           Math.max(45, button.offsetWidth * 0.35)
       )
         point.wentAway = true;
-      aimPointers();
+      aimPointers(true);
     } else if (!pointers.size && activeKey === null && event.pointerType === "mouse") aim(event);
   });
   stage.addEventListener("pointerleave", () => {
@@ -596,8 +602,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       wentAway: false,
     });
     if (pointers.size === 1) {
-      dragFromX = current.x;
-      dragFromY = current.y;
+      dragFromX = target.x = current.x;
+      dragFromY = target.y = current.y;
+      dragStartX = event.clientX;
+      dragStartY = event.clientY;
       velocity.x = velocity.y = 0;
       begin();
     } else if (gameButton) clickSound.play("press");

@@ -682,6 +682,30 @@ test("long pulls in different directions unseat the plug without scoring a click
   assert.equal(h.power.dataset.plug, "loose");
 });
 
+test("adding and lifting a finger preserves the drag and never counts as another plug pull", () => {
+  const h = harness(true, true);
+  const move = (x, y) =>
+    h.stage.fire("pointermove", { pointerId: 1, clientX: 170 + x, clientY: 150 + y });
+  h.pointer("pointerdown", 1);
+  for (const [x, y] of [
+    [-140, 0],
+    [0, 140],
+    [140, 0],
+  ])
+    move(x, y);
+  const position = h.position();
+  h.pointer("pointerdown", 2, { clientX: 335, clientY: 168 });
+  assert.deepEqual(h.position(), position);
+  h.pointer("pointerup", 2, { clientX: 335, clientY: 168 });
+  assert.deepEqual(h.position(), position);
+  assert.equal(h.clicks.length, 1);
+  assert.equal(h.hasTrick("loose-plug"), false);
+
+  move(0, 140);
+  assert.equal(h.hasTrick("loose-plug"), true);
+  assert.equal(h.power.dataset.plug, "loose");
+});
+
 test("continued pulls unplug the button, darkening it without disabling clicks", () => {
   const h = harness(true, true);
   h.pointer("pointerdown", 1);
