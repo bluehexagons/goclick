@@ -226,9 +226,27 @@ test("the disconnected plug moves with the button and hangs below its attachment
   }
 });
 
+test("a dangling cord ignores the button's press depth and rebound", () => {
+  const { projectButtonPower } = frontend({}).load("button-geometry");
+  const resting = { ...idle, x: 180, y: -90 };
+  for (const width of [228, 420]) {
+    const options = { hangAngle: 0.28 };
+    const cable = projectButtonPower(resting, width, "unplugged", options);
+    for (const [press, pop] of [
+      [1, -0.045],
+      [0, 0.065],
+    ]) {
+      assert.deepEqual(
+        projectButtonPower({ ...resting, press, pop }, width, "unplugged", options),
+        cable,
+      );
+    }
+  }
+});
+
 test("plug transitions keep the cord attached from the socket to the hanging pose", () => {
   const { projectButtonPower } = frontend({}).load("button-geometry");
-  const pulled = { ...idle, x: -250, y: 50 };
+  const pulled = { ...idle, x: -250, y: 50, press: 1, pop: -0.045 };
   const cordOrigin = (cable) => cable.cord.split(" ").slice(1, 3).map(Number);
   assert.deepEqual(cordOrigin(projectButtonPower(pulled, 420, "loose", { progress: 0 })), [0, 0]);
   const loosening = projectButtonPower(pulled, 420, "loose", { progress: 0.4 });
@@ -236,7 +254,7 @@ test("plug transitions keep the cord attached from the socket to the hanging pos
     progress: 0,
     looseBeforeDetach: 0.4,
   });
-  assert.deepEqual(cordOrigin(disconnecting), cordOrigin(loosening));
+  assert.equal(disconnecting.cord, loosening.cord);
   const [swingX, swingY] = cordOrigin(
     projectButtonPower(pulled, 420, "unplugged", { progress: 0.3 }),
   );

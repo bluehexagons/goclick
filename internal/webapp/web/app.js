@@ -797,7 +797,13 @@
     socket = "bottom",
     seating
   } = {}) {
-    const pose = projectButtonPose(state, buttonWidth);
+    const disconnecting = plug === "unplugged";
+    const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
+    const pressWeight = 1 - (disconnecting ? travel : seating?.remaining ?? 0);
+    const pose = projectButtonPose(
+      pressWeight === 1 ? state : { ...state, press: state.press * pressWeight, pop: state.pop * pressWeight },
+      buttonWidth
+    );
     const { scale, recession, lift, cx, sx, cy, sy } = pose;
     const x = -35 * scale, y = 10 * scale, z = -16 - recession;
     const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
@@ -807,8 +813,6 @@
     const outletY = -12;
     const pullDistance = Math.hypot(state.x, state.y);
     const pull = Math.max(buttonWidth * 0.52, pullDistance, 1);
-    const disconnecting = plug === "unplugged";
-    const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
     const socketY = outletY + outletSockets[socket];
     let startX = outletX;
     let startY = socketY + 12;
