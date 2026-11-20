@@ -41,7 +41,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const rig = required(".button-rig", stage);
   const power = stage.querySelector<SVGSVGElement>(".button-power");
   const cords = power?.querySelectorAll<SVGPathElement>(".power-cord");
-  const outlet = power?.querySelector<SVGGElement>(".power-outlet");
   const plug = power?.querySelector<SVGGElement>(".power-plug");
   const plugControl = stage.querySelector<HTMLButtonElement>(".plug-control");
   const outletControl = stage.querySelector<HTMLButtonElement>(".outlet-control");
@@ -151,12 +150,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (!power) return;
     let next: typeof docking = null;
     if (cable) {
-      const y = cable.startY - cable.outletY - 12;
+      const y = cable.startY;
       const nearest = y < (outletSockets.top + outletSockets.bottom) / 2 ? "top" : "bottom";
-      if (
-        Math.abs(cable.startX - cable.outletX) <= 18 &&
-        Math.abs(y - outletSockets[nearest]) <= 14
-      )
+      if (Math.abs(cable.startX) <= 18 && Math.abs(y - outletSockets[nearest]) <= 14)
         next = { socket: nearest, x: cable.startX, y: cable.startY, angle: cable.plugAngle };
     }
     const previous = docking?.socket;
@@ -302,7 +298,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
             progress,
             looseBeforeDetach,
             hangAngle: plugSwing.angle,
-            socket,
+            socketY: outletControl ? outletSockets[socket] : 0,
             slack: cordSlackAmount(time),
             seating: seating
               ? {
@@ -313,13 +309,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
           })
         : null;
     if (power && cable) {
-      power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
+      stage.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
       power.setAttribute(
         "viewBox",
         `${-stage.clientWidth / 2} ${-stage.clientHeight / 2} ${stage.clientWidth} ${stage.clientHeight}`,
       );
       for (const cord of cords ?? []) cord.setAttribute("d", cable.cord);
-      outlet?.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
       plug?.setAttribute("transform", cable.plugTransform);
       plugEdge?.setAttribute("transform", cable.plugEdgeTransform);
     }
@@ -379,28 +374,28 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     renderer?.draw(current);
     const readoutMoving = readout && (dt > 0 || reducedMotion.matches) && moveReadout(readout, dt);
     if (
-      gameButton &&
-      power &&
-      cable &&
+      outletControl &&
       pointers.size &&
       !hasTrick("outlet") &&
       Math.hypot(current.x, current.y) > 45
     ) {
       // Check the painted pose so a flick that never exposes the outlet
       // cannot unlock it. Sample inside the plate to ignore a sliver at its edge.
-      const frame = power.getBoundingClientRect();
+      const plate = outletControl.getBoundingClientRect();
       const face = button.getBoundingClientRect();
-      const x = frame.left + frame.width / 2 + cable.outletX;
-      const y = frame.top + frame.height / 2 + cable.outletY;
+      const x = plate.left + plate.width / 2;
+      const y = plate.top + plate.height / 2;
+      const insetX = plate.width / 4;
+      const insetY = plate.height * 0.36;
       if (
         x > 0 &&
         x < window.innerWidth &&
         y > 0 &&
         y < window.innerHeight &&
-        ((x - 15 > 0 && x - 15 < face.left) ||
-          (x + 15 < window.innerWidth && x + 15 > face.right) ||
-          (y - 42 > 0 && y - 42 < face.top) ||
-          (y + 34 < window.innerHeight && y + 34 > face.bottom))
+        ((x - insetX > 0 && x - insetX < face.left) ||
+          (x + insetX < window.innerWidth && x + insetX > face.right) ||
+          (y - insetY > 0 && y - insetY < face.top) ||
+          (y + insetY < window.innerHeight && y + insetY > face.bottom))
       )
         unlockTrick("outlet");
     }

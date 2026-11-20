@@ -174,22 +174,24 @@
           <div class="button-stage">
             <svg class="button-power" aria-hidden="true" focusable="false">
               <g class="power-outlet">
-                <rect class="outlet-shadow" x="-29" y="-42" width="58" height="84" rx="9" />
-                <rect class="outlet-plate" x="-27" y="-42" width="54" height="80" rx="8" />
-                <rect class="outlet-inset" x="-20" y="-34" width="40" height="64" rx="6" />
-                <circle class="outlet-screw" cy="-38" r="1.8" />
-                <path class="outlet-screw-slot" d="M-1-39 1-37" />
-                <rect class="outlet-socket" x="-13" y="-26" width="26" height="22" rx="7" />
-                <path class="outlet-slots" d="M-5-20v6m10-6v6" />
-                <path class="outlet-ground" d="M-3-10a3 3 0 0 1 6 0v1h-6Z" />
-                <circle class="outlet-led" cx="23.5" cy="-15" r="1.4" />
-              </g>
-              <g class="power-plug">
-                <rect class="plug-body" x="-15" y="-1" width="30" height="26" rx="7" />
-                <path class="plug-ridges" d="M-10 7h20m-20 5h20m-20 5h20" />
-                <circle class="plug-grommet" cy="12" r="5.5" />
+                <rect class="outlet-shadow" x="-27" y="-40" width="54" height="80" rx="9" />
+                <rect class="outlet-plate" x="-27" y="-40" width="54" height="80" rx="9" />
+                <rect class="outlet-inset" x="-21" y="-34" width="42" height="68" rx="7" />
+                <circle class="outlet-screw" cy="-28" r="2" />
+                <circle class="outlet-screw" cy="28" r="2" />
+                <path class="outlet-screw-slot" d="M-1-29 1-27 M-1 27 1 29" />
+                <rect class="outlet-socket" x="-15" y="-12" width="30" height="24" rx="7" />
+                <path class="outlet-slots" d="M-5-6v6m10-6v6" />
+                <path class="outlet-ground" d="M-3 5a3 3 0 0 1 6 0v1h-6Z" />
+                <circle class="outlet-led" cx="18" r="1.5" />
               </g>
               <path class="power-cord cord-shadow" />
+              <g class="power-plug">
+                <rect class="plug-body" x="-16" y="-13" width="32" height="26" rx="8" />
+                <rect class="plug-inset" x="-13" y="-10" width="26" height="20" rx="6" />
+                <path class="plug-ridges" d="M-8-7h16 M-8 7h16" />
+                <circle class="plug-grommet" r="5.5" />
+              </g>
               <path class="power-cord cord-body" />
               <path class="power-cord cord-highlight" />
             </svg>
@@ -433,15 +435,25 @@
               </div>
               <div class="button-stage">
                 <svg class="button-power" aria-hidden="true" focusable="false">
-                  <g class="power-plug">
-                    <rect class="plug-edge" x="-16" y="-2" width="32" height="28" rx="8" />
-                    <rect class="plug-body" x="-15" y="-1" width="30" height="26" rx="7" />
-                    <path class="plug-ridges" d="M-10 7h20m-20 5h20m-20 5h20" />
-                    <circle class="plug-grommet" cy="12" r="5.5" />
+                  <g id="game-power-hardware">
+                    <path class="power-cord cord-shadow" />
+                    <g class="power-plug">
+                      <rect
+                        class="plug-edge"
+                        x="-16.75"
+                        y="-13.75"
+                        width="33.5"
+                        height="27.5"
+                        rx="8.5"
+                      />
+                      <rect class="plug-body" x="-16" y="-13" width="32" height="26" rx="8" />
+                      <rect class="plug-inset" x="-13" y="-10" width="26" height="20" rx="6" />
+                      <path class="plug-ridges" d="M-8-7h16 M-8 7h16" />
+                      <circle class="plug-grommet" r="5.5" />
+                    </g>
+                    <path class="power-cord cord-body" />
+                    <path class="power-cord cord-highlight" />
                   </g>
-                  <path class="power-cord cord-shadow" />
-                  <path class="power-cord cord-body" />
-                  <path class="power-cord cord-highlight" />
                 </svg>
                 <div class="score-effects" aria-hidden="true"></div>
                 <canvas class="button-scene" aria-hidden="true"></canvas>
@@ -477,49 +489,64 @@
                   data-i18n-aria-label="outletTest"
                   aria-pressed="false"
                 >
-                  <svg viewBox="-27 -52 54 96" aria-hidden="true" focusable="false">
-                    <rect class="outlet-shadow" x="-29" y="-52" width="58" height="96" rx="9" />
-                    <rect class="outlet-plate" x="-27" y="-52" width="54" height="96" rx="8" />
-                    <rect class="outlet-inset" x="-20" y="-46" width="40" height="82" rx="6" />
-                    <circle class="outlet-screw" cy="-48" r="1.8" />
-                    <path class="outlet-screw-slot" d="M-1-49 1-47" />
-                    <g transform="translate(0 -19)">
+                  <svg viewBox="-30 -58 60 116" aria-hidden="true" focusable="false">
+                    <defs>
+                      <linearGradient id="game-outlet-surface" x2="85%" y2="100%">
+                        <stop stop-color="#3c4552" />
+                        <stop offset="1" stop-color="#2a313d" />
+                      </linearGradient>
+                    </defs>
+                    <rect class="outlet-shadow" x="-30" y="-58" width="60" height="116" rx="9" />
+                    <rect class="outlet-plate" x="-30" y="-58" width="60" height="116" rx="9" />
+                    <rect class="outlet-inset" x="-23" y="-52" width="46" height="104" rx="8" />
+                    <circle class="outlet-screw" cy="-49" r="2" />
+                    <circle class="outlet-screw" cy="49" r="2" />
+                    <path class="outlet-screw-slot" d="M-1-50 1-48 M-1 48 1 50" />
+                    <g transform="translate(0 -29)">
                       <rect
                         class="outlet-socket"
                         data-socket="top"
-                        x="-13"
-                        y="-26"
-                        width="26"
-                        height="22"
+                        x="-15"
+                        y="-12"
+                        width="30"
+                        height="24"
                         rx="7"
                       />
-                      <path class="outlet-slots" d="M-5-20v6m10-6v6" />
-                      <path class="outlet-ground" d="M-3-10a3 3 0 0 1 6 0v1h-6Z" />
+                      <path class="outlet-slots" d="M-5-6v6m10-6v6" />
+                      <path class="outlet-ground" d="M-3 5a3 3 0 0 1 6 0v1h-6Z" />
                     </g>
                     <g class="outlet-test">
-                      <rect x="-12" y="-21" width="24" height="9" rx="2" />
-                      <text y="-16.5">TEST</text>
+                      <rect x="-13" y="-12" width="26" height="9" rx="2" />
+                      <text y="-7.5">TEST</text>
                     </g>
                     <g class="outlet-reset">
-                      <rect x="-12" y="-10" width="24" height="9" rx="2" />
-                      <text y="-5.5">RESET</text>
+                      <rect x="-13" y="3" width="26" height="9" rx="2" />
+                      <text y="7.5">RESET</text>
                     </g>
-                    <g transform="translate(0 27)">
+                    <g transform="translate(0 29)">
                       <rect
                         class="outlet-socket"
                         data-socket="bottom"
-                        x="-13"
-                        y="-26"
-                        width="26"
-                        height="22"
+                        x="-15"
+                        y="-12"
+                        width="30"
+                        height="24"
                         rx="7"
                       />
-                      <path class="outlet-slots" d="M-5-20v6m10-6v6" />
-                      <path class="outlet-ground" d="M-3-10a3 3 0 0 1 6 0v1h-6Z" />
+                      <path class="outlet-slots" d="M-5-6v6m10-6v6" />
+                      <path class="outlet-ground" d="M-3 5a3 3 0 0 1 6 0v1h-6Z" />
                     </g>
-                    <circle class="outlet-led" cx="16" cy="-11" r="1.4" />
+                    <circle class="outlet-led" cx="18.5" r="1.5" />
                   </svg>
                 </button>
+                <svg
+                  class="outlet-power-overlay"
+                  viewBox="-30 -58 60 116"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <use href="#game-power-hardware" />
+                </svg>
               </div>
             </div>
             <div class="game-readout">

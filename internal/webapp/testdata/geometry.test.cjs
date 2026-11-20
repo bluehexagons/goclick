@@ -11,8 +11,8 @@ test("the wall outlet stays fixed while the cable follows the button's rear atta
   const { projectButtonPower } = frontend({}).load("button-geometry");
   const rest = projectButtonPower(idle, 420);
   const dragged = projectButtonPower({ ...idle, x: 180, y: 90, rx: 16, ry: 22 }, 420);
-  assert.equal(dragged.outletX, rest.outletX);
-  assert.equal(dragged.outletY, rest.outletY);
+  assert.equal(dragged.startX, rest.startX);
+  assert.equal(dragged.startY, rest.startY);
   assert.ok(dragged.endX > rest.endX + 100);
   assert.ok(dragged.endY > rest.endY + 50);
   assert.ok(dragged.cord.endsWith(`${dragged.endX} ${dragged.endY}`));
@@ -23,13 +23,22 @@ test("the wall outlet stays fixed while the cable follows the button's rear atta
     [228, mobile],
     [420, rest],
   ]) {
-    assert.ok(Math.abs(cable.outletX) + 29 < width / 2 - 20);
-    assert.ok(Math.abs(cable.outletY) + 42 < (width * 144) / 260 / 2);
+    assert.ok(Math.abs(cable.startX) + 30 < width / 2 - 20);
+    assert.ok(58 < (width * 144) / 260 / 2);
     assert.ok(
       cable.endY + cable.sag + 6 < (width * 144) / 260 / 2,
       "The relaxed cable stays hidden underneath the face",
     );
   }
+});
+
+test("a nearly vertical slack cable bows to the side instead of folding down its own length", () => {
+  const { projectButtonPower } = frontend({}).load("button-geometry");
+  const cable = projectButtonPower({ ...idle, x: 57, y: 100 }, 420);
+  const [, control] = cable.cord.split(" C ");
+  const [first, second] = control.split(", ").map((point) => Number(point.split(" ")[0]));
+  assert.ok(Math.abs(cable.endX) < 2);
+  assert.ok(first < -10 && second < -10);
 });
 
 test("pulling takes up cable slack before stretching and thinning its jacket", () => {
@@ -182,8 +191,8 @@ test("the lettering lights immediately on press, stays lit through a hold, and f
 test("the loose plug tips toward the pull with its back over the socket and cord on its face", () => {
   const { projectButtonPower } = frontend({}).load("button-geometry");
   const seated = projectButtonPower(idle, 420);
-  assert.equal(seated.plugTransform, "translate(0 -12)");
-  assert.ok(seated.cord.startsWith("M 0 0 "));
+  assert.equal(seated.plugTransform, "translate(0 29)");
+  assert.ok(seated.cord.startsWith("M 0 29 "));
   for (const [x, y] of [
     [260, 0],
     [-260, 0],
@@ -191,8 +200,6 @@ test("the loose plug tips toward the pull with its back over the socket and cord
     [-180, 180],
   ]) {
     const cable = projectButtonPower({ ...idle, x, y }, 420, "loose");
-    assert.equal(cable.outletX, seated.outletX);
-    assert.equal(cable.outletY, seated.outletY);
     const [frontX, frontY] = cable.plugTransform
       .match(/^translate\(([^)]+)\)/)[1]
       .split(" ")
@@ -206,9 +213,10 @@ test("the loose plug tips toward the pull with its back over the socket and cord
       .split(" ")
       .map(Number);
     assert.ok(cable.cord.startsWith(`M ${frontX} ${frontY} `));
-    assert.ok(frontX * x + frontY * y > 0, "The plug's front moves toward the pull");
+    const frontOffsetY = frontY - seated.startY;
+    assert.ok(frontX * x + frontOffsetY * y > 0, "The plug's front moves toward the pull");
     assert.ok(Math.abs(frontX + a * backX + c * backY) < 1e-9);
-    assert.ok(Math.abs(frontY + b * backX + d * backY) < 1e-9);
+    assert.ok(Math.abs(frontOffsetY + b * backX + d * backY) < 1e-9);
     assert.ok(Math.hypot(a * x + c * y, b * x + d * y) < Math.hypot(x, y));
     assert.ok(Math.abs(Math.hypot(-a * y + c * x, -b * y + d * x) - Math.hypot(x, y)) < 1e-9);
   }
@@ -222,7 +230,6 @@ test("the disconnected plug moves with the button and hangs below its attachment
     assert.equal(plugX, cable.endX);
     assert.ok(plugY - cable.endY > 140);
     assert.match(cable.plugTransform, /rotate\(180\)/);
-    assert.equal(cable.outletY, -12);
   }
 });
 
@@ -262,7 +269,7 @@ test("plug transitions keep the cord attached from the socket to the hanging pos
   const { projectButtonPower } = frontend({}).load("button-geometry");
   const pulled = { ...idle, x: -250, y: 50, press: 1, pop: -0.045 };
   const cordOrigin = (cable) => cable.cord.split(" ").slice(1, 3).map(Number);
-  assert.deepEqual(cordOrigin(projectButtonPower(pulled, 420, "loose", { progress: 0 })), [0, 0]);
+  assert.deepEqual(cordOrigin(projectButtonPower(pulled, 420, "loose", { progress: 0 })), [0, 29]);
   const loosening = projectButtonPower(pulled, 420, "loose", { progress: 0.4 });
   const disconnecting = projectButtonPower(pulled, 420, "unplugged", {
     progress: 0,
@@ -283,15 +290,18 @@ test("plug transitions keep the cord attached from the socket to the hanging pos
   assert.equal(reconnecting.thickness, hanging.thickness);
 });
 
-test("the plug settles into either socket with only its remaining tilt", () => {
-  const { projectButtonPower } = frontend({}).load("button-geometry");
-  for (const socket of ["top", "bottom"]) {
-    const seated = projectButtonPower(idle, 420, "seated", { socket });
+test("the plug settles onto the center of either socket with only its remaining tilt", () => {
+  const { outletSockets, projectButtonPower } = frontend({}).load("button-geometry");
+  assert.equal(outletSockets.top, -outletSockets.bottom);
+  for (const socketY of Object.values(outletSockets)) {
+    const seated = projectButtonPower(idle, 420, "seated", { socketY });
+    assert.equal(seated.plugTransform, `translate(0 ${socketY})`);
+    assert.equal(seated.startY, socketY);
     for (const tilt of [-30, 0, 30]) {
       const start = { x: 10, y: seated.startY + 8, angle: 180 + tilt };
       for (const remaining of [1, 0.5, 0]) {
         const cable = projectButtonPower(idle, 420, "seated", {
-          socket,
+          socketY,
           seating: { ...start, remaining },
         });
         const rotation = Number(cable.plugTransform.match(/rotate\(([^)]+)\)/)[1]);

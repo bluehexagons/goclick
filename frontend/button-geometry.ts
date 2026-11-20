@@ -44,8 +44,8 @@ export function holdLighting(elapsed: number) {
 }
 
 export type PlugState = "seated" | "loose" | "unplugged";
-// Socket centers relative to the bottom socket in the game outlet SVG.
-export const outletSockets = { top: -46, bottom: 0 };
+// Socket centers relative to the center of the game outlet SVG.
+export const outletSockets = { top: -29, bottom: 29 };
 export type OutletSocket = keyof typeof outletSockets;
 export const plugTransitionDuration = { loose: 280, unplugged: 680 };
 export const powerDrainDuration = 920;
@@ -99,14 +99,14 @@ export function projectButtonPower(
     progress = 1,
     looseBeforeDetach = 1,
     hangAngle = 0,
-    socket = "bottom",
+    socketY = outletSockets.bottom,
     slack = 0,
     seating,
   }: {
     progress?: number;
     looseBeforeDetach?: number;
     hangAngle?: number;
-    socket?: OutletSocket;
+    socketY?: number;
     slack?: number;
     seating?: { x: number; y: number; angle: number; remaining: number };
   } = {},
@@ -129,16 +129,12 @@ export function projectButtonPower(
   const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
   const endX = (cy * x + sy * z + pose.x) * factor;
   const endY = (sx * sy * x + cx * y - sx * cy * z + pose.y) * factor;
-  // The outlet itself is fixed under the resting face.
-  const outletX = 0;
-  const outletY = -12;
   const pullDistance = Math.hypot(state.x, state.y);
   const pull = Math.max(buttonWidth * 0.52, pullDistance, 1);
-  const socketY = outletY + outletSockets[socket];
-  let startX = outletX;
-  let startY = socketY + 12;
+  let startX = 0;
+  let startY = socketY;
   let plugAngle = 0;
-  let plugTransform = `translate(${outletX} ${socketY})`;
+  let plugTransform = `translate(0 ${socketY})`;
   let plugEdgeTransform = "";
   if (plug !== "seated") {
     const loosening = disconnecting ? looseBeforeDetach : progress;
@@ -169,7 +165,7 @@ export function projectButtonPower(
       plugAngle = (180 - (hangAngle * 180) / Math.PI) * travel + swing;
       rotation = `rotate(${plugAngle}) `;
     }
-    plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
+    plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0)`;
     // Counter the front's offset so the back stays over the socket while loose.
     // Both parts move together once the plug is free.
     const setback = -depth * Math.tan(tilt);
@@ -180,7 +176,7 @@ export function projectButtonPower(
     // The plug face is symmetric around its grommet. Either half-turn
     // orientation fits the socket, so settle from the nearest one.
     const tilt = seating.angle - 180 * Math.round(seating.angle / 180);
-    plugTransform = `translate(${startX} ${startY}) rotate(${tilt * seating.remaining}) translate(0 -12)`;
+    plugTransform = `translate(${startX} ${startY}) rotate(${tilt * seating.remaining})`;
   }
   const dx = endX - startX;
   const dy = endY - startY;
@@ -191,17 +187,17 @@ export function projectButtonPower(
   const restSag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
   const extraSag = Math.min(buttonWidth * 0.32, buttonWidth * 0.11 + distance * 0.12);
   const sag = (restSag + slack * extraSag) * (1 - hanging);
+  // Give near-vertical slack room to bend instead of folding over itself.
+  const bow = -0.55 * sag * (Math.abs(dy) / Math.max(1, distance));
   const stretch = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
   const thickness = stretch + (1 - stretch) * (hanging + (1 - hanging) * slack);
   return {
-    outletX,
-    outletY,
     plugTransform,
     plugEdgeTransform,
     plugAngle,
     startX,
     startY,
-    cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
+    cord: `M ${startX} ${startY} C ${startX + dx / 3 + bow} ${startY + dy / 3 + sag}, ${endX - dx / 3 + bow} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
     endX,
     endY,
     sag,

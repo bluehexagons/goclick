@@ -628,17 +628,19 @@ input:focus {
 .game .button-power {
   z-index: 1;
 }
-.outlet-control {
+.outlet-control,
+.outlet-power-overlay {
   position: absolute;
-  /* The plate begins 52px above the outlet's SVG origin, 12px above stage center. */
-  top: calc(50% - 64px);
+  top: 50%;
   left: 50%;
-  width: 54px;
-  height: 96px;
-  translate: -50% 0;
+  width: 60px;
+  height: 116px;
+  translate: -50% -50%;
+  border-radius: 9px;
+}
+.outlet-control {
   padding: 0;
   border: 0;
-  border-radius: 8px;
   background: transparent;
   cursor: pointer;
   touch-action: manipulation;
@@ -657,14 +659,23 @@ input:focus {
 :root[data-focus-input="keyboard"] .outlet-control:focus {
   z-index: 3;
 }
-.game .button-stage:has(.outlet-control:focus-visible) .button-power,
-:root[data-focus-input="keyboard"] .button-stage:has(.outlet-control:focus) .button-power {
+.outlet-power-overlay {
+  /* Keep the normal cable on the wall. Repeat it only over the raised plate. */
   z-index: 4;
-  clip-path: inset(calc(50% - 64px) calc(50% - 27px) calc(50% - 32px) round 8px);
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+.button-stage:has(.outlet-control:focus-visible) .outlet-power-overlay,
+:root[data-focus-input="keyboard"] .button-stage:has(.outlet-control:focus) .outlet-power-overlay {
+  visibility: visible;
 }
 .outlet-shadow {
   fill: #080c13;
-  filter: drop-shadow(2px 5px 5px #0009);
+  filter: drop-shadow(1px 4px 4px #0009);
+}
+.outlet-control .outlet-plate {
+  fill: url("#game-outlet-surface");
 }
 .outlet-plate {
   fill: #303846;
@@ -701,7 +712,9 @@ input:focus {
   touch-action: none;
 }
 .outlet-screw {
-  fill: #92999e;
+  fill: #737e89;
+  stroke: #353d48;
+  stroke-width: 0.65;
 }
 .outlet-screw-slot {
   stroke: #232a33;
@@ -730,7 +743,7 @@ input:focus {
 }
 .outlet-control text {
   fill: #f2eff0;
-  font: 700 6px var(--mono);
+  font: 700 6.5px var(--mono);
   text-anchor: middle;
   dominant-baseline: central;
 }
@@ -760,21 +773,21 @@ input:focus {
   stroke-linecap: round;
 }
 .cord-shadow {
-  stroke: #080c13;
-  stroke-width: calc(12px * var(--cord-scale, 1));
-  transform: translate(2px, 4px);
-  filter: blur(2px);
+  stroke: #070a0f;
+  stroke-width: calc(11px * var(--cord-scale, 1));
+  transform: translate(1.5px, 3px);
+  filter: blur(1.7px);
   opacity: 0.65;
 }
 .cord-body {
-  stroke: #080d15;
-  stroke-width: calc(8px * var(--cord-scale, 1));
+  stroke: #0d131c;
+  stroke-width: calc(7.5px * var(--cord-scale, 1));
 }
 .cord-highlight {
-  stroke: #48515d;
-  stroke-width: calc(2px * var(--cord-scale, 1));
-  transform: translate(-1px, -1px);
-  opacity: 0.7;
+  stroke: #424e5c;
+  stroke-width: calc(1.5px * var(--cord-scale, 1));
+  transform: translate(-0.6px, -0.65px);
+  opacity: 0.65;
 }
 .plug-edge {
   fill: #0b111a;
@@ -784,14 +797,19 @@ input:focus {
   stroke: #3a4452;
 }
 .plug-grommet {
-  fill: #080d15;
-  stroke: #59636e;
-  stroke-width: 1.5;
+  fill: #0d131c;
+  stroke: #5e6a76;
+  stroke-width: 1.25;
 }
 .plug-body {
-  fill: #151c26;
-  stroke: #505967;
+  fill: #1a222c;
+  stroke: #57626f;
   stroke-width: 1;
+}
+.plug-inset {
+  fill: #161d27;
+  stroke: #2d3743;
+  stroke-width: 0.75;
 }
 .button-stage:has(.plug-control:hover) .button-power:not([data-dock]) .plug-body {
   stroke: #85909c;
@@ -801,8 +819,9 @@ input:focus {
 }
 .plug-ridges {
   fill: none;
-  stroke: #343e4c;
-  stroke-width: 1.5;
+  stroke: #3c4755;
+  stroke-width: 1.3;
+  stroke-linecap: round;
 }
 .button-stage.is-rendered .button-scene {
   visibility: visible;

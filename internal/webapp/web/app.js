@@ -855,7 +855,7 @@
     const beat = 0.5 + 0.5 * Math.cos(2 * Math.PI * elapsed / holdBeat);
     return charge * (0.085 + 0.018 * beat);
   }
-  var outletSockets = { top: -46, bottom: 0 };
+  var outletSockets = { top: -29, bottom: 29 };
   var plugTransitionDuration = { loose: 280, unplugged: 680 };
   var powerDrainDuration = 920;
   var hangingCordLength = (buttonWidth) => buttonWidth * 0.24 + 48;
@@ -895,7 +895,7 @@
     progress = 1,
     looseBeforeDetach = 1,
     hangAngle = 0,
-    socket = "bottom",
+    socketY = outletSockets.bottom,
     slack = 0,
     seating
   } = {}) {
@@ -912,15 +912,12 @@
     const factor = 850 / (850 - (-cx * sy * x + sx * y + cx * cy * z + lift));
     const endX = (cy * x + sy * z + pose.x) * factor;
     const endY = (sx * sy * x + cx * y - sx * cy * z + pose.y) * factor;
-    const outletX = 0;
-    const outletY = -12;
     const pullDistance = Math.hypot(state.x, state.y);
     const pull = Math.max(buttonWidth * 0.52, pullDistance, 1);
-    const socketY = outletY + outletSockets[socket];
-    let startX = outletX;
-    let startY = socketY + 12;
+    let startX = 0;
+    let startY = socketY;
     let plugAngle = 0;
-    let plugTransform = `translate(${outletX} ${socketY})`;
+    let plugTransform = `translate(0 ${socketY})`;
     let plugEdgeTransform = "";
     if (plug !== "seated") {
       const loosening = disconnecting ? looseBeforeDetach : progress;
@@ -948,14 +945,14 @@
         plugAngle = (180 - hangAngle * 180 / Math.PI) * travel + swing;
         rotation = `rotate(${plugAngle}) `;
       }
-      plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0) translate(0 -12)`;
+      plugTransform = `translate(${startX} ${startY}) ${rotation}matrix(${a} ${b} ${b} ${d} 0 0)`;
       const setback = -depth * Math.tan(tilt);
       plugEdgeTransform = `translate(${setback * towardX} ${setback * towardY})`;
     } else if (seating) {
       startX += (seating.x - startX) * seating.remaining;
       startY += (seating.y - startY) * seating.remaining;
       const tilt = seating.angle - 180 * Math.round(seating.angle / 180);
-      plugTransform = `translate(${startX} ${startY}) rotate(${tilt * seating.remaining}) translate(0 -12)`;
+      plugTransform = `translate(${startX} ${startY}) rotate(${tilt * seating.remaining})`;
     }
     const dx = endX - startX;
     const dy = endY - startY;
@@ -964,17 +961,16 @@
     const restSag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2);
     const extraSag = Math.min(buttonWidth * 0.32, buttonWidth * 0.11 + distance * 0.12);
     const sag = (restSag + slack * extraSag) * (1 - hanging);
+    const bow = -0.55 * sag * (Math.abs(dy) / Math.max(1, distance));
     const stretch = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
     const thickness = stretch + (1 - stretch) * (hanging + (1 - hanging) * slack);
     return {
-      outletX,
-      outletY,
       plugTransform,
       plugEdgeTransform,
       plugAngle,
       startX,
       startY,
-      cord: `M ${startX} ${startY} C ${startX + dx / 3} ${startY + dy / 3 + sag}, ${endX - dx / 3} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
+      cord: `M ${startX} ${startY} C ${startX + dx / 3 + bow} ${startY + dy / 3 + sag}, ${endX - dx / 3 + bow} ${endY - dy / 3 + sag}, ${endX} ${endY}`,
       endX,
       endY,
       sag,
@@ -3082,9 +3078,9 @@
       if (!power) return;
       let next = null;
       if (cable) {
-        const y = cable.startY - cable.outletY - 12;
+        const y = cable.startY;
         const nearest = y < (outletSockets.top + outletSockets.bottom) / 2 ? "top" : "bottom";
-        if (Math.abs(cable.startX - cable.outletX) <= 18 && Math.abs(y - outletSockets[nearest]) <= 14)
+        if (Math.abs(cable.startX) <= 18 && Math.abs(y - outletSockets[nearest]) <= 14)
           next = { socket: nearest, x: cable.startX, y: cable.startY, angle: cable.plugAngle };
       }
       const previous = docking?.socket;
@@ -3196,7 +3192,7 @@
         progress,
         looseBeforeDetach,
         hangAngle: plugSwing.angle,
-        socket,
+        socketY: outletControl ? outletSockets[socket] : 0,
         slack: cordSlackAmount2(time),
         seating: seating ? {
           ...seating,
@@ -3204,13 +3200,12 @@
         } : void 0
       }) : null;
       if (power && cable) {
-        power.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
+        stage.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
         power.setAttribute(
           "viewBox",
           `${-stage.clientWidth / 2} ${-stage.clientHeight / 2} ${stage.clientWidth} ${stage.clientHeight}`
         );
         for (const cord of cords ?? []) cord.setAttribute("d", cable.cord);
-        outlet?.setAttribute("transform", `translate(${cable.outletX} ${cable.outletY})`);
         plug?.setAttribute("transform", cable.plugTransform);
         plugEdge?.setAttribute("transform", cable.plugEdgeTransform);
       }
@@ -3262,12 +3257,14 @@
       );
       renderer?.draw(current);
       const readoutMoving = readout && (dt > 0 || reducedMotion.matches) && moveReadout2(readout, dt);
-      if (gameButton && power && cable && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
-        const frame2 = power.getBoundingClientRect();
+      if (outletControl && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
+        const plate = outletControl.getBoundingClientRect();
         const face = button.getBoundingClientRect();
-        const x = frame2.left + frame2.width / 2 + cable.outletX;
-        const y = frame2.top + frame2.height / 2 + cable.outletY;
-        if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - 15 > 0 && x - 15 < face.left || x + 15 < window.innerWidth && x + 15 > face.right || y - 42 > 0 && y - 42 < face.top || y + 34 < window.innerHeight && y + 34 > face.bottom))
+        const x = plate.left + plate.width / 2;
+        const y = plate.top + plate.height / 2;
+        const insetX = plate.width / 4;
+        const insetY = plate.height * 0.36;
+        if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - insetX > 0 && x - insetX < face.left || x + insetX < window.innerWidth && x + insetX > face.right || y - insetY > 0 && y - insetY < face.top || y + insetY < window.innerHeight && y + insetY > face.bottom))
           unlockTrick("outlet");
       }
       return readoutMoving;
@@ -3642,7 +3639,6 @@
     const rig = required(".button-rig", stage);
     const power = stage.querySelector(".button-power");
     const cords = power?.querySelectorAll(".power-cord");
-    const outlet = power?.querySelector(".power-outlet");
     const plug = power?.querySelector(".power-plug");
     const plugControl = stage.querySelector(".plug-control");
     const outletControl = stage.querySelector(".outlet-control");
