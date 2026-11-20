@@ -149,7 +149,9 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
   let frameCallback = null,
     now = 0;
   let onDisabledChanged;
+  let onStageResize;
   const sounds = [];
+  const hardwareSounds = [];
   let powered = true;
   let soundCancellations = 0;
   const runtime = frontend(
@@ -168,6 +170,9 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
         }
       },
       ResizeObserver: class {
+        constructor(callback) {
+          onStageResize = callback;
+        }
         observe() {}
       },
       performance: { now: () => now },
@@ -177,11 +182,15 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
       },
     },
     {
+      "button-3d": { createButtonRenderer: () => null },
       preferences: { motionPreference: { matches: reducedMotion, addEventListener() {} } },
       sound: {
         clickSound: {
           play(kind) {
             if (powered) sounds.push(kind);
+          },
+          hardware(kind, options) {
+            hardwareSounds.push({ kind, ...options });
           },
           setPowered(value) {
             powered = value;
@@ -216,6 +225,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     outlet,
     outletControl,
     plugControl,
+    resizeStage: () => onStageResize(),
     setDisabled(disabled) {
       button.disabled = disabled;
       onDisabledChanged();
@@ -254,6 +264,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     },
     hasTrick: runtime.load("button-tricks").hasTrick,
     sounds,
+    hardwareSounds,
     soundCancellations: () => soundCancellations,
     pointer,
     window,
@@ -781,6 +792,56 @@ test("continued pulls unplug the button, darkening it without disabling clicks",
   assert.equal(h.power.dataset.plug, "unplugged");
 });
 
+test("the game button boots once on first appearance and again when RESET restores power", () => {
+  const h = harness(false, true);
+  const frame = (time) => {
+    h.setTime(time);
+    h.frame(time);
+    return Number(h.rig.props.get("--glow-intensity"));
+  };
+  h.stage.clientWidth = 0;
+  h.resizeStage();
+  assert.deepEqual(h.hardwareSounds, []);
+  h.stage.clientWidth = 680;
+  h.resizeStage();
+  frame(0);
+  assert.deepEqual(
+    h.hardwareSounds.map(({ kind }) => kind),
+    ["boot"],
+  );
+  const first = frame(28);
+  const second = frame(98);
+  const third = frame(173);
+  assert.ok(first > 0 && second > first && third > second);
+  assert.ok(Number(h.rig.props.get("--label-light")) > 0);
+  assert.equal(frame(350), 0);
+  h.resizeStage();
+  frame(360);
+  assert.equal(h.hardwareSounds.length, 1);
+
+  h.outletControl.click();
+  assert.equal(h.hardwareSounds.at(-1).kind, "test");
+  assert.equal(h.hardwareSounds.at(-1).bootDelay, undefined);
+  h.setTime(1400);
+  h.outletControl.click();
+  const reset = h.hardwareSounds.at(-1);
+  assert.equal(reset.kind, "reset");
+  assert.ok(reset.gesture && reset.bootDelay > 0);
+  assert.equal(frame(1400 + reset.bootDelay - 1), 0);
+  assert.ok(frame(1400 + reset.bootDelay + 100) > 0);
+  h.outletControl.click();
+  frame(2600);
+  assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
+  assert.equal(h.clicks.length, 0);
+
+  const reduced = harness(true, true);
+  reduced.resizeStage();
+  reduced.frame(0);
+  assert.equal(reduced.hardwareSounds[0].kind, "boot");
+  assert.equal(reduced.rig.props.get("--glow-intensity"), "0.000");
+  assert.equal(reduced.hasFrame(), false);
+});
+
 test("the outlet's test and reset cycle power without scoring a click", () => {
   const h = harness(true, true);
   h.pointer("pointerdown", 1);
@@ -810,6 +871,8 @@ test("the outlet's test and reset cycle power without scoring a click", () => {
   h.outletControl.click();
   assert.equal(h.outletControl.attributes.get("aria-pressed"), "false");
   assert.equal(h.outletControl.dataset.press, "reset");
+  assert.equal(h.hardwareSounds.at(-1).kind, "reset");
+  assert.ok(h.hardwareSounds.at(-1).bootDelay > 0);
   assert.equal(h.clicks.length, 2);
   h.pointer("pointerdown", 1);
   assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
@@ -931,6 +994,9 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   const drag = h.position();
   h.runTimer(3000);
   assert.equal(h.power.dataset.plug, "seated");
+  assert.equal(h.hardwareSounds.at(-1).kind, "plug-in");
+  assert.equal(h.hardwareSounds.at(-1).gesture, false);
+  assert.ok(h.hardwareSounds.at(-1).bootDelay > 0);
   assert.equal(h.power.dataset.dock, undefined);
   assert.equal(plug.attributes.get("transform"), "translate(0 -12)");
   assert.deepEqual(h.position(), drag);
@@ -953,6 +1019,8 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   assert.equal(h.power.dataset.plug, "seated");
   assert.equal(plug.attributes.get("transform"), "translate(0 -58)");
   assert.equal(h.outletControl.disabled, false);
+  assert.equal(h.hardwareSounds.at(-1).kind, "plug-in");
+  assert.equal(h.hardwareSounds.at(-1).bootDelay, undefined);
   assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
   h.outletControl.click();
   assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
@@ -1054,6 +1122,7 @@ test("slack keeps the button parked after reconnecting and tension restores the 
   h.plugControl.fire("pointerup", tap);
   h.plugControl.fire("click", { ...tap, detail: 1 });
   assert.equal(h.plugControl.attributes.get("aria-pressed"), "true");
+  assert.equal(h.hardwareSounds.at(-1).kind, "cord-slack");
   assert.equal(h.clicks.length, 0);
   move(35, -140);
   assert.equal(h.power.dataset.dock, "bottom");
@@ -1080,6 +1149,7 @@ test("slack keeps the button parked after reconnecting and tension restores the 
   assert.equal(h.plugControl.attributes.get("aria-pressed"), "true");
   h.plugControl.click();
   assert.equal(h.plugControl.attributes.get("aria-pressed"), "false");
+  assert.equal(h.hardwareSounds.at(-1).kind, "cord-tension");
   move(35, -125);
   releaseAt(35, -125);
   assert.equal(h.power.dataset.dock, "bottom");
@@ -1157,6 +1227,10 @@ test("the plug rocks free and the drained lights stay dark after release and new
   ])
     move(x, y);
   const initialLight = frame(130);
+  assert.deepEqual(
+    h.hardwareSounds.map(({ kind }) => kind),
+    ["plug-loose", "unplug"],
+  );
   assert.ok(initialLight >= 0.45);
   const dropout = frame(186);
   h.pointer("pointerup", 1);

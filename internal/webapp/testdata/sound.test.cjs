@@ -153,6 +153,7 @@ function harness({
 test("sound defaults off and neither enabling nor responses allocate audio", () => {
   const h = harness();
   for (const kind of ["press", "release", "saved", "slow", "error", "limited"]) h.sound.play(kind);
+  h.sound.hardware("boot");
   assert.equal(h.contexts.length, 0);
   h.sound.setEnabled(true);
   h.sound.play("saved");
@@ -161,6 +162,42 @@ test("sound defaults off and neither enabling nor responses allocate audio", () 
   h.sound.play("release");
   assert.equal(h.contexts.length, 1);
   assert.equal(h.sources.length, 2);
+});
+
+test("an allowed startup sounds once, and delayed autoplay does not replay on a later gesture", async () => {
+  const allowed = harness();
+  allowed.sound.setEnabled(true);
+  allowed.sound.hardware("boot");
+  assert.equal(allowed.sources.length, 1);
+
+  const blocked = harness({ state: "suspended" });
+  blocked.sound.setEnabled(true);
+  blocked.sound.hardware("boot");
+  assert.equal(blocked.sources.length, 0);
+  blocked.advance(500);
+  blocked.sound.play("press");
+  blocked.resume();
+  await settle();
+  assert.equal(blocked.sources.length, 1);
+  assert.ok(blocked.buffers[0].samples.length < 48000 * 0.15);
+});
+
+test("mechanical sounds work with power off and a scheduled reboot stops on another trip", () => {
+  const h = harness({ bufferDelay: 0.01 });
+  h.sound.setEnabled(true);
+  h.sound.setPowered(false);
+  h.sound.play("press");
+  h.sound.hardware("test", { gesture: true });
+  assert.equal(h.sources.length, 1);
+  h.sound.setPowered(true);
+  h.sound.hardware("reset", { gesture: true, bootDelay: 46 });
+  const [, reset, boot] = h.sources;
+  assert.ok(Math.abs(boot.startTime - reset.startTime - 0.046) < 0.001);
+  h.sound.setPowered(false);
+  assert.equal(boot.stopped, true);
+  h.sound.hardware("cord-slack", { gesture: true });
+  h.sound.play("release");
+  assert.equal(h.sources.length, 4);
 });
 
 for (const sampleRate of [44100, 48000])

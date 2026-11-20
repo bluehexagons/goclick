@@ -1,8 +1,8 @@
-import { createSoundMotion, renderSound } from "./sound-design.js";
-import type { SoundCue, SoundProfile } from "./sound-design.js";
+import { createSoundMotion, renderHardwareSound, renderSound } from "./sound-design.js";
+import type { HardwareCue, SoundCue, SoundProfile } from "./sound-design.js";
 
-// No audio allocation on page load. Only opt-in, preview, or an enabled game
-// gesture can unlock audio; responses cannot queue delayed pings.
+// Boot requests playback for remembered opt-ins. The browser still decides
+// whether sound can start before a gesture.
 const motion = createSoundMotion();
 let profile: SoundProfile = "classic";
 let enabled = false;
@@ -92,7 +92,10 @@ function resume(audio: AudioContext) {
 
 function synthesize(audio: AudioContext, kind: SoundCue, preview = false, when?: number) {
   const variation = motion.sample(performance.now(), kind === "press");
-  const samples = renderSound(profile, kind, audio.sampleRate, variation);
+  return startVoice(audio, renderSound(profile, kind, audio.sampleRate, variation), preview, when);
+}
+
+function startVoice(audio: AudioContext, samples: Float32Array, preview = false, when?: number) {
   const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
   buffer.getChannelData(0).set(samples);
   // Bound overlapping voices even with rapid multi-finger input. At this gain
@@ -161,10 +164,14 @@ function prepare() {
   }
 }
 
-function withAudio(gesture: boolean, emit: (audio: AudioContext) => void, preview = false) {
+function withAudio(
+  gesture: boolean,
+  emit: (audio: AudioContext) => void,
+  { preview = false, allowCreate = gesture } = {},
+) {
   if (!enabled || document.hidden) return;
   try {
-    const audio = audioContext(gesture);
+    const audio = audioContext(allowCreate);
     if (!audio) return;
     if (gesture) {
       cancelPending();
@@ -172,10 +179,10 @@ function withAudio(gesture: boolean, emit: (audio: AudioContext) => void, previe
     }
     const current = generation;
     if (audio.state === "running" && !suspending) emit(audio);
-    else if (gesture) {
+    else if (allowCreate) {
       const requestedAt = performance.now();
       // Retry inside every gesture: touch browsers may allow audio only on
-      // release. Only the latest gesture can sound after an async unlock.
+      // release. An autoplay request or gesture that has gone stale is silent.
       void resume(audio)
         .then(() => {
           if (
@@ -228,6 +235,27 @@ export const clickSound = {
     powered = value;
     if (!powered) stop();
   },
+  hardware(
+    kind: HardwareCue,
+    { gesture = false, bootDelay }: { gesture?: boolean; bootDelay?: number } = {},
+  ) {
+    withAudio(
+      gesture,
+      (audio) => {
+        // Mechanical sounds can play without game power. Pair the boot tone
+        // with the event that restored it on the same audio-clock origin.
+        const start = startVoice(audio, renderHardwareSound(kind, audio.sampleRate));
+        if (bootDelay !== undefined)
+          startVoice(
+            audio,
+            renderHardwareSound("boot", audio.sampleRate),
+            false,
+            start + bootDelay / 1000,
+          );
+      },
+      { allowCreate: gesture || kind === "boot" },
+    );
+  },
   preview() {
     // Schedule on the audio clock; mute, hiding, and profile changes can stop
     // the entire sequence, including voices whose start time is still ahead.
@@ -239,7 +267,7 @@ export const clickSound = {
         synthesize(audio, "release", true, start + 0.06);
         synthesize(audio, "saved", true, start + 0.18);
       },
-      true,
+      { preview: true },
     );
   },
   cancelPreview() {

@@ -83,15 +83,14 @@ pitch step follows each cue's direction, including downward error/cooldown
 tones. Clunk's noise-filter decay is normalized for the device sample rate.
 Offline responses follow the simulated ping timing. Cancelled/outside releases,
 repeated keydowns, and suppressed native clicks produce no release sound.
-Explicitly enabling sound
-prepares the audio device silently, so startup does not delay the first game
-press. A remembered preference stays allocation-free until a press/release;
-page load and network responses never initialize audio. Muting or hiding the
-page stops active voices, discards sounds awaiting audio unlock, and requests
-suspension of the existing audio context. Returning to the page does not resume
-the device automatically; explicit opt-in, preview, or a fresh press/release
-resumes it. A quick toggle during pending suspension still issues resume within
-the user gesture, and a late unlock while muted/hidden requests suspension again.
+Explicitly enabling sound prepares the audio device silently. When the game
+button first appears, a remembered sound preference lets its boot tones play
+if the browser allows autoplay. A blocked startup cue expires instead of
+playing on a later click. Muting or hiding the page stops active voices,
+discards sounds awaiting audio unlock, and requests suspension of the existing
+audio context. A quick toggle during pending suspension still issues resume
+within the user gesture, and a late unlock while muted or hidden requests
+suspension again.
 Device suspension or interruption discards active and scheduled voices so a
 frozen audio clock cannot replay stale sounds on recovery. Closed contexts
 release their graph; only a new gesture or opt-in creates a replacement.
@@ -130,10 +129,13 @@ Repeated long pulls in different directions loosen the game button’s plug.
 The plug rocks loose and leans toward the button, and the cord stays attached
 to its grommet. Further long pulls snap it free. The plug trails the moving
 button and settles beneath the cord’s attachment point.
-The button’s lights flicker and fade as it loses power. Reduced motion applies
-the final pose and light state immediately. The disconnected button still
-counts clicks. A refresh reseats the plug and preserves the badge. The SVG is
-hidden from assistive technology and does not intercept pointer input.
+The button’s lights flicker and fade as it loses power. Its first appearance
+and each return of power run a short light sequence timed to the boot tones.
+TEST, RESET, and the plug movements have their own mechanical sounds under the
+same sound setting. A tap on the dangling plug toggles cord slack. A tap over
+either socket reconnects it. Reduced motion applies the final pose and light
+state immediately. The disconnected button still counts clicks. A refresh
+reseats the plug and preserves the badge.
 
 ## Material authoring
 

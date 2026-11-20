@@ -340,7 +340,15 @@ export function projectButtonLettering(state: ButtonState) {
       ? 0.9 * (state.drainLight ?? 0) ** 1.4
       : state.reducedMotion
         ? Math.min(0.3, state.press * 0.3 + state.response * 0.25)
-        : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
+        : Math.min(
+            1,
+            Math.max(
+              charge,
+              state.flash * 0.8,
+              state.response * 0.7,
+              (state.bootLight ?? 0) * 0.72,
+            ),
+          ),
     charge,
     sheen: state.reducedMotion
       ? 1.35

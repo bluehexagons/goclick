@@ -17,6 +17,7 @@ import type { OutletSocket, PlugState } from "./button-geometry.js";
 import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
 import { clickSound } from "./sound.js";
+import { powerBootDuration, powerBootLighting } from "./power-sequence.js";
 import { hasTrick, rememberButtonActivation, unlockTrick } from "./button-tricks.js";
 import type { ButtonActivation } from "./button-tricks.js";
 import { message } from "./i18n.js";
@@ -29,6 +30,8 @@ const TAP_RELEASE_MS = 70;
 const HOLD_RELEASE_MS = 110;
 const PLUG_DWELL_MS = 3000;
 const PLUG_SEAT_MS = 200;
+const PLUG_BOOT_DELAY_MS = 145;
+const RESET_BOOT_DELAY_MS = 46;
 const CORD_MODE_MS = 260;
 const tactileButtons = new Map<HTMLButtonElement, ButtonController>();
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile-button]")) {
@@ -53,6 +56,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let looseBeforeDetach = 1;
   let outletTripped = false;
   let drainStartedAt: number | null = null;
+  let bootStartedAt: number | null = null;
+  let booted = false;
   let outletTouch: { id: number; x: number; y: number } | null = null;
   let socket: OutletSocket = "bottom";
   let docking: { socket: OutletSocket; x: number; y: number; angle: number } | null = null;
@@ -179,19 +184,40 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
   }
 
-  function updatePower(time: number) {
+  function bootIfVisible() {
+    if (
+      !gameButton ||
+      !power ||
+      booted ||
+      document.hidden ||
+      !stage.clientWidth ||
+      !stage.clientHeight
+    )
+      return;
+    booted = true;
+    if (current.powered === false) return;
+    clickSound.hardware("boot");
+    if (!reducedMotion.matches) {
+      bootStartedAt = performance.now();
+      animate();
+    }
+  }
+
+  function updatePower(time: number, bootDelay = 0) {
     const powered = !outletTripped && plugState !== "unplugged";
-    if ((current.powered !== false) === powered) return;
+    if ((current.powered !== false) === powered) return false;
     current.powered = powered;
     clickSound.setPowered(powered);
     if (powered) {
       drainStartedAt = null;
+      bootStartedAt = reducedMotion.matches ? null : time + bootDelay;
       if (phase !== "idle") {
         current.copper = 1;
         current.labelCharge = reducedMotion.matches ? 0 : 1;
         scheduleHoldBeat();
       }
     } else {
+      bootStartedAt = null;
       drainStartedAt = reducedMotion.matches ? null : time;
       releasedAt = null;
       current.copper = current.flash = current.holdLight = current.labelCharge = 0;
@@ -199,9 +225,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       effects.replaceChildren();
       window.clearTimeout(beatTimer);
     }
+    return powered;
   }
 
-  function reconnectPlug() {
+  function reconnectPlug(gesture = false) {
     if (
       !power ||
       !docking ||
@@ -217,12 +244,17 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     alignPlug(null);
     dockWhileParked = false;
     socket = nextSocket;
-    seating = reducedMotion.matches ? null : { x, y, angle, startedAt: performance.now() };
+    const time = performance.now();
+    seating = reducedMotion.matches ? null : { x, y, angle, startedAt: time };
     plugState = power.dataset.plug = "seated";
     plugStartedAt = null;
     plugPulls.reseat();
     if (outletControl) outletControl.disabled = false;
-    updatePower(performance.now());
+    const poweredOn = updatePower(time, PLUG_BOOT_DELAY_MS);
+    clickSound.hardware("plug-in", {
+      gesture,
+      bootDelay: poweredOn ? PLUG_BOOT_DELAY_MS : undefined,
+    });
     if (pointers.size) {
       // Start measuring fresh tugs here while preserving the dragged position.
       dragFromX = target.x;
@@ -246,12 +278,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     )
       return;
     if (docking) {
-      reconnectPlug();
+      reconnectPlug(true);
       return;
     }
     const startedAt = performance.now();
     const from = cordSlackAmount(startedAt);
     cordSlack = !cordSlack;
+    clickSound.hardware(cordSlack ? "cord-slack" : "cord-tension", { gesture: true });
     slackChange = reducedMotion.matches ? null : { from, startedAt };
     plugControl.setAttribute("aria-pressed", String(cordSlack));
     animate();
@@ -259,8 +292,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
 
   function paint(time = performance.now(), dt = 0) {
     if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
+    if (bootStartedAt !== null && time - bootStartedAt >= powerBootDuration) bootStartedAt = null;
     const progress = plugProgress(time);
     current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
+    current.bootLight = bootStartedAt === null ? 0 : powerBootLighting(time - bootStartedAt);
     const cable =
       power && stage.clientWidth && stage.clientHeight
         ? projectButtonPower(current, button.offsetWidth, plugState, {
@@ -332,7 +367,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         current.flash * 0.65 +
         current.response * 0.8 +
         (current.holdLight ?? 0) +
-        current.drainLight,
+        current.drainLight +
+        current.bootLight,
     );
     rig.style.setProperty("--glow-intensity", glow.toFixed(3));
     const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
@@ -466,7 +502,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       plugSwing.step(current.x, button.offsetWidth, dt);
     const readoutMoving = paint(time, dt);
     frame =
-      (moving || animatingPower || swinging || seating || slackChange || readoutMoving) &&
+      (moving ||
+        animatingPower ||
+        bootStartedAt !== null ||
+        swinging ||
+        seating ||
+        slackChange ||
+        readoutMoving) &&
       !document.hidden
         ? requestAnimationFrame(tick)
         : 0;
@@ -670,11 +712,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         plugState = nextPlug;
         plugStartedAt = reducedMotion.matches ? null : now;
         power.dataset.plug = nextPlug;
-        if (nextPlug === "loose") unlockTrick("loose-plug");
-        else {
+        if (nextPlug === "loose") {
+          clickSound.hardware("plug-loose");
+          unlockTrick("loose-plug");
+        } else {
           outletTouch = null;
           if (outletControl) outletControl.disabled = true;
           updatePower(now);
+          clickSound.hardware("unplug");
         }
       }
     }
@@ -757,9 +802,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function pressOutlet() {
     if (!outletControl || plugState === "unplugged" || document.hidden) return;
     outletTripped = !outletTripped;
+    const cue = outletTripped ? "test" : "reset";
     outletControl.setAttribute("aria-pressed", String(outletTripped));
-    outletControl.dataset.press = outletTripped ? "test" : "reset";
-    updatePower(performance.now());
+    outletControl.dataset.press = cue;
+    const poweredOn = updatePower(performance.now(), RESET_BOOT_DELAY_MS);
+    clickSound.hardware(cue, {
+      gesture: true,
+      bootDelay: poweredOn ? RESET_BOOT_DELAY_MS : undefined,
+    });
     if (!reducedMotion.matches) paint();
     animate();
   }
@@ -1016,6 +1066,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (reducedMotion.matches) {
       plugStartedAt = null;
       drainStartedAt = null;
+      bootStartedAt = null;
       seating = null;
       slackChange = null;
     }
@@ -1034,10 +1085,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (document.hidden) {
       plugStartedAt = null;
       drainStartedAt = null;
+      bootStartedAt = null;
       seating = null;
       plugSwing.reset(current.x);
       reset();
-    }
+    } else bootIfVisible();
   });
 
   // The CSS button is usable immediately. Compile graphics only for a visible
@@ -1049,9 +1101,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         setupFrame = 0;
         if (!stage.clientWidth || !stage.clientHeight) return;
         renderer = createButtonRenderer(stage, button);
+        bootIfVisible();
         paint();
       });
-    } else paint();
+    } else {
+      bootIfVisible();
+      paint();
+    }
   }).observe(stage);
   tactileButtons.set(button, { reset, respond });
 }

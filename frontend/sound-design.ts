@@ -1,3 +1,5 @@
+import { powerBootDuration, powerBootSteps } from "./power-sequence.js";
+
 export type SoundCue = "press" | "release" | "saved" | "slow" | "error" | "limited" | "hold";
 
 // Keep the chooser and validation on the same small, dependency-free catalog.
@@ -225,6 +227,92 @@ export function renderSound(
     }
     const fade = Math.min(1, time / recipe.attack, (samples.length - 1 - i) / (sampleRate * 0.008));
     samples[i] = wave * fade * gain;
+  }
+  return samples;
+}
+
+const hardwareSounds = {
+  boot: {
+    duration: powerBootDuration,
+    hits: powerBootSteps.map(({ at, pitch }, index) => ({
+      at,
+      pitch,
+      gain: 0.14 + 0.04 * index,
+      decay: 32 + 7 * index,
+      noise: 0,
+    })),
+  },
+  test: {
+    duration: 165,
+    hits: [
+      { at: 0, pitch: 83, gain: 0.57, decay: 32, noise: 0.32 },
+      { at: 25, pitch: 164, gain: 0.25, decay: 19, noise: 0.23 },
+    ],
+  },
+  reset: {
+    duration: 100,
+    hits: [
+      { at: 0, pitch: 214, gain: 0.33, decay: 16, noise: 0.24 },
+      { at: 12, pitch: 420, gain: 0.13, decay: 12, noise: 0.13 },
+    ],
+  },
+  "plug-loose": {
+    duration: 215,
+    hits: [
+      { at: 0, pitch: 155, gain: 0.16, decay: 24, noise: 0.55 },
+      { at: 55, pitch: 230, gain: 0.12, decay: 19, noise: 0.37 },
+    ],
+  },
+  unplug: {
+    duration: 225,
+    hits: [
+      { at: 0, pitch: 126, gain: 0.44, decay: 25, noise: 0.48 },
+      { at: 97, pitch: 178, gain: 0.13, decay: 23, noise: 0.42 },
+    ],
+  },
+  "plug-in": {
+    duration: 195,
+    hits: [
+      { at: 0, pitch: 255, gain: 0.15, decay: 16, noise: 0.5 },
+      { at: 115, pitch: 113, gain: 0.35, decay: 20, noise: 0.28 },
+    ],
+  },
+  "cord-slack": {
+    duration: 135,
+    hits: [
+      { at: 0, pitch: 294, gain: 0.19, decay: 15, noise: 0.27 },
+      { at: 36, pitch: 171, gain: 0.13, decay: 20, noise: 0.35 },
+    ],
+  },
+  "cord-tension": {
+    duration: 130,
+    hits: [
+      { at: 0, pitch: 191, gain: 0.15, decay: 19, noise: 0.32 },
+      { at: 26, pitch: 325, gain: 0.21, decay: 16, noise: 0.21 },
+    ],
+  },
+};
+export type HardwareCue = keyof typeof hardwareSounds;
+
+// The outlet and plug have their own sounds across all button sound profiles.
+export function renderHardwareSound(cue: HardwareCue, sampleRate: number, random = Math.random) {
+  const { duration, hits } = hardwareSounds[cue];
+  const samples = new Float32Array(Math.ceil((sampleRate * duration) / 1000));
+  for (const { at, pitch, gain, decay, noise } of hits) {
+    const start = Math.round((sampleRate * at) / 1000);
+    for (let i = start; i < samples.length; i++) {
+      const ms = ((i - start) * 1000) / sampleRate;
+      const phase = (2 * Math.PI * pitch * ms) / 1000;
+      const body = Math.sin(phase) * Math.exp(-ms / decay);
+      const ring = 0.24 * Math.sin(phase * (noise ? 3.1 : 2)) * Math.exp((-2 * ms) / decay);
+      const snap = noise ? noise * (random() * 2 - 1) * Math.exp(-ms / 5) : 0;
+      const fade = Math.min(
+        1,
+        ms / (noise ? 0.8 : 9),
+        ((samples.length - 1 - i) * 1000) / (sampleRate * 12),
+      );
+      samples[i] = samples[i]! + gain * fade * (body + ring + snap);
+    }
   }
   return samples;
 }

@@ -185,6 +185,25 @@
     return Number.isFinite(delay) ? Math.max(1e3, Math.min(864e5, delay)) : 5e3;
   }
 
+  // frontend/power-sequence.ts
+  var powerBootDuration = 350;
+  var powerBootSteps = [
+    { at: 0, pitch: 310, light: 0.14 },
+    { at: 70, pitch: 465, light: 0.28 },
+    { at: 145, pitch: 620, light: 0.52 }
+  ];
+  function powerBootLighting(elapsed) {
+    if (elapsed < 0 || elapsed >= powerBootDuration) return 0;
+    const remaining = Math.sqrt(1 - elapsed / powerBootDuration);
+    let light = 0;
+    for (const step of powerBootSteps) {
+      const time = Math.max(0, elapsed - step.at);
+      const attack = Math.min(time / 28, 1);
+      light += step.light * attack * Math.exp(-Math.max(0, time - 28) / 90);
+    }
+    return light * remaining;
+  }
+
   // frontend/sound-design.ts
   var soundProfiles = [
     {
@@ -361,6 +380,88 @@
       }
       const fade = Math.min(1, time / recipe.attack, (samples.length - 1 - i) / (sampleRate * 8e-3));
       samples[i] = wave * fade * gain;
+    }
+    return samples;
+  }
+  var hardwareSounds = {
+    boot: {
+      duration: powerBootDuration,
+      hits: powerBootSteps.map(({ at, pitch }, index) => ({
+        at,
+        pitch,
+        gain: 0.14 + 0.04 * index,
+        decay: 32 + 7 * index,
+        noise: 0
+      }))
+    },
+    test: {
+      duration: 165,
+      hits: [
+        { at: 0, pitch: 83, gain: 0.57, decay: 32, noise: 0.32 },
+        { at: 25, pitch: 164, gain: 0.25, decay: 19, noise: 0.23 }
+      ]
+    },
+    reset: {
+      duration: 100,
+      hits: [
+        { at: 0, pitch: 214, gain: 0.33, decay: 16, noise: 0.24 },
+        { at: 12, pitch: 420, gain: 0.13, decay: 12, noise: 0.13 }
+      ]
+    },
+    "plug-loose": {
+      duration: 215,
+      hits: [
+        { at: 0, pitch: 155, gain: 0.16, decay: 24, noise: 0.55 },
+        { at: 55, pitch: 230, gain: 0.12, decay: 19, noise: 0.37 }
+      ]
+    },
+    unplug: {
+      duration: 225,
+      hits: [
+        { at: 0, pitch: 126, gain: 0.44, decay: 25, noise: 0.48 },
+        { at: 97, pitch: 178, gain: 0.13, decay: 23, noise: 0.42 }
+      ]
+    },
+    "plug-in": {
+      duration: 195,
+      hits: [
+        { at: 0, pitch: 255, gain: 0.15, decay: 16, noise: 0.5 },
+        { at: 115, pitch: 113, gain: 0.35, decay: 20, noise: 0.28 }
+      ]
+    },
+    "cord-slack": {
+      duration: 135,
+      hits: [
+        { at: 0, pitch: 294, gain: 0.19, decay: 15, noise: 0.27 },
+        { at: 36, pitch: 171, gain: 0.13, decay: 20, noise: 0.35 }
+      ]
+    },
+    "cord-tension": {
+      duration: 130,
+      hits: [
+        { at: 0, pitch: 191, gain: 0.15, decay: 19, noise: 0.32 },
+        { at: 26, pitch: 325, gain: 0.21, decay: 16, noise: 0.21 }
+      ]
+    }
+  };
+  function renderHardwareSound(cue, sampleRate, random = Math.random) {
+    const { duration, hits } = hardwareSounds[cue];
+    const samples = new Float32Array(Math.ceil(sampleRate * duration / 1e3));
+    for (const { at, pitch, gain, decay, noise } of hits) {
+      const start = Math.round(sampleRate * at / 1e3);
+      for (let i = start; i < samples.length; i++) {
+        const ms = (i - start) * 1e3 / sampleRate;
+        const phase = 2 * Math.PI * pitch * ms / 1e3;
+        const body = Math.sin(phase) * Math.exp(-ms / decay);
+        const ring2 = 0.24 * Math.sin(phase * (noise ? 3.1 : 2)) * Math.exp(-2 * ms / decay);
+        const snap = noise ? noise * (random() * 2 - 1) * Math.exp(-ms / 5) : 0;
+        const fade = Math.min(
+          1,
+          ms / (noise ? 0.8 : 9),
+          (samples.length - 1 - i) * 1e3 / (sampleRate * 12)
+        );
+        samples[i] = samples[i] + gain * fade * (body + ring2 + snap);
+      }
     }
     return samples;
   }
@@ -983,7 +1084,15 @@
         0.55,
         state.response * 0.45 + charge * 0.25 + (state.reducedMotion ? 0 : state.flash * 0.18)
       ),
-      light: !powered2 ? 0.9 * (state.drainLight ?? 0) ** 1.4 : state.reducedMotion ? Math.min(0.3, state.press * 0.3 + state.response * 0.25) : Math.min(1, Math.max(charge, state.flash * 0.8, state.response * 0.7)),
+      light: !powered2 ? 0.9 * (state.drainLight ?? 0) ** 1.4 : state.reducedMotion ? Math.min(0.3, state.press * 0.3 + state.response * 0.25) : Math.min(
+        1,
+        Math.max(
+          charge,
+          state.flash * 0.8,
+          state.response * 0.7,
+          (state.bootLight ?? 0) * 0.72
+        )
+      ),
       charge,
       sheen: state.reducedMotion ? 1.35 : 0.35 + Math.sin((state.labelPhase ?? 0) * 8.8) * 0.5 + (1 - charge)
     };
@@ -1058,7 +1167,7 @@
     uniform float response;
     uniform float responseProgress;
     uniform float holdLight;
-    uniform float drainLight;
+    uniform float powerLight;
     uniform vec3 responseColor;
     uniform vec4 letteringPose;
     uniform vec2 letteringAccent;
@@ -1100,7 +1209,7 @@
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
-      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse + holdLight + drainLight);
+      float energy = min(1.4, copper * .38 + flash * .65 + response * .8 * pulse + holdLight + powerLight);
       vec3 lightColor = response > 0. ? responseColor : vec3(.22, .72, .46);
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
@@ -1171,7 +1280,7 @@
       "response",
       "responseProgress",
       "holdLight",
-      "drainLight",
+      "powerLight",
       "responseColor",
       "letteringPose",
       "letteringAccent",
@@ -1392,7 +1501,7 @@
       gl.uniform1f(uniforms.response, state.response || 0);
       gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
       gl.uniform1f(uniforms.holdLight, state.holdLight ?? 0);
-      gl.uniform1f(uniforms.drainLight, state.drainLight ?? 0);
+      gl.uniform1f(uniforms.powerLight, (state.drainLight ?? 0) + (state.bootLight ?? 0));
       gl.uniform3f(uniforms.responseColor, ...state.responseColor || [0.38, 0.84, 0.8]);
       const letterPose = projectButtonLettering(state);
       gl.uniform4f(
@@ -1538,7 +1647,9 @@
   }
   function synthesize(audio, kind, preview = false, when) {
     const variation = motion.sample(performance.now(), kind === "press");
-    const samples = renderSound(profile, kind, audio.sampleRate, variation);
+    return startVoice(audio, renderSound(profile, kind, audio.sampleRate, variation), preview, when);
+  }
+  function startVoice(audio, samples, preview = false, when) {
     const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
     buffer.getChannelData(0).set(samples);
     if (voices.size >= maxVoices) {
@@ -1596,10 +1707,10 @@
     } catch {
     }
   }
-  function withAudio(gesture, emit, preview = false) {
+  function withAudio(gesture, emit, { preview = false, allowCreate = gesture } = {}) {
     if (!enabled || document.hidden) return;
     try {
-      const audio = audioContext(gesture);
+      const audio = audioContext(allowCreate);
       if (!audio) return;
       if (gesture) {
         cancelPending();
@@ -1607,7 +1718,7 @@
       }
       const current = generation;
       if (audio.state === "running" && !suspending) emit(audio);
-      else if (gesture) {
+      else if (allowCreate) {
         const requestedAt = performance.now();
         void resume(audio).then(() => {
           if (enabled && !document.hidden && current === generation && audio === context && audio.state === "running" && performance.now() - requestedAt <= maxUnlockDelay)
@@ -1645,6 +1756,22 @@
       powered = value;
       if (!powered) stop();
     },
+    hardware(kind, { gesture = false, bootDelay } = {}) {
+      withAudio(
+        gesture,
+        (audio) => {
+          const start = startVoice(audio, renderHardwareSound(kind, audio.sampleRate));
+          if (bootDelay !== void 0)
+            startVoice(
+              audio,
+              renderHardwareSound("boot", audio.sampleRate),
+              false,
+              start + bootDelay / 1e3
+            );
+        },
+        { allowCreate: gesture || kind === "boot" }
+      );
+    },
     preview() {
       stop();
       withAudio(
@@ -1654,7 +1781,7 @@
           synthesize(audio, "release", true, start + 0.06);
           synthesize(audio, "saved", true, start + 0.18);
         },
-        true
+        { preview: true }
       );
     },
     cancelPreview() {
@@ -2934,6 +3061,8 @@
   var HOLD_RELEASE_MS = 110;
   var PLUG_DWELL_MS = 3e3;
   var PLUG_SEAT_MS = 200;
+  var PLUG_BOOT_DELAY_MS = 145;
+  var RESET_BOOT_DELAY_MS = 46;
   var CORD_MODE_MS = 260;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
@@ -2981,19 +3110,31 @@
         delete power.dataset.dock;
         if (outletControl) delete outletControl.dataset.dock;
       }
-    }, updatePower2 = function(time) {
+    }, bootIfVisible2 = function() {
+      if (!gameButton || !power || booted || document.hidden || !stage.clientWidth || !stage.clientHeight)
+        return;
+      booted = true;
+      if (current.powered === false) return;
+      clickSound.hardware("boot");
+      if (!reducedMotion.matches) {
+        bootStartedAt = performance.now();
+        animate2();
+      }
+    }, updatePower2 = function(time, bootDelay = 0) {
       const powered2 = !outletTripped && plugState !== "unplugged";
-      if (current.powered !== false === powered2) return;
+      if (current.powered !== false === powered2) return false;
       current.powered = powered2;
       clickSound.setPowered(powered2);
       if (powered2) {
         drainStartedAt = null;
+        bootStartedAt = reducedMotion.matches ? null : time + bootDelay;
         if (phase !== "idle") {
           current.copper = 1;
           current.labelCharge = reducedMotion.matches ? 0 : 1;
           scheduleHoldBeat2();
         }
       } else {
+        bootStartedAt = null;
         drainStartedAt = reducedMotion.matches ? null : time;
         releasedAt = null;
         current.copper = current.flash = current.holdLight = current.labelCharge = 0;
@@ -3001,7 +3142,8 @@
         effects.replaceChildren();
         window.clearTimeout(beatTimer);
       }
-    }, reconnectPlug2 = function() {
+      return powered2;
+    }, reconnectPlug2 = function(gesture = false) {
       if (!power || !docking || !pointers.size && !dockWhileParked || button.disabled || document.hidden || !stage.clientWidth || !stage.clientHeight)
         return;
       const { socket: nextSocket, x, y, angle } = docking;
@@ -3009,12 +3151,17 @@
       alignPlug2(null);
       dockWhileParked = false;
       socket = nextSocket;
-      seating = reducedMotion.matches ? null : { x, y, angle, startedAt: performance.now() };
+      const time = performance.now();
+      seating = reducedMotion.matches ? null : { x, y, angle, startedAt: time };
       plugState = power.dataset.plug = "seated";
       plugStartedAt = null;
       plugPulls.reseat();
       if (outletControl) outletControl.disabled = false;
-      updatePower2(performance.now());
+      const poweredOn = updatePower2(time, PLUG_BOOT_DELAY_MS);
+      clickSound.hardware("plug-in", {
+        gesture,
+        bootDelay: poweredOn ? PLUG_BOOT_DELAY_MS : void 0
+      });
       if (pointers.size) {
         dragFromX = target.x;
         dragFromY = target.y;
@@ -3029,19 +3176,22 @@
       if (plugState !== "unplugged" || !plugControl || plugControl.hidden || button.disabled || document.hidden)
         return;
       if (docking) {
-        reconnectPlug2();
+        reconnectPlug2(true);
         return;
       }
       const startedAt = performance.now();
       const from = cordSlackAmount2(startedAt);
       cordSlack = !cordSlack;
+      clickSound.hardware(cordSlack ? "cord-slack" : "cord-tension", { gesture: true });
       slackChange = reducedMotion.matches ? null : { from, startedAt };
       plugControl.setAttribute("aria-pressed", String(cordSlack));
       animate2();
     }, paint2 = function(time = performance.now(), dt = 0) {
       if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
+      if (bootStartedAt !== null && time - bootStartedAt >= powerBootDuration) bootStartedAt = null;
       const progress = plugProgress2(time);
       current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
+      current.bootLight = bootStartedAt === null ? 0 : powerBootLighting(time - bootStartedAt);
       const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
         progress,
         looseBeforeDetach,
@@ -3102,7 +3252,7 @@
       );
       const glow = Math.min(
         1.4,
-        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8 + (current.holdLight ?? 0) + current.drainLight
+        current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8 + (current.holdLight ?? 0) + current.drainLight + current.bootLight
       );
       rig.style.setProperty("--glow-intensity", glow.toFixed(3));
       const glowColor = current.response > 0 ? current.responseColor : [0.22, 0.72, 0.46];
@@ -3198,7 +3348,7 @@
       const animatingPower = plugProgress2(time) < 1 || drainStartedAt !== null && time - drainStartedAt < powerDrainDuration;
       const swinging = plugState === "unplugged" && !reducedMotion.matches && plugSwing.step(current.x, button.offsetWidth, dt);
       const readoutMoving = paint2(time, dt);
-      frame = (moving || animatingPower || swinging || seating || slackChange || readoutMoving) && !document.hidden ? requestAnimationFrame(tick2) : 0;
+      frame = (moving || animatingPower || bootStartedAt !== null || swinging || seating || slackChange || readoutMoving) && !document.hidden ? requestAnimationFrame(tick2) : 0;
       if (!frame) lastFrame = 0;
     }, animate2 = function() {
       if (reducedMotion.matches) {
@@ -3361,11 +3511,14 @@
           plugState = nextPlug;
           plugStartedAt = reducedMotion.matches ? null : now;
           power.dataset.plug = nextPlug;
-          if (nextPlug === "loose") unlockTrick("loose-plug");
-          else {
+          if (nextPlug === "loose") {
+            clickSound.hardware("plug-loose");
+            unlockTrick("loose-plug");
+          } else {
             outletTouch = null;
             if (outletControl) outletControl.disabled = true;
             updatePower2(now);
+            clickSound.hardware("unplug");
           }
         }
       }
@@ -3435,9 +3588,14 @@
     }, pressOutlet2 = function() {
       if (!outletControl || plugState === "unplugged" || document.hidden) return;
       outletTripped = !outletTripped;
+      const cue = outletTripped ? "test" : "reset";
       outletControl.setAttribute("aria-pressed", String(outletTripped));
-      outletControl.dataset.press = outletTripped ? "test" : "reset";
-      updatePower2(performance.now());
+      outletControl.dataset.press = cue;
+      const poweredOn = updatePower2(performance.now(), RESET_BOOT_DELAY_MS);
+      clickSound.hardware(cue, {
+        gesture: true,
+        bootDelay: poweredOn ? RESET_BOOT_DELAY_MS : void 0
+      });
       if (!reducedMotion.matches) paint2();
       animate2();
     }, endPointer2 = function(event, cancelled = false) {
@@ -3477,7 +3635,7 @@
       target.x = target.y = 0;
       animate2();
     };
-    plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
+    plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -3499,6 +3657,8 @@
     let looseBeforeDetach = 1;
     let outletTripped = false;
     let drainStartedAt = null;
+    let bootStartedAt = null;
+    let booted = false;
     let outletTouch = null;
     let socket = "bottom";
     let docking = null;
@@ -3712,6 +3872,7 @@
       if (reducedMotion.matches) {
         plugStartedAt = null;
         drainStartedAt = null;
+        bootStartedAt = null;
         seating = null;
         slackChange = null;
       }
@@ -3730,10 +3891,11 @@
       if (document.hidden) {
         plugStartedAt = null;
         drainStartedAt = null;
+        bootStartedAt = null;
         seating = null;
         plugSwing.reset(current.x);
         reset2();
-      }
+      } else bootIfVisible2();
     });
     new ResizeObserver(() => {
       if (buttonStaysPut2() && !pointers.size && keepParkedButtonInView2()) animate2();
@@ -3742,9 +3904,13 @@
           setupFrame = 0;
           if (!stage.clientWidth || !stage.clientHeight) return;
           renderer = createButtonRenderer(stage, button);
+          bootIfVisible2();
           paint2();
         });
-      } else paint2();
+      } else {
+        bootIfVisible2();
+        paint2();
+      }
     }).observe(stage);
     tactileButtons.set(button, { reset: reset2, respond: respond2 });
   }
@@ -3753,6 +3919,7 @@
   var buttonStaysPut;
   var cordSlackAmount;
   var alignPlug;
+  var bootIfVisible;
   var updatePower;
   var reconnectPlug;
   var activatePlug;

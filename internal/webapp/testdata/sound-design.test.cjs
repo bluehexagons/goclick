@@ -12,6 +12,31 @@ function noise(seed = 17) {
 }
 const peak = (samples) => samples.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
 
+test("the hardware cues have clean envelopes, and TEST hits harder than RESET", () => {
+  const { renderHardwareSound } = design();
+  const cues = [
+    "boot",
+    "test",
+    "reset",
+    "plug-loose",
+    "unplug",
+    "plug-in",
+    "cord-slack",
+    "cord-tension",
+  ];
+  for (const rate of [44100, 48000, 96000]) {
+    const rendered = cues.map((cue) => renderHardwareSound(cue, rate, noise()));
+    for (const signal of rendered) {
+      assert.ok(signal.length >= rate * 0.1 && signal.length <= rate * 0.351);
+      assert.equal(signal[0], 0);
+      assert.equal(signal.at(-1), 0);
+      assert.ok(peak(signal) > 0.06 && peak(signal) < 0.98);
+    }
+    assert.ok(peak(rendered[1]) > 1.4 * peak(rendered[2]));
+    assert.notDeepEqual(rendered[6], rendered[7]);
+  }
+});
+
 test("profile catalog has stable unique IDs and rejects unknown settings", () => {
   const { soundProfiles, isSoundProfile } = design();
   assert.equal(new Set(soundProfiles.map((p) => p.id)).size, 6);
