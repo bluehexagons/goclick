@@ -51,6 +51,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let seating: { x: number; y: number; angle: number; startedAt: number } | null = null;
   const readout = gameButton ? document.querySelector<HTMLElement>(".game-readout") : null;
   let readoutOffset = 0;
+  let readoutOpacity = 1;
   const effects = document.createElement("div");
   effects.className = "button-effects";
   effects.setAttribute("aria-hidden", "true");
@@ -158,9 +159,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const { socket: nextSocket, x, y, angle } = docking;
     alignPlug(null);
     socket = nextSocket;
-    seating = reducedMotion.matches
-      ? null
-      : { x, y, angle: angle > 180 ? angle - 360 : angle, startedAt: performance.now() };
+    seating = reducedMotion.matches ? null : { x, y, angle, startedAt: performance.now() };
     plugState = power.dataset.plug = "seated";
     plugStartedAt = null;
     plugPulls.reseat();
@@ -178,7 +177,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (!reducedMotion.matches) paint();
   }
 
-  function paint(time = performance.now()) {
+  function paint(time = performance.now(), dt = 0) {
     if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
     const progress = plugProgress(time);
     current.drainLight =
@@ -254,7 +253,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`,
     );
     renderer?.draw(current);
-    if (readout) moveReadout(readout);
+    const readoutMoving = readout && (dt > 0 || reducedMotion.matches) && moveReadout(readout, dt);
     if (
       gameButton &&
       power &&
@@ -281,8 +280,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       )
         unlockTrick("outlet");
     }
+    return readoutMoving;
   }
-  function moveReadout(readout: HTMLElement) {
+  function moveReadout(readout: HTMLElement, dt: number) {
     let offset = 0;
     if (Math.abs(current.y) > 8) {
       const face = button.getBoundingClientRect();
@@ -296,9 +296,26 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         offset = bottom + below <= window.innerHeight - 8 ? below : Math.max(8 - top, above);
       }
     }
-    if (readoutOffset === offset) return;
-    readoutOffset = offset;
-    readout.style.setProperty("--readout-offset", `${offset}px`);
+    const distance = offset - readoutOffset;
+    const reduce = reducedMotion.matches;
+    const nextOffset =
+      reduce || Math.abs(distance) < 0.5
+        ? offset
+        : readoutOffset + distance * (1 - Math.exp(-0.2 * dt));
+    const shade = reduce ? 1 : 1 - 0.65 * clamp(Math.abs(distance) / 90, 0, 1);
+    const nextOpacity =
+      reduce || Math.abs(shade - readoutOpacity) < 0.005
+        ? shade
+        : readoutOpacity + (shade - readoutOpacity) * (1 - Math.exp(-0.42 * dt));
+    if (readoutOffset !== nextOffset) {
+      readoutOffset = nextOffset;
+      readout.style.setProperty("--readout-offset", `${nextOffset}px`);
+    }
+    if (readoutOpacity !== nextOpacity) {
+      readoutOpacity = nextOpacity;
+      readout.style.setProperty("--readout-opacity", nextOpacity.toFixed(3));
+    }
+    return nextOffset !== offset || nextOpacity !== 1;
   }
   function tick(time: number) {
     const dt = lastFrame ? clamp((time - lastFrame) / (1000 / 60), 0.25, 2) : 1;
@@ -361,9 +378,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       plugState === "unplugged" &&
       !reducedMotion.matches &&
       plugSwing.step(current.x, button.offsetWidth, dt);
-    paint(time);
+    const readoutMoving = paint(time, dt);
     frame =
-      (moving || animatingPower || swinging || seating) && !document.hidden
+      (moving || animatingPower || swinging || seating || readoutMoving) && !document.hidden
         ? requestAnimationFrame(tick)
         : 0;
     if (!frame) lastFrame = 0;

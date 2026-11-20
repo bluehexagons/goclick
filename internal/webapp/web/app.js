@@ -847,7 +847,8 @@
     } else if (seating) {
       startX += (seating.x - startX) * seating.remaining;
       startY += (seating.y - startY) * seating.remaining;
-      plugTransform = `translate(${startX} ${startY}) rotate(${seating.angle * seating.remaining}) translate(0 -12)`;
+      const tilt = seating.angle - 180 * Math.round(seating.angle / 180);
+      plugTransform = `translate(${startX} ${startY}) rotate(${tilt * seating.remaining}) translate(0 -12)`;
     }
     const dx = endX - startX;
     const dy = endY - startY;
@@ -1762,7 +1763,7 @@
       const { socket: nextSocket, x, y, angle } = docking;
       alignPlug2(null);
       socket = nextSocket;
-      seating = reducedMotion.matches ? null : { x, y, angle: angle > 180 ? angle - 360 : angle, startedAt: performance.now() };
+      seating = reducedMotion.matches ? null : { x, y, angle, startedAt: performance.now() };
       plugState = power.dataset.plug = "seated";
       plugStartedAt = null;
       plugPulls.reseat();
@@ -1777,7 +1778,7 @@
       dragFromY = target.y;
       aimPointers2();
       if (!reducedMotion.matches) paint2();
-    }, paint2 = function(time = performance.now()) {
+    }, paint2 = function(time = performance.now(), dt = 0) {
       if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
       const progress = plugProgress2(time);
       current.drainLight = plugState === "unplugged" && plugStartedAt !== null ? powerDrainLighting(time - plugStartedAt) : 0;
@@ -1841,7 +1842,7 @@
         `rgb(${glowColor.map((value) => Math.round(value * 255)).join(" ")})`
       );
       renderer?.draw(current);
-      if (readout) moveReadout2(readout);
+      const readoutMoving = readout && (dt > 0 || reducedMotion.matches) && moveReadout2(readout, dt);
       if (gameButton && power && cable && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
         const frame2 = power.getBoundingClientRect();
         const face = button.getBoundingClientRect();
@@ -1850,7 +1851,8 @@
         if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - 15 > 0 && x - 15 < face.left || x + 15 < window.innerWidth && x + 15 > face.right || y - 25 > 0 && y - 25 < face.top || y + 25 < window.innerHeight && y + 25 > face.bottom))
           unlockTrick("outlet");
       }
-    }, moveReadout2 = function(readout2) {
+      return readoutMoving;
+    }, moveReadout2 = function(readout2, dt) {
       let offset = 0;
       if (Math.abs(current.y) > 8) {
         const face = button.getBoundingClientRect();
@@ -1864,9 +1866,20 @@
           offset = bottom + below <= window.innerHeight - 8 ? below : Math.max(8 - top, above);
         }
       }
-      if (readoutOffset === offset) return;
-      readoutOffset = offset;
-      readout2.style.setProperty("--readout-offset", `${offset}px`);
+      const distance = offset - readoutOffset;
+      const reduce = reducedMotion.matches;
+      const nextOffset = reduce || Math.abs(distance) < 0.5 ? offset : readoutOffset + distance * (1 - Math.exp(-0.2 * dt));
+      const shade = reduce ? 1 : 1 - 0.65 * clamp(Math.abs(distance) / 90, 0, 1);
+      const nextOpacity = reduce || Math.abs(shade - readoutOpacity) < 5e-3 ? shade : readoutOpacity + (shade - readoutOpacity) * (1 - Math.exp(-0.42 * dt));
+      if (readoutOffset !== nextOffset) {
+        readoutOffset = nextOffset;
+        readout2.style.setProperty("--readout-offset", `${nextOffset}px`);
+      }
+      if (readoutOpacity !== nextOpacity) {
+        readoutOpacity = nextOpacity;
+        readout2.style.setProperty("--readout-opacity", nextOpacity.toFixed(3));
+      }
+      return nextOffset !== offset || nextOpacity !== 1;
     }, tick2 = function(time) {
       const dt = lastFrame ? clamp((time - lastFrame) / (1e3 / 60), 0.25, 2) : 1;
       lastFrame = time;
@@ -1915,8 +1928,8 @@
       }
       const animatingPower = plugProgress2(time) < 1 || plugState === "unplugged" && plugStartedAt !== null && time - plugStartedAt < powerDrainDuration;
       const swinging = plugState === "unplugged" && !reducedMotion.matches && plugSwing.step(current.x, button.offsetWidth, dt);
-      paint2(time);
-      frame = (moving || animatingPower || swinging || seating) && !document.hidden ? requestAnimationFrame(tick2) : 0;
+      const readoutMoving = paint2(time, dt);
+      frame = (moving || animatingPower || swinging || seating || readoutMoving) && !document.hidden ? requestAnimationFrame(tick2) : 0;
       if (!frame) lastFrame = 0;
     }, animate2 = function() {
       if (reducedMotion.matches) {
@@ -2198,6 +2211,7 @@
     let seating = null;
     const readout = gameButton ? document.querySelector(".game-readout") : null;
     let readoutOffset = 0;
+    let readoutOpacity = 1;
     const effects = document.createElement("div");
     effects.className = "button-effects";
     effects.setAttribute("aria-hidden", "true");

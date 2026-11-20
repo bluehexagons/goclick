@@ -245,6 +245,26 @@ test("plug transitions keep the cord attached from the socket to the hanging pos
   assert.ok(0 < swingY && swingY < hangY);
 });
 
+test("the plug settles into either socket with only its remaining tilt", () => {
+  const { projectButtonPower } = frontend({}).load("button-geometry");
+  for (const socket of ["top", "bottom"]) {
+    const seated = projectButtonPower(idle, 420, "seated", { socket });
+    for (const tilt of [-30, 0, 30]) {
+      const start = { x: 10, y: seated.startY + 8, angle: 180 + tilt };
+      for (const remaining of [1, 0.5, 0]) {
+        const cable = projectButtonPower(idle, 420, "seated", {
+          socket,
+          seating: { ...start, remaining },
+        });
+        const rotation = Number(cable.plugTransform.match(/rotate\(([^)]+)\)/)[1]);
+        assert.equal(rotation, tilt * remaining || 0);
+        assert.equal(cable.startX, start.x * remaining);
+        assert.equal(cable.startY, seated.startY + 8 * remaining);
+      }
+    }
+  }
+});
+
 test("the dangling plug lags, overshoots, and settles with its axis aligned to the cord", () => {
   const { createPlugSwing, projectButtonPower } = frontend({}).load("button-geometry");
   for (const dt of [0.5, 1, 2]) {

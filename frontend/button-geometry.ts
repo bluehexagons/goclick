@@ -166,7 +166,10 @@ export function projectButtonPower(
   } else if (seating) {
     startX += (seating.x - startX) * seating.remaining;
     startY += (seating.y - startY) * seating.remaining;
-    plugTransform = `translate(${startX} ${startY}) rotate(${seating.angle * seating.remaining}) translate(0 -12)`;
+    // The plug face is symmetric around its grommet. Either half-turn
+    // orientation fits the socket, so settle from the nearest one.
+    const tilt = seating.angle - 180 * Math.round(seating.angle / 180);
+    plugTransform = `translate(${startX} ${startY}) rotate(${tilt * seating.remaining}) translate(0 -12)`;
   }
   const dx = endX - startX;
   const dy = endY - startY;

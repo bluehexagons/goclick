@@ -3,7 +3,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
 
-function harness(reducedMotion = true, withPower = false) {
+function harness(reducedMotion = true, withPower = false, withReadout = false) {
   class Event {
     constructor(type, values = {}) {
       Object.assign(this, { type, detail: 0, button: 0 }, values);
@@ -98,9 +98,21 @@ function harness(reducedMotion = true, withPower = false) {
   stage.clientHeight = 290;
   stage.querySelector = (selector) =>
     selector === ".button-rig" ? rig : selector === ".button-power" && withPower ? power : null;
+  const readout = withReadout ? new Element() : null;
+  if (readout) {
+    const bounds = button.getBoundingClientRect();
+    button.getBoundingClientRect = () => {
+      const y = parseFloat(rig.props.get("--shift-y")) || 0;
+      return { ...bounds, top: bounds.top + y, bottom: bounds.bottom + y };
+    };
+    readout.getBoundingClientRect = () => {
+      const y = parseFloat(readout.props.get("--readout-offset")) || 0;
+      return { top: 380 + y, bottom: 440 + y };
+    };
+  }
   const document = Object.assign(new Element(), {
     hidden: false,
-    querySelector: () => null,
+    querySelector: (selector) => (selector === ".game-readout" ? readout : null),
     querySelectorAll: () => [button],
     createElement: () => new Element(),
   });
@@ -179,6 +191,7 @@ function harness(reducedMotion = true, withPower = false) {
     button,
     stage,
     rig,
+    readout,
     controller,
     power,
     cords,
@@ -839,6 +852,54 @@ test("the plug rocks free and the drained lights stay dark after release and new
   assert.equal(frame(1090), 0);
   assert.equal(h.clicks.length, 2);
   assert.deepEqual(h.sounds, ["press"]);
+});
+
+test("the stats slide and dim when they cross the button, then return to rest", () => {
+  const h = harness(false, false, true);
+  h.window.innerHeight = 520;
+  const move = (y) => h.stage.fire("pointermove", { pointerId: 1, clientX: 170, clientY: 150 + y });
+  const offset = () => parseFloat(h.readout.props.get("--readout-offset"));
+  const opacity = () => Number(h.readout.props.get("--readout-opacity") ?? 1);
+  let time = 0;
+  const frame = () => {
+    time += 17;
+    h.setTime(time);
+    h.frame(time);
+  };
+  h.pointer("pointerdown", 1);
+  move(175);
+  for (let i = 0; i < 55; i++) frame();
+  assert.ok(offset() > 0);
+  assert.equal(opacity(), 1);
+
+  move(230);
+  frame();
+  const first = offset();
+  assert.ok(first > 0);
+  assert.ok(opacity() < 1);
+  frame();
+  assert.ok(offset() < first);
+  assert.ok(offset() > -100);
+  for (let i = 0; i < 55; i++) frame();
+  assert.ok(offset() < -100);
+  assert.equal(opacity(), 1);
+
+  h.pointer("pointercancel", 1);
+  for (let i = 0; i < 90; i++) frame();
+  assert.equal(offset(), 0);
+  assert.equal(opacity(), 1);
+  assert.equal(h.hasFrame(), false);
+});
+
+test("with reduced motion the stats move out of the way at full opacity", () => {
+  const h = harness(true, false, true);
+  h.window.innerHeight = 520;
+  h.pointer("pointerdown", 1);
+  h.stage.fire("pointermove", { pointerId: 1, clientX: 170, clientY: 380 });
+  assert.ok(parseFloat(h.readout.props.get("--readout-offset")) < -100);
+  assert.equal(Number(h.readout.props.get("--readout-opacity") ?? 1), 1);
+  h.pointer("pointercancel", 1);
+  assert.equal(h.readout.props.get("--readout-offset"), "0px");
 });
 
 test("nearby releases count and fast drags can release ahead of the painted face", () => {

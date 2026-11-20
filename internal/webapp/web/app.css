@@ -862,6 +862,7 @@ input:focus {
   gap: 12px;
   text-align: center;
   translate: 0 var(--readout-offset, 0px);
+  opacity: var(--readout-opacity, 1);
 }
 .last-click {
   opacity: var(--last-click-opacity, 1);
