@@ -773,6 +773,10 @@ test("the outlet's test and reset cycle power without scoring a click", () => {
   h.outletControl.fire("pointerup", tap);
   assert.equal(h.outletControl.dataset.press, undefined);
   h.outletControl.fire("pointerdown", tap);
+  h.outletControl.fire("pointermove", { ...tap, clientX: tap.clientX + 20 });
+  h.outletControl.fire("pointerup", tap);
+  assert.equal(h.outletControl.dataset.press, undefined);
+  h.outletControl.fire("pointerdown", tap);
   h.outletControl.fire("pointerup", tap);
   h.outletControl.fire("click", { ...tap, detail: 1 });
   assert.equal(h.outletControl.attributes.get("aria-pressed"), "true");
@@ -941,6 +945,48 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   h.pointer("pointerup", 1, { clientY: 220 });
   assert.equal(h.clicks.length, 1);
   assert.deepEqual(h.sounds.slice(-2), ["press", "release"]);
+});
+
+test("the plug can reconnect after a drop, and losing focus cancels the wait", () => {
+  for (const action of ["dwell", "tap", "blur"]) {
+    const h = harness(true, true);
+    const mouse = { pointerType: "mouse", clientX: 170, clientY: 220 };
+    h.pointer("pointerdown", 1, mouse);
+    for (const [x, y] of [
+      [190, 0],
+      [-190, 0],
+      [0, -190],
+      [0, 190],
+      [220, 0],
+      [0, -220],
+      [0, 220],
+      [35, -125],
+    ])
+      h.stage.fire("pointermove", { ...mouse, pointerId: 1, clientX: 170 + x, clientY: 220 + y });
+    assert.equal(h.power.dataset.dock, "bottom");
+    h.pointer("pointerup", 1, { ...mouse, clientX: 205, clientY: 95 });
+    assert.equal(h.power.dataset.dock, "bottom");
+    assert.equal(h.button.hasPointerCapture(1), false);
+    assert.ok(h.position().y < -100);
+
+    if (action === "tap") {
+      const tap = { ...mouse, pointerId: 1 };
+      h.outlet[1].fire("pointerdown", tap);
+      h.outlet[1].fire("pointerup", tap);
+    } else {
+      if (action === "blur") h.window.fire("blur");
+      h.runTimer(3000);
+    }
+    assert.equal(h.power.dataset.dock, undefined);
+    assert.equal(h.clicks.length, 1);
+    if (action === "blur") {
+      assert.equal(h.power.dataset.plug, "unplugged");
+      assert.ok(h.position().y < -100);
+    } else {
+      assert.equal(h.power.dataset.plug, "seated");
+      assert.equal(h.position().y, 0);
+    }
+  }
 });
 
 test("the plug rocks free and the drained lights stay dark after release and new clicks", () => {

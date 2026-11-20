@@ -111,9 +111,9 @@ export function projectButtonPower(
 ) {
   const disconnecting = plug === "unplugged";
   const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
-  // Blend out the press depth and rebound as the plug leaves the socket.
+  const hanging = disconnecting ? travel : (seating?.remaining ?? 0);
   // The hanging cord follows the button's position without inheriting clicks.
-  const pressWeight = 1 - (disconnecting ? travel : (seating?.remaining ?? 0));
+  const pressWeight = 1 - hanging;
   const pose = projectButtonPose(
     pressWeight === 1
       ? state
@@ -186,9 +186,9 @@ export function projectButtonPower(
   const length = Math.max(90, buttonWidth * 0.42);
   // Slack vanishes smoothly at the cable's natural length. Further pulling
   // extends the taut cable and narrows its jacket like stretched rubber.
-  const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2) * (1 - travel);
+  const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2) * (1 - hanging);
   const stretch = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
-  const thickness = stretch + (1 - stretch) * travel;
+  const thickness = stretch + (1 - stretch) * hanging;
   return {
     outletX,
     outletY,

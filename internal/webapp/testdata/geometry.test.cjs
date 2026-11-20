@@ -258,9 +258,15 @@ test("plug transitions keep the cord attached from the socket to the hanging pos
   const [swingX, swingY] = cordOrigin(
     projectButtonPower(pulled, 420, "unplugged", { progress: 0.3 }),
   );
-  const [hangX, hangY] = cordOrigin(projectButtonPower(pulled, 420, "unplugged"));
+  const hanging = projectButtonPower(pulled, 420, "unplugged", { hangAngle: 0.3 });
+  const [hangX, hangY] = cordOrigin(hanging);
   assert.ok(hangX < swingX && swingX < 0);
   assert.ok(0 < swingY && swingY < hangY);
+  const reconnecting = projectButtonPower(pulled, 420, "seated", {
+    seating: { x: hangX, y: hangY, angle: hanging.plugAngle, remaining: 1 },
+  });
+  assert.equal(reconnecting.cord, hanging.cord);
+  assert.equal(reconnecting.thickness, hanging.thickness);
 });
 
 test("the plug settles into either socket with only its remaining tilt", () => {

@@ -799,7 +799,8 @@
   } = {}) {
     const disconnecting = plug === "unplugged";
     const travel = disconnecting ? 1 - (1 - progress) ** 3 : 0;
-    const pressWeight = 1 - (disconnecting ? travel : seating?.remaining ?? 0);
+    const hanging = disconnecting ? travel : seating?.remaining ?? 0;
+    const pressWeight = 1 - hanging;
     const pose = projectButtonPose(
       pressWeight === 1 ? state : { ...state, press: state.press * pressWeight, pop: state.pop * pressWeight },
       buttonWidth
@@ -858,9 +859,9 @@
     const dy = endY - startY;
     const distance = Math.hypot(dx, dy);
     const length = Math.max(90, buttonWidth * 0.42);
-    const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2) * (1 - travel);
+    const sag = buttonWidth * 0.1 * Math.max(0, 1 - (distance / length) ** 2) * (1 - hanging);
     const stretch = Math.max(0.55, 1 / Math.sqrt(Math.max(1, distance / length)));
-    const thickness = stretch + (1 - stretch) * travel;
+    const thickness = stretch + (1 - stretch) * hanging;
     return {
       outletX,
       outletY,
@@ -1784,10 +1785,11 @@
         window.clearTimeout(beatTimer);
       }
     }, reconnectPlug2 = function() {
-      if (!power || !docking || !pointers.size || button.disabled || document.hidden || !stage.clientWidth || !stage.clientHeight)
+      if (!power || !docking || !pointers.size && !dockWhileParked || button.disabled || document.hidden || !stage.clientWidth || !stage.clientHeight)
         return;
       const { socket: nextSocket, x, y, angle } = docking;
       alignPlug2(null);
+      dockWhileParked = false;
       socket = nextSocket;
       seating = reducedMotion.matches ? null : { x, y, angle, startedAt: performance.now() };
       plugState = power.dataset.plug = "seated";
@@ -1795,9 +1797,14 @@
       plugPulls.reseat();
       if (outletControl) outletControl.disabled = false;
       updatePower2(performance.now());
-      dragFromX = target.x;
-      dragFromY = target.y;
-      aimPointers2();
+      if (pointers.size) {
+        dragFromX = target.x;
+        dragFromY = target.y;
+        aimPointers2();
+      } else {
+        target.x = target.y = 0;
+        animate2();
+      }
       if (!reducedMotion.matches) paint2();
     }, paint2 = function(time = performance.now(), dt = 0) {
       if (seating && time - seating.startedAt >= PLUG_SEAT_MS) seating = null;
@@ -1826,7 +1833,7 @@
       }
       if (gameButton && plugState === "unplugged")
         alignPlug2(
-          progress === 1 && pointers.size && !button.disabled && !document.hidden ? cable : null
+          progress === 1 && (pointers.size || dockWhileParked) && !button.disabled && !document.hidden ? cable : null
         );
       current.reducedMotion = reducedMotion.matches;
       const lettering = projectButtonLettering(current);
@@ -2058,6 +2065,7 @@
       target.y = nextY;
       return true;
     }, reset2 = function(cancelled = true) {
+      dockWhileParked = false;
       outletTouch = null;
       clearResponse2();
       const captured = [...pointers.keys()];
@@ -2203,6 +2211,7 @@
       if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
       if (!pointers.size) {
         if (plugState === "unplugged") {
+          dockWhileParked = !cancelled && inside;
           keepDetachedButtonInView2();
           velocity.x = velocity.y = 0;
         }
@@ -2248,6 +2257,7 @@
     let outletTouch = null;
     let socket = "bottom";
     let docking = null;
+    let dockWhileParked = false;
     let dockTimer = 0;
     let plugTap = null;
     let seating = null;
@@ -2299,6 +2309,10 @@
         event.preventDefault();
         outletControl.setPointerCapture(event.pointerId);
         outletTouch = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      outletControl.addEventListener("pointermove", (event) => {
+        if (event.pointerId === outletTouch?.id && Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) > 12)
+          outletTouch = null;
       });
       outletControl.addEventListener("pointerup", (event) => {
         if (event.pointerId !== outletTouch?.id) return;

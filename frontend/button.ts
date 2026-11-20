@@ -51,6 +51,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let outletTouch: { id: number; x: number; y: number } | null = null;
   let socket: OutletSocket = "bottom";
   let docking: { socket: OutletSocket; x: number; y: number; angle: number } | null = null;
+  let dockWhileParked = false;
   let dockTimer = 0;
   let plugTap: { id: number; x: number; y: number } | null = null;
   let seating: { x: number; y: number; angle: number; startedAt: number } | null = null;
@@ -176,7 +177,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (
       !power ||
       !docking ||
-      !pointers.size ||
+      (!pointers.size && !dockWhileParked) ||
       button.disabled ||
       document.hidden ||
       !stage.clientWidth ||
@@ -185,6 +186,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       return;
     const { socket: nextSocket, x, y, angle } = docking;
     alignPlug(null);
+    dockWhileParked = false;
     socket = nextSocket;
     seating = reducedMotion.matches ? null : { x, y, angle, startedAt: performance.now() };
     plugState = power.dataset.plug = "seated";
@@ -192,10 +194,15 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     plugPulls.reseat();
     if (outletControl) outletControl.disabled = false;
     updatePower(performance.now());
-    // Start measuring fresh tugs here while preserving the dragged position.
-    dragFromX = target.x;
-    dragFromY = target.y;
-    aimPointers();
+    if (pointers.size) {
+      // Start measuring fresh tugs here while preserving the dragged position.
+      dragFromX = target.x;
+      dragFromY = target.y;
+      aimPointers();
+    } else {
+      target.x = target.y = 0;
+      animate();
+    }
     if (!reducedMotion.matches) paint();
   }
 
@@ -231,7 +238,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
     if (gameButton && plugState === "unplugged")
       alignPlug(
-        progress === 1 && pointers.size && !button.disabled && !document.hidden ? cable : null,
+        progress === 1 && (pointers.size || dockWhileParked) && !button.disabled && !document.hidden
+          ? cable
+          : null,
       );
     current.reducedMotion = reducedMotion.matches;
     const lettering = projectButtonLettering(current);
@@ -528,6 +537,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     return true;
   }
   function reset(cancelled = true) {
+    dockWhileParked = false;
     outletTouch = null;
     clearResponse();
     const captured = [...pointers.keys()];
@@ -705,6 +715,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       outletControl.setPointerCapture(event.pointerId);
       outletTouch = { id: event.pointerId, x: event.clientX, y: event.clientY };
     });
+    outletControl.addEventListener("pointermove", (event) => {
+      if (
+        event.pointerId === outletTouch?.id &&
+        Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) > 12
+      )
+        outletTouch = null;
+    });
     outletControl.addEventListener("pointerup", (event) => {
       if (event.pointerId !== outletTouch?.id) return;
       const tapped = Math.hypot(event.clientX - outletTouch.x, event.clientY - outletTouch.y) <= 12;
@@ -838,6 +855,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
     if (!pointers.size) {
       if (plugState === "unplugged") {
+        dockWhileParked = !cancelled && inside;
         keepDetachedButtonInView();
         velocity.x = velocity.y = 0;
       }
