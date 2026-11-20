@@ -558,12 +558,16 @@ test("held mouse and touch drags trail their screen destination without overshoo
     }
 });
 
-test("grabbing an offset button keeps its position, without adding hover movement to a short drag", () => {
+test("grabbing an offset button keeps its position and stays level through drag and release", () => {
   const h = harness(false);
+  const tilt = () => [h.rig.props.get("--tilt-x"), h.rig.props.get("--tilt-y")];
+  const level = ["0.000deg", "0.000deg"];
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 320, clientY: 200 });
   for (let i = 1; i <= 90; i++) h.frame(i * 16);
+  assert.ok(tilt().every((angle) => Math.abs(parseFloat(angle)) > 1));
   const before = h.position();
   h.pointer("pointerdown", 1, { pointerType: "mouse", clientX: 320, clientY: 200 });
+  assert.deepEqual(tilt(), level);
   for (let i = 91; i <= 120; i++) h.frame(i * 16);
   assert.ok(Math.abs(h.position().x - before.x) < 0.003);
   assert.ok(Math.abs(h.position().y - before.y) < 0.003);
@@ -572,8 +576,14 @@ test("grabbing an offset button keeps its position, without adding hover movemen
     h.frame(i * 16);
     assert.ok(h.position().x - before.x <= 20.003);
     assert.ok(h.position().y - before.y <= 10.003);
+    assert.deepEqual(tilt(), level);
   }
   assert.ok(Math.abs(h.position().x - before.x - 20) < 0.003);
+  h.setTime(180 * 16);
+  h.pointer("pointerup", 1, { pointerType: "mouse", clientX: 340, clientY: 210 });
+  h.frame(181 * 16);
+  assert.deepEqual(tilt(), level);
+  assert.equal(h.clicks.length, 1);
 });
 
 test("text stays enlarged throughout a hold and shrinks smoothly only after release", () => {

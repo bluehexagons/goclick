@@ -99,8 +99,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   >();
   let dragFromX = 0,
     dragFromY = 0;
-  let dragStartX = 0,
-    dragStartY = 0;
   let dragOriginX = 0,
     dragOriginY = 0;
   let coastUntil = 0;
@@ -194,9 +192,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     plugPulls.reseat();
     if (outletControl) outletControl.disabled = false;
     updatePower(performance.now());
-    // Start measuring fresh tugs here while preserving the drag and its tilt.
-    dragStartX += target.x - dragFromX;
-    dragStartY += target.y - dragFromY;
+    // Start measuring fresh tugs here while preserving the dragged position.
     dragFromX = target.x;
     dragFromY = target.y;
     aimPointers();
@@ -478,43 +474,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       }, holdDuration);
     }
   }
-  function aim(event: Pick<PointerEvent, "clientX" | "clientY">, trackPull = false) {
+  function aimHover(event: PointerEvent) {
     const rect = stage.getBoundingClientRect();
-    const pulledX = event.clientX - dragOriginX;
-    const pulledY = event.clientY - dragOriginY;
-    const aimX = pointers.size ? dragStartX + pulledX : event.clientX;
-    const aimY = pointers.size ? dragStartY + pulledY : event.clientY;
-    const x = clamp((aimX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
-    const y = clamp((aimY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
+    const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
+    const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
     target.rx = -y * 16;
     target.ry = x * 22;
     target.x = x * 4;
     target.y = y * 4;
-    if (pointers.size) {
-      // Track the gesture across the screen; the layout stage is not a drag
-      // boundary. Pointer capture keeps movement arriving outside that stage.
-      target.x = dragFromX + pulledX;
-      target.y = dragFromY + pulledY;
-      if (trackPull && gameButton && power && !seating) {
-        const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
-        if (nextPlug) {
-          const now = performance.now();
-          if (nextPlug === "unplugged") {
-            looseBeforeDetach = plugProgress(now);
-            plugSwing.reset(current.x);
-          }
-          plugState = nextPlug;
-          plugStartedAt = reducedMotion.matches ? null : now;
-          power.dataset.plug = nextPlug;
-          if (nextPlug === "loose") unlockTrick("loose-plug");
-          else {
-            outletTouch = null;
-            if (outletControl) outletControl.disabled = true;
-            updatePower(now);
-          }
-        }
-      }
-    }
     animate();
   }
   function release(cancelled = false) {
@@ -617,7 +584,31 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       dragOriginX = clientX - (target.x - dragFromX);
       dragOriginY = clientY - (target.y - dragFromY);
     }
-    aim({ clientX, clientY }, trackPull);
+    // Pointer capture keeps the drag following the gesture outside the stage.
+    const pulledX = clientX - dragOriginX;
+    const pulledY = clientY - dragOriginY;
+    target.x = dragFromX + pulledX;
+    target.y = dragFromY + pulledY;
+    if (trackPull && gameButton && power && !seating) {
+      const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
+      if (nextPlug) {
+        const now = performance.now();
+        if (nextPlug === "unplugged") {
+          looseBeforeDetach = plugProgress(now);
+          plugSwing.reset(current.x);
+        }
+        plugState = nextPlug;
+        plugStartedAt = reducedMotion.matches ? null : now;
+        power.dataset.plug = nextPlug;
+        if (nextPlug === "loose") unlockTrick("loose-plug");
+        else {
+          outletTouch = null;
+          if (outletControl) outletControl.disabled = true;
+          updatePower(now);
+        }
+      }
+    }
+    animate();
   }
   function burst(press = false) {
     if (reducedMotion.matches) return;
@@ -777,7 +768,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       activeKey === null &&
       event.pointerType === "mouse"
     )
-      aim(event);
+      aimHover(event);
   });
   stage.addEventListener("pointerleave", () => {
     if (
@@ -813,8 +804,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (pointers.size === 1) {
       dragFromX = target.x = current.x;
       dragFromY = target.y = current.y;
-      dragStartX = event.clientX;
-      dragStartY = event.clientY;
+      current.rx = target.rx = velocity.rx = 0;
+      current.ry = target.ry = velocity.ry = 0;
       velocity.x = velocity.y = 0;
       begin();
     } else if (gameButton) clickSound.play("press");
@@ -848,7 +839,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (!pointers.size) {
       if (plugState === "unplugged") {
         keepDetachedButtonInView();
-        target.rx = target.ry = 0;
         velocity.x = velocity.y = 0;
       }
       release(cancelled || !inside);
@@ -878,17 +868,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       velocity.x = clamp(point.vx * 10, -14, 14);
       velocity.y = clamp(point.vy * 10, -14, 14);
     }
-    const stageRect = stage.getBoundingClientRect();
-    const overStage =
-      event.clientX >= stageRect.left &&
-      event.clientX <= stageRect.left + stageRect.width &&
-      event.clientY >= stageRect.top &&
-      event.clientY <= stageRect.top + stageRect.height;
-    if (!cancelled && event.pointerType === "mouse" && overStage) aim(event);
-    else {
-      for (const key of ["x", "y", "rx", "ry"] as const) target[key] = 0;
-      animate();
-    }
+    target.x = target.y = 0;
+    animate();
   }
   button.addEventListener("pointerup", (event) => endPointer(event));
   button.addEventListener("pointercancel", (event) => endPointer(event, true));

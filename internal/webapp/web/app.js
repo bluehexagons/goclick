@@ -1791,8 +1791,6 @@
       plugPulls.reseat();
       if (outletControl) outletControl.disabled = false;
       updatePower2(performance.now());
-      dragStartX += target.x - dragFromX;
-      dragStartY += target.y - dragFromY;
       dragFromX = target.x;
       dragFromY = target.y;
       aimPointers2();
@@ -2013,41 +2011,14 @@
           if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
         }, holdDuration);
       }
-    }, aim2 = function(event, trackPull = false) {
+    }, aimHover2 = function(event) {
       const rect = stage.getBoundingClientRect();
-      const pulledX = event.clientX - dragOriginX;
-      const pulledY = event.clientY - dragOriginY;
-      const aimX = pointers.size ? dragStartX + pulledX : event.clientX;
-      const aimY = pointers.size ? dragStartY + pulledY : event.clientY;
-      const x = clamp((aimX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
-      const y = clamp((aimY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
+      const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
+      const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
       target.rx = -y * 16;
       target.ry = x * 22;
       target.x = x * 4;
       target.y = y * 4;
-      if (pointers.size) {
-        target.x = dragFromX + pulledX;
-        target.y = dragFromY + pulledY;
-        if (trackPull && gameButton && power && !seating) {
-          const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
-          if (nextPlug) {
-            const now = performance.now();
-            if (nextPlug === "unplugged") {
-              looseBeforeDetach = plugProgress2(now);
-              plugSwing.reset(current.x);
-            }
-            plugState = nextPlug;
-            plugStartedAt = reducedMotion.matches ? null : now;
-            power.dataset.plug = nextPlug;
-            if (nextPlug === "loose") unlockTrick("loose-plug");
-            else {
-              outletTouch = null;
-              if (outletControl) outletControl.disabled = true;
-              updatePower2(now);
-            }
-          }
-        }
-      }
       animate2();
     }, release2 = function(cancelled = false) {
       plugPulls.endPull();
@@ -2121,7 +2092,30 @@
         dragOriginX = clientX - (target.x - dragFromX);
         dragOriginY = clientY - (target.y - dragFromY);
       }
-      aim2({ clientX, clientY }, trackPull);
+      const pulledX = clientX - dragOriginX;
+      const pulledY = clientY - dragOriginY;
+      target.x = dragFromX + pulledX;
+      target.y = dragFromY + pulledY;
+      if (trackPull && gameButton && power && !seating) {
+        const nextPlug = plugPulls.pull(pulledX, pulledY, button.offsetWidth);
+        if (nextPlug) {
+          const now = performance.now();
+          if (nextPlug === "unplugged") {
+            looseBeforeDetach = plugProgress2(now);
+            plugSwing.reset(current.x);
+          }
+          plugState = nextPlug;
+          plugStartedAt = reducedMotion.matches ? null : now;
+          power.dataset.plug = nextPlug;
+          if (nextPlug === "loose") unlockTrick("loose-plug");
+          else {
+            outletTouch = null;
+            if (outletControl) outletControl.disabled = true;
+            updatePower2(now);
+          }
+        }
+      }
+      animate2();
     }, burst2 = function(press = false) {
       if (reducedMotion.matches) return;
       const quick = press || releaseDuration === TAP_RELEASE_MS;
@@ -2206,7 +2200,6 @@
       if (!pointers.size) {
         if (plugState === "unplugged") {
           keepDetachedButtonInView2();
-          target.rx = target.ry = 0;
           velocity.x = velocity.y = 0;
         }
         release2(cancelled || !inside);
@@ -2226,15 +2219,10 @@
         velocity.x = clamp(point.vx * 10, -14, 14);
         velocity.y = clamp(point.vy * 10, -14, 14);
       }
-      const stageRect = stage.getBoundingClientRect();
-      const overStage = event.clientX >= stageRect.left && event.clientX <= stageRect.left + stageRect.width && event.clientY >= stageRect.top && event.clientY <= stageRect.top + stageRect.height;
-      if (!cancelled && event.pointerType === "mouse" && overStage) aim2(event);
-      else {
-        for (const key of ["x", "y", "rx", "ry"]) target[key] = 0;
-        animate2();
-      }
+      target.x = target.y = 0;
+      animate2();
     };
-    plugProgress = plugProgress2, alignPlug = alignPlug2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aim = aim2, release = release2, keepDetachedButtonInView = keepDetachedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
+    plugProgress = plugProgress2, alignPlug = alignPlug2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepDetachedButtonInView = keepDetachedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -2288,7 +2276,6 @@
     let setupFrame = 0, frame = 0, lastFrame = 0;
     const pointers = /* @__PURE__ */ new Map();
     let dragFromX = 0, dragFromY = 0;
-    let dragStartX = 0, dragStartY = 0;
     let dragOriginX = 0, dragOriginY = 0;
     let coastUntil = 0;
     let coastFromX = 0, coastFromY = 0;
@@ -2362,7 +2349,7 @@
           point.wentAway = true;
         aimPointers2(true);
       } else if (!pointers.size && plugState !== "unplugged" && activeKey === null && event.pointerType === "mouse")
-        aim2(event);
+        aimHover2(event);
     });
     stage.addEventListener("pointerleave", () => {
       if (!pointers.size && plugState !== "unplugged" && activeKey === null && performance.now() >= coastUntil)
@@ -2388,8 +2375,8 @@
       if (pointers.size === 1) {
         dragFromX = target.x = current.x;
         dragFromY = target.y = current.y;
-        dragStartX = event.clientX;
-        dragStartY = event.clientY;
+        current.rx = target.rx = velocity.rx = 0;
+        current.ry = target.ry = velocity.ry = 0;
         velocity.x = velocity.y = 0;
         begin2();
       } else if (gameButton) clickSound.play("press");
@@ -2504,7 +2491,7 @@
   var setPhase;
   var scheduleHoldBeat;
   var begin;
-  var aim;
+  var aimHover;
   var release;
   var keepDetachedButtonInView;
   var reset;
