@@ -185,59 +185,83 @@ button {
   color: var(--muted);
   font-size: 14px;
 }
-/* Native selector keeps every language discoverable by its own name. */
 .language-selector {
   position: relative;
-  margin: 0;
-  display: inline-flex;
   flex: 0 0 auto;
-  min-width: 0;
-  color: var(--muted);
+  /* Keep the flag and label columns fixed as the active language changes. */
+  direction: ltr;
+  width: 12.25rem;
+  max-width: 100%;
 }
-.language-selector select {
-  appearance: none;
-  field-sizing: content;
-  width: auto;
-  min-width: 128px;
-  max-width: 184px;
-  height: 44px;
-  margin: 0;
-  padding-block: 10px;
-  padding-inline: 38px 30px;
+#language-setting,
+#language-menu button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding-inline: 11px;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+#language-setting {
+  min-height: 44px;
+  padding-block: 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--well);
-  color-scheme: dark;
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
   font-weight: 650;
-  cursor: pointer;
-  text-overflow: ellipsis;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
 }
-/* Native popups can use a light system background instead of the control's. */
-.language-selector option {
-  background: var(--well);
-  color: var(--ink);
+#language-setting[aria-expanded="true"] {
+  border-color: var(--muted);
+  background: var(--panel);
 }
-.language-selector .icon {
-  position: absolute;
-  top: 12px;
+.language-flag {
+  display: block;
   width: 20px;
   height: 20px;
-  pointer-events: none;
-}
-.language-icon {
-  inset-inline-start: 12px;
 }
 .language-chevron {
-  inset-inline-end: 8px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
 }
-.language-selector:focus-within .language-icon {
-  color: var(--teal);
+#language-setting[aria-expanded="true"] .language-chevron {
+  transform: rotate(180deg);
+}
+#language-menu {
+  position: absolute;
+  z-index: 5;
+  inset: calc(100% + 5px) 0 auto;
+  max-height: min(25rem, 65dvh);
+  overflow: auto;
+  padding-block: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--well);
+  box-shadow: 0 8px 20px #0006;
+}
+#language-menu button {
+  min-height: 34px;
+  padding-block: 5px;
+  border: 0;
+  background: transparent;
+  outline-offset: -2px;
+}
+#language-menu button:focus,
+#language-menu button[aria-checked="true"] {
+  background: var(--panel-soft);
+}
+#language-menu button[aria-checked="true"]::after {
+  content: "";
+  justify-self: center;
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--teal);
+  border-bottom: 2px solid var(--teal);
+  transform: rotate(-45deg);
 }
 .button {
   display: inline-block;
@@ -1151,9 +1175,12 @@ footer a {
   text-align: center;
 }
 @media (hover: hover) {
-  .language-selector:hover select {
+  #language-setting:hover {
     border-color: var(--muted);
     background: var(--panel);
+  }
+  #language-menu button:hover {
+    background: var(--panel-soft);
   }
   .button:not(:disabled):hover {
     background: #ffdb72;

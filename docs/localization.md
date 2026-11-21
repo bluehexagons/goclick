@@ -15,12 +15,12 @@ language/direction.
 
 The supported languages are English, Simplified Chinese, Spanish, Arabic, Hindi,
 Indonesian, Brazilian Portuguese, French, Japanese, Russian, and German. The
-selector uses a compact globe control with native language names, without flags.
-Its translated accessible name identifies the action as Language; native options
-use explicit dark backgrounds and light text. The icon and arrow follow the
-selected language’s direction, and the header wraps on narrow screens. Chinese
-and Portuguese are represented by one written variant each, rather than all
-regional variants. Arabic uses right-to-left game/navigation/dialog layout.
+selector displays circular flags alongside native language names and marks the
+current choice. Its flag and label columns align with the trigger, and each name
+retains its own language and direction. The header wraps on narrow screens.
+Chinese and Portuguese each use one written variant. Arabic uses right-to-left
+game, navigation, and dialog layout. The [Circle Flags artwork](https://github.com/HatScripts/circle-flags/tree/v2.8.0)
+is served locally from [the SVG sprite](../internal/webapp/web/language-flags.svg).
 
 ## Why these languages
 
@@ -77,7 +77,8 @@ when motion is reduced. The canvas fits long text inside the button face.
   `Intl` for numbers, dates and grammatical units. Initial translations should
   receive native-speaker review as the language set develops.
 - `frontend/i18n.ts` owns locale matching, persistence helpers, formatting and
-  change listeners. Add languages, native names and direction to its registry.
+  change listeners. Add language codes, native names, directions and flag symbol
+  IDs to its registry. `frontend/language-picker.ts` renders the header menu.
   Screens can subscribe to language changes without importing game state.
 - Mark text-only leaves with `data-i18n="key"`. Mark tooltips and accessible names
   with `data-i18n-title` and `data-i18n-aria-label`. Keep SVGs and inputs outside

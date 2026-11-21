@@ -19,14 +19,89 @@ async function checkLanguage(page, baseURL) {
   await page.locator("#game-view").waitFor({ state: "visible" });
   requests.length = 0;
   const selector = page.locator("#language-setting");
-  const codes = await selector
-    .locator("option")
-    .evaluateAll((options) => options.map((o) => o.value));
+  const menu = page.locator("#language-menu");
+  const selectedName = page.locator("#language-name");
+  const codes = await menu.locator("button").evaluateAll((options) => options.map((o) => o.value));
   ensure(codes.length === 11, "Expected eleven languages");
+  await selector.press("ArrowDown");
+  ensure(
+    (await menu.locator(":focus").getAttribute("value")) === "en",
+    "ArrowDown did not open the menu",
+  );
+  await page.keyboard.press("End");
+  ensure(
+    (await menu.locator(":focus").getAttribute("value")) === "de",
+    "End did not focus the last language",
+  );
+  await page.keyboard.press("f");
+  ensure(
+    (await menu.locator(":focus").getAttribute("value")) === "fr",
+    "Typeahead did not find Français",
+  );
+  await page.keyboard.press("Enter");
+  ensure((await selectedName.getAttribute("lang")) === "fr", "Enter did not select Français");
+  ensure(
+    await selector.evaluate((button) => button === document.activeElement),
+    "Selection lost focus",
+  );
+  await selector.press("Space");
+  await page.keyboard.press("Escape");
+  ensure(await menu.isHidden(), "Escape did not close the menu");
+  ensure(
+    await selector.evaluate((button) => button === document.activeElement),
+    "Escape lost focus",
+  );
+  await selector.press("Space");
+  await page.keyboard.press("Tab");
+  ensure(await menu.isHidden(), "Tab did not close the menu");
+  ensure(
+    await selector.evaluate((button) => button !== document.activeElement),
+    "Tab did not move on",
+  );
+  await selector.click();
+  await page.locator(".site-header").click({ position: { x: 1, y: 1 } });
+  ensure(await menu.isHidden(), "Clicking outside did not close the menu");
+
+  async function choose(code) {
+    await selector.click();
+    await menu.locator(`button[value="${code}"]`).click();
+  }
+
   for (const width of [1280, 320]) {
     await page.setViewportSize({ width, height: 900 });
     for (const code of codes) {
-      await selector.selectOption(code);
+      await choose(code);
+      await selector.click();
+      const layout = await menu.evaluate((menu) => {
+        const trigger = document.querySelector("#language-setting");
+        const triggerBounds = trigger.getBoundingClientRect();
+        const menuBounds = menu.getBoundingClientRect();
+        const selected = menu.querySelector('[aria-checked="true"]');
+        const labelX = trigger.querySelector("bdi").getBoundingClientRect().left;
+        const flagX = trigger.querySelector("svg").getBoundingClientRect().left;
+        return {
+          aligned:
+            Math.abs(triggerBounds.left - menuBounds.left) < 1 &&
+            Math.abs(triggerBounds.right - menuBounds.right) < 1 &&
+            [...menu.querySelectorAll("button")].every(
+              (row) =>
+                Math.abs(row.querySelector("bdi").getBoundingClientRect().left - labelX) < 1 &&
+                Math.abs(row.querySelector("svg").getBoundingClientRect().left - flagX) < 1,
+            ),
+          fits: menuBounds.left >= 0 && menuBounds.right <= innerWidth,
+          selected: selected?.value,
+          flag: trigger.querySelector("use").getAttribute("href"),
+          selectedFlag: selected?.querySelector("use").getAttribute("href"),
+          flagsRender: [...menu.querySelectorAll("use")].every((icon) => icon.getBBox().width > 0),
+        };
+      });
+      ensure(layout.aligned && layout.fits, `${code} at ${width}: menu alignment or overflow`);
+      ensure(
+        layout.selected === code && layout.flag === layout.selectedFlag,
+        `${code}: wrong selection`,
+      );
+      ensure(layout.flagsRender, "One or more flags failed to render");
+      await page.keyboard.press("Escape");
       const state = await page.evaluate(() => {
         const game = document.querySelector("#game-view");
         const visibleControls = [
@@ -59,7 +134,7 @@ async function checkLanguage(page, baseURL) {
       ensure(!state.overflow && state.controlsFit, `${code} at ${width}: horizontal overflow`);
     }
   }
-  await selector.selectOption("ar");
+  await choose("ar");
   await page.evaluate(() => {
     window.originalRandom = Math.random;
     Math.random = () => 0.99;
@@ -79,7 +154,10 @@ async function checkLanguage(page, baseURL) {
     (await page.locator(".game .button-label").getAttribute("lang")) !== "ar",
     "Button did not switch languages",
   );
-  ensure((await selector.inputValue()) === "ar", "Button surprise changed selected UI language");
+  ensure(
+    (await selectedName.getAttribute("lang")) === "ar",
+    "Button surprise changed selected UI language",
+  );
   ensure(
     (await page.locator("#click-button").getAttribute("lang")) === "ar",
     "Accessible action lost its UI language",
@@ -111,7 +189,7 @@ async function checkLanguage(page, baseURL) {
   await page.locator("#close-share").click();
   await page.reload();
   await page.locator("#game-view").waitFor({ state: "visible" });
-  ensure((await selector.inputValue()) === "ar", "Language did not survive reload");
+  ensure((await selectedName.getAttribute("lang")) === "ar", "Language did not survive reload");
   ensure(
     (await page.locator("#click-count").textContent()) === new Intl.NumberFormat("ar").format(3),
     "Save changed on reload",

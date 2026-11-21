@@ -1,6 +1,6 @@
 // Required markup is a programming invariant. Fail with a useful selector
 // instead of spreading unchecked nullable elements through event handlers.
-export function required<T extends HTMLElement = HTMLElement>(
+export function required<T extends Element = HTMLElement>(
   selector: string,
   root: ParentNode = document,
 ): T {

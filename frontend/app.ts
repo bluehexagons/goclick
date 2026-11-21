@@ -9,8 +9,8 @@ import { clickFeedback } from "./click-feedback.js";
 import { clickSound } from "./sound.js";
 import { isSoundProfile, soundProfiles } from "./sound-design.js";
 import { statsShare } from "./share.js";
+import { languagePicker } from "./language-picker.js";
 import {
-  languages,
   languageStorageKey,
   currentLanguage,
   languageDirection,
@@ -18,8 +18,6 @@ import {
   formatNumber,
   formatUnit,
   readLanguage,
-  rememberLanguage,
-  supportedLanguage,
   setLanguage,
   onLanguageChange,
   translatePage,
@@ -1134,19 +1132,11 @@ window.addEventListener("storage", (event) => {
   if (event.key === localGame.key || event.key === null) synchronizeLocalSave();
 });
 
-const languageSetting = $<HTMLSelectElement>("#language-setting");
-for (const language of languages) {
-  const option = document.createElement("option");
-  option.value = language.code;
-  option.textContent = language.name;
-  option.lang = language.code;
-  option.dir = language.dir;
-  languageSetting.append(option);
-}
+const paintLanguagePicker = languagePicker();
 function applyLanguage() {
   translatePage();
   updateSoundToggle();
-  languageSetting.value = currentLanguage();
+  paintLanguagePicker();
   document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
   buttonLanguage.reset(currentLanguage());
   paintButtonLanguage(currentLanguage());
@@ -1161,10 +1151,6 @@ function applyLanguage() {
 onLanguageChange(applyLanguage);
 setLanguage(readLanguage());
 applyLanguage();
-languageSetting.addEventListener("change", () => {
-  const language = supportedLanguage(languageSetting.value);
-  if (language && !rememberLanguage(language)) languageSetting.title = t("languageVisit");
-});
 window.addEventListener("storage", (event) => {
   if (event.key === languageStorageKey || event.key === null) setLanguage(readLanguage());
 });

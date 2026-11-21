@@ -38,21 +38,28 @@
           </a>
         </div>
         <div class="header-actions">
-          <label class="language-selector" data-game-language>
-            <svg class="icon language-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <use href="/icons.svg#globe" />
-            </svg>
-            <select
+          <div class="language-selector" data-game-language>
+            <span id="language-label" class="visually-hidden" data-i18n="language">Language</span>
+            <button
               id="language-setting"
-              aria-label="Language"
-              data-i18n-aria-label="language"
+              type="button"
+              aria-labelledby="language-label language-name"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="language-menu"
               title="Game language · remembered in this browser"
               data-i18n-title="languageHint"
-            ></select>
-            <svg class="icon language-chevron" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m8 10 4 4 4-4" />
-            </svg>
-          </label>
+            >
+              <svg class="language-flag" viewBox="0 0 512 512" aria-hidden="true">
+                <use id="language-flag" href="/language-flags.svg#gb" />
+              </svg>
+              <bdi id="language-name" lang="en" dir="ltr">English</bdi>
+              <svg class="icon language-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 10 4 4 4-4" />
+              </svg>
+            </button>
+            <div id="language-menu" role="menu" aria-labelledby="language-label" hidden></div>
+          </div>
           <nav id="guest-nav" class="nav-actions" aria-label="Account" hidden>
             <button class="button button-quiet" type="button" data-view="login">Sign in</button>
             <button class="button button-small" type="button" data-view="signup">

@@ -2,17 +2,17 @@ import { english, translations } from "./messages.js";
 import type { MessageKey, Messages } from "./messages.js";
 
 export const languages = [
-  { code: "en", name: "English", dir: "ltr" },
-  { code: "zh-Hans", name: "简体中文", dir: "ltr" },
-  { code: "es", name: "Español", dir: "ltr" },
-  { code: "ar", name: "العربية", dir: "rtl" },
-  { code: "hi", name: "हिन्दी", dir: "ltr" },
-  { code: "id", name: "Bahasa Indonesia", dir: "ltr" },
-  { code: "pt-BR", name: "Português", dir: "ltr" },
-  { code: "fr", name: "Français", dir: "ltr" },
-  { code: "ja", name: "日本語", dir: "ltr" },
-  { code: "ru", name: "Русский", dir: "ltr" },
-  { code: "de", name: "Deutsch", dir: "ltr" },
+  { code: "en", name: "English", dir: "ltr", flag: "gb" },
+  { code: "zh-Hans", name: "简体中文", dir: "ltr", flag: "cn" },
+  { code: "es", name: "Español", dir: "ltr", flag: "es" },
+  { code: "ar", name: "العربية", dir: "rtl", flag: "ar" },
+  { code: "hi", name: "हिन्दी", dir: "ltr", flag: "in" },
+  { code: "id", name: "Bahasa Indonesia", dir: "ltr", flag: "id" },
+  { code: "pt-BR", name: "Português", dir: "ltr", flag: "br" },
+  { code: "fr", name: "Français", dir: "ltr", flag: "fr" },
+  { code: "ja", name: "日本語", dir: "ltr", flag: "jp" },
+  { code: "ru", name: "Русский", dir: "ltr", flag: "ru" },
+  { code: "de", name: "Deutsch", dir: "ltr", flag: "de" },
 ] as const;
 export type Language = (typeof languages)[number]["code"];
 export const languageStorageKey = "goclick.language.v1";

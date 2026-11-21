@@ -75,7 +75,7 @@ func TestFrontendOnlyServesPublicAssets(t *testing.T) {
 	app := &App{static: static}
 	for _, target := range []string{
 		"/", "/index.html", "/app.js", "/app.css",
-		"/admin.js", "/admin.css", "/favicon.svg", "/icons.svg", "/achievement-icons.svg",
+		"/admin.js", "/admin.css", "/favicon.svg", "/icons.svg", "/achievement-icons.svg", "/language-flags.svg",
 		"/button-material.svg", "/button-glow.svg", "/background-grain.svg",
 	} {
 		response := httptest.NewRecorder()

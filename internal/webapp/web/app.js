@@ -2919,17 +2919,17 @@
 
   // frontend/i18n.ts
   var languages = [
-    { code: "en", name: "English", dir: "ltr" },
-    { code: "zh-Hans", name: "\u7B80\u4F53\u4E2D\u6587", dir: "ltr" },
-    { code: "es", name: "Espa\xF1ol", dir: "ltr" },
-    { code: "ar", name: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629", dir: "rtl" },
-    { code: "hi", name: "\u0939\u093F\u0928\u094D\u0926\u0940", dir: "ltr" },
-    { code: "id", name: "Bahasa Indonesia", dir: "ltr" },
-    { code: "pt-BR", name: "Portugu\xEAs", dir: "ltr" },
-    { code: "fr", name: "Fran\xE7ais", dir: "ltr" },
-    { code: "ja", name: "\u65E5\u672C\u8A9E", dir: "ltr" },
-    { code: "ru", name: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439", dir: "ltr" },
-    { code: "de", name: "Deutsch", dir: "ltr" }
+    { code: "en", name: "English", dir: "ltr", flag: "gb" },
+    { code: "zh-Hans", name: "\u7B80\u4F53\u4E2D\u6587", dir: "ltr", flag: "cn" },
+    { code: "es", name: "Espa\xF1ol", dir: "ltr", flag: "es" },
+    { code: "ar", name: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629", dir: "rtl", flag: "ar" },
+    { code: "hi", name: "\u0939\u093F\u0928\u094D\u0926\u0940", dir: "ltr", flag: "in" },
+    { code: "id", name: "Bahasa Indonesia", dir: "ltr", flag: "id" },
+    { code: "pt-BR", name: "Portugu\xEAs", dir: "ltr", flag: "br" },
+    { code: "fr", name: "Fran\xE7ais", dir: "ltr", flag: "fr" },
+    { code: "ja", name: "\u65E5\u672C\u8A9E", dir: "ltr", flag: "jp" },
+    { code: "ru", name: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439", dir: "ltr", flag: "ru" },
+    { code: "de", name: "Deutsch", dir: "ltr", flag: "de" }
   ];
   var languageStorageKey = "goclick.language.v1";
   var language = "en";
@@ -4210,6 +4210,112 @@
       }
     };
   })();
+
+  // frontend/language-picker.ts
+  var svgNS = "http://www.w3.org/2000/svg";
+  var flagHref = (flag) => `/language-flags.svg#${flag}`;
+  function languagePicker() {
+    const picker = required(".language-selector");
+    const trigger = required("#language-setting");
+    const menu = required("#language-menu");
+    const selectedFlag = required("#language-flag");
+    const selectedName = required("#language-name");
+    const options = languages.map(({ code, name, dir, flag }) => {
+      const button = document.createElement("button");
+      const icon = document.createElementNS(svgNS, "svg");
+      const use = document.createElementNS(svgNS, "use");
+      const label = document.createElement("bdi");
+      button.type = "button";
+      button.value = code;
+      button.tabIndex = -1;
+      button.setAttribute("role", "menuitemradio");
+      icon.setAttribute("class", "language-flag");
+      icon.setAttribute("viewBox", "0 0 512 512");
+      icon.setAttribute("aria-hidden", "true");
+      use.setAttribute("href", flagHref(flag));
+      icon.append(use);
+      label.lang = code;
+      label.dir = dir;
+      label.textContent = name;
+      button.append(icon, label);
+      button.addEventListener("click", () => {
+        trigger.title = message2(rememberLanguage(code) ? "languageHint" : "languageVisit");
+        close(true);
+      });
+      menu.append(button);
+      return button;
+    });
+    function open(index) {
+      menu.hidden = false;
+      trigger.setAttribute("aria-expanded", "true");
+      options[index].focus();
+    }
+    function close(restoreFocus = false) {
+      if (menu.hidden) return;
+      menu.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+      if (restoreFocus) trigger.focus();
+    }
+    trigger.addEventListener("click", () => {
+      if (menu.hidden) open(languages.findIndex(({ code }) => code === currentLanguage()));
+      else close(true);
+    });
+    trigger.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      event.preventDefault();
+      open(event.key === "ArrowDown" ? 0 : options.length - 1);
+    });
+    menu.addEventListener("keydown", (event) => {
+      const index = options.findIndex((option) => option === document.activeElement);
+      let next;
+      switch (event.key) {
+        case "ArrowDown":
+          next = (index + 1) % options.length;
+          break;
+        case "ArrowUp":
+          next = (index + options.length - 1) % options.length;
+          break;
+        case "Home":
+          next = 0;
+          break;
+        case "End":
+          next = options.length - 1;
+          break;
+        case "Escape":
+          event.preventDefault();
+          close(true);
+          return;
+        case "Tab":
+          close(true);
+          return;
+        default: {
+          if (event.key.length !== 1 || event.key === " " || event.ctrlKey || event.metaKey || event.altKey)
+            return;
+          const prefix = event.key.toLowerCase();
+          const match = languages.slice(index + 1).concat(languages.slice(0, index + 1)).find(({ name }) => name.toLowerCase().startsWith(prefix));
+          if (!match) return;
+          next = languages.indexOf(match);
+        }
+      }
+      event.preventDefault();
+      options[next].focus();
+    });
+    function dismissOutside(event) {
+      if (!menu.hidden && !picker.contains(event.target)) close();
+    }
+    document.addEventListener("focusin", dismissOutside);
+    document.addEventListener("pointerdown", dismissOutside);
+    return () => {
+      const selected = languages.find(({ code }) => code === currentLanguage());
+      selectedFlag.setAttribute("href", flagHref(selected.flag));
+      selectedName.textContent = selected.name;
+      selectedName.lang = selected.code;
+      selectedName.dir = selected.dir;
+      for (const option of options) {
+        option.setAttribute("aria-checked", String(option.value === selected.code));
+      }
+    };
+  }
 
   // frontend/timestamp.ts
   function parseStoredTimestamp(value) {
@@ -5735,19 +5841,11 @@
   window.addEventListener("storage", (event) => {
     if (event.key === localGame.key || event.key === null) synchronizeLocalSave();
   });
-  var languageSetting = required("#language-setting");
-  for (const language2 of languages) {
-    const option = document.createElement("option");
-    option.value = language2.code;
-    option.textContent = language2.name;
-    option.lang = language2.code;
-    option.dir = language2.dir;
-    languageSetting.append(option);
-  }
+  var paintLanguagePicker = languagePicker();
   function applyLanguage() {
     translatePage();
     updateSoundToggle();
-    languageSetting.value = currentLanguage();
+    paintLanguagePicker();
     document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
     buttonLanguage.reset(currentLanguage());
     paintButtonLanguage(currentLanguage());
@@ -5762,10 +5860,6 @@
   onLanguageChange(applyLanguage);
   setLanguage(readLanguage());
   applyLanguage();
-  languageSetting.addEventListener("change", () => {
-    const language2 = supportedLanguage(languageSetting.value);
-    if (language2 && !rememberLanguage(language2)) languageSetting.title = message2("languageVisit");
-  });
   window.addEventListener("storage", (event) => {
     if (event.key === languageStorageKey || event.key === null) setLanguage(readLanguage());
   });

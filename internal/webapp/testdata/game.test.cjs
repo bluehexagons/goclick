@@ -45,7 +45,10 @@ async function harness(options = {}) {
     getBoundingClientRect() {
       return { width: 100, height: 100, top: 0, left: 0 };
     }
-    append() {}
+    children = [];
+    append(...children) {
+      this.children.push(...children);
+    }
     remove() {}
     classList = {
       add: (...names) => names.forEach((name) => this.classes.add(name)),
@@ -219,6 +222,11 @@ async function harness(options = {}) {
     context,
     rememberButtonActivation: runtime.load("button-tricks").rememberButtonActivation,
     element,
+    chooseLanguage(code) {
+      return element("#language-menu")
+        .children.find((option) => option.value === code)
+        .fire("click");
+    },
     document,
     window,
     requests,
@@ -274,8 +282,7 @@ test("speaker follows cross-tab settings and language changes without account re
   assert.equal(toggle.attributes.get("aria-pressed"), "false");
   h.window.fire("storage", { key: "goclick.settings.v1", newValue: '{"sound":true}' });
   assert.equal(toggle.attributes.get("aria-pressed"), "true");
-  h.element("#language-setting").value = "es";
-  h.element("#language-setting").fire("change");
+  h.chooseLanguage("es");
   assert.equal(toggle.attributes.get("aria-label"), "Efectos de sonido");
   assert.match(toggle.title, /Sonido activado/);
   assert.equal(toggle.attributes.get("aria-pressed"), "true");
@@ -1168,9 +1175,7 @@ test("changing game language preserves pending clicks, ordering and account iden
   const save = deferred();
   h.fetch(() => save.promise);
   const click = h.element("#click-button").fire("click");
-  const selector = h.element("#language-setting");
-  selector.value = "ar";
-  selector.fire("change");
+  h.chooseLanguage("ar");
   assert.equal(h.storage.get("goclick.language.v1"), "ar");
   assert.equal(h.document.documentElement.lang, "ar");
   assert.equal(h.element("#click-count").textContent, new Intl.NumberFormat("ar").format(12345));
@@ -1193,11 +1198,10 @@ test("saved game language applies on boot and cross-tab updates do not make acco
   h.storage.set("goclick.language.v1", "ja");
   h.window.fire("storage", { key: "goclick.language.v1" });
   assert.equal(h.element("#counter-label").textContent, "保存済みクリック");
-  assert.equal(h.element("#language-setting").value, "ja");
+  assert.equal(h.element("#language-name").lang, "ja");
   assert.deepEqual(h.requests, []);
   h.failStorage();
-  h.element("#language-setting").value = "fr";
-  h.element("#language-setting").fire("change");
+  h.chooseLanguage("fr");
   assert.equal(h.element("#counter-label").textContent, "Clics enregistrés");
   assert.equal(h.element("#click-count").textContent, "10");
   assert.deepEqual(h.requests, []);
@@ -1207,16 +1211,14 @@ test("share preview and errors follow language changes without losing the curren
   const h = await harness();
   await h.element("#share-stats").fire("click");
   assert.equal(h.element("#share-dialog").open, true);
-  h.element("#language-setting").value = "es";
-  h.element("#language-setting").fire("change");
+  h.chooseLanguage("es");
   assert.match(h.element("#share-text").value, /Clics guardados: 10/);
   assert.match(h.element("#share-status").textContent, /Portapapeles/);
   assert.equal(h.element("#share-dialog").open, true);
   h.fetch(async () => response({ error: "Synthetic failure" }, 400));
   await h.element("#click-button").fire("click");
   assert.match(h.element("#game-error").textContent, /Tu clic no se guardó/);
-  h.element("#language-setting").value = "de";
-  h.element("#language-setting").fire("change");
+  h.chooseLanguage("de");
   assert.match(h.element("#game-error").textContent, /Dein Klick wurde nicht gespeichert/);
   assert.equal(h.element("#game-error").hidden, false);
   assert.equal(h.requests.length, 1);
@@ -1399,12 +1401,10 @@ test("the streak readout uses singular and plural units in the selected language
   ])
     assert.equal(h.element(`#${unit}-streak-unit`).textContent, label);
 
-  h.element("#language-setting").value = "ru";
-  h.element("#language-setting").fire("change");
+  h.chooseLanguage("ru");
   assert.equal(h.element("#month-streak").textContent, "2");
   assert.equal(h.element("#month-streak-unit").textContent, "месяца");
-  h.element("#language-setting").value = "ar";
-  h.element("#language-setting").fire("change");
+  h.chooseLanguage("ar");
   assert.equal(h.element("#month-streak").textContent, "شهران");
   assert.equal(h.element("#month-streak-unit").hidden, true);
 });
