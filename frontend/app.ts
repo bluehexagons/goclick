@@ -2,7 +2,7 @@ import "./focus.js";
 import "./interaction.js";
 import { request, requestError, retryAfterMilliseconds } from "./http.js";
 import { required as $ } from "./dom.js";
-import { gameSettings, motionPreference } from "./preferences.js";
+import { gameSettings, isSimulatedPing, motionPreference } from "./preferences.js";
 import { localGame } from "./local-game.js";
 import { tactileButtons } from "./button.js";
 import { clickFeedback } from "./click-feedback.js";
@@ -976,8 +976,7 @@ motionShortcut.addEventListener("click", () => {
 });
 simulatedPingSetting.addEventListener("change", () => {
   const simulatedPing = Number(simulatedPingSetting.value);
-  if (simulatedPing === 0 || simulatedPing === 80 || simulatedPing === 250 || simulatedPing === 800)
-    saveOption({ simulatedPing });
+  if (isSimulatedPing(simulatedPing)) saveOption({ simulatedPing });
 });
 function openLocalGame(data?: Counters) {
   show(pageFromLocation());

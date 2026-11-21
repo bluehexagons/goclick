@@ -234,7 +234,7 @@ for (const sampleRate of [44100, 48000])
       const first = h.buffers.at(-2).samples,
         second = h.buffers.at(-1).samples;
       assert.notDeepEqual(first, second, kind);
-      assert.ok(first.length > sampleRate * 0.04 && first.length < sampleRate * 0.18);
+      assert.ok(first.length > sampleRate * 0.025 && first.length < sampleRate * 0.18);
       assert.equal(Math.abs(first[0]), 0);
       assert.ok(Math.abs(first.at(-1)) === 0);
       let peak = 0;
@@ -497,7 +497,7 @@ test("preview stays muted by default, schedules a sample sequence, and can be st
   assert.equal(h.sources.length, 3);
   assert.deepEqual(
     h.sources.map((source) => source.startTime),
-    [10, 10.06, 10.18],
+    [10, 10.06, 10.06 + 0.05],
   );
   h.sound.setEnabled(false);
   assert.ok(h.sources.every((source) => source.stopped && source.disconnected));
@@ -830,5 +830,5 @@ test("preview timing uses a single audio-clock origin despite synthesis cost", (
   h.sound.preview();
   const [press, release, reply] = h.sources.map((voice) => voice.startTime);
   assert.ok(Math.abs(release - press - 0.06) < 1e-8);
-  assert.ok(Math.abs(reply - press - 0.18) < 1e-8);
+  assert.ok(Math.abs(reply - release - 0.05) < 1e-8);
 });

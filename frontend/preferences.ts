@@ -1,13 +1,18 @@
 import { isRecord } from "./dom.js";
-import { isSoundProfile } from "./sound-design.js";
+import { isSoundProfile, typicalSaveDelayMs } from "./sound-design.js";
 import type { SoundProfile } from "./sound-design.js";
 
 // Shared by the renderer, input controller and app. Manual choices override both
 // JavaScript animations and CSS; Auto follows a live OS/browser preference.
 type MotionSetting = "auto" | "on" | "off";
+const simulatedPings = [0, typicalSaveDelayMs, 80, 250, 800] as const;
+type SimulatedPing = (typeof simulatedPings)[number];
+export function isSimulatedPing(value: unknown): value is SimulatedPing {
+  return simulatedPings.some((ping) => ping === value);
+}
 interface Settings {
   motion: MotionSetting;
-  simulatedPing: 0 | 80 | 250 | 800;
+  simulatedPing: SimulatedPing;
   sound: boolean;
   soundProfile: SoundProfile;
   soundVolume: number;
@@ -21,7 +26,7 @@ const gameSettings = (() => {
   const settingListeners = new Set<() => void>();
   let value: Settings = {
     motion: "auto",
-    simulatedPing: 80,
+    simulatedPing: typicalSaveDelayMs,
     sound: false,
     soundProfile: "classic",
     soundVolume: defaultSoundVolume,
@@ -42,10 +47,9 @@ const gameSettings = (() => {
           : defaultSoundVolume,
       soundReverb: saved.soundReverb !== false,
       motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "auto",
-      simulatedPing:
-        saved.simulatedPing === 0 || saved.simulatedPing === 250 || saved.simulatedPing === 800
-          ? saved.simulatedPing
-          : 80,
+      simulatedPing: isSimulatedPing(saved.simulatedPing)
+        ? saved.simulatedPing
+        : typicalSaveDelayMs,
     };
   }
   try {

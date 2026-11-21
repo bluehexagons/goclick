@@ -392,6 +392,19 @@ test("profile controls follow cross-tab choices, storage failure, and legacy fal
   assert.deepEqual(h.requests, []);
 });
 
+test("simulated ping defaults to 50 ms and preserves an existing 80 ms setting", async () => {
+  const defaultPlayer = await harness();
+  assert.equal(defaultPlayer.element("#simulated-ping").value, "50");
+  const existingPlayer = await harness({
+    storage: [["goclick.settings.v1", '{"simulatedPing":80}']],
+  });
+  const ping = existingPlayer.element("#simulated-ping");
+  assert.equal(ping.value, "80");
+  ping.value = "50";
+  ping.fire("change");
+  assert.equal(JSON.parse(existingPlayer.storage.get("goclick.settings.v1")).simulatedPing, 50);
+});
+
 test("volume and room settings update, persist, and follow other tabs", async () => {
   const volumes = [],
     reverb = [];

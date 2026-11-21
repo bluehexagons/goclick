@@ -123,7 +123,7 @@ for (const rate of [44100, 48000, 96000])
         const b = renderSound(id, cue, rate, motion.sample(time + 250, cue === "press"), noise());
         time += 500;
         assert.notDeepEqual(a, b, `${id}.${cue} must vary even with the same noise seed`);
-        assert.ok(a.length > rate * 0.04 && a.length < rate * 0.18);
+        assert.ok(a.length > rate * 0.025 && a.length < rate * 0.18);
         assert.equal(Math.abs(a[0]), 0);
         assert.equal(Math.abs(a.at(-1)), 0);
         for (const sample of a)
@@ -211,6 +211,43 @@ test("release envelopes stay shorter, lighter, and lower in energy than presses"
   }
 });
 
+test("save cues stand clear of the strokes and early room reflections at 30–70 ms", () => {
+  const { soundProfiles, createSoundMotion, renderRoomImpulse, renderSound } = design();
+  const rate = 48000;
+  const variation = createSoundMotion(() => 0.5).sample(0);
+  // Use the direct signal and the discrete room reflections.
+  const taps = [
+    [0, 1],
+    ...Array.from(renderRoomImpulse(rate, () => 0.5).entries()).filter(([, gain]) => gain !== 0),
+  ];
+  const mix = (track, samples, start) => {
+    for (const [delay, gain] of taps) {
+      for (let i = 0; i < samples.length; i++) track[start + delay + i] += samples[i] * gain;
+    }
+  };
+  for (const { id } of soundProfiles) {
+    const render = (cue) => renderSound(id, cue, rate, variation, noise());
+    const press = render("press");
+    const release = render("release");
+    const saved = render("saved");
+    assert.ok(saved.length < rate * 0.032, id);
+    assert.notDeepEqual(saved, render("slow"), id);
+    for (const hold of [20, 60]) {
+      const strokes = new Float32Array(rate * 0.2);
+      mix(strokes, press, 0);
+      mix(strokes, release, (hold * rate) / 1000);
+      for (const ping of [30, 50, 70]) {
+        const at = ((hold + ping) * rate) / 1000;
+        const overlap = weightedEnergy(strokes.slice(at, at + saved.length), rate);
+        assert.ok(
+          overlap < weightedEnergy(saved, rate) * 0.5,
+          `${id} at ${hold} ms hold and ${ping} ms ping`,
+        );
+      }
+    }
+  }
+});
+
 test("Blip failure and cooldown cues step down while success cues step up", () => {
   const { createSoundMotion, renderSound } = design();
   const variation = createSoundMotion(() => 0.5).sample(0);
@@ -223,8 +260,8 @@ test("Blip failure and cooldown cues step down while success cues step up", () =
   for (const rate of [44100, 48000, 96000]) {
     for (const cue of ["saved", "slow", "error", "limited"]) {
       const samples = renderSound("blip", cue, rate, variation, noise());
-      const early = frequency(samples, rate, 0.002, 0.017);
-      const late = frequency(samples, rate, 0.035, 0.065);
+      const early = frequency(samples, rate, 0.002, cue === "saved" ? 0.007 : 0.017);
+      const late = frequency(samples, rate, 0.02, cue === "saved" ? 0.028 : 0.049);
       assert.ok(cue === "error" || cue === "limited" ? late < early : late > early, cue);
     }
   }

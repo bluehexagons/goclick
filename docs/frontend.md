@@ -62,17 +62,18 @@ Sound is independently optional and off by default. The header speaker toggle
 persists a boolean in `goclick.settings.v1` and synchronizes it across tabs.
 Options offers Classic (metal switch), Blip (arcade pulses), Clack (short key
 click), Clunk (muffled impact), Low beep (rounded sine tones), and
-Soft chime (inharmonic glassy partials). Each recipe supplies distinct press,
-release, and much quieter saved/slow/error/cooldown cues. Releases use their own
-shorter duration, faster decay, and lower level to keep the return stroke light
-and rapid clicks clear. The chosen `soundProfile` is stored alongside the sound
-boolean; legacy or unknown choices fall back to Classic. Choosing a profile
+Soft chime (inharmonic glassy partials). Each profile defines its own press,
+release, and save sound. A successful save plays a brief, quiet accent of the
+same material or instrument. Releases decay quickly to leave room for a save
+response arriving 30–70 ms later. Slow, error, and cooldown cues use the same
+profile and have distinct shapes. The chosen `soundProfile` is stored alongside
+the sound boolean; legacy or unknown choices fall back to Classic. Choosing a profile
 never enables sound automatically. The master volume applies to all cues and
 their room reflections. Legacy preferences start at full volume with room
 reverb enabled. Both settings are saved in the same record and sync across tabs.
-Options and the header share the same sound toggle. Preview schedules a press,
-release, and reply on the audio clock without touching game saves or the API;
-muting, hiding, changing profiles, or another preview stops that sequence.
+Options and the header share the same sound toggle. Preview schedules a
+press and release, followed by the save sound 50 ms after release. Muting,
+hiding, changing profiles, or starting another preview stops the sequence.
 Release and reply share the press's audio-clock origin, so synthesis cost does
 not add extra delay between the preview cues.
 Closing Options, losing focus, or starting a real game press also cancels the
@@ -97,8 +98,9 @@ downward error/cooldown tones.
 Room reverb shares a generated impulse response across gameplay and preview
 convolvers. Starting a new preview or changing profiles clears both paths.
 Closing Options cuts the preview tail independently of gameplay audio.
-Offline responses follow the simulated ping timing. Cancelled/outside releases,
-repeated keydowns, and suppressed native clicks produce no release sound.
+Online response sounds follow actual acknowledgements. Offline responses follow
+the simulated ping setting, which defaults to around 50 ms. Cancelled/outside
+releases, repeated keydowns, and suppressed native clicks produce no release sound.
 Explicitly enabling sound prepares the audio device silently. When the game
 button first appears, a remembered sound preference lets its boot tones play
 if the browser allows autoplay. A blocked startup cue expires instead of

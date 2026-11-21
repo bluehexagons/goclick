@@ -1,6 +1,7 @@
 import { powerBootDuration, powerBootSteps } from "./power-sequence.js";
 
 export type SoundCue = "press" | "release" | "saved" | "slow" | "error" | "limited" | "hold";
+export const typicalSaveDelayMs = 50;
 
 // Keep the chooser and validation on the same small, dependency-free catalog.
 export const soundProfiles = [
@@ -103,8 +104,8 @@ const recipes = {
   classic: {
     pitch: 175,
     end: 65,
-    release: { pitch: 1.5, duration: 0.065, decay: 0.011 },
-    reply: 1100,
+    release: { pitch: 1.5, duration: 0.034, decay: 0.007 },
+    save: { pitch: 820, end: 950, attack: 0.0007, decay: 0.0045 },
     ring: 1450,
     duration: 0.095,
     decay: 0.018,
@@ -113,61 +114,62 @@ const recipes = {
   blip: {
     pitch: 620,
     end: 830,
-    release: { pitch: 1.35, duration: 0.06, decay: 0.015 },
-    reply: 1400,
+    release: { pitch: 1.35, duration: 0.036, decay: 0.008 },
+    save: { pitch: 1100, end: 1390, attack: 0.0015, decay: 0.006 },
     ring: 1240,
     duration: 0.075,
     decay: 0.021,
     attack: 0.0015,
   },
   clack: {
-    release: { duration: 0.045, decay: 0.006 },
+    release: { duration: 0.028, decay: 0.005 },
+    save: { decay: 0.003, brightness: 0.76 },
     duration: 0.065,
     decay: 0.009,
     attack: 0.0005,
   },
   clunk: {
-    release: { duration: 0.085, decay: 0.017 },
+    release: { duration: 0.038, decay: 0.009 },
+    save: { decay: 0.006, brightness: 1.1 },
     duration: 0.13,
-    decay: 0.027,
+    decay: 0.02,
     attack: 0.0015,
   },
   "low-beep": {
     pitch: 170,
     end: 160,
-    release: { pitch: 1.3, duration: 0.075, decay: 0.021 },
-    reply: 340,
+    release: { pitch: 1.3, duration: 0.04, decay: 0.009 },
+    save: { pitch: 275, end: 310, attack: 0.003, decay: 0.008 },
     ring: 340,
     duration: 0.11,
-    decay: 0.03,
+    decay: 0.023,
     attack: 0.005,
   },
   "soft-chime": {
     pitch: 440,
     end: 440,
-    release: { pitch: 1.25, duration: 0.115, decay: 0.028 },
-    reply: 880,
+    release: { pitch: 1.25, duration: 0.043, decay: 0.01 },
+    save: { pitch: 660, end: 660, attack: 0.0025, decay: 0.009 },
     ring: 1214,
     duration: 0.16,
-    decay: 0.037,
+    decay: 0.024,
     attack: 0.004,
   },
 } satisfies Record<SoundProfile, object>;
 const responses = {
-  saved: { pitch: 1, end: 1.16, level: 0.017 },
-  slow: { pitch: 0.64, end: 0.77, level: 0.015 },
-  error: { pitch: 0.25, end: 0.16, level: 0.019 },
-  limited: { pitch: 0.35, end: 0.28, level: 0.016 },
-  hold: { pitch: 0.56, end: 0.58, level: 0.007 },
+  saved: { level: 0.015, duration: 0.03 },
+  slow: { pitch: 0.64, end: 0.77, level: 0.014, duration: 0.052, decay: 0.012 },
+  error: { pitch: 0.25, end: 0.16, level: 0.019, duration: 0.069, decay: 0.017 },
+  limited: { pitch: 0.35, end: 0.28, level: 0.016, duration: 0.062, decay: 0.014 },
+  hold: { pitch: 0.56, end: 0.58, level: 0.007, duration: 0.04, decay: 0.009 },
 };
 // Mechanical replies use short noise envelopes. Rejections have a second tap.
 const impactResponses = {
-  saved: { decay: 0.0045, brightness: 0.95 },
   slow: { decay: 0.01, brightness: 0.75 },
   error: { decay: 0.006, brightness: 0.65, repeatAt: 0.022 },
   limited: { decay: 0.005, brightness: 0.55, repeatAt: 0.034 },
   hold: { decay: 0.008, brightness: 0.72 },
-} satisfies Record<keyof typeof responses, ImpactEnvelope>;
+} satisfies Record<Exclude<keyof typeof responses, "saved">, ImpactEnvelope>;
 
 interface ImpactEnvelope {
   decay: number;
@@ -247,23 +249,40 @@ export function renderSound(
   const recipe = recipes[profile];
   const physical = cue === "press" || cue === "release";
   const response = physical ? null : responses[cue];
+  const saved = cue === "saved";
   // The return stroke is a smaller, quicker movement than pressing down.
   // Give it its own envelope so rapid clicks retain two distinct transients.
   const release = cue === "release" ? recipe.release : null;
-  const level = (response?.level ?? (release ? 0.031 : 0.056)) * variation.strength;
-  const decay = response ? 0.025 : (release?.decay ?? recipe.decay);
-  const duration = (release?.duration ?? recipe.duration) * variation.duration;
+  const level = (response?.level ?? (release ? 0.027 : 0.056)) * variation.strength;
+  const duration =
+    (response?.duration ?? release?.duration ?? recipe.duration) * variation.duration;
   const samples = new Float32Array(Math.ceil(sampleRate * duration));
   if (profile === "clack" || profile === "clunk") {
-    const envelope = physical ? { decay } : impactResponses[cue];
+    const envelope = saved
+      ? recipes[profile].save
+      : physical
+        ? { decay: release?.decay ?? recipe.decay }
+        : impactResponses[cue];
     renderImpact(samples, profile, sampleRate, recipe.attack, envelope, variation, random);
     return matchCueLevel(samples, sampleRate, level);
   }
   const oscillator = recipes[profile];
   const multiplier = cue === "release" ? oscillator.release.pitch : 1;
-  const pitch = response ? oscillator.reply * response.pitch : oscillator.pitch * multiplier;
-  const end = response ? oscillator.reply * response.end : oscillator.end * multiplier;
+  const relative = physical || saved ? null : responses[cue];
+  const pitch = physical
+    ? oscillator.pitch * multiplier
+    : oscillator.save.pitch * (relative?.pitch ?? 1);
+  const end = physical
+    ? oscillator.end * multiplier
+    : relative
+      ? oscillator.save.pitch * relative.end
+      : oscillator.save.end;
+  const attack = saved ? oscillator.save.attack : oscillator.attack;
+  const decay = physical
+    ? (release?.decay ?? oscillator.decay)
+    : (relative?.decay ?? oscillator.save.decay);
   const stepPitch = end < pitch ? -pitch : pitch;
+  const stepAt = saved ? 0.007 : 0.018;
   let previousNoise = 0;
   for (let i = 0; i < samples.length; i++) {
     const time = i / sampleRate;
@@ -277,18 +296,18 @@ export function renderSound(
     let wave: number;
     switch (profile) {
       case "classic": {
-        const noise = physical ? whiteNoise(random) : 0;
+        const noise = physical || saved ? whiteNoise(random) : 0;
         const highNoise = noise - previousNoise;
         previousNoise = noise;
         wave =
-          (physical ? 0.46 : 0.6) * Math.sin(phase) * envelope +
+          (saved ? 0.23 : physical ? 0.46 : 0.6) * Math.sin(phase) * envelope +
           0.1 * ring * Math.exp(-time / 0.006) +
           (0.23 * noise + 0.1 * highNoise) * variation.texture * Math.exp(-time / 0.003);
         break;
       }
       case "blip": {
         // A pitch step and rounded pulse evoke a tiny arcade voice.
-        const stepPhase = phase + Math.max(0, time - 0.018) * stepPitch * 0.35 * Math.PI * 2;
+        const stepPhase = phase + Math.max(0, time - stepAt) * stepPitch * 0.35 * Math.PI * 2;
         const triangle = (2 * Math.asin(Math.sin(stepPhase))) / Math.PI;
         const pulse = Math.tanh(Math.sin(stepPhase) * (2.2 + variation.texture));
         wave = (0.5 * triangle + 0.18 * pulse) * envelope;
@@ -308,7 +327,7 @@ export function renderSound(
           envelope;
         break;
     }
-    const fade = Math.min(1, time / recipe.attack, (samples.length - 1 - i) / (sampleRate * 0.008));
+    const fade = Math.min(1, time / attack, (samples.length - 1 - i) / (sampleRate * 0.008));
     samples[i] = wave * fade;
   }
   return matchCueLevel(samples, sampleRate, level);

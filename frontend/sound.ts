@@ -3,6 +3,7 @@ import {
   renderHardwareSound,
   renderRoomImpulse,
   renderSound,
+  typicalSaveDelayMs,
 } from "./sound-design.js";
 import type { HardwareCue, SoundCue, SoundProfile } from "./sound-design.js";
 
@@ -315,8 +316,9 @@ export const clickSound = {
       true,
       (audio) => {
         const start = synthesize(audio, "press", true);
-        synthesize(audio, "release", true, start + 0.06);
-        synthesize(audio, "saved", true, start + 0.18);
+        const release = start + 0.06;
+        synthesize(audio, "release", true, release);
+        synthesize(audio, "saved", true, release + typicalSaveDelayMs / 1000);
       },
       { preview: true },
     );

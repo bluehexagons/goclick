@@ -205,6 +205,7 @@
   }
 
   // frontend/sound-design.ts
+  var typicalSaveDelayMs = 50;
   var soundProfiles = [
     {
       id: "classic",
@@ -287,8 +288,8 @@
     classic: {
       pitch: 175,
       end: 65,
-      release: { pitch: 1.5, duration: 0.065, decay: 0.011 },
-      reply: 1100,
+      release: { pitch: 1.5, duration: 0.034, decay: 7e-3 },
+      save: { pitch: 820, end: 950, attack: 7e-4, decay: 45e-4 },
       ring: 1450,
       duration: 0.095,
       decay: 0.018,
@@ -297,55 +298,56 @@
     blip: {
       pitch: 620,
       end: 830,
-      release: { pitch: 1.35, duration: 0.06, decay: 0.015 },
-      reply: 1400,
+      release: { pitch: 1.35, duration: 0.036, decay: 8e-3 },
+      save: { pitch: 1100, end: 1390, attack: 15e-4, decay: 6e-3 },
       ring: 1240,
       duration: 0.075,
       decay: 0.021,
       attack: 15e-4
     },
     clack: {
-      release: { duration: 0.045, decay: 6e-3 },
+      release: { duration: 0.028, decay: 5e-3 },
+      save: { decay: 3e-3, brightness: 0.76 },
       duration: 0.065,
       decay: 9e-3,
       attack: 5e-4
     },
     clunk: {
-      release: { duration: 0.085, decay: 0.017 },
+      release: { duration: 0.038, decay: 9e-3 },
+      save: { decay: 6e-3, brightness: 1.1 },
       duration: 0.13,
-      decay: 0.027,
+      decay: 0.02,
       attack: 15e-4
     },
     "low-beep": {
       pitch: 170,
       end: 160,
-      release: { pitch: 1.3, duration: 0.075, decay: 0.021 },
-      reply: 340,
+      release: { pitch: 1.3, duration: 0.04, decay: 9e-3 },
+      save: { pitch: 275, end: 310, attack: 3e-3, decay: 8e-3 },
       ring: 340,
       duration: 0.11,
-      decay: 0.03,
+      decay: 0.023,
       attack: 5e-3
     },
     "soft-chime": {
       pitch: 440,
       end: 440,
-      release: { pitch: 1.25, duration: 0.115, decay: 0.028 },
-      reply: 880,
+      release: { pitch: 1.25, duration: 0.043, decay: 0.01 },
+      save: { pitch: 660, end: 660, attack: 25e-4, decay: 9e-3 },
       ring: 1214,
       duration: 0.16,
-      decay: 0.037,
+      decay: 0.024,
       attack: 4e-3
     }
   };
   var responses = {
-    saved: { pitch: 1, end: 1.16, level: 0.017 },
-    slow: { pitch: 0.64, end: 0.77, level: 0.015 },
-    error: { pitch: 0.25, end: 0.16, level: 0.019 },
-    limited: { pitch: 0.35, end: 0.28, level: 0.016 },
-    hold: { pitch: 0.56, end: 0.58, level: 7e-3 }
+    saved: { level: 0.015, duration: 0.03 },
+    slow: { pitch: 0.64, end: 0.77, level: 0.014, duration: 0.052, decay: 0.012 },
+    error: { pitch: 0.25, end: 0.16, level: 0.019, duration: 0.069, decay: 0.017 },
+    limited: { pitch: 0.35, end: 0.28, level: 0.016, duration: 0.062, decay: 0.014 },
+    hold: { pitch: 0.56, end: 0.58, level: 7e-3, duration: 0.04, decay: 9e-3 }
   };
   var impactResponses = {
-    saved: { decay: 45e-4, brightness: 0.95 },
     slow: { decay: 0.01, brightness: 0.75 },
     error: { decay: 6e-3, brightness: 0.65, repeatAt: 0.022 },
     limited: { decay: 5e-3, brightness: 0.55, repeatAt: 0.034 },
@@ -401,21 +403,25 @@
     const recipe = recipes[profile2];
     const physical = cue === "press" || cue === "release";
     const response = physical ? null : responses[cue];
+    const saved = cue === "saved";
     const release2 = cue === "release" ? recipe.release : null;
-    const level = (response?.level ?? (release2 ? 0.031 : 0.056)) * variation.strength;
-    const decay = response ? 0.025 : release2?.decay ?? recipe.decay;
-    const duration = (release2?.duration ?? recipe.duration) * variation.duration;
+    const level = (response?.level ?? (release2 ? 0.027 : 0.056)) * variation.strength;
+    const duration = (response?.duration ?? release2?.duration ?? recipe.duration) * variation.duration;
     const samples = new Float32Array(Math.ceil(sampleRate * duration));
     if (profile2 === "clack" || profile2 === "clunk") {
-      const envelope = physical ? { decay } : impactResponses[cue];
+      const envelope = saved ? recipes[profile2].save : physical ? { decay: release2?.decay ?? recipe.decay } : impactResponses[cue];
       renderImpact(samples, profile2, sampleRate, recipe.attack, envelope, variation, random);
       return matchCueLevel(samples, sampleRate, level);
     }
     const oscillator = recipes[profile2];
     const multiplier = cue === "release" ? oscillator.release.pitch : 1;
-    const pitch = response ? oscillator.reply * response.pitch : oscillator.pitch * multiplier;
-    const end = response ? oscillator.reply * response.end : oscillator.end * multiplier;
+    const relative = physical || saved ? null : responses[cue];
+    const pitch = physical ? oscillator.pitch * multiplier : oscillator.save.pitch * (relative?.pitch ?? 1);
+    const end = physical ? oscillator.end * multiplier : relative ? oscillator.save.pitch * relative.end : oscillator.save.end;
+    const attack = saved ? oscillator.save.attack : oscillator.attack;
+    const decay = physical ? release2?.decay ?? oscillator.decay : relative?.decay ?? oscillator.save.decay;
     const stepPitch = end < pitch ? -pitch : pitch;
+    const stepAt = saved ? 7e-3 : 0.018;
     let previousNoise = 0;
     for (let i = 0; i < samples.length; i++) {
       const time = i / sampleRate;
@@ -425,14 +431,14 @@
       let wave;
       switch (profile2) {
         case "classic": {
-          const noise = physical ? whiteNoise(random) : 0;
+          const noise = physical || saved ? whiteNoise(random) : 0;
           const highNoise = noise - previousNoise;
           previousNoise = noise;
-          wave = (physical ? 0.46 : 0.6) * Math.sin(phase) * envelope + 0.1 * ring2 * Math.exp(-time / 6e-3) + (0.23 * noise + 0.1 * highNoise) * variation.texture * Math.exp(-time / 3e-3);
+          wave = (saved ? 0.23 : physical ? 0.46 : 0.6) * Math.sin(phase) * envelope + 0.1 * ring2 * Math.exp(-time / 6e-3) + (0.23 * noise + 0.1 * highNoise) * variation.texture * Math.exp(-time / 3e-3);
           break;
         }
         case "blip": {
-          const stepPhase = phase + Math.max(0, time - 0.018) * stepPitch * 0.35 * Math.PI * 2;
+          const stepPhase = phase + Math.max(0, time - stepAt) * stepPitch * 0.35 * Math.PI * 2;
           const triangle = 2 * Math.asin(Math.sin(stepPhase)) / Math.PI;
           const pulse = Math.tanh(Math.sin(stepPhase) * (2.2 + variation.texture));
           wave = (0.5 * triangle + 0.18 * pulse) * envelope;
@@ -445,7 +451,7 @@
           wave = (0.43 * Math.sin(phase) + 0.17 * Math.sin(phase * (2.76 + variation.texture * 0.015)) + 0.13 * Math.sin(phase * 4.07)) * envelope;
           break;
       }
-      const fade = Math.min(1, time / recipe.attack, (samples.length - 1 - i) / (sampleRate * 8e-3));
+      const fade = Math.min(1, time / attack, (samples.length - 1 - i) / (sampleRate * 8e-3));
       samples[i] = wave * fade;
     }
     return matchCueLevel(samples, sampleRate, level);
@@ -547,6 +553,10 @@
   }
 
   // frontend/preferences.ts
+  var simulatedPings = [0, typicalSaveDelayMs, 80, 250, 800];
+  function isSimulatedPing(value) {
+    return simulatedPings.some((ping) => ping === value);
+  }
   var defaultSoundVolume = 100;
   var gameSettings = (() => {
     const key = "goclick.settings.v1";
@@ -555,7 +565,7 @@
     const settingListeners = /* @__PURE__ */ new Set();
     let value = {
       motion: "auto",
-      simulatedPing: 80,
+      simulatedPing: typicalSaveDelayMs,
       sound: false,
       soundProfile: "classic",
       soundVolume: defaultSoundVolume,
@@ -570,7 +580,7 @@
         soundVolume: typeof saved.soundVolume === "number" && Number.isInteger(saved.soundVolume) && saved.soundVolume >= 0 && saved.soundVolume <= 100 ? saved.soundVolume : defaultSoundVolume,
         soundReverb: saved.soundReverb !== false,
         motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "auto",
-        simulatedPing: saved.simulatedPing === 0 || saved.simulatedPing === 250 || saved.simulatedPing === 800 ? saved.simulatedPing : 80
+        simulatedPing: isSimulatedPing(saved.simulatedPing) ? saved.simulatedPing : typicalSaveDelayMs
       };
     }
     try {
@@ -1912,8 +1922,9 @@
         true,
         (audio) => {
           const start = synthesize(audio, "press", true);
-          synthesize(audio, "release", true, start + 0.06);
-          synthesize(audio, "saved", true, start + 0.18);
+          const release2 = start + 0.06;
+          synthesize(audio, "release", true, release2);
+          synthesize(audio, "saved", true, release2 + typicalSaveDelayMs / 1e3);
         },
         { preview: true }
       );
@@ -5905,8 +5916,7 @@
   });
   simulatedPingSetting.addEventListener("change", () => {
     const simulatedPing = Number(simulatedPingSetting.value);
-    if (simulatedPing === 0 || simulatedPing === 80 || simulatedPing === 250 || simulatedPing === 800)
-      saveOption({ simulatedPing });
+    if (isSimulatedPing(simulatedPing)) saveOption({ simulatedPing });
   });
   function openLocalGame(data) {
     show(pageFromLocation());
