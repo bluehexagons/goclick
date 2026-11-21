@@ -230,7 +230,7 @@ test("Blip failure and cooldown cues step down while success cues step up", () =
   }
 });
 
-test("Clack and Clunk strokes use filtered noise with distinct brightness", () => {
+test("the full Clack and Clunk cue sets use filtered noise with distinct brightness", () => {
   const { createSoundMotion, renderSound } = design();
   const variation = createSoundMotion(() => 0.5).sample(0);
   const brightness = (samples) => {
@@ -243,7 +243,7 @@ test("Clack and Clunk strokes use filtered noise with distinct brightness", () =
     return differences / energy;
   };
   for (const rate of [44100, 48000, 96000]) {
-    for (const cue of ["press", "release"]) {
+    for (const cue of cues) {
       const render = (profile, random) => renderSound(profile, cue, rate, variation, random);
       for (const profile of ["clack", "clunk"])
         assert.equal(peak(render(profile, () => 0.5)), 0, `${profile}.${cue} oscillator`);

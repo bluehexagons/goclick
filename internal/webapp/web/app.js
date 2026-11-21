@@ -306,16 +306,12 @@
     },
     clack: {
       release: { duration: 0.045, decay: 6e-3 },
-      reply: 1250,
-      ring: 2800,
       duration: 0.065,
       decay: 9e-3,
       attack: 5e-4
     },
     clunk: {
       release: { duration: 0.085, decay: 0.017 },
-      reply: 560,
-      ring: 290,
       duration: 0.13,
       decay: 0.027,
       attack: 15e-4
@@ -348,6 +344,13 @@
     limited: { pitch: 0.35, end: 0.28, level: 0.016 },
     hold: { pitch: 0.56, end: 0.58, level: 7e-3 }
   };
+  var impactResponses = {
+    saved: { decay: 45e-4, brightness: 0.95 },
+    slow: { decay: 0.01, brightness: 0.75 },
+    error: { decay: 6e-3, brightness: 0.65, repeatAt: 0.022 },
+    limited: { decay: 5e-3, brightness: 0.55, repeatAt: 0.034 },
+    hold: { decay: 8e-3, brightness: 0.72 }
+  };
   function filterWeight(frequency, sampleRate) {
     return 1 - Math.exp(-2 * Math.PI * frequency / sampleRate);
   }
@@ -369,10 +372,13 @@
     for (let i = 0; i < samples.length; i++) samples[i] = samples[i] * gain;
     return samples;
   }
-  function renderImpact(samples, profile2, sampleRate, attack, decay, variation, random) {
+  function renderImpact(samples, profile2, sampleRate, attack, { decay, brightness = 1, repeatAt = Infinity }, variation, random) {
     const bright = profile2 === "clack";
-    const lowWeight = filterWeight((bright ? 1300 : 95) * variation.pitch, sampleRate);
-    const highWeight = filterWeight((bright ? 5200 : 780) * variation.texture, sampleRate);
+    const lowWeight = filterWeight((bright ? 1300 : 95) * variation.pitch * brightness, sampleRate);
+    const highWeight = filterWeight(
+      (bright ? 5200 : 780) * variation.texture * brightness,
+      sampleRate
+    );
     let low = 0;
     let high = 0;
     let band = 0;
@@ -382,8 +388,13 @@
       low += (noise - low) * lowWeight;
       high += (noise - high) * highWeight;
       band += (high - low - band) * highWeight;
-      const fade = Math.min(1, time / attack, (samples.length - 1 - i) / (sampleRate * 8e-3));
-      samples[i] = band * Math.exp(-time / decay) * fade;
+      let envelope = Math.min(1, time / attack) * Math.exp(-time / decay);
+      if (time >= repeatAt) {
+        const sinceRepeat = time - repeatAt;
+        envelope += 0.65 * Math.min(1, sinceRepeat / attack) * Math.exp(-sinceRepeat / decay);
+      }
+      const fadeOut = Math.min(1, (samples.length - 1 - i) / (sampleRate * 8e-3));
+      samples[i] = band * envelope * fadeOut;
     }
   }
   function renderSound(profile2, cue, sampleRate, variation, random = Math.random) {
@@ -395,24 +406,22 @@
     const decay = response ? 0.025 : release2?.decay ?? recipe.decay;
     const duration = (release2?.duration ?? recipe.duration) * variation.duration;
     const samples = new Float32Array(Math.ceil(sampleRate * duration));
-    if (!response && (profile2 === "clack" || profile2 === "clunk")) {
-      renderImpact(samples, profile2, sampleRate, recipe.attack, decay, variation, random);
+    if (profile2 === "clack" || profile2 === "clunk") {
+      const envelope = physical ? { decay } : impactResponses[cue];
+      renderImpact(samples, profile2, sampleRate, recipe.attack, envelope, variation, random);
       return matchCueLevel(samples, sampleRate, level);
     }
-    let pitch = recipe.reply * (response?.pitch ?? 1);
-    let end = recipe.reply * (response?.end ?? 1);
-    if (!response && "pitch" in recipe) {
-      const multiplier = cue === "release" ? recipe.release.pitch : 1;
-      pitch = recipe.pitch * multiplier;
-      end = recipe.end * multiplier;
-    }
+    const oscillator = recipes[profile2];
+    const multiplier = cue === "release" ? oscillator.release.pitch : 1;
+    const pitch = response ? oscillator.reply * response.pitch : oscillator.pitch * multiplier;
+    const end = response ? oscillator.reply * response.end : oscillator.end * multiplier;
     const stepPitch = end < pitch ? -pitch : pitch;
     let previousNoise = 0;
     for (let i = 0; i < samples.length; i++) {
       const time = i / sampleRate;
       const phase = 2 * Math.PI * variation.pitch * (end * time + (pitch - end) * 0.012 * (1 - Math.exp(-time / 0.012)));
       const envelope = Math.exp(-time / decay);
-      const ring2 = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
+      const ring2 = Math.sin(2 * Math.PI * oscillator.ring * variation.pitch * time);
       let wave;
       switch (profile2) {
         case "classic": {
@@ -429,12 +438,6 @@
           wave = (0.5 * triangle + 0.18 * pulse) * envelope;
           break;
         }
-        case "clack":
-          wave = 0.3 * Math.sin(phase) * envelope + 0.05 * ring2 * Math.exp(-time / 25e-4);
-          break;
-        case "clunk":
-          wave = 0.6 * Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) * envelope + 0.1 * ring2 * Math.exp(-time / 0.014);
-          break;
         case "low-beep":
           wave = (0.6 * Math.sin(phase) + 0.1 * Math.sin(phase * 2) + 0.04 * Math.sin(phase / 2)) * envelope;
           break;

@@ -86,6 +86,8 @@ exponentially over 900 ms, adding a little energy during rapid play. Randomness
 seeds the curves once per visit, adds less than half a percent of pitch accent
 per press, and supplies white noise for mechanical textures. Clack uses a
 bright noise burst and Clunk uses a darker, longer one for both strokes.
+Their feedback cues also use filtered noise, with a second tap for a
+rejected click.
 The plug and cord clicks also use noise-led attacks. Each cue's weighted
 energy determines a single playback gain, matching comparable effects across
 profiles while keeping releases and replies quieter. A peak ceiling leaves
