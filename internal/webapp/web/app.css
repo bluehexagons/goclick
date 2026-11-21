@@ -1107,7 +1107,7 @@ select:focus,
   margin: 20px 0 0;
   border-block: 1px solid var(--line);
 }
-.technical-notes > summary {
+.options-help > summary {
   list-style: none;
   cursor: pointer;
   display: flex;
@@ -1117,19 +1117,19 @@ select:focus,
   padding: 19px 0;
   font-size: 13px;
 }
-.technical-notes > summary::-webkit-details-marker {
+.options-help > summary::-webkit-details-marker {
   display: none;
 }
-.technical-notes > summary::after {
+.options-help > summary::after {
   content: "+";
   margin-left: auto;
   font: 18px var(--mono);
   color: var(--gold);
 }
-.technical-notes[open] > summary::after {
+.options-help[open] > summary::after {
   content: "−";
 }
-.technical-notes > summary .icon {
+.options-help > summary .icon {
   width: 18px;
   height: 18px;
 }
@@ -1524,21 +1524,94 @@ body:has(.options-dialog[open]) {
   font-size: 17px;
 }
 #options-dialog {
-  width: min(1040px, calc(100% - 32px));
+  --options-padding: 22px;
+  width: min(940px, calc(100% - 24px));
+  padding: 0;
+  scroll-padding-top: 112px;
+}
+.options-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.options-header .options-heading {
+  position: static;
+  margin: 0;
+  padding: 16px var(--options-padding);
+  border: 0;
+}
+.options-header .field-hint {
+  margin-top: 3px;
 }
 .options-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 32px;
-  padding-top: 24px;
+  align-items: start;
+  gap: 16px;
+  padding: var(--options-padding);
+}
+.options-stack,
+.options-section {
+  display: grid;
+  gap: 16px;
 }
 .options-section {
   min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-soft);
 }
-.options-section > h2:not(:first-child) {
-  margin-top: 28px;
+.options-section h2 {
+  margin: 0;
+}
+.options-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 12px;
+}
+.option-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+.option-field > label,
+.option-field > .field-hint {
+  margin: 0;
+}
+.sound-profile-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+.sound-profile-control select {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+.save-replacement {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.save-replacement legend {
+  padding: 0 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.save-replacement .field-hint {
+  margin: 0;
 }
 .options-attribution {
+  margin: 14px var(--options-padding) 18px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.8;
@@ -1549,8 +1622,18 @@ body:has(.options-dialog[open]) {
 .options-dialog .technical-grid h2 {
   font-size: 13px;
 }
+#options-dialog > details {
+  margin: 0 var(--options-padding);
+}
 #options-dialog > .controls-help {
-  margin-top: 20px;
+  border-block: 1px solid var(--line);
+}
+#options-dialog > .technical-notes {
+  border-top: 0;
+}
+#options-dialog > .controls-help > summary {
+  padding-block: 19px;
+  text-decoration: none;
 }
 .options-dialog .muted {
   font-size: 13px;
@@ -1564,16 +1647,20 @@ select {
   border-radius: 9px;
   font: inherit;
 }
-.replace-local {
+.options-checkbox {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 28px;
+  margin: 0;
   line-height: 1.5;
 }
-.replace-local input {
+.options-checkbox input {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--gold);
 }
 .sound-volume-label {
   display: flex;
@@ -1596,11 +1683,10 @@ select {
 .local-save-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
 }
 .local-save-actions .button {
-  font-size: 12px;
+  font-size: 14px;
 }
 .import-local {
   position: relative;
@@ -1615,18 +1701,43 @@ select {
   cursor: pointer;
   padding: 0;
 }
+.import-local:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
 :root:not([data-focus-input="pointer"]) .import-local:has(input:focus-visible),
 :root[data-focus-input="keyboard"] .import-local:has(input:focus) {
   outline: 2px solid var(--teal);
   outline-offset: 2px;
 }
 #options-status {
+  margin: 0 var(--options-padding) 12px;
   color: var(--teal);
   border: 1px solid #62d5cc66;
+}
+#options-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 #options-status.notice-error {
   color: var(--danger);
   border-color: #ff7c7766;
+}
+@media (max-width: 680px) {
+  #options-dialog {
+    --options-padding: 12px;
+  }
+  .options-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .options-stack {
+    gap: 12px;
+  }
 }
 @media (max-width: 600px) {
   #guest-nav [data-view="signup"] {
@@ -1634,10 +1745,6 @@ select {
   }
   .options-button {
     padding: 8px;
-  }
-  .options-grid {
-    grid-template-columns: 1fr;
-    gap: 28px;
   }
   .options-dialog {
     padding: 20px;

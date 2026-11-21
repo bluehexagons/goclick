@@ -69,7 +69,7 @@ for (const profile of soundProfiles) {
   option.textContent = profile.name;
   soundProfileSetting.append(option);
 }
-function updateSoundToggle() {
+function updateSoundOptions() {
   const { sound: enabled, soundProfile, soundVolume, soundReverb } = gameSettings.value;
   clickSound.setProfile(soundProfile);
   clickSound.setVolume(soundVolume / 100);
@@ -89,8 +89,8 @@ function updateSoundToggle() {
   soundToggle.title = t(enabled ? "soundOn" : "soundOff");
   soundToggle.lang = currentLanguage();
 }
-gameSettings.onChange(updateSoundToggle);
-updateSoundToggle();
+gameSettings.onChange(updateSoundOptions);
+updateSoundOptions();
 soundToggle.addEventListener("click", () => {
   try {
     gameSettings.update({ sound: !gameSettings.value.sound });
@@ -895,25 +895,34 @@ $<HTMLButtonElement>("#share-stats").addEventListener("click", () => {
 retryBootButton.addEventListener("click", () => boot());
 
 const optionsDialog = $<HTMLDialogElement>("#options-dialog");
+const motionSetting = $<HTMLSelectElement>("#motion-setting");
+const simulatedPingSetting = $<HTMLSelectElement>("#simulated-ping");
+const replaceLocalConsent = $<HTMLInputElement>("#replace-local");
+const importLocal = $<HTMLInputElement>("#import-local");
 optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
 function optionsNotice(message: string, error = false) {
   const notice = $("#options-status");
   notice.textContent = message;
-  notice.hidden = !message;
   notice.classList.toggle("notice-error", error);
 }
+function updatePlayOptions() {
+  const { motion, simulatedPing } = gameSettings.value;
+  motionSetting.value = motion;
+  simulatedPingSetting.value = String(simulatedPing);
+}
+gameSettings.onChange(updatePlayOptions);
+updatePlayOptions();
 function updateOptions() {
-  $<HTMLSelectElement>("#motion-setting").value = gameSettings.value.motion;
-  $<HTMLSelectElement>("#simulated-ping").value = String(gameSettings.value.simulatedPing);
   $<HTMLButtonElement>("#copy-online-local").disabled =
     !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
   $("#copy-online-note").textContent = lastOnlineCounters
     ? `Replace the local save with the latest loaded progress for ${user?.username ?? "your account"}.`
-    : "Open your account counter to copy its progress to the local save.";
+    : "Open your account counter to make its progress available to copy.";
   try {
     const data = localGame.read();
+    const count = data.click_count?.count ?? 0;
     $("#local-save-summary").textContent =
-      `${data.click_count?.count ?? 0} clicks saved in this browser.`;
+      `${count.toLocaleString("en")} ${count === 1 ? "click" : "clicks"} in your local save.`;
   } catch (caught) {
     const error = requestError(caught);
     $("#local-save-summary").textContent = `Local save unavailable. ${error.message}`;
@@ -921,15 +930,16 @@ function updateOptions() {
 }
 $<HTMLButtonElement>("#options-button").addEventListener("click", () => {
   optionsNotice("");
-  $<HTMLInputElement>("#replace-local").checked = false;
+  replaceLocalConsent.checked = false;
   updateOptions();
   optionsDialog.showModal();
+  optionsDialog.scrollTop = 0;
 });
 $<HTMLButtonElement>("#close-options").addEventListener("click", () => optionsDialog.close());
 function saveOption(patch: Parameters<typeof gameSettings.update>[0]) {
   try {
     gameSettings.update(patch);
-    optionsNotice("Option saved.");
+    optionsNotice("");
   } catch {
     optionsNotice("Applied for this visit. Browser storage is unavailable.", true);
   }
@@ -953,8 +963,8 @@ soundProfileSetting.addEventListener("change", () => {
   if (isSoundProfile(profile)) saveOption({ soundProfile: profile });
 });
 soundPreview.addEventListener("click", () => clickSound.preview());
-$<HTMLSelectElement>("#motion-setting").addEventListener("change", () => {
-  const motion = $<HTMLSelectElement>("#motion-setting").value;
+motionSetting.addEventListener("change", () => {
+  const motion = motionSetting.value;
   if (motion === "auto" || motion === "on" || motion === "off") saveOption({ motion });
 });
 motionShortcut.addEventListener("click", () => {
@@ -964,8 +974,8 @@ motionShortcut.addEventListener("click", () => {
     // The choice applies for this visit even if browser storage is unavailable.
   }
 });
-$<HTMLSelectElement>("#simulated-ping").addEventListener("change", () => {
-  const simulatedPing = Number($<HTMLSelectElement>("#simulated-ping").value);
+simulatedPingSetting.addEventListener("change", () => {
+  const simulatedPing = Number(simulatedPingSetting.value);
   if (simulatedPing === 0 || simulatedPing === 80 || simulatedPing === 250 || simulatedPing === 800)
     saveOption({ simulatedPing });
 });
@@ -1063,18 +1073,23 @@ async function clickLocal(event: MouseEvent) {
     }
   }
 }
-async function replaceLocalSave(operation: () => Counters | Promise<Counters>, message: string) {
-  if (localSaveReplacing) return;
-  if (!$<HTMLInputElement>("#replace-local").checked) {
+function canReplaceLocalSave() {
+  if (localSaveReplacing) return false;
+  if (!replaceLocalConsent.checked) {
     optionsNotice("Check “Allow replacing my local save” first.", true);
-    return;
+    replaceLocalConsent.focus();
+    return false;
   }
   if (pendingClicks > 0) {
     optionsNotice("Wait for pending clicks to finish, then try again.", true);
-    return;
+    return false;
   }
+  return true;
+}
+async function replaceLocalSave(operation: () => Counters | Promise<Counters>, message: string) {
+  if (!canReplaceLocalSave()) return;
   localSaveReplacing = true;
-  $<HTMLInputElement>("#replace-local").checked = false;
+  replaceLocalConsent.checked = false;
   updateGameControls();
   optionsNotice("Replacing the local save…");
   try {
@@ -1104,10 +1119,12 @@ $<HTMLButtonElement>("#copy-online-local").addEventListener("click", () => {
   const snapshot = lastOnlineCounters;
   replaceLocalSave(() => snapshot, "Account progress copied to the local save.");
 });
-$<HTMLInputElement>("#import-local").addEventListener("change", async (event) => {
-  const input = event.currentTarget as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = "";
+importLocal.addEventListener("click", (event) => {
+  if (!canReplaceLocalSave()) event.preventDefault();
+});
+importLocal.addEventListener("change", async () => {
+  const file = importLocal.files?.[0];
+  importLocal.value = "";
   if (!file) return;
   if (file.size > 1024 * 1024) {
     optionsNotice("Choose a local save smaller than 1 MiB.", true);
@@ -1153,7 +1170,7 @@ window.addEventListener("storage", (event) => {
 const paintLanguagePicker = languagePicker();
 function applyLanguage() {
   translatePage();
-  updateSoundToggle();
+  updateSoundOptions();
   paintLanguagePicker();
   document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
   buttonLanguage.reset(currentLanguage());

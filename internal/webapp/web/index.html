@@ -822,86 +822,111 @@
       class="options-dialog"
       aria-labelledby="options-title"
     >
-      <div class="options-heading">
-        <h1 id="options-title">Options</h1>
-        <button id="close-options" class="button button-quiet" type="button">Done</button>
-      </div>
-      <div id="options-status" class="notice" role="status" hidden></div>
-      <div class="options-grid">
-        <section class="options-section" aria-labelledby="play-options-title">
-          <h2 id="play-options-title">Play &amp; appearance</h2>
-          <label for="motion-setting">Motion</label>
-          <select id="motion-setting">
-            <option value="auto">Auto — follow browser preference</option>
-            <option value="on">Reduced — no movement or flashes</option>
-            <option value="off">Full — animations and effects</option>
-          </select>
-          <p class="field-hint">Motion settings are saved in this browser.</p>
-          <h2>Sound</h2>
-          <label class="replace-local">
-            <input id="sound-enabled" type="checkbox" /> Sound effects
-          </label>
-          <label class="sound-volume-label" for="sound-volume">
-            Volume <span id="sound-volume-value" aria-hidden="true">100%</span>
-          </label>
-          <input id="sound-volume" type="range" min="0" max="100" value="100" />
-          <label class="replace-local">
-            <input id="sound-reverb" type="checkbox" checked /> Room reverb
-          </label>
-          <label for="sound-profile">Sound profile</label>
-          <select id="sound-profile" aria-describedby="sound-profile-description"></select>
-          <p id="sound-profile-description" class="field-hint"></p>
-          <button id="preview-sound" class="button button-quiet" type="button" disabled>
-            Preview sound
-          </button>
-          <p class="field-hint">
-            The preview plays a press, release, and save response without adding a click. Sound
-            settings are saved in this browser.
-          </p>
-          <h2>Offline play</h2>
-          <p class="muted">Offline clicks go to a separate save in this browser.</p>
-          <button class="button button-quiet" type="button" data-play-local>Play offline</button>
-          <label for="simulated-ping">Simulated ping</label>
-          <select id="simulated-ping">
-            <option value="0">Instant</option>
-            <option value="80">Around 80 ms</option>
-            <option value="250">Around 250 ms</option>
-            <option value="800">Around 800 ms</option>
-          </select>
-          <p class="field-hint">
-            Offline effects only. Clicks are saved locally before the simulated response.
-          </p>
-        </section>
-        <section class="options-section" aria-labelledby="local-save-title">
-          <h2 id="local-save-title">Local save</h2>
-          <p id="local-save-summary" class="muted"></p>
-          <button id="download-local" class="button button-quiet" type="button">
-            Download save
-          </button>
-          <p class="field-hint">Keep a copy before clearing browser data or switching devices.</p>
-          <label class="replace-local"
-            ><input id="replace-local" type="checkbox" /> Allow replacing my local save</label
-          >
-          <div class="local-save-actions">
-            <button id="copy-online-local" class="button button-quiet" type="button">
-              Copy account progress to local save
-            </button>
-            <button id="restart-local" class="button button-quiet" type="button">
-              Restart local save
-            </button>
-            <label class="button button-quiet import-local"
-              >Import local save<input
-                id="import-local"
-                type="file"
-                accept=".json,application/json"
-            /></label>
+      <div class="options-header">
+        <div class="options-heading">
+          <div>
+            <h1 id="options-title">Options</h1>
+            <p class="field-hint">Saved in this browser.</p>
           </div>
-          <p id="copy-online-note" class="field-hint">
-            Open your account counter to copy its progress to the local save.
-          </p>
+          <button id="close-options" class="button button-quiet" type="button" autofocus>
+            Done
+          </button>
+        </div>
+        <div id="options-status" class="notice" role="status"></div>
+      </div>
+      <div class="options-grid">
+        <div class="options-stack">
+          <section class="options-section" aria-labelledby="sound-options-title">
+            <div class="options-section-heading">
+              <h2 id="sound-options-title">Sound</h2>
+              <label class="options-checkbox">
+                <input id="sound-enabled" type="checkbox" /> Sound effects
+              </label>
+            </div>
+            <div class="option-field">
+              <label class="sound-volume-label" for="sound-volume">
+                Volume <span id="sound-volume-value" aria-hidden="true">100%</span>
+              </label>
+              <input id="sound-volume" type="range" min="0" max="100" value="100" />
+            </div>
+            <label class="options-checkbox">
+              <input id="sound-reverb" type="checkbox" checked /> Room reverb
+            </label>
+            <div class="option-field">
+              <label for="sound-profile">Sound profile</label>
+              <div class="sound-profile-control">
+                <select id="sound-profile" aria-describedby="sound-profile-description"></select>
+                <button id="preview-sound" class="button button-quiet" type="button" disabled>
+                  Preview sound
+                </button>
+              </div>
+              <p id="sound-profile-description" class="field-hint"></p>
+            </div>
+          </section>
+          <section class="options-section" aria-labelledby="appearance-options-title">
+            <h2 id="appearance-options-title">Appearance</h2>
+            <div class="option-field">
+              <label for="motion-setting">Motion</label>
+              <select id="motion-setting">
+                <option value="auto">Auto · Follow browser</option>
+                <option value="on">Reduced · No motion or flashes</option>
+                <option value="off">Full · Animations and effects</option>
+              </select>
+            </div>
+          </section>
+        </div>
+        <section class="options-section" aria-labelledby="offline-options-title">
+          <div>
+            <h2 id="offline-options-title">Offline play</h2>
+            <p id="local-save-summary" class="field-hint"></p>
+          </div>
+          <div class="local-save-actions">
+            <button class="button button-quiet" type="button" data-play-local>Play offline</button>
+            <button id="download-local" class="button button-quiet" type="button">
+              Download save
+            </button>
+          </div>
+          <div class="option-field">
+            <label for="simulated-ping">Simulated ping</label>
+            <select id="simulated-ping" aria-describedby="simulated-ping-hint">
+              <option value="0">Instant</option>
+              <option value="80">Around 80 ms</option>
+              <option value="250">Around 250 ms</option>
+              <option value="800">Around 800 ms</option>
+            </select>
+            <p id="simulated-ping-hint" class="field-hint">
+              Delays offline feedback. Clicks are saved immediately.
+            </p>
+          </div>
+          <fieldset class="save-replacement">
+            <legend>Replace local save</legend>
+            <label class="options-checkbox">
+              <input id="replace-local" type="checkbox" /> Allow replacing my local save
+            </label>
+            <div class="local-save-actions">
+              <label class="button button-quiet import-local">
+                Import save
+                <input id="import-local" type="file" accept=".json,application/json" />
+              </label>
+              <button id="restart-local" class="button button-quiet" type="button">
+                Restart save
+              </button>
+              <button
+                id="copy-online-local"
+                class="button button-quiet"
+                type="button"
+                aria-describedby="copy-online-note"
+              >
+                Copy account progress
+              </button>
+            </div>
+            <p id="copy-online-note" class="field-hint">
+              Open your account counter to make its progress available to copy.
+            </p>
+          </fieldset>
         </section>
       </div>
-      <details class="controls-help">
+      <details class="controls-help options-help">
         <summary>Controls</summary>
         <p id="button-hint" data-game-language data-i18n="controls">
           Press with a mouse or touch, then release on or near the button. Each finger counts
@@ -914,7 +939,7 @@
           Reduced motion uses a static color.
         </p>
       </details>
-      <details class="technical-notes" id="technical-notes">
+      <details class="technical-notes options-help" id="technical-notes">
         <summary>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <use href="/icons.svg#info" />

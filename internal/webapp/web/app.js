@@ -5056,7 +5056,7 @@
     option.textContent = profile2.name;
     soundProfileSetting.append(option);
   }
-  function updateSoundToggle() {
+  function updateSoundOptions() {
     const { sound: enabled2, soundProfile, soundVolume, soundReverb } = gameSettings.value;
     clickSound.setProfile(soundProfile);
     clickSound.setVolume(soundVolume / 100);
@@ -5076,8 +5076,8 @@
     soundToggle.title = message2(enabled2 ? "soundOn" : "soundOff");
     soundToggle.lang = currentLanguage();
   }
-  gameSettings.onChange(updateSoundToggle);
-  updateSoundToggle();
+  gameSettings.onChange(updateSoundOptions);
+  updateSoundOptions();
   soundToggle.addEventListener("click", () => {
     try {
       gameSettings.update({ sound: !gameSettings.value.sound });
@@ -5780,21 +5780,30 @@
   });
   retryBootButton.addEventListener("click", () => boot());
   var optionsDialog = required("#options-dialog");
+  var motionSetting = required("#motion-setting");
+  var simulatedPingSetting = required("#simulated-ping");
+  var replaceLocalConsent = required("#replace-local");
+  var importLocal = required("#import-local");
   optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
   function optionsNotice(message3, error = false) {
     const notice2 = required("#options-status");
     notice2.textContent = message3;
-    notice2.hidden = !message3;
     notice2.classList.toggle("notice-error", error);
   }
+  function updatePlayOptions() {
+    const { motion: motion2, simulatedPing } = gameSettings.value;
+    motionSetting.value = motion2;
+    simulatedPingSetting.value = String(simulatedPing);
+  }
+  gameSettings.onChange(updatePlayOptions);
+  updatePlayOptions();
   function updateOptions() {
-    required("#motion-setting").value = gameSettings.value.motion;
-    required("#simulated-ping").value = String(gameSettings.value.simulatedPing);
     required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
-    required("#copy-online-note").textContent = lastOnlineCounters ? `Replace the local save with the latest loaded progress for ${user?.username ?? "your account"}.` : "Open your account counter to copy its progress to the local save.";
+    required("#copy-online-note").textContent = lastOnlineCounters ? `Replace the local save with the latest loaded progress for ${user?.username ?? "your account"}.` : "Open your account counter to make its progress available to copy.";
     try {
       const data = localGame.read();
-      required("#local-save-summary").textContent = `${data.click_count?.count ?? 0} clicks saved in this browser.`;
+      const count = data.click_count?.count ?? 0;
+      required("#local-save-summary").textContent = `${count.toLocaleString("en")} ${count === 1 ? "click" : "clicks"} in your local save.`;
     } catch (caught) {
       const error = requestError(caught);
       required("#local-save-summary").textContent = `Local save unavailable. ${error.message}`;
@@ -5802,15 +5811,16 @@
   }
   required("#options-button").addEventListener("click", () => {
     optionsNotice("");
-    required("#replace-local").checked = false;
+    replaceLocalConsent.checked = false;
     updateOptions();
     optionsDialog.showModal();
+    optionsDialog.scrollTop = 0;
   });
   required("#close-options").addEventListener("click", () => optionsDialog.close());
   function saveOption(patch) {
     try {
       gameSettings.update(patch);
-      optionsNotice("Option saved.");
+      optionsNotice("");
     } catch {
       optionsNotice("Applied for this visit. Browser storage is unavailable.", true);
     }
@@ -5834,8 +5844,8 @@
     if (isSoundProfile(profile2)) saveOption({ soundProfile: profile2 });
   });
   soundPreview.addEventListener("click", () => clickSound.preview());
-  required("#motion-setting").addEventListener("change", () => {
-    const motion2 = required("#motion-setting").value;
+  motionSetting.addEventListener("change", () => {
+    const motion2 = motionSetting.value;
     if (motion2 === "auto" || motion2 === "on" || motion2 === "off") saveOption({ motion: motion2 });
   });
   motionShortcut.addEventListener("click", () => {
@@ -5844,8 +5854,8 @@
     } catch {
     }
   });
-  required("#simulated-ping").addEventListener("change", () => {
-    const simulatedPing = Number(required("#simulated-ping").value);
+  simulatedPingSetting.addEventListener("change", () => {
+    const simulatedPing = Number(simulatedPingSetting.value);
     if (simulatedPing === 0 || simulatedPing === 80 || simulatedPing === 250 || simulatedPing === 800)
       saveOption({ simulatedPing });
   });
@@ -5938,18 +5948,23 @@
       }
     }
   }
-  async function replaceLocalSave(operation, message3) {
-    if (localSaveReplacing) return;
-    if (!required("#replace-local").checked) {
+  function canReplaceLocalSave() {
+    if (localSaveReplacing) return false;
+    if (!replaceLocalConsent.checked) {
       optionsNotice("Check \u201CAllow replacing my local save\u201D first.", true);
-      return;
+      replaceLocalConsent.focus();
+      return false;
     }
     if (pendingClicks > 0) {
       optionsNotice("Wait for pending clicks to finish, then try again.", true);
-      return;
+      return false;
     }
+    return true;
+  }
+  async function replaceLocalSave(operation, message3) {
+    if (!canReplaceLocalSave()) return;
     localSaveReplacing = true;
-    required("#replace-local").checked = false;
+    replaceLocalConsent.checked = false;
     updateGameControls();
     optionsNotice("Replacing the local save\u2026");
     try {
@@ -5980,10 +5995,12 @@
     const snapshot = lastOnlineCounters;
     replaceLocalSave(() => snapshot, "Account progress copied to the local save.");
   });
-  required("#import-local").addEventListener("change", async (event) => {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.value = "";
+  importLocal.addEventListener("click", (event) => {
+    if (!canReplaceLocalSave()) event.preventDefault();
+  });
+  importLocal.addEventListener("change", async () => {
+    const file = importLocal.files?.[0];
+    importLocal.value = "";
     if (!file) return;
     if (file.size > 1024 * 1024) {
       optionsNotice("Choose a local save smaller than 1 MiB.", true);
@@ -6028,7 +6045,7 @@
   var paintLanguagePicker = languagePicker();
   function applyLanguage() {
     translatePage();
-    updateSoundToggle();
+    updateSoundOptions();
     paintLanguagePicker();
     document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
     buttonLanguage.reset(currentLanguage());
