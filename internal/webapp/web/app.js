@@ -1203,12 +1203,8 @@
       float band = exp(-bandDistance * bandDistance);
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
-      // Keep a dark edge around the lit core so it reads against bright gold.
-      float inlay = smoothstep(.09, .43, luminous) * frontFace;
-      float inlayCore = smoothstep(.30, .67, luminous);
-      vec3 groove = vec3(.40, .25, .075);
-      vec3 inlayColor = mix(groove, vec3(1., .97, .82), readyLight * inlayCore);
-      gold = mix(gold, inlayColor, inlay);
+      // Shade the existing recesses without replacing their material detail.
+      gold *= 1. - .17 * luminous * (1. - readyLight) * (1. - copper) * frontFace;
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);

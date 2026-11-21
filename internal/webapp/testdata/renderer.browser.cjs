@@ -95,18 +95,18 @@ module.exports = function checkButtonRendering() {
     };
     readFace(0, pixels);
     readFace(1, litPixels);
-    let illuminatedInlays = 0;
+    let shadedInlays = 0;
+    let strongestShade = 0;
     for (let i = 0; i < pixels.length; i += 4) {
-      if (
-        pixels[i + 3] >= 250 &&
-        litPixels[i] - pixels[i] > 65 &&
-        litPixels[i + 1] - pixels[i + 1] > 65 &&
-        litPixels[i + 2] - pixels[i + 2] > 65
-      )
-        illuminatedInlays++;
+      if (pixels[i + 3] < 250) continue;
+      const shade = litPixels[i] - pixels[i];
+      strongestShade = Math.max(strongestShade, shade);
+      if (shade > 12) shadedInlays++;
     }
-    if (illuminatedInlays < 80 || gl.getError() !== gl.NO_ERROR)
-      throw new Error(`Hover and focus inlays lack contrast: ${illuminatedInlays} pixels`);
+    if (shadedInlays < 80 || strongestShade > 45 || gl.getError() !== gl.NO_ERROR)
+      throw new Error(
+        `Expected slight inlay shading: ${shadedInlays} pixels, peak ${strongestShade}`,
+      );
   } finally {
     gl.uniformMatrix3fv(locations.rotation, false, saved.rotation);
     gl.uniform4fv(locations.letteringPose, saved.letteringPose);
