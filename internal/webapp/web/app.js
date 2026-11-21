@@ -209,14 +209,14 @@
     {
       id: "classic",
       name: "Classic",
-      description: "A low press and a higher release."
+      description: "A metal switch with a low press and a lighter return."
     },
     { id: "blip", name: "Blip", description: "Short electronic tones that rise in pitch." },
     { id: "clack", name: "Clack", description: "A short, dry key click." },
     {
       id: "clunk",
       name: "Clunk",
-      description: "A low, resonant impact."
+      description: "A muffled impact with a short, low resonance."
     },
     {
       id: "low-beep",
@@ -231,6 +231,31 @@
   ];
   function isSoundProfile(value) {
     return soundProfiles.some((profile2) => profile2.id === value);
+  }
+  function whiteNoise(random) {
+    return random() * 2 - 1;
+  }
+  function renderRoomImpulse(sampleRate, random = Math.random) {
+    const impulse = new Float32Array(Math.ceil(sampleRate * 0.13));
+    for (const [ms, gain] of [
+      [7, 0.15],
+      [12, -0.075],
+      [19, 0.055],
+      [27, 0.035],
+      [33, -0.02]
+    ])
+      impulse[Math.round(sampleRate * ms / 1e3)] = gain;
+    let tailMagnitude = 0;
+    const tailStart = Math.ceil(sampleRate * 0.036);
+    for (let i = tailStart; i < impulse.length; i++) {
+      const time = (i - tailStart) / sampleRate;
+      const reflection = whiteNoise(random) * Math.exp(-time / 0.021);
+      impulse[i] = reflection;
+      tailMagnitude += Math.abs(reflection);
+    }
+    const tailGain = tailMagnitude > 0 ? 0.12 / tailMagnitude : 0;
+    for (let i = tailStart; i < impulse.length; i++) impulse[i] = impulse[i] * tailGain;
+    return impulse;
   }
   function createSoundMotion(random = Math.random) {
     const phase = random() * Math.PI * 2;
@@ -339,6 +364,7 @@
     const decay = response ? 0.025 : release2?.decay ?? recipe.decay;
     const duration = (release2?.duration ?? recipe.duration) * variation.duration;
     const samples = new Float32Array(Math.ceil(sampleRate * duration));
+    const mechanical = physical && (profile2 === "classic" || profile2 === "clack" || profile2 === "clunk");
     const noiseBlend = sampleRate === 48e3 ? 0.18 : 1 - Math.pow(0.82, 48e3 / sampleRate);
     const stepPitch = end < pitch ? -pitch : pitch;
     let previousNoise = 0;
@@ -348,15 +374,15 @@
       const phase = 2 * Math.PI * variation.pitch * (end * time + (pitch - end) * 0.012 * (1 - Math.exp(-time / 0.012)));
       const envelope = Math.exp(-time / decay);
       const ring2 = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
-      const noise = random() * 2 - 1;
+      const noise = mechanical ? whiteNoise(random) : 0;
       lowNoise += (noise - lowNoise) * noiseBlend;
       const highNoise = noise - previousNoise;
       previousNoise = noise;
-      const texture = variation.texture * (physical ? 1 : 0.25);
+      const texture = variation.texture;
       let wave;
       switch (profile2) {
         case "classic":
-          wave = 0.6 * Math.sin(phase) * envelope + 0.14 * ring2 * Math.exp(-time / 8e-3) + 0.1 * highNoise * texture * Math.exp(-time / 3e-3);
+          wave = (physical ? 0.46 : 0.6) * Math.sin(phase) * envelope + 0.1 * ring2 * Math.exp(-time / 6e-3) + (0.23 * noise + 0.1 * highNoise) * texture * Math.exp(-time / 3e-3);
           break;
         case "blip": {
           const stepPhase = phase + Math.max(0, time - 0.018) * stepPitch * 0.35 * Math.PI * 2;
@@ -366,10 +392,10 @@
           break;
         }
         case "clack":
-          wave = 0.3 * Math.sin(phase) * envelope + 0.12 * ring2 * Math.exp(-time / 6e-3) + 0.22 * highNoise * texture * Math.exp(-time / 25e-4);
+          wave = (physical ? 0.09 : 0.3) * Math.sin(phase) * envelope + 0.05 * ring2 * Math.exp(-time / 25e-4) + (0.48 * noise + 0.17 * highNoise) * texture * Math.exp(-time / (release2 ? 25e-4 : 4e-3));
           break;
         case "clunk":
-          wave = 0.6 * Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) * envelope + 0.14 * ring2 * Math.exp(-time / 0.014) + 0.08 * lowNoise * texture * Math.exp(-time / 5e-3);
+          wave = (physical ? 0.32 : 0.6) * Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) * envelope + 0.1 * ring2 * Math.exp(-time / 0.014) + 0.55 * lowNoise * texture * Math.exp(-time / 5e-3);
           break;
         case "low-beep":
           wave = (0.6 * Math.sin(phase) + 0.1 * Math.sin(phase * 2) + 0.04 * Math.sin(phase / 2)) * envelope;
@@ -447,26 +473,32 @@
   function renderHardwareSound(cue, sampleRate, random = Math.random) {
     const { duration, hits } = hardwareSounds[cue];
     const samples = new Float32Array(Math.ceil(sampleRate * duration / 1e3));
+    const connector = cue !== "boot" && cue !== "test" && cue !== "reset";
     for (const { at, pitch, gain, decay, noise } of hits) {
       const start = Math.round(sampleRate * at / 1e3);
+      const bodyDecay = connector ? decay * 0.45 : decay;
+      let previousNoise = 0;
       for (let i = start; i < samples.length; i++) {
         const ms = (i - start) * 1e3 / sampleRate;
         const phase = 2 * Math.PI * pitch * ms / 1e3;
-        const body = Math.sin(phase) * Math.exp(-ms / decay);
-        const ring2 = 0.24 * Math.sin(phase * (noise ? 3.1 : 2)) * Math.exp(-2 * ms / decay);
-        const snap = noise ? noise * (random() * 2 - 1) * Math.exp(-ms / 5) : 0;
+        const body = Math.sin(phase) * Math.exp(-ms / bodyDecay);
+        const ring2 = 0.24 * Math.sin(phase * (noise ? 3.1 : 2)) * Math.exp(-2 * ms / bodyDecay);
+        const sample = noise ? whiteNoise(random) : 0;
+        const snap = (sample - 0.3 * previousNoise) * noise * (connector ? 1.7 : 1) * Math.exp(-ms / 5);
+        previousNoise = sample;
         const fade = Math.min(
           1,
           ms / (noise ? 0.8 : 9),
           (samples.length - 1 - i) * 1e3 / (sampleRate * 12)
         );
-        samples[i] = samples[i] + gain * fade * (body + ring2 + snap);
+        samples[i] = samples[i] + gain * fade * ((body + ring2) * (connector ? 0.32 : 1) + snap);
       }
     }
     return samples;
   }
 
   // frontend/preferences.ts
+  var defaultSoundVolume = 100;
   var gameSettings = (() => {
     const key = "goclick.settings.v1";
     const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -476,7 +508,9 @@
       motion: "auto",
       simulatedPing: 80,
       sound: false,
-      soundProfile: "classic"
+      soundProfile: "classic",
+      soundVolume: defaultSoundVolume,
+      soundReverb: true
     };
     function parse(raw) {
       const decoded = JSON.parse(raw || "{}");
@@ -484,6 +518,8 @@
       return {
         sound: saved.sound === true,
         soundProfile: isSoundProfile(saved.soundProfile) ? saved.soundProfile : "classic",
+        soundVolume: typeof saved.soundVolume === "number" && Number.isInteger(saved.soundVolume) && saved.soundVolume >= 0 && saved.soundVolume <= 100 ? saved.soundVolume : defaultSoundVolume,
+        soundReverb: saved.soundReverb !== false,
         motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "auto",
         simulatedPing: saved.simulatedPing === 0 || saved.simulatedPing === 250 || saved.simulatedPing === 800 ? saved.simulatedPing : 80
       };
@@ -1583,14 +1619,20 @@
   var profile = "classic";
   var enabled = false;
   var powered = true;
+  var volume = 1;
+  var reverb = true;
   var context = null;
   var output = null;
+  var roomImpulse = null;
+  var room = null;
+  var previewRoom = null;
   var suspending = null;
   var generation = 0;
   var voices = /* @__PURE__ */ new Set();
   var previewVoices = /* @__PURE__ */ new Set();
   var previewPending = false;
   var maxVoices = 8;
+  var maxOutputGain = 0.085;
   var maxUnlockDelay = 150;
   var responseInterval = 80;
   var responseAt = -Infinity;
@@ -1599,6 +1641,16 @@
     generation++;
     previewPending = false;
     for (const voice of previewVoices) removeVoice(voice, true);
+    clearRoom(true);
+  }
+  function clearRoom(preview) {
+    const convolver = preview ? previewRoom : room;
+    if (preview) previewRoom = null;
+    else room = null;
+    try {
+      convolver?.disconnect();
+    } catch {
+    }
   }
   function removeVoice(voice, stop2 = false) {
     voices.delete(voice);
@@ -1619,6 +1671,8 @@
     responseAt = -Infinity;
     responseWasFailure = false;
     for (const voice of voices) removeVoice(voice, true);
+    clearRoom(false);
+    clearRoom(true);
   }
   function stop() {
     cancelPending();
@@ -1634,6 +1688,7 @@
     } catch {
     }
     output = null;
+    roomImpulse = null;
   }
   function suspend() {
     stop();
@@ -1657,6 +1712,27 @@
     const variation = motion.sample(performance.now(), kind === "press");
     return startVoice(audio, renderSound(profile, kind, audio.sampleRate, variation), preview, when);
   }
+  function connectRoom(audio, voice, preview) {
+    if (!reverb) return;
+    try {
+      let convolver = preview ? previewRoom : room;
+      if (!convolver) {
+        convolver = audio.createConvolver();
+        if (!roomImpulse) {
+          const samples = renderRoomImpulse(audio.sampleRate);
+          roomImpulse = audio.createBuffer(1, samples.length, audio.sampleRate);
+          roomImpulse.getChannelData(0).set(samples);
+        }
+        convolver.normalize = false;
+        convolver.buffer = roomImpulse;
+        convolver.connect(output);
+        if (preview) previewRoom = convolver;
+        else room = convolver;
+      }
+      voice.connect(convolver);
+    } catch {
+    }
+  }
   function startVoice(audio, samples, preview = false, when) {
     const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
     buffer.getChannelData(0).set(samples);
@@ -1668,6 +1744,7 @@
     try {
       voice.buffer = buffer;
       voice.connect(output);
+      connectRoom(audio, voice, preview);
       voice.onended = () => removeVoice(voice);
       voices.add(voice);
       if (preview) previewVoices.add(voice);
@@ -1686,7 +1763,7 @@
       const next = new window.AudioContext({ latencyHint: "interactive" });
       try {
         const gain = next.createGain();
-        gain.gain.value = 0.12;
+        gain.gain.value = maxOutputGain * volume;
         gain.connect(next.destination);
         output = gain;
         context = next;
@@ -1794,11 +1871,26 @@
     },
     cancelPreview() {
       if (previewPending) cancelPending();
+      else clearRoom(true);
     },
     setProfile(value) {
       if (profile === value) return;
       stop();
       profile = value;
+    },
+    setVolume(value) {
+      if (volume === value) return;
+      volume = value;
+      if (output && context && context.state !== "closed")
+        output.gain.setTargetAtTime(maxOutputGain * volume, context.currentTime, 0.01);
+    },
+    setReverb(value) {
+      if (reverb === value) return;
+      reverb = value;
+      if (!reverb) {
+        clearRoom(false);
+        clearRoom(true);
+      }
     },
     prepare,
     cancelPending,
@@ -4953,6 +5045,9 @@
   var motionShortcut = required("#motion-shortcut");
   var soundToggle = required("#sound-toggle");
   var soundEnabled = required("#sound-enabled");
+  var soundVolumeSetting = required("#sound-volume");
+  var soundVolumeValue = required("#sound-volume-value");
+  var soundReverbSetting = required("#sound-reverb");
   var soundProfileSetting = required("#sound-profile");
   var soundPreview = required("#preview-sound");
   for (const profile2 of soundProfiles) {
@@ -4962,10 +5057,15 @@
     soundProfileSetting.append(option);
   }
   function updateSoundToggle() {
-    const { sound: enabled2, soundProfile } = gameSettings.value;
+    const { sound: enabled2, soundProfile, soundVolume, soundReverb } = gameSettings.value;
     clickSound.setProfile(soundProfile);
+    clickSound.setVolume(soundVolume / 100);
+    clickSound.setReverb(soundReverb);
     clickSound.setEnabled(enabled2);
     soundEnabled.checked = enabled2;
+    soundVolumeSetting.value = String(soundVolume);
+    soundVolumeValue.textContent = `${soundVolume}%`;
+    soundReverbSetting.checked = soundReverb;
     soundProfileSetting.value = soundProfile;
     soundPreview.disabled = !enabled2;
     required("#sound-profile-description").textContent = soundProfiles.find(
@@ -5718,6 +5818,16 @@
   soundEnabled.addEventListener("change", () => {
     saveOption({ sound: soundEnabled.checked });
     if (gameSettings.value.sound) clickSound.prepare();
+  });
+  soundVolumeSetting.addEventListener("input", () => {
+    soundVolumeValue.textContent = `${soundVolumeSetting.value}%`;
+    clickSound.setVolume(soundVolumeSetting.valueAsNumber / 100);
+  });
+  soundVolumeSetting.addEventListener("change", () => {
+    saveOption({ soundVolume: soundVolumeSetting.valueAsNumber });
+  });
+  soundReverbSetting.addEventListener("change", () => {
+    saveOption({ soundReverb: soundReverbSetting.checked });
   });
   soundProfileSetting.addEventListener("change", () => {
     const profile2 = soundProfileSetting.value;

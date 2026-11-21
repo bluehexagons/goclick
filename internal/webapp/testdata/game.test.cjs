@@ -36,6 +36,9 @@ async function harness(options = {}) {
     hidden = false;
     disabled = false;
     checked = false;
+    get valueAsNumber() {
+      return Number(this.value);
+    }
     contains(element) {
       return element === this;
     }
@@ -343,6 +346,8 @@ test("closing Options cancels its sound preview without changing game progress",
     storage: [["goclick.settings.v1", '{"sound":true}']],
     sound: {
       setProfile() {},
+      setVolume() {},
+      setReverb() {},
       setEnabled() {},
       preview() {
         playing = true;
@@ -383,6 +388,53 @@ test("profile controls follow cross-tab choices, storage failure, and legacy fal
       newValue: JSON.stringify({ soundProfile: invalid }),
     });
     assert.equal(selector.value, "classic");
+  }
+  assert.deepEqual(h.requests, []);
+});
+
+test("volume and room settings update, persist, and follow other tabs", async () => {
+  const volumes = [],
+    reverb = [];
+  const h = await harness({
+    storage: [["goclick.settings.v1", '{"sound":false,"soundProfile":"clack"}']],
+    sound: {
+      setProfile() {},
+      setEnabled() {},
+      setVolume: (value) => volumes.push(value),
+      setReverb: (value) => reverb.push(value),
+    },
+  });
+  const slider = h.element("#sound-volume");
+  const value = h.element("#sound-volume-value");
+  const room = h.element("#sound-reverb");
+  assert.equal(slider.value, "100");
+  assert.equal(room.checked, true);
+  slider.value = "37";
+  slider.fire("input");
+  assert.equal(value.textContent, "37%");
+  assert.equal(volumes.at(-1), 0.37);
+  assert.equal(JSON.parse(h.storage.get("goclick.settings.v1")).soundVolume, undefined);
+  slider.fire("change");
+  room.checked = false;
+  room.fire("change");
+  assert.equal(reverb.at(-1), false);
+  const saved = h.storage.get("goclick.settings.v1");
+  const reloaded = await harness({ storage: [["goclick.settings.v1", saved]] });
+  assert.equal(reloaded.element("#sound-volume").value, "37");
+  assert.equal(reloaded.element("#sound-reverb").checked, false);
+  assert.equal(reloaded.element("#sound-enabled").checked, false);
+
+  for (const [newValue, percent] of [
+    ['{"soundVolume":0,"soundReverb":true}', "0"],
+    ['{"soundVolume":101,"soundReverb":null}', "100"],
+    ['{"soundVolume":"50","soundReverb":"false"}', "100"],
+  ]) {
+    h.window.fire("storage", { key: "goclick.settings.v1", newValue });
+    assert.equal(slider.value, percent);
+    assert.equal(value.textContent, `${percent}%`);
+    assert.equal(room.checked, true);
+    assert.equal(volumes.at(-1), Number(percent) / 100);
+    assert.equal(reverb.at(-1), true);
   }
   assert.deepEqual(h.requests, []);
 });
@@ -1103,7 +1155,13 @@ test("a stale clipboard failure cannot interrupt a different mode and duplicate 
 test("429s start a calm cooldown, suppress requests, and resume without replaying clicks", async () => {
   const sounds = [];
   const h = await harness({
-    sound: { setProfile() {}, setEnabled() {}, play: (cue) => sounds.push(cue) },
+    sound: {
+      setProfile() {},
+      setVolume() {},
+      setReverb() {},
+      setEnabled() {},
+      play: (cue) => sounds.push(cue),
+    },
   });
   h.fetch(async () => ({ ...response({ error: "Slow down" }, 429), headers: { get: () => "5" } }));
   await h.element("#click-button").fire("click");

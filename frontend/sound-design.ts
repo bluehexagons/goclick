@@ -7,14 +7,14 @@ export const soundProfiles = [
   {
     id: "classic",
     name: "Classic",
-    description: "A low press and a higher release.",
+    description: "A metal switch with a low press and a lighter return.",
   },
   { id: "blip", name: "Blip", description: "Short electronic tones that rise in pitch." },
   { id: "clack", name: "Clack", description: "A short, dry key click." },
   {
     id: "clunk",
     name: "Clunk",
-    description: "A low, resonant impact.",
+    description: "A muffled impact with a short, low resonance.",
   },
   {
     id: "low-beep",
@@ -30,6 +30,36 @@ export const soundProfiles = [
 export type SoundProfile = (typeof soundProfiles)[number]["id"];
 export function isSoundProfile(value: unknown): value is SoundProfile {
   return soundProfiles.some((profile) => profile.id === value);
+}
+
+function whiteNoise(random: () => number) {
+  return random() * 2 - 1;
+}
+
+// Reflections begin after the dry hit, then get closer together and decay.
+// Cap the sum of their magnitudes so the mixer can reserve fixed headroom.
+export function renderRoomImpulse(sampleRate: number, random = Math.random) {
+  const impulse = new Float32Array(Math.ceil(sampleRate * 0.13));
+  for (const [ms, gain] of [
+    [7, 0.15],
+    [12, -0.075],
+    [19, 0.055],
+    [27, 0.035],
+    [33, -0.02],
+  ] as const)
+    impulse[Math.round((sampleRate * ms) / 1000)] = gain;
+
+  let tailMagnitude = 0;
+  const tailStart = Math.ceil(sampleRate * 0.036);
+  for (let i = tailStart; i < impulse.length; i++) {
+    const time = (i - tailStart) / sampleRate;
+    const reflection = whiteNoise(random) * Math.exp(-time / 0.021);
+    impulse[i] = reflection;
+    tailMagnitude += Math.abs(reflection);
+  }
+  const tailGain = tailMagnitude > 0 ? 0.12 / tailMagnitude : 0;
+  for (let i = tailStart; i < impulse.length; i++) impulse[i] = impulse[i]! * tailGain;
+  return impulse;
 }
 
 interface Variation {
@@ -161,6 +191,8 @@ export function renderSound(
   const decay = response ? 0.025 : (release?.decay ?? recipe.decay);
   const duration = (release?.duration ?? recipe.duration) * variation.duration;
   const samples = new Float32Array(Math.ceil(sampleRate * duration));
+  const mechanical =
+    physical && (profile === "classic" || profile === "clack" || profile === "clunk");
   // Keep the Clunk noise pole's decay time fixed across output devices.
   const noiseBlend = sampleRate === 48000 ? 0.18 : 1 - Math.pow(0.82, 48000 / sampleRate);
   const stepPitch = end < pitch ? -pitch : pitch;
@@ -175,18 +207,18 @@ export function renderSound(
       (end * time + (pitch - end) * 0.012 * (1 - Math.exp(-time / 0.012)));
     const envelope = Math.exp(-time / decay);
     const ring = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
-    const noise = random() * 2 - 1;
+    const noise = mechanical ? whiteNoise(random) : 0;
     lowNoise += (noise - lowNoise) * noiseBlend;
     const highNoise = noise - previousNoise;
     previousNoise = noise;
-    const texture = variation.texture * (physical ? 1 : 0.25);
+    const texture = variation.texture;
     let wave: number;
     switch (profile) {
       case "classic":
         wave =
-          0.6 * Math.sin(phase) * envelope +
-          0.14 * ring * Math.exp(-time / 0.008) +
-          0.1 * highNoise * texture * Math.exp(-time / 0.003);
+          (physical ? 0.46 : 0.6) * Math.sin(phase) * envelope +
+          0.1 * ring * Math.exp(-time / 0.006) +
+          (0.23 * noise + 0.1 * highNoise) * texture * Math.exp(-time / 0.003);
         break;
       case "blip": {
         // A pitch step and rounded pulse evoke a tiny arcade voice.
@@ -198,18 +230,20 @@ export function renderSound(
       }
       case "clack":
         wave =
-          0.3 * Math.sin(phase) * envelope +
-          0.12 * ring * Math.exp(-time / 0.006) +
-          0.22 * highNoise * texture * Math.exp(-time / 0.0025);
+          (physical ? 0.09 : 0.3) * Math.sin(phase) * envelope +
+          0.05 * ring * Math.exp(-time / 0.0025) +
+          (0.48 * noise + 0.17 * highNoise) *
+            texture *
+            Math.exp(-time / (release ? 0.0025 : 0.004));
         break;
       case "clunk":
         // Decaying phase modulation gives the impact a thick, resonant body.
         wave =
-          0.6 *
+          (physical ? 0.32 : 0.6) *
             Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) *
             envelope +
-          0.14 * ring * Math.exp(-time / 0.014) +
-          0.08 * lowNoise * texture * Math.exp(-time / 0.005);
+          0.1 * ring * Math.exp(-time / 0.014) +
+          0.55 * lowNoise * texture * Math.exp(-time / 0.005);
         break;
       case "low-beep":
         wave =
@@ -298,20 +332,26 @@ export type HardwareCue = keyof typeof hardwareSounds;
 export function renderHardwareSound(cue: HardwareCue, sampleRate: number, random = Math.random) {
   const { duration, hits } = hardwareSounds[cue];
   const samples = new Float32Array(Math.ceil((sampleRate * duration) / 1000));
+  const connector = cue !== "boot" && cue !== "test" && cue !== "reset";
   for (const { at, pitch, gain, decay, noise } of hits) {
     const start = Math.round((sampleRate * at) / 1000);
+    const bodyDecay = connector ? decay * 0.45 : decay;
+    let previousNoise = 0;
     for (let i = start; i < samples.length; i++) {
       const ms = ((i - start) * 1000) / sampleRate;
       const phase = (2 * Math.PI * pitch * ms) / 1000;
-      const body = Math.sin(phase) * Math.exp(-ms / decay);
-      const ring = 0.24 * Math.sin(phase * (noise ? 3.1 : 2)) * Math.exp((-2 * ms) / decay);
-      const snap = noise ? noise * (random() * 2 - 1) * Math.exp(-ms / 5) : 0;
+      const body = Math.sin(phase) * Math.exp(-ms / bodyDecay);
+      const ring = 0.24 * Math.sin(phase * (noise ? 3.1 : 2)) * Math.exp((-2 * ms) / bodyDecay);
+      const sample = noise ? whiteNoise(random) : 0;
+      const snap =
+        (sample - 0.3 * previousNoise) * noise * (connector ? 1.7 : 1) * Math.exp(-ms / 5);
+      previousNoise = sample;
       const fade = Math.min(
         1,
         ms / (noise ? 0.8 : 9),
         ((samples.length - 1 - i) * 1000) / (sampleRate * 12),
       );
-      samples[i] = samples[i]! + gain * fade * (body + ring + snap);
+      samples[i] = samples[i]! + gain * fade * ((body + ring) * (connector ? 0.32 : 1) + snap);
     }
   }
   return samples;

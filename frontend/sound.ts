@@ -1,4 +1,9 @@
-import { createSoundMotion, renderHardwareSound, renderSound } from "./sound-design.js";
+import {
+  createSoundMotion,
+  renderHardwareSound,
+  renderRoomImpulse,
+  renderSound,
+} from "./sound-design.js";
 import type { HardwareCue, SoundCue, SoundProfile } from "./sound-design.js";
 
 // Boot requests playback for remembered opt-ins. The browser still decides
@@ -7,14 +12,21 @@ const motion = createSoundMotion();
 let profile: SoundProfile = "classic";
 let enabled = false;
 let powered = true;
+let volume = 1;
+let reverb = true;
 let context: AudioContext | null = null;
 let output: GainNode | null = null;
+let roomImpulse: AudioBuffer | null = null;
+let room: ConvolverNode | null = null;
+let previewRoom: ConvolverNode | null = null;
 let suspending: Promise<void> | null = null;
 let generation = 0;
 const voices = new Set<AudioBufferSourceNode>();
 const previewVoices = new Set<AudioBufferSourceNode>();
 let previewPending = false;
 const maxVoices = 8;
+// Leave headroom for the peak sum of eight voices and their room reflections.
+const maxOutputGain = 0.085;
 const maxUnlockDelay = 150;
 const responseInterval = 80;
 let responseAt = -Infinity;
@@ -24,6 +36,18 @@ function cancelPending() {
   generation++;
   previewPending = false;
   for (const voice of previewVoices) removeVoice(voice, true);
+  clearRoom(true);
+}
+
+function clearRoom(preview: boolean) {
+  const convolver = preview ? previewRoom : room;
+  if (preview) previewRoom = null;
+  else room = null;
+  try {
+    convolver?.disconnect();
+  } catch {
+    // The device may already have torn down its graph.
+  }
 }
 
 function removeVoice(voice: AudioBufferSourceNode, stop = false) {
@@ -48,6 +72,8 @@ function clearVoices() {
   responseAt = -Infinity;
   responseWasFailure = false;
   for (const voice of voices) removeVoice(voice, true);
+  clearRoom(false);
+  clearRoom(true);
 }
 
 function stop() {
@@ -66,6 +92,7 @@ function discardContext() {
     // A device that has closed may already have torn down its graph.
   }
   output = null;
+  roomImpulse = null;
 }
 
 function suspend() {
@@ -95,11 +122,34 @@ function synthesize(audio: AudioContext, kind: SoundCue, preview = false, when?:
   return startVoice(audio, renderSound(profile, kind, audio.sampleRate, variation), preview, when);
 }
 
+function connectRoom(audio: AudioContext, voice: AudioBufferSourceNode, preview: boolean) {
+  if (!reverb) return;
+  try {
+    // A separate preview path lets closing Options cut its tail immediately.
+    let convolver = preview ? previewRoom : room;
+    if (!convolver) {
+      convolver = audio.createConvolver();
+      if (!roomImpulse) {
+        const samples = renderRoomImpulse(audio.sampleRate);
+        roomImpulse = audio.createBuffer(1, samples.length, audio.sampleRate);
+        roomImpulse.getChannelData(0).set(samples);
+      }
+      convolver.normalize = false;
+      convolver.buffer = roomImpulse;
+      convolver.connect(output!);
+      if (preview) previewRoom = convolver;
+      else room = convolver;
+    }
+    voice.connect(convolver);
+  } catch {
+    // The dry connection still plays if the room effect is unavailable.
+  }
+}
+
 function startVoice(audio: AudioContext, samples: Float32Array, preview = false, when?: number) {
   const buffer = audio.createBuffer(1, samples.length, audio.sampleRate);
   buffer.getChannelData(0).set(samples);
-  // Bound overlapping voices even with rapid multi-finger input. At this gain
-  // their combined peak stays below full scale without a compressor.
+  // Bound overlapping voices even with rapid multi-finger input.
   if (voices.size >= maxVoices) {
     const oldest = voices.values().next().value!;
     removeVoice(oldest, true);
@@ -108,6 +158,7 @@ function startVoice(audio: AudioContext, samples: Float32Array, preview = false,
   try {
     voice.buffer = buffer;
     voice.connect(output!);
+    connectRoom(audio, voice, preview);
     voice.onended = () => removeVoice(voice);
     voices.add(voice);
     if (preview) previewVoices.add(voice);
@@ -127,7 +178,7 @@ function audioContext(allowCreate: boolean) {
     const next = new window.AudioContext({ latencyHint: "interactive" });
     try {
       const gain = next.createGain();
-      gain.gain.value = 0.12;
+      gain.gain.value = maxOutputGain * volume;
       gain.connect(next.destination);
       output = gain;
       context = next;
@@ -272,11 +323,26 @@ export const clickSound = {
   },
   cancelPreview() {
     if (previewPending) cancelPending();
+    else clearRoom(true);
   },
   setProfile(value: SoundProfile) {
     if (profile === value) return;
     stop();
     profile = value;
+  },
+  setVolume(value: number) {
+    if (volume === value) return;
+    volume = value;
+    if (output && context && context.state !== "closed")
+      output.gain.setTargetAtTime(maxOutputGain * volume, context.currentTime, 0.01);
+  },
+  setReverb(value: boolean) {
+    if (reverb === value) return;
+    reverb = value;
+    if (!reverb) {
+      clearRoom(false);
+      clearRoom(true);
+    }
   },
   prepare,
   cancelPending,

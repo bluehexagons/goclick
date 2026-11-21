@@ -18,11 +18,12 @@ Auto, Reduced, and Full motion; Reduced keeps quiet, static feedback.
 Sound effects start **off**. The header's speaker toggle enables synthesized
 press and release clicks with slight variations, plus quieter save/ping and
 error cues. This preference is remembered in the browser and works in online
-and offline play. Choose Classic, Blip, Clack, Clunk, Low beep, or Soft chime in
-Options, with a preview that never adds clicks. Each profile has its own tones
-and textures, drifting along smooth curves and responding gently to clicking
-pace. Releases are shorter and lighter; clustered replies share a quiet ping,
-with failures taking priority. Muting stops active sounds immediately.
+and offline play. Options has a master volume slider, a room reverb toggle
+(on by default), and a preview that never adds clicks. Choose Classic, Blip,
+Clack, Clunk, Low beep, or Soft chime. The mechanical profiles use short
+bursts of white noise for their click and impact textures. Releases are
+shorter and lighter. Clustered replies share a quiet ping, with failures taking
+priority. Muting stops active sounds immediately.
 
 **Play offline** keeps a separate local save in this browser, without account
 requests or online click limits. Download/import a save or restart it from

@@ -1575,6 +1575,24 @@ select {
   height: 18px;
   flex: 0 0 auto;
 }
+.sound-volume-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+#sound-volume-value {
+  font-variant-numeric: tabular-nums;
+}
+#sound-volume {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--gold);
+}
 .local-save-actions {
   display: flex;
   flex-wrap: wrap;

@@ -58,6 +58,9 @@ const refreshCounterButton = $<HTMLButtonElement>("#refresh-counter");
 const motionShortcut = $<HTMLButtonElement>("#motion-shortcut");
 const soundToggle = $<HTMLButtonElement>("#sound-toggle");
 const soundEnabled = $<HTMLInputElement>("#sound-enabled");
+const soundVolumeSetting = $<HTMLInputElement>("#sound-volume");
+const soundVolumeValue = $("#sound-volume-value");
+const soundReverbSetting = $<HTMLInputElement>("#sound-reverb");
 const soundProfileSetting = $<HTMLSelectElement>("#sound-profile");
 const soundPreview = $<HTMLButtonElement>("#preview-sound");
 for (const profile of soundProfiles) {
@@ -67,10 +70,15 @@ for (const profile of soundProfiles) {
   soundProfileSetting.append(option);
 }
 function updateSoundToggle() {
-  const { sound: enabled, soundProfile } = gameSettings.value;
+  const { sound: enabled, soundProfile, soundVolume, soundReverb } = gameSettings.value;
   clickSound.setProfile(soundProfile);
+  clickSound.setVolume(soundVolume / 100);
+  clickSound.setReverb(soundReverb);
   clickSound.setEnabled(enabled);
   soundEnabled.checked = enabled;
+  soundVolumeSetting.value = String(soundVolume);
+  soundVolumeValue.textContent = `${soundVolume}%`;
+  soundReverbSetting.checked = soundReverb;
   soundProfileSetting.value = soundProfile;
   soundPreview.disabled = !enabled;
   $("#sound-profile-description").textContent = soundProfiles.find(
@@ -929,6 +937,16 @@ function saveOption(patch: Parameters<typeof gameSettings.update>[0]) {
 soundEnabled.addEventListener("change", () => {
   saveOption({ sound: soundEnabled.checked });
   if (gameSettings.value.sound) clickSound.prepare();
+});
+soundVolumeSetting.addEventListener("input", () => {
+  soundVolumeValue.textContent = `${soundVolumeSetting.value}%`;
+  clickSound.setVolume(soundVolumeSetting.valueAsNumber / 100);
+});
+soundVolumeSetting.addEventListener("change", () => {
+  saveOption({ soundVolume: soundVolumeSetting.valueAsNumber });
+});
+soundReverbSetting.addEventListener("change", () => {
+  saveOption({ soundReverb: soundReverbSetting.checked });
 });
 soundProfileSetting.addEventListener("change", () => {
   const profile = soundProfileSetting.value;

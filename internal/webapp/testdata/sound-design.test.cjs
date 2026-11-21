@@ -128,6 +128,49 @@ test("recipes have distinct tails and pitch ranges for different preferences", (
   assert.ok(crossings(render("low-beep")) < crossings(render("blip")) * 0.5);
 });
 
+test("key clicks and connector cues get most of their attack energy from noise", () => {
+  const { createSoundMotion, renderSound, renderHardwareSound } = design();
+  const variation = createSoundMotion(() => 0.5).sample(0);
+  for (const rate of [44100, 48000, 96000]) {
+    const renderers = [
+      ...["press", "release"].map(
+        (cue) => (random) => renderSound("clack", cue, rate, variation, random),
+      ),
+      ...["plug-loose", "unplug", "plug-in", "cord-slack", "cord-tension"].map(
+        (cue) => (random) => renderHardwareSound(cue, rate, random),
+      ),
+    ];
+    for (const render of renderers) {
+      const tone = render(() => 0.5);
+      const samples = render(noise());
+      let noiseEnergy = 0;
+      let toneEnergy = 0;
+      for (let i = 0; i < rate * 0.008; i++) {
+        noiseEnergy += (samples[i] - tone[i]) ** 2;
+        toneEnergy += tone[i] ** 2;
+      }
+      assert.ok(noiseEnergy > toneEnergy, `attack at ${rate} Hz`);
+    }
+  }
+});
+
+test("room impulse has a short onset delay, decaying tail, and bounded gain", () => {
+  const { renderRoomImpulse } = design();
+  for (const rate of [44100, 48000, 96000]) {
+    const impulse = renderRoomImpulse(rate, noise());
+    assert.equal(impulse.length, Math.ceil(rate * 0.13));
+    assert.equal(
+      impulse.findIndex((sample) => sample !== 0),
+      Math.round(rate * 0.007),
+    );
+    const sum = (from, to) =>
+      impulse.slice(rate * from, rate * to).reduce((total, sample) => total + Math.abs(sample), 0);
+    assert.ok(sum(0, 0.13) < 0.46);
+    assert.ok(sum(0.036, 0.056) > 0.06);
+    assert.ok(sum(0.11, 0.13) < 0.005);
+  }
+});
+
 test("release envelopes stay shorter, lighter, and lower in energy than presses", () => {
   const { soundProfiles, createSoundMotion, renderSound } = design();
   const energy = (samples) => samples.reduce((sum, sample) => sum + sample * sample, 0);

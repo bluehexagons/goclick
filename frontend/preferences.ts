@@ -10,7 +10,10 @@ interface Settings {
   simulatedPing: 0 | 80 | 250 | 800;
   sound: boolean;
   soundProfile: SoundProfile;
+  soundVolume: number;
+  soundReverb: boolean;
 }
+const defaultSoundVolume = 100;
 const gameSettings = (() => {
   const key = "goclick.settings.v1";
   const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -21,6 +24,8 @@ const gameSettings = (() => {
     simulatedPing: 80,
     sound: false,
     soundProfile: "classic",
+    soundVolume: defaultSoundVolume,
+    soundReverb: true,
   };
   function parse(raw: string | null): Settings {
     const decoded: unknown = JSON.parse(raw || "{}");
@@ -28,6 +33,14 @@ const gameSettings = (() => {
     return {
       sound: saved.sound === true,
       soundProfile: isSoundProfile(saved.soundProfile) ? saved.soundProfile : "classic",
+      soundVolume:
+        typeof saved.soundVolume === "number" &&
+        Number.isInteger(saved.soundVolume) &&
+        saved.soundVolume >= 0 &&
+        saved.soundVolume <= 100
+          ? saved.soundVolume
+          : defaultSoundVolume,
+      soundReverb: saved.soundReverb !== false,
       motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "auto",
       simulatedPing:
         saved.simulatedPing === 0 || saved.simulatedPing === 250 || saved.simulatedPing === 800

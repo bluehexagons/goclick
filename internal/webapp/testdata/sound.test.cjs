@@ -14,7 +14,7 @@ function harness({
 } = {}) {
   const events = new Map(),
     contexts = [],
-    buffers = [],
+    rooms = [],
     sources = [];
   let resume;
   let resumes = 0;
@@ -33,7 +33,12 @@ function harness({
     createGain() {
       if (fail === "gain") throw new Error("Gain unavailable");
       return (this.output = {
-        gain: { value: 1 },
+        gain: {
+          value: 1,
+          setTargetAtTime(value) {
+            this.value = value;
+          },
+        },
         connect() {
           if (fail === "output-connect") throw new Error("Output unavailable");
         },
@@ -42,20 +47,33 @@ function harness({
         },
       });
     }
+    createConvolver() {
+      if (fail === "room") throw new Error("Room effect unavailable");
+      const room = {
+        connect(target) {
+          this.target = target;
+        },
+        disconnect() {
+          this.target = null;
+        },
+      };
+      rooms.push(room);
+      return room;
+    }
     createBuffer(channels, length, rate) {
       if (fail === "buffer") throw new Error("Allocation failed");
       assert.equal(channels, 1);
       assert.equal(rate, sampleRate);
       this.currentTime += bufferDelay;
       const samples = new Float32Array(length);
-      const buffer = { samples, getChannelData: () => samples };
-      buffers.push(buffer);
-      return buffer;
+      return { samples, getChannelData: () => samples };
     }
     createBufferSource() {
       const source = {
-        connect() {
+        targets: [],
+        connect(target) {
           if (fail === "source-connect") throw new Error("Connection unavailable");
+          this.targets.push(target);
         },
         disconnect() {
           this.disconnected = true;
@@ -122,7 +140,10 @@ function harness({
   return {
     sound,
     contexts,
-    buffers,
+    get buffers() {
+      return sources.map((source) => source.buffer);
+    },
+    rooms,
     sources,
     resume: () => resume(),
     captureResume: () => resume,
@@ -226,8 +247,71 @@ for (const sampleRate of [44100, 48000])
     }
     for (const kind of ["saved", "slow", "error", "limited"])
       assert.ok(peaks.get(kind) < peaks.get("press") * 0.5, kind);
-    assert.ok(8 * 0.98 * h.contexts[0].output.gain.value < 1, "Combined peak cannot clip");
+    const reflections = h.rooms[0].buffer.samples.reduce((sum, value) => sum + Math.abs(value), 0);
+    assert.ok(8 * 0.98 * h.contexts[0].output.gain.value * (1 + reflections) < 1);
   });
+
+test("master volume controls the dry and room paths without restarting voices", () => {
+  const h = harness();
+  h.sound.setVolume(0.25);
+  assert.equal(h.contexts.length, 0);
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  const [voice] = h.sources;
+  const { output } = h.contexts[0];
+  const [room] = h.rooms;
+  assert.deepEqual(voice.targets, [output, room]);
+  assert.equal(room.target, output);
+  assert.equal(room.normalize, false);
+  const quarterVolume = output.gain.value;
+  assert.ok(quarterVolume > 0);
+  h.sound.setVolume(0);
+  assert.equal(output.gain.value, 0);
+  h.sound.setVolume(1);
+  assert.equal(output.gain.value, quarterVolume * 4);
+  assert.equal(voice.stopped, undefined);
+});
+
+test("disabling the room cuts its tail and new cues stay dry until it is re-enabled", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  const [room] = h.rooms;
+  h.sound.setReverb(false);
+  assert.equal(room.target, null);
+  h.sound.play("release");
+  assert.deepEqual(h.sources.at(-1).targets, [h.contexts[0].output]);
+  h.sound.setReverb(true);
+  h.sound.hardware("boot");
+  assert.equal(h.rooms.length, 2);
+  assert.equal(h.rooms[1].buffer, room.buffer);
+  assert.ok(h.sources.at(-1).targets.includes(h.rooms[1]));
+  h.hide();
+  assert.equal(h.rooms[1].target, null);
+});
+
+test("closing a preview cuts the room tail without silencing gameplay sounds", () => {
+  const h = harness();
+  h.sound.setEnabled(true);
+  h.sound.preview();
+  const [previewRoom] = h.rooms;
+  for (const voice of h.sources) voice.onended();
+  h.sound.play("saved");
+  const gameRoom = h.rooms[1];
+  h.sound.cancelPreview();
+  assert.equal(previewRoom.target, null);
+  assert.equal(gameRoom.target, h.contexts[0].output);
+  h.sound.setEnabled(false);
+  assert.equal(gameRoom.target, null);
+});
+
+test("room setup failure still plays the dry cue", () => {
+  const h = harness({ fail: "room" });
+  h.sound.setEnabled(true);
+  h.sound.play("press");
+  assert.equal(h.sources[0].started, true);
+  assert.deepEqual(h.sources[0].targets, [h.contexts[0].output]);
+});
 
 test("explicit opt-in prepares audio silently and the first press reuses it", async () => {
   const h = harness({ state: "suspended" });

@@ -841,6 +841,13 @@
           <label class="replace-local">
             <input id="sound-enabled" type="checkbox" /> Sound effects
           </label>
+          <label class="sound-volume-label" for="sound-volume">
+            Volume <span id="sound-volume-value" aria-hidden="true">100%</span>
+          </label>
+          <input id="sound-volume" type="range" min="0" max="100" value="100" />
+          <label class="replace-local">
+            <input id="sound-reverb" type="checkbox" checked /> Room reverb
+          </label>
           <label for="sound-profile">Sound profile</label>
           <select id="sound-profile" aria-describedby="sound-profile-description"></select>
           <p id="sound-profile-description" class="field-hint"></p>
