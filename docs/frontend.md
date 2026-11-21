@@ -64,7 +64,7 @@ Options offers Classic (metal switch), Blip (arcade pulses), Clack (short key
 click), Clunk (muffled impact), Low beep (rounded sine tones), and
 Soft chime (inharmonic glassy partials). Each recipe supplies distinct press,
 release, and much quieter saved/slow/error/cooldown cues. Releases use their own
-shorter duration, faster decay, and lower gain to keep the return stroke light
+shorter duration, faster decay, and lower level to keep the return stroke light
 and rapid clicks clear. The chosen `soundProfile` is stored alongside the sound
 boolean; legacy or unknown choices fall back to Classic. Choosing a profile
 never enables sound automatically. The master volume applies to all cues and
@@ -84,11 +84,14 @@ device. Pitch follows overlapping slow sine curves; texture and duration follow
 another smooth curve. A bounded activity value rises on presses and decays
 exponentially over 900 ms, adding a little energy during rapid play. Randomness
 seeds the curves once per visit, adds less than half a percent of pitch accent
-per press, and supplies white noise for mechanical textures. Clack and the
-plug and cord clicks use short, noise-led attacks. Release and reply sample
-the same continuous curves rather than picking unrelated parameters. Blip's
-pitch step follows each cue's direction, including downward error/cooldown
-tones. Clunk's noise-filter decay is normalized for the device sample rate.
+per press, and supplies white noise for mechanical textures. Clack uses a
+bright noise burst and Clunk uses a darker, longer one for both strokes.
+The plug and cord clicks also use noise-led attacks. Each cue's weighted
+energy determines a single playback gain, matching comparable effects across
+profiles while keeping releases and replies quieter. A peak ceiling leaves
+headroom for overlapping cues. Release and reply sample the same continuous
+curves as presses. Blip's pitch step follows each cue's direction, including
+downward error/cooldown tones.
 Room reverb shares a generated impulse response across gameplay and preview
 convolvers. Starting a new preview or changing profiles clears both paths.
 Closing Options cuts the preview tail independently of gameplay audio.

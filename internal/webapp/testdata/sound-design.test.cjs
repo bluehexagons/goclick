@@ -3,7 +3,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
 const design = () => frontend({}).load("sound-design");
-const cues = ["press", "release", "saved", "slow", "error", "limited"];
+const cues = ["press", "release", "saved", "slow", "error", "limited", "hold"];
 function noise(seed = 17) {
   return () => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
@@ -11,6 +11,19 @@ function noise(seed = 17) {
   };
 }
 const peak = (samples) => samples.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
+function weightedEnergy(samples, rate) {
+  const lowWeight = 1 - Math.exp((-2 * Math.PI * 160) / rate);
+  const midWeight = 1 - Math.exp((-2 * Math.PI * 4800) / rate);
+  let bass = 0;
+  let mid = 0;
+  let energy = 0;
+  for (const sample of samples) {
+    bass += (sample - bass) * lowWeight;
+    mid += (sample - bass - mid) * midWeight;
+    energy += mid * mid;
+  }
+  return energy / rate;
+}
 
 test("the hardware cues have clean envelopes, and TEST hits harder than RESET", () => {
   const { renderHardwareSound } = design();
@@ -34,6 +47,14 @@ test("the hardware cues have clean envelopes, and TEST hits harder than RESET", 
     }
     assert.ok(peak(rendered[1]) > 1.4 * peak(rendered[2]));
     assert.notDeepEqual(rendered[6], rendered[7]);
+    for (const [a, b] of [
+      [0, 1],
+      [4, 5],
+      [6, 7],
+    ]) {
+      const ratio = weightedEnergy(rendered[a], rate) / weightedEnergy(rendered[b], rate);
+      assert.ok(ratio > 0.85 && ratio < 1.2, `${cues[a]} and ${cues[b]} levels`);
+    }
   }
 });
 
@@ -90,11 +111,12 @@ test("press activity rises gently, stays bounded, and decays after a pause; repl
 });
 
 for (const rate of [44100, 48000, 96000])
-  test(`every profile varies all cues, fades cleanly, and keeps replies quiet at ${rate} Hz`, () => {
+  test(`cue levels match across profiles, with quieter replies at ${rate} Hz`, () => {
     const { soundProfiles, createSoundMotion, renderSound } = design();
+    const profileLevels = new Map(cues.map((cue) => [cue, []]));
     for (const { id } of soundProfiles) {
       const motion = createSoundMotion(() => 0.5),
-        peaks = new Map();
+        levels = new Map();
       let time = 1000;
       for (const cue of cues) {
         const a = renderSound(id, cue, rate, motion.sample(time, cue === "press"), noise());
@@ -106,11 +128,16 @@ for (const rate of [44100, 48000, 96000])
         assert.equal(Math.abs(a.at(-1)), 0);
         for (const sample of a)
           assert.ok(Number.isFinite(sample) && Math.abs(sample) < 0.98, `${id}.${cue}`);
-        peaks.set(cue, peak(a));
-        assert.ok(peaks.get(cue) > 0.01, `${id}.${cue} must be audible`);
+        assert.ok(peak(a) > 0.01, `${id}.${cue} must be audible`);
+        const level = weightedEnergy(a, rate);
+        levels.set(cue, level);
+        profileLevels.get(cue).push(level);
       }
       for (const cue of cues.slice(2))
-        assert.ok(peaks.get(cue) < peaks.get("press") * 0.5, `${id}.${cue}`);
+        assert.ok(levels.get(cue) < levels.get("release") * 0.5, `${id}.${cue}`);
+    }
+    for (const [cue, levels] of profileLevels) {
+      assert.ok(Math.max(...levels) < Math.min(...levels) * 1.4, `${cue} levels`);
     }
   });
 
@@ -128,28 +155,23 @@ test("recipes have distinct tails and pitch ranges for different preferences", (
   assert.ok(crossings(render("low-beep")) < crossings(render("blip")) * 0.5);
 });
 
-test("key clicks and connector cues get most of their attack energy from noise", () => {
-  const { createSoundMotion, renderSound, renderHardwareSound } = design();
-  const variation = createSoundMotion(() => 0.5).sample(0);
+test("connector cues get most of their attack energy from noise", () => {
+  const { renderHardwareSound } = design();
   for (const rate of [44100, 48000, 96000]) {
-    const renderers = [
-      ...["press", "release"].map(
-        (cue) => (random) => renderSound("clack", cue, rate, variation, random),
-      ),
-      ...["plug-loose", "unplug", "plug-in", "cord-slack", "cord-tension"].map(
-        (cue) => (random) => renderHardwareSound(cue, rate, random),
-      ),
-    ];
-    for (const render of renderers) {
-      const tone = render(() => 0.5);
-      const samples = render(noise());
-      let noiseEnergy = 0;
+    for (const cue of ["plug-loose", "unplug", "plug-in", "cord-slack", "cord-tension"]) {
+      const tone = renderHardwareSound(cue, rate, () => 0.5);
+      const samples = renderHardwareSound(cue, rate, noise());
+      let energy = 0;
       let toneEnergy = 0;
+      let crossEnergy = 0;
       for (let i = 0; i < rate * 0.008; i++) {
-        noiseEnergy += (samples[i] - tone[i]) ** 2;
+        energy += samples[i] ** 2;
         toneEnergy += tone[i] ** 2;
+        crossEnergy += samples[i] * tone[i];
       }
-      assert.ok(noiseEnergy > toneEnergy, `attack at ${rate} Hz`);
+      // Project onto the tone-only signal to account for its different gain.
+      const tonalShare = crossEnergy ** 2 / (toneEnergy * energy);
+      assert.ok(tonalShare < 0.5, `${cue} attack at ${rate} Hz`);
     }
   }
 });
@@ -208,21 +230,24 @@ test("Blip failure and cooldown cues step down while success cues step up", () =
   }
 });
 
-test("Clunk's noise decay follows elapsed time at different device sample rates", () => {
+test("Clack and Clunk strokes use filtered noise with distinct brightness", () => {
   const { createSoundMotion, renderSound } = design();
   const variation = createSoundMotion(() => 0.5).sample(0);
-  const ratios = [48000, 96000].map((rate) => {
-    let first = true;
-    const impulse = renderSound("clunk", "press", rate, variation, () => {
-      const value = first ? 1 : 0.5;
-      first = false;
-      return value;
-    });
-    const silent = renderSound("clunk", "press", rate, variation, () => 0.5);
-    const a = rate / 4800,
-      b = rate / 2400;
-    // Both samples are in the linear attack. Remove its change to isolate decay.
-    return (impulse[b] - silent[b]) / (impulse[a] - silent[a]) / 2;
-  });
-  assert.ok(Math.abs(ratios[0] - ratios[1]) < 0.002, ratios.join(", "));
+  const brightness = (samples) => {
+    let energy = 0;
+    let differences = 0;
+    for (let i = 1; i < samples.length; i++) {
+      energy += samples[i] ** 2;
+      differences += (samples[i] - samples[i - 1]) ** 2;
+    }
+    return differences / energy;
+  };
+  for (const rate of [44100, 48000, 96000]) {
+    for (const cue of ["press", "release"]) {
+      const render = (profile, random) => renderSound(profile, cue, rate, variation, random);
+      for (const profile of ["clack", "clunk"])
+        assert.equal(peak(render(profile, () => 0.5)), 0, `${profile}.${cue} oscillator`);
+      assert.ok(brightness(render("clack", noise())) > brightness(render("clunk", noise())) * 4);
+    }
+  }
 });

@@ -216,7 +216,7 @@
     {
       id: "clunk",
       name: "Clunk",
-      description: "A muffled impact with a short, low resonance."
+      description: "A low, muffled thud."
     },
     {
       id: "low-beep",
@@ -287,7 +287,7 @@
     classic: {
       pitch: 175,
       end: 65,
-      release: { pitch: 1.5, duration: 0.065, decay: 0.011, gain: 0.65 },
+      release: { pitch: 1.5, duration: 0.065, decay: 0.011 },
       reply: 1100,
       ring: 1450,
       duration: 0.095,
@@ -297,7 +297,7 @@
     blip: {
       pitch: 620,
       end: 830,
-      release: { pitch: 1.35, duration: 0.06, decay: 0.015, gain: 0.64 },
+      release: { pitch: 1.35, duration: 0.06, decay: 0.015 },
       reply: 1400,
       ring: 1240,
       duration: 0.075,
@@ -305,9 +305,7 @@
       attack: 15e-4
     },
     clack: {
-      pitch: 430,
-      end: 250,
-      release: { pitch: 1.25, duration: 0.045, decay: 6e-3, gain: 0.62 },
+      release: { duration: 0.045, decay: 6e-3 },
       reply: 1250,
       ring: 2800,
       duration: 0.065,
@@ -315,9 +313,7 @@
       attack: 5e-4
     },
     clunk: {
-      pitch: 115,
-      end: 52,
-      release: { pitch: 1.4, duration: 0.085, decay: 0.017, gain: 0.62 },
+      release: { duration: 0.085, decay: 0.017 },
       reply: 560,
       ring: 290,
       duration: 0.13,
@@ -327,7 +323,7 @@
     "low-beep": {
       pitch: 170,
       end: 160,
-      release: { pitch: 1.3, duration: 0.075, decay: 0.021, gain: 0.66 },
+      release: { pitch: 1.3, duration: 0.075, decay: 0.021 },
       reply: 340,
       ring: 340,
       duration: 0.11,
@@ -337,7 +333,7 @@
     "soft-chime": {
       pitch: 440,
       end: 440,
-      release: { pitch: 1.25, duration: 0.115, decay: 0.028, gain: 0.65 },
+      release: { pitch: 1.25, duration: 0.115, decay: 0.028 },
       reply: 880,
       ring: 1214,
       duration: 0.16,
@@ -346,44 +342,86 @@
     }
   };
   var responses = {
-    saved: { pitch: 1, end: 1.16, gain: 0.2 },
-    slow: { pitch: 0.64, end: 0.77, gain: 0.18 },
-    error: { pitch: 0.25, end: 0.16, gain: 0.22 },
-    limited: { pitch: 0.35, end: 0.28, gain: 0.18 },
-    hold: { pitch: 0.56, end: 0.58, gain: 0.065 }
+    saved: { pitch: 1, end: 1.16, level: 0.017 },
+    slow: { pitch: 0.64, end: 0.77, level: 0.015 },
+    error: { pitch: 0.25, end: 0.16, level: 0.019 },
+    limited: { pitch: 0.35, end: 0.28, level: 0.016 },
+    hold: { pitch: 0.56, end: 0.58, level: 7e-3 }
   };
+  function filterWeight(frequency, sampleRate) {
+    return 1 - Math.exp(-2 * Math.PI * frequency / sampleRate);
+  }
+  function matchCueLevel(samples, sampleRate, level) {
+    const lowWeight = filterWeight(160, sampleRate);
+    const midWeight = filterWeight(4800, sampleRate);
+    let low = 0;
+    let mid = 0;
+    let energy = 0;
+    let peak = 0;
+    for (const sample of samples) {
+      low += (sample - low) * lowWeight;
+      mid += (sample - low - mid) * midWeight;
+      energy += mid * mid;
+      peak = Math.max(peak, Math.abs(sample));
+    }
+    if (peak === 0) return samples;
+    const gain = Math.min(level / Math.sqrt(energy / (sampleRate * 0.1)), 0.9 / peak);
+    for (let i = 0; i < samples.length; i++) samples[i] = samples[i] * gain;
+    return samples;
+  }
+  function renderImpact(samples, profile2, sampleRate, attack, decay, variation, random) {
+    const bright = profile2 === "clack";
+    const lowWeight = filterWeight((bright ? 1300 : 95) * variation.pitch, sampleRate);
+    const highWeight = filterWeight((bright ? 5200 : 780) * variation.texture, sampleRate);
+    let low = 0;
+    let high = 0;
+    let band = 0;
+    for (let i = 0; i < samples.length; i++) {
+      const time = i / sampleRate;
+      const noise = whiteNoise(random);
+      low += (noise - low) * lowWeight;
+      high += (noise - high) * highWeight;
+      band += (high - low - band) * highWeight;
+      const fade = Math.min(1, time / attack, (samples.length - 1 - i) / (sampleRate * 8e-3));
+      samples[i] = band * Math.exp(-time / decay) * fade;
+    }
+  }
   function renderSound(profile2, cue, sampleRate, variation, random = Math.random) {
     const recipe = recipes[profile2];
     const physical = cue === "press" || cue === "release";
     const response = physical ? null : responses[cue];
     const release2 = cue === "release" ? recipe.release : null;
-    const multiplier = release2?.pitch ?? 1;
-    const pitch = response ? recipe.reply * response.pitch : recipe.pitch * multiplier;
-    const end = response ? recipe.reply * response.end : recipe.end * multiplier;
-    const gain = (response?.gain ?? release2?.gain ?? 1) * variation.strength;
+    const level = (response?.level ?? (release2 ? 0.031 : 0.056)) * variation.strength;
     const decay = response ? 0.025 : release2?.decay ?? recipe.decay;
     const duration = (release2?.duration ?? recipe.duration) * variation.duration;
     const samples = new Float32Array(Math.ceil(sampleRate * duration));
-    const mechanical = physical && (profile2 === "classic" || profile2 === "clack" || profile2 === "clunk");
-    const noiseBlend = sampleRate === 48e3 ? 0.18 : 1 - Math.pow(0.82, 48e3 / sampleRate);
+    if (!response && (profile2 === "clack" || profile2 === "clunk")) {
+      renderImpact(samples, profile2, sampleRate, recipe.attack, decay, variation, random);
+      return matchCueLevel(samples, sampleRate, level);
+    }
+    let pitch = recipe.reply * (response?.pitch ?? 1);
+    let end = recipe.reply * (response?.end ?? 1);
+    if (!response && "pitch" in recipe) {
+      const multiplier = cue === "release" ? recipe.release.pitch : 1;
+      pitch = recipe.pitch * multiplier;
+      end = recipe.end * multiplier;
+    }
     const stepPitch = end < pitch ? -pitch : pitch;
     let previousNoise = 0;
-    let lowNoise = 0;
     for (let i = 0; i < samples.length; i++) {
       const time = i / sampleRate;
       const phase = 2 * Math.PI * variation.pitch * (end * time + (pitch - end) * 0.012 * (1 - Math.exp(-time / 0.012)));
       const envelope = Math.exp(-time / decay);
       const ring2 = Math.sin(2 * Math.PI * recipe.ring * variation.pitch * time);
-      const noise = mechanical ? whiteNoise(random) : 0;
-      lowNoise += (noise - lowNoise) * noiseBlend;
-      const highNoise = noise - previousNoise;
-      previousNoise = noise;
-      const texture = variation.texture;
       let wave;
       switch (profile2) {
-        case "classic":
-          wave = (physical ? 0.46 : 0.6) * Math.sin(phase) * envelope + 0.1 * ring2 * Math.exp(-time / 6e-3) + (0.23 * noise + 0.1 * highNoise) * texture * Math.exp(-time / 3e-3);
+        case "classic": {
+          const noise = physical ? whiteNoise(random) : 0;
+          const highNoise = noise - previousNoise;
+          previousNoise = noise;
+          wave = (physical ? 0.46 : 0.6) * Math.sin(phase) * envelope + 0.1 * ring2 * Math.exp(-time / 6e-3) + (0.23 * noise + 0.1 * highNoise) * variation.texture * Math.exp(-time / 3e-3);
           break;
+        }
         case "blip": {
           const stepPhase = phase + Math.max(0, time - 0.018) * stepPitch * 0.35 * Math.PI * 2;
           const triangle = 2 * Math.asin(Math.sin(stepPhase)) / Math.PI;
@@ -392,10 +430,10 @@
           break;
         }
         case "clack":
-          wave = (physical ? 0.09 : 0.3) * Math.sin(phase) * envelope + 0.05 * ring2 * Math.exp(-time / 25e-4) + (0.48 * noise + 0.17 * highNoise) * texture * Math.exp(-time / (release2 ? 25e-4 : 4e-3));
+          wave = 0.3 * Math.sin(phase) * envelope + 0.05 * ring2 * Math.exp(-time / 25e-4);
           break;
         case "clunk":
-          wave = (physical ? 0.32 : 0.6) * Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) * envelope + 0.1 * ring2 * Math.exp(-time / 0.014) + 0.55 * lowNoise * texture * Math.exp(-time / 5e-3);
+          wave = 0.6 * Math.sin(phase + 0.85 * Math.sin(phase * 1.7) * Math.exp(-time / 0.012)) * envelope + 0.1 * ring2 * Math.exp(-time / 0.014);
           break;
         case "low-beep":
           wave = (0.6 * Math.sin(phase) + 0.1 * Math.sin(phase * 2) + 0.04 * Math.sin(phase / 2)) * envelope;
@@ -405,12 +443,13 @@
           break;
       }
       const fade = Math.min(1, time / recipe.attack, (samples.length - 1 - i) / (sampleRate * 8e-3));
-      samples[i] = wave * fade * gain;
+      samples[i] = wave * fade;
     }
-    return samples;
+    return matchCueLevel(samples, sampleRate, level);
   }
   var hardwareSounds = {
     boot: {
+      level: 0.052,
       duration: powerBootDuration,
       hits: powerBootSteps.map(({ at, pitch }, index) => ({
         at,
@@ -421,6 +460,7 @@
       }))
     },
     test: {
+      level: 0.054,
       duration: 165,
       hits: [
         { at: 0, pitch: 83, gain: 0.57, decay: 32, noise: 0.32 },
@@ -428,6 +468,7 @@
       ]
     },
     reset: {
+      level: 0.034,
       duration: 100,
       hits: [
         { at: 0, pitch: 214, gain: 0.33, decay: 16, noise: 0.24 },
@@ -435,6 +476,7 @@
       ]
     },
     "plug-loose": {
+      level: 0.028,
       duration: 215,
       hits: [
         { at: 0, pitch: 155, gain: 0.16, decay: 24, noise: 0.55 },
@@ -442,6 +484,7 @@
       ]
     },
     unplug: {
+      level: 0.033,
       duration: 225,
       hits: [
         { at: 0, pitch: 126, gain: 0.44, decay: 25, noise: 0.48 },
@@ -449,6 +492,7 @@
       ]
     },
     "plug-in": {
+      level: 0.033,
       duration: 195,
       hits: [
         { at: 0, pitch: 255, gain: 0.15, decay: 16, noise: 0.5 },
@@ -456,6 +500,7 @@
       ]
     },
     "cord-slack": {
+      level: 0.025,
       duration: 135,
       hits: [
         { at: 0, pitch: 294, gain: 0.19, decay: 15, noise: 0.27 },
@@ -463,6 +508,7 @@
       ]
     },
     "cord-tension": {
+      level: 0.025,
       duration: 130,
       hits: [
         { at: 0, pitch: 191, gain: 0.15, decay: 19, noise: 0.32 },
@@ -471,7 +517,7 @@
     }
   };
   function renderHardwareSound(cue, sampleRate, random = Math.random) {
-    const { duration, hits } = hardwareSounds[cue];
+    const { duration, hits, level } = hardwareSounds[cue];
     const samples = new Float32Array(Math.ceil(sampleRate * duration / 1e3));
     const connector = cue !== "boot" && cue !== "test" && cue !== "reset";
     for (const { at, pitch, gain, decay, noise } of hits) {
@@ -494,7 +540,7 @@
         samples[i] = samples[i] + gain * fade * ((body + ring2) * (connector ? 0.32 : 1) + snap);
       }
     }
-    return samples;
+    return matchCueLevel(samples, sampleRate, level);
   }
 
   // frontend/preferences.ts
