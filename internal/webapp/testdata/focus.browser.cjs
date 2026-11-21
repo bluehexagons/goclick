@@ -10,12 +10,14 @@ module.exports = async function checkFocus(page, baseURL) {
     page.evaluate(() => {
       const element = document.activeElement,
         style = getComputedStyle(element);
+      const mark = element.querySelector(".button-focus-mark");
       return {
         id: element.id,
         tag: element.tagName,
         mode: document.documentElement.dataset.focusInput,
         outline: style.outlineStyle,
         width: style.outlineWidth,
+        mark: !!mark && getComputedStyle(mark).visibility === "visible",
         skip: element.classList.contains("skip-link"),
         top: element.getBoundingClientRect().top,
       };
@@ -38,14 +40,14 @@ module.exports = async function checkFocus(page, baseURL) {
   await page.keyboard.press("Tab");
   const afterSkip = await focus();
   ensure(
-    afterSkip.id === "guest-click-button" && ring(afterSkip),
+    afterSkip.id === "guest-click-button" && afterSkip.mark && afterSkip.outline === "none",
     "Tab after skipping must reach a visible content control",
   );
 
   await page.locator("#home-view [data-play-local]").click();
   const pointer = await focus();
   ensure(
-    pointer.id === "click-button" && pointer.outline === "none",
+    pointer.id === "click-button" && !pointer.mark && pointer.outline === "none",
     "Pointer-started local play must focus the button quietly",
   );
   const button = page.locator("#click-button"),
@@ -56,14 +58,20 @@ module.exports = async function checkFocus(page, baseURL) {
     (expected) => Number(document.querySelector("#click-count").textContent) === expected,
     before + 1,
   );
-  ensure((await focus()).outline === "none", "Mouse clicks must not leave a button outline");
+  ensure(!(await focus()).mark, "Mouse clicks must not show the keyboard mark");
   await page.keyboard.press("Space");
   await page.waitForFunction(
     (expected) => Number(document.querySelector("#click-count").textContent) === expected,
     before + 2,
   );
   const keyboard = await focus();
-  ensure(ring(keyboard), "Starting keyboard play on a mouse-focused button must show focus");
+  ensure(
+    keyboard.mark && keyboard.outline === "none",
+    "Starting keyboard play must mark the button face without an outer ring",
+  );
+  await page.emulateMedia({ forcedColors: "active" });
+  ensure(ring(await focus()), "Forced colors must give the focused button a system outline");
+  await page.emulateMedia({ forcedColors: null });
   await page.keyboard.down("Enter");
   try {
     ensure(
@@ -79,7 +87,18 @@ module.exports = async function checkFocus(page, baseURL) {
     before + 3,
   );
   await button.click();
-  ensure((await focus()).outline === "none", "Returning to mouse input must remove the ring");
+  ensure(!(await focus()).mark, "Returning to mouse input must hide the mark");
+  await page.keyboard.press("Tab");
+  const outlet = page.locator(".outlet-control");
+  ensure(
+    ring(await focus()) && (await outlet.evaluate((element) => element === document.activeElement)),
+    "Tab must move keyboard focus from the button to the outlet",
+  );
+  ensure(
+    (await focus()).mark === false &&
+      (await outlet.evaluate((element) => getComputedStyle(element).zIndex)) === "3",
+    "A keyboard-focused outlet must come forward",
+  );
 
   await page.locator("#options-button").click();
   ensure(
@@ -113,6 +132,13 @@ module.exports = async function checkFocus(page, baseURL) {
   ensure(
     form.id === "login-identifier" && form.outline === "none",
     "Pointer navigation into a form must keep autofocus quiet",
+  );
+  ensure(
+    await page.locator("#login-identifier").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return style.borderColor === "rgb(98, 213, 204)";
+    }),
+    "The focused text field must indicate where typing will go",
   );
   await page.locator("#login-identifier").fill("test_player");
   ensure(

@@ -117,8 +117,11 @@ response colors. The Ping readout retains its last successful timing while the
 status dot indicates pending requests or an error. Local play labels simulated
 timings explicitly.
 
-Keep controls keyboard-accessible, focus rings visible, and dialogs usable at
-320 CSS pixels wide. Preserve Arabic layout and language metadata when changing
+Keep keyboard focus visible and dialogs usable at 320 CSS pixels wide.
+The large Click buttons mark keyboard focus on the face, with a system-color
+outline in forced-colors mode. Other controls use close outlines for keyboard
+focus, and focused text fields highlight their border for pointer users.
+Preserve Arabic layout and language metadata when changing
 the header or feedback; see the [localization guide](localization.md).
 
 The decorative outlet and plug live in the stage’s inline SVG. The cord sits

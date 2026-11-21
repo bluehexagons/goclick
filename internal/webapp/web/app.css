@@ -81,17 +81,15 @@ input {
 button {
   color: inherit;
 }
-:where(a[href], button, input, select, textarea, summary, [tabindex]):focus-visible,
-:root[data-focus-input="keyboard"]
-  :where(a[href], button, input, select, textarea, summary, [tabindex]):not(
-    main,
-    dialog,
-    .notice
-  ):focus {
+:where(a[href], button, input, select, textarea, summary, [tabindex]):not(
+    :where(main, dialog, .notice, .click-button)
+  ):is(
+    :root:not([data-focus-input="pointer"]) :focus-visible,
+    :root[data-focus-input="keyboard"] :focus
+  ) {
   outline: 2px solid var(--teal);
-  outline-offset: 3px;
+  outline-offset: var(--focus-offset, 2px);
 }
-:focus:not(:focus-visible),
 :root[data-focus-input="pointer"] :focus,
 :where(html, body, main, dialog, .notice):focus {
   outline: none;
@@ -248,9 +246,13 @@ button {
   padding-block: 5px;
   border: 0;
   background: transparent;
-  outline-offset: -2px;
+  --focus-offset: -2px;
 }
-#language-menu button:focus,
+#language-menu
+  button:is(
+    :root:not([data-focus-input="pointer"]) :focus-visible,
+    :root[data-focus-input="keyboard"] :focus
+  ),
 #language-menu button[aria-checked="true"] {
   background: var(--panel-soft);
 }
@@ -467,8 +469,15 @@ input {
   color: var(--ink);
   padding: 13px 14px;
 }
-input:focus {
-  border-color: var(--gold);
+input,
+select,
+textarea {
+  --focus-offset: 0px;
+}
+input:focus,
+select:focus,
+.share-dialog textarea:focus {
+  border-color: var(--teal);
 }
 .password-field {
   position: relative;
@@ -679,8 +688,10 @@ input:focus {
 .outlet-control:disabled {
   cursor: default;
 }
-.outlet-control:focus-visible,
-:root[data-focus-input="keyboard"] .outlet-control:focus {
+.outlet-control:is(
+  :root:not([data-focus-input="pointer"]) :focus-visible,
+  :root[data-focus-input="keyboard"] :focus
+) {
   z-index: 3;
 }
 .outlet-power-overlay {
@@ -690,7 +701,9 @@ input:focus {
   visibility: hidden;
   pointer-events: none;
 }
-.button-stage:has(.outlet-control:focus-visible) .outlet-power-overlay,
+:root:not([data-focus-input="pointer"])
+  .button-stage:has(.outlet-control:focus-visible)
+  .outlet-power-overlay,
 :root[data-focus-input="keyboard"] .button-stage:has(.outlet-control:focus) .outlet-power-overlay {
   visibility: visible;
 }
@@ -954,9 +967,41 @@ input:focus {
 .button-stage.is-rendered .button-label {
   opacity: 0;
 }
-.click-button:focus-visible,
-:root[data-focus-input="keyboard"] .click-button:focus {
-  outline-offset: 5px;
+.click-button:focus {
+  outline: none;
+}
+.button-focus-mark {
+  position: absolute;
+  z-index: 1;
+  inset-inline: 0;
+  inset-block-end: 21%;
+  margin-inline: auto;
+  width: 28px;
+  height: 4px;
+  border-radius: 99px;
+  background: #3d2b0d;
+  box-shadow: 0 0 0 1px #fff3bd;
+  visibility: hidden;
+  pointer-events: none;
+}
+.click-button:is(
+    :root:not([data-focus-input="pointer"]) :focus-visible,
+    :root[data-focus-input="keyboard"] :focus
+  )
+  .button-focus-mark {
+  visibility: visible;
+}
+@media (forced-colors: active) {
+  .click-button:is(
+    :root:not([data-focus-input="pointer"]) :focus-visible,
+    :root[data-focus-input="keyboard"] :focus
+  ) {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+  .button-focus-mark {
+    display: none;
+  }
 }
 .click-button:disabled {
   cursor: wait;
@@ -1566,7 +1611,7 @@ select {
 :root:not([data-focus-input="pointer"]) .import-local:has(input:focus-visible),
 :root[data-focus-input="keyboard"] .import-local:has(input:focus) {
   outline: 2px solid var(--teal);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 #options-status {
   color: var(--teal);
