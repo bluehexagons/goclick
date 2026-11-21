@@ -41,6 +41,8 @@ initialize only for a visible button.
 The engraved tracks and raised lettering are slightly shaded at rest. Mouse
 hover or keyboard focus eases that shading away to reveal the original finish.
 Reduced motion changes the shading immediately.
+When the label changes language, the new lettering appears immediately and
+fades to full opacity over 140 ms. Reduced motion skips the fade.
 Press-down compresses the solid and changes gold to copper immediately. Raised
 lettering grows by 22% and lights up while held, with a moving reflection.
 Release returns the lettering and finish together in 70 ms for taps or 110 ms

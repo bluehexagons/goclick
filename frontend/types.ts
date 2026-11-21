@@ -56,6 +56,7 @@ export interface ButtonState {
   readyLight?: number;
   labelCharge?: number;
   labelPhase?: number;
+  labelOpacity?: number;
   x: number;
   y: number;
   rx: number;

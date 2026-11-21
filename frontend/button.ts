@@ -28,6 +28,7 @@ import type { ButtonController, ButtonState, ResponseState, Renderer } from "./t
 const QUICK_TAP_MS = 90;
 const TAP_RELEASE_MS = 70;
 const HOLD_RELEASE_MS = 110;
+const LABEL_REVEAL_MS = 140;
 const PLUG_DWELL_MS = 3000;
 const PLUG_SEAT_MS = 200;
 const PLUG_BOOT_DELAY_MS = 145;
@@ -39,6 +40,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   if (!maybeStage) throw new Error("Tactile button needs a stage");
   const stage: HTMLElement = maybeStage;
   const rig = required(".button-rig", stage);
+  const label = required(".button-label", button);
+  let labelText = label.textContent;
+  let labelDirection = label.dir;
+  let labelChangedAt: number | null = null;
   const power = stage.querySelector<SVGSVGElement>(".button-power");
   const cords = power?.querySelectorAll<SVGPathElement>(".power-cord");
   const plug = power?.querySelector<SVGGElement>(".power-plug");
@@ -309,6 +314,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     // Bring the hover or focus finish back along the copper release curve.
     current.readyLight = readiness * (1 - Math.max(current.press, current.copper));
     rig.style.setProperty("--ready-light", current.readyLight.toFixed(3));
+    const labelProgress =
+      labelChangedAt === null ? 1 : clamp((time - labelChangedAt) / LABEL_REVEAL_MS, 0, 1);
+    if (labelProgress === 1) labelChangedAt = null;
+    current.labelOpacity = 1 - 0.48 * (1 - labelProgress) ** 2;
+    rig.style.setProperty("--label-opacity", current.labelOpacity.toFixed(3));
     const cable =
       power && stage.clientWidth && stage.clientHeight
         ? projectButtonPower(current, button.offsetWidth, plugState, {
@@ -521,6 +531,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       (moving ||
         animatingPower ||
         bootStartedAt !== null ||
+        labelChangedAt !== null ||
         swinging ||
         seating ||
         slackChange ||
@@ -1090,8 +1101,19 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   new MutationObserver(() => {
     if (document.activeElement === button) animate();
   }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-focus-input"] });
-  // Lettering changes also need a redraw when reduced motion has no active frame.
-  new MutationObserver(() => paint()).observe(required(".button-label", button), {
+  new MutationObserver(() => {
+    if (label.textContent !== labelText || label.dir !== labelDirection) {
+      labelText = label.textContent;
+      labelDirection = label.dir;
+      labelChangedAt =
+        !reducedMotion.matches && !document.hidden && stage.clientWidth && stage.clientHeight
+          ? performance.now()
+          : null;
+    }
+    // Draw the new text immediately, including when no frame loop is running.
+    paint();
+    if (labelChangedAt !== null) animate();
+  }).observe(label, {
     childList: true,
     characterData: true,
     subtree: true,
@@ -1100,6 +1122,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   });
   reducedMotion.addEventListener("change", () => {
     if (reducedMotion.matches) {
+      labelChangedAt = null;
       plugStartedAt = null;
       drainStartedAt = null;
       bootStartedAt = null;
@@ -1125,6 +1148,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
+      labelChangedAt = null;
       mouseOver = false;
       plugStartedAt = null;
       drainStartedAt = null;

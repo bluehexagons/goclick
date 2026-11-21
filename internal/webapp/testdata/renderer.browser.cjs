@@ -16,6 +16,7 @@ module.exports = function checkButtonRendering() {
     "response",
     "responseProgress",
     "letteringLight",
+    "letteringOpacity",
     "readyLight",
   ];
   const names = [...scalars, "rotation", "letteringPose", "letteringAccent"];
@@ -31,6 +32,7 @@ module.exports = function checkButtonRendering() {
   const results = [];
   try {
     gl.uniform1f(locations.flash, 0);
+    gl.uniform1f(locations.letteringOpacity, 1);
     gl.uniform1f(locations.readyLight, 0);
     gl.uniform4f(locations.letteringPose, 1, 1, 0, 0);
     gl.uniform2f(locations.letteringAccent, 0, 1.35);
@@ -87,8 +89,9 @@ module.exports = function checkButtonRendering() {
     gl.uniform1f(locations.copper, 0);
     gl.uniform1f(locations.response, 0);
     gl.uniform1f(locations.letteringLight, 0);
-    const readFace = (light, output) => {
+    const readFace = (light, output, opacity = 1) => {
       gl.uniform1f(locations.readyLight, light);
+      gl.uniform1f(locations.letteringOpacity, opacity);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, vertices);
       gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, output);
@@ -110,6 +113,14 @@ module.exports = function checkButtonRendering() {
         `Expected slight inlay shading: ${shadedInlays} pixels, peak ${strongestShade}`,
       );
     if (shadedLettering < 20) throw new Error("Expected slight shading on the raised lettering");
+    readFace(1, pixels, 0.52);
+    let fadingLettering = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (litPixels[i + 3] >= 250 && litPixels[i] < 130 && pixels[i] > litPixels[i] + 40)
+        fadingLettering++;
+    }
+    if (fadingLettering < 20 || gl.getError() !== gl.NO_ERROR)
+      throw new Error("Expected the new lettering to be partially blended with the face");
   } finally {
     gl.uniformMatrix3fv(locations.rotation, false, saved.rotation);
     gl.uniform4fv(locations.letteringPose, saved.letteringPose);

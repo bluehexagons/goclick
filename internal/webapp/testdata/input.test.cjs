@@ -92,7 +92,8 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     rig = new Element();
   button.id = "click-button";
   button.closest = () => stage;
-  button.querySelector = () => ({ textContent: "Click!", dir: "ltr" });
+  const label = { textContent: "Click!", dir: "ltr" };
+  button.querySelector = () => label;
   const power = new Element();
   const cords = [new Element(), new Element(), new Element()];
   const plug = new Element();
@@ -159,6 +160,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
   let frameCallback = null,
     now = 0;
   let onDisabledChanged;
+  let onLabelChanged;
   let onStageResize;
   const sounds = [];
   const hardwareSounds = [];
@@ -177,6 +179,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
         observe(target, { attributeFilter }) {
           if (target === button && attributeFilter.includes("disabled"))
             onDisabledChanged = this.callback;
+          if (target === label) onLabelChanged = this.callback;
         }
       },
       ResizeObserver: class {
@@ -237,6 +240,10 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     outletControl,
     plugControl,
     resizeStage: () => onStageResize(),
+    changeLabel(text) {
+      label.textContent = text;
+      onLabelChanged();
+    },
     setDisabled(disabled) {
       button.disabled = disabled;
       onDisabledChanged();
@@ -426,6 +433,36 @@ test("keyboard focus and mouse hover give a static cue with reduced motion", () 
   h.setDisabled(true);
   assert.equal(light(), 0);
   assert.equal(h.hasFrame(), false);
+});
+
+test("a changed label appears immediately and a rapid replacement restarts its reveal", () => {
+  const h = harness(false);
+  const opacity = () => Number(h.rig.props.get("--label-opacity"));
+  h.changeLabel("Clique !");
+  assert.equal(opacity(), 0.52);
+  h.frame(60);
+  const halfway = opacity();
+  assert.ok(halfway > 0.52 && halfway < 1);
+  h.setTime(60);
+  h.changeLabel("Clique !");
+  assert.equal(opacity(), halfway, "an unchanged label should not restart the reveal");
+  h.changeLabel("Click!");
+  assert.equal(opacity(), 0.52);
+  h.frame(200);
+  assert.equal(opacity(), 1);
+  assert.equal(h.hasFrame(), false);
+  assert.deepEqual(h.clicks, []);
+});
+
+test("reduced motion and hidden buttons update lettering without a fade", () => {
+  const reduced = harness();
+  const hidden = harness(false);
+  hidden.stage.clientWidth = 0;
+  for (const h of [reduced, hidden]) {
+    h.changeLabel("Clique !");
+    assert.equal(h.rig.props.get("--label-opacity"), "1.000");
+    assert.equal(h.hasFrame(), false);
+  }
 });
 
 test("response glows finish without releasing another held pointer", () => {

@@ -82,6 +82,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     uniform vec4 letteringPose;
     uniform vec2 letteringAccent;
     uniform float letteringLight;
+    uniform float letteringOpacity;
     varying vec3 worldPosition;
     varying vec3 worldNormal;
     varying vec2 texCoord;
@@ -127,6 +128,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
       gold += lightColor * luminous * energy * .2 * frontFace;
+      vec3 bareFace = gold;
       // Move the inscription inside the face, independently of the solid.
       vec2 labelUV = (texCoord - vec2(.5, .5 + letteringPose.z)) / letteringPose.xy + .5;
       labelUV = clamp(labelUV, vec2(0.), vec2(1.));
@@ -164,6 +166,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       float edge = (below - above + right - left) * .5;
       gold += vec3(.95, .77, .39) * max(edge, 0.) * .42 * text.a * frontFace;
       gold -= vec3(.12, .09, .035) * max(-edge, 0.) * text.a * frontFace;
+      gold = mix(bareFace, gold, letteringOpacity);
       gl_FragColor = vec4(gold, 1.);
     }`;
 
@@ -201,6 +204,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     "letteringPose",
     "letteringAccent",
     "letteringLight",
+    "letteringOpacity",
   ] as const;
   let program: WebGLProgram | null = null;
   let uniforms: Record<(typeof uniformNames)[number], WebGLUniformLocation | null>;
@@ -447,6 +451,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     );
     gl.uniform2f(uniforms.letteringAccent, letterPose.charge, letterPose.sheen);
     gl.uniform1f(uniforms.letteringLight, letterPose.light);
+    gl.uniform1f(uniforms.letteringOpacity, state.labelOpacity ?? 1);
     gl.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
     gl.uniform3f(uniforms.translation, 0, 0, 0);
     gl.uniform1f(uniforms.scale, 1);

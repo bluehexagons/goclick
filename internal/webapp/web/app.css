@@ -950,6 +950,7 @@ select:focus,
   position: relative;
   z-index: 1;
   display: block;
+  opacity: var(--label-opacity, 1);
   font-size: 38px;
   font-weight: 700;
   letter-spacing: -0.035em;

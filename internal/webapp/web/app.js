@@ -1169,6 +1169,7 @@
     uniform vec4 letteringPose;
     uniform vec2 letteringAccent;
     uniform float letteringLight;
+    uniform float letteringOpacity;
     varying vec3 worldPosition;
     varying vec3 worldNormal;
     varying vec2 texCoord;
@@ -1214,6 +1215,7 @@
       float lit = clamp(luminous * energy * 1.8, 0., 1.) * frontFace;
       gold = mix(gold, lightColor * 1.3, lit);
       gold += lightColor * luminous * energy * .2 * frontFace;
+      vec3 bareFace = gold;
       // Move the inscription inside the face, independently of the solid.
       vec2 labelUV = (texCoord - vec2(.5, .5 + letteringPose.z)) / letteringPose.xy + .5;
       labelUV = clamp(labelUV, vec2(0.), vec2(1.));
@@ -1251,6 +1253,7 @@
       float edge = (below - above + right - left) * .5;
       gold += vec3(.95, .77, .39) * max(edge, 0.) * .42 * text.a * frontFace;
       gold -= vec3(.12, .09, .035) * max(-edge, 0.) * text.a * frontFace;
+      gold = mix(bareFace, gold, letteringOpacity);
       gl_FragColor = vec4(gold, 1.);
     }`;
     function shader(type, source) {
@@ -1286,7 +1289,8 @@
       "responseColor",
       "letteringPose",
       "letteringAccent",
-      "letteringLight"
+      "letteringLight",
+      "letteringOpacity"
     ];
     let program = null;
     let uniforms;
@@ -1516,6 +1520,7 @@
       );
       gl.uniform2f(uniforms.letteringAccent, letterPose.charge, letterPose.sheen);
       gl.uniform1f(uniforms.letteringLight, letterPose.light);
+      gl.uniform1f(uniforms.letteringOpacity, state.labelOpacity ?? 1);
       gl.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
       gl.uniform3f(uniforms.translation, 0, 0, 0);
       gl.uniform1f(uniforms.scale, 1);
@@ -3062,6 +3067,7 @@
   var QUICK_TAP_MS = 90;
   var TAP_RELEASE_MS = 70;
   var HOLD_RELEASE_MS = 110;
+  var LABEL_REVEAL_MS = 140;
   var PLUG_DWELL_MS = 3e3;
   var PLUG_SEAT_MS = 200;
   var PLUG_BOOT_DELAY_MS = 145;
@@ -3101,11 +3107,11 @@
       plugTap = null;
       if (plugControl) {
         const key = next ? "reconnectPlug" : "cordSlack";
-        const label = message2(key);
+        const label2 = message2(key);
         plugControl.setAttribute("data-i18n-aria-label", key);
         plugControl.setAttribute("data-i18n-title", key);
-        plugControl.setAttribute("aria-label", label);
-        plugControl.setAttribute("title", label);
+        plugControl.setAttribute("aria-label", label2);
+        plugControl.setAttribute("title", label2);
         if (next) plugControl.removeAttribute("aria-pressed");
         else plugControl.setAttribute("aria-pressed", String(cordSlack));
       }
@@ -3202,6 +3208,10 @@
       if (reducedMotion.matches) readiness = readyTarget2();
       current.readyLight = readiness * (1 - Math.max(current.press, current.copper));
       rig.style.setProperty("--ready-light", current.readyLight.toFixed(3));
+      const labelProgress = labelChangedAt === null ? 1 : clamp((time - labelChangedAt) / LABEL_REVEAL_MS, 0, 1);
+      if (labelProgress === 1) labelChangedAt = null;
+      current.labelOpacity = 1 - 0.48 * (1 - labelProgress) ** 2;
+      rig.style.setProperty("--label-opacity", current.labelOpacity.toFixed(3));
       const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
         progress,
         looseBeforeDetach,
@@ -3363,7 +3373,7 @@
       const animatingPower = plugProgress2(time) < 1 || drainStartedAt !== null && time - drainStartedAt < powerDrainDuration;
       const swinging = plugState === "unplugged" && !reducedMotion.matches && plugSwing.step(current.x, button.offsetWidth, dt);
       const readoutMoving = paint2(time, dt);
-      frame = (moving || animatingPower || bootStartedAt !== null || swinging || seating || slackChange || readoutMoving) && !document.hidden ? requestAnimationFrame(tick2) : 0;
+      frame = (moving || animatingPower || bootStartedAt !== null || labelChangedAt !== null || swinging || seating || slackChange || readoutMoving) && !document.hidden ? requestAnimationFrame(tick2) : 0;
       if (!frame) lastFrame = 0;
     }, animate2 = function() {
       if (reducedMotion.matches) {
@@ -3656,6 +3666,10 @@
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
     const rig = required(".button-rig", stage);
+    const label = required(".button-label", button);
+    let labelText = label.textContent;
+    let labelDirection = label.dir;
+    let labelChangedAt = null;
     const power = stage.querySelector(".button-power");
     const cords = power?.querySelectorAll(".power-cord");
     const plug = power?.querySelector(".power-plug");
@@ -3896,7 +3910,15 @@
     new MutationObserver(() => {
       if (document.activeElement === button) animate2();
     }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-focus-input"] });
-    new MutationObserver(() => paint2()).observe(required(".button-label", button), {
+    new MutationObserver(() => {
+      if (label.textContent !== labelText || label.dir !== labelDirection) {
+        labelText = label.textContent;
+        labelDirection = label.dir;
+        labelChangedAt = !reducedMotion.matches && !document.hidden && stage.clientWidth && stage.clientHeight ? performance.now() : null;
+      }
+      paint2();
+      if (labelChangedAt !== null) animate2();
+    }).observe(label, {
       childList: true,
       characterData: true,
       subtree: true,
@@ -3905,6 +3927,7 @@
     });
     reducedMotion.addEventListener("change", () => {
       if (reducedMotion.matches) {
+        labelChangedAt = null;
         plugStartedAt = null;
         drainStartedAt = null;
         bootStartedAt = null;
@@ -3930,6 +3953,7 @@
     });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
+        labelChangedAt = null;
         mouseOver = false;
         plugStartedAt = null;
         drainStartedAt = null;
