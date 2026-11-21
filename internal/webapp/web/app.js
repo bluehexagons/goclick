@@ -1203,9 +1203,9 @@
       float band = exp(-bandDistance * bandDistance);
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
-      vec2 reflectionOffset = (texCoord - vec2(.26, .14)) * vec2(1., 1.45);
-      float reflection = 1. - smoothstep(0., .85, length(reflectionOffset));
-      gold = mix(gold, vec3(1., .92, .63), readyLight * reflection * .30 * frontFace);
+      // The engraved tracks take on a darker finish before the press lights.
+      float inlay = smoothstep(.12, .48, luminous) * frontFace;
+      gold = mix(gold, vec3(.086, .30, .26), readyLight * inlay);
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
@@ -3070,7 +3070,7 @@
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let readyTarget2 = function() {
       return Number(
-        current.powered !== false && !button.disabled && !document.hidden && (mouseOver || document.activeElement === button && document.documentElement.dataset.focusInput === "keyboard" && document.hasFocus())
+        !button.disabled && !document.hidden && (mouseOver || document.activeElement === button && document.documentElement.dataset.focusInput === "keyboard" && document.hasFocus())
       );
     }, plugProgress2 = function(time) {
       if (plugState === "seated" || plugStartedAt === null) return 1;
@@ -3199,7 +3199,7 @@
       current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
       current.bootLight = bootStartedAt === null ? 0 : powerBootLighting(time - bootStartedAt);
       if (reducedMotion.matches) readiness = readyTarget2();
-      current.readyLight = current.powered === false ? 0 : readiness * (1 - current.copper);
+      current.readyLight = readiness * (1 - Math.max(current.press, current.copper));
       rig.style.setProperty("--ready-light", current.readyLight.toFixed(3));
       const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
         progress,

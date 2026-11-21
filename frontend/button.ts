@@ -132,8 +132,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
 
   function readyTarget() {
     return Number(
-      current.powered !== false &&
-        !button.disabled &&
+      !button.disabled &&
         !document.hidden &&
         (mouseOver ||
           (document.activeElement === button &&
@@ -307,9 +306,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
     current.bootLight = bootStartedAt === null ? 0 : powerBootLighting(time - bootStartedAt);
     if (reducedMotion.matches) readiness = readyTarget();
-    // Let the copper finish take over on press, then bring the reflection
+    // Let the copper finish take over on press, then bring the inlays
     // back in with the same release curve if hover or keyboard focus persists.
-    current.readyLight = current.powered === false ? 0 : readiness * (1 - current.copper);
+    current.readyLight = readiness * (1 - Math.max(current.press, current.copper));
     rig.style.setProperty("--ready-light", current.readyLight.toFixed(3));
     const cable =
       power && stage.clientWidth && stage.clientHeight

@@ -10,19 +10,25 @@ module.exports = async function checkFocus(page, baseURL) {
     page.evaluate(() => {
       const element = document.activeElement,
         style = getComputedStyle(element);
-      const mark = element.querySelector(".button-focus-mark");
       return {
         id: element.id,
         tag: element.tagName,
         mode: document.documentElement.dataset.focusInput,
         outline: style.outlineStyle,
         width: style.outlineWidth,
-        mark: !!mark && getComputedStyle(mark).visibility === "visible",
         skip: element.classList.contains("skip-link"),
         top: element.getBoundingClientRect().top,
       };
     });
   const ring = (value) => value.outline === "solid" && value.width === "2px";
+  const waitInlays = (id, opacity) =>
+    page.waitForFunction(
+      ({ id, opacity }) =>
+        Number(
+          document.getElementById(id).parentElement.style.getPropertyValue("--ready-light"),
+        ) === opacity,
+      { id, opacity },
+    );
   await page.goto(baseURL);
   await page.locator("#home-view").waitFor({ state: "visible" });
   await page.keyboard.press("Tab");
@@ -40,16 +46,18 @@ module.exports = async function checkFocus(page, baseURL) {
   await page.keyboard.press("Tab");
   const afterSkip = await focus();
   ensure(
-    afterSkip.id === "guest-click-button" && afterSkip.mark && afterSkip.outline === "none",
+    afterSkip.id === "guest-click-button" && afterSkip.outline === "none",
     "Tab after skipping must reach a visible content control",
   );
+  await waitInlays("guest-click-button", 1);
 
   await page.locator("#home-view [data-play-local]").click();
   const pointer = await focus();
   ensure(
-    pointer.id === "click-button" && !pointer.mark && pointer.outline === "none",
+    pointer.id === "click-button" && pointer.outline === "none",
     "Pointer-started local play must focus the button quietly",
   );
+  await waitInlays("click-button", 0);
   const button = page.locator("#click-button"),
     count = page.locator("#click-count");
   const before = Number(await count.textContent());
@@ -58,7 +66,8 @@ module.exports = async function checkFocus(page, baseURL) {
     (expected) => Number(document.querySelector("#click-count").textContent) === expected,
     before + 1,
   );
-  ensure(!(await focus()).mark, "Mouse clicks must not show the keyboard mark");
+  await page.mouse.move(0, 0);
+  await waitInlays("click-button", 0);
   await page.keyboard.press("Space");
   await page.waitForFunction(
     (expected) => Number(document.querySelector("#click-count").textContent) === expected,
@@ -66,9 +75,10 @@ module.exports = async function checkFocus(page, baseURL) {
   );
   const keyboard = await focus();
   ensure(
-    keyboard.mark && keyboard.outline === "none",
-    "Starting keyboard play must mark the button face without an outer ring",
+    keyboard.id === "click-button" && keyboard.outline === "none",
+    "Starting keyboard play must keep focus on the button",
   );
+  await waitInlays("click-button", 1);
   await page.emulateMedia({ forcedColors: "active" });
   ensure(ring(await focus()), "Forced colors must give the focused button a system outline");
   await page.emulateMedia({ forcedColors: null });
@@ -87,7 +97,9 @@ module.exports = async function checkFocus(page, baseURL) {
     before + 3,
   );
   await button.click();
-  ensure(!(await focus()).mark, "Returning to mouse input must hide the mark");
+  await waitInlays("click-button", 1);
+  await page.mouse.move(0, 0);
+  await waitInlays("click-button", 0);
   await page.keyboard.press("Tab");
   const outlet = page.locator(".outlet-control");
   ensure(
@@ -95,8 +107,7 @@ module.exports = async function checkFocus(page, baseURL) {
     "Tab must move keyboard focus from the button to the outlet",
   );
   ensure(
-    (await focus()).mark === false &&
-      (await outlet.evaluate((element) => getComputedStyle(element).zIndex)) === "3",
+    (await outlet.evaluate((element) => getComputedStyle(element).zIndex)) === "3",
     "A keyboard-focused outlet must come forward",
   );
 

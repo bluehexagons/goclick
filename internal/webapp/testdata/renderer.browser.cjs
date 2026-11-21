@@ -10,7 +10,14 @@ module.exports = function checkButtonRendering() {
   if (!gl || !canvas.parentElement.classList.contains("is-rendered"))
     throw new Error("The WebGL button must be rendered before checking pixels");
   const program = gl.getParameter(gl.CURRENT_PROGRAM);
-  const scalars = ["copper", "flash", "response", "responseProgress", "letteringLight"];
+  const scalars = [
+    "copper",
+    "flash",
+    "response",
+    "responseProgress",
+    "letteringLight",
+    "readyLight",
+  ];
   const names = [...scalars, "rotation", "letteringPose", "letteringAccent"];
   const locations = Object.fromEntries(
     names.map((name) => [name, gl.getUniformLocation(program, name)]),
@@ -24,6 +31,7 @@ module.exports = function checkButtonRendering() {
   const results = [];
   try {
     gl.uniform1f(locations.flash, 0);
+    gl.uniform1f(locations.readyLight, 0);
     gl.uniform4f(locations.letteringPose, 1, 1, 0, 0);
     gl.uniform2f(locations.letteringAccent, 0, 1.35);
     for (const angle of [-0.3, 0, 0.3]) {
@@ -75,6 +83,29 @@ module.exports = function checkButtonRendering() {
         }
       }
     }
+    gl.uniformMatrix3fv(locations.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
+    gl.uniform1f(locations.copper, 0);
+    gl.uniform1f(locations.response, 0);
+    gl.uniform1f(locations.letteringLight, 0);
+    const readFace = (light, output) => {
+      gl.uniform1f(locations.readyLight, light);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, vertices);
+      gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, output);
+    };
+    readFace(0, pixels);
+    readFace(1, litPixels);
+    let tealInlays = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (
+        pixels[i + 3] >= 250 &&
+        pixels[i] - litPixels[i] > 65 &&
+        litPixels[i + 1] > litPixels[i] + 20
+      )
+        tealInlays++;
+    }
+    if (tealInlays < 80 || gl.getError() !== gl.NO_ERROR)
+      throw new Error(`Hover and focus inlays lack contrast: ${tealInlays} pixels`);
   } finally {
     gl.uniformMatrix3fv(locations.rotation, false, saved.rotation);
     gl.uniform4fv(locations.letteringPose, saved.letteringPose);

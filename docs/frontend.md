@@ -38,9 +38,9 @@ WebGL allocation, shader compilation, or texture upload fails, the CSS button
 stays usable with the same material artwork and visible label. Graphics
 initialize only for a visible button.
 
-Mouse hover and keyboard focus ease in a warm reflection. It gives way to the
-copper finish on press and returns with the release if the button is still
-hovered or focused. Reduced motion shows the reflection without a fade.
+Mouse hover and keyboard focus darken the engraved tracks to teal. The inlays
+fade into the copper finish on press and return with the release while hovered
+or focused. Reduced motion applies the color immediately.
 Press-down compresses the solid and changes gold to copper immediately. Raised
 lettering grows by 22% and lights up while held, with a moving reflection.
 Release returns the lettering and finish together in 70 ms for taps or 110 ms
@@ -121,7 +121,7 @@ status dot indicates pending requests or an error. Local play labels simulated
 timings explicitly.
 
 Keep keyboard focus visible and dialogs usable at 320 CSS pixels wide.
-The large Click buttons mark keyboard focus on the face, with a system-color
+The large Click buttons use the engraved inlays for focus, with a system-color
 outline in forced-colors mode. Other controls use close outlines for keyboard
 focus, and focused text fields highlight their border for pointer users.
 Preserve Arabic layout and language metadata when changing
