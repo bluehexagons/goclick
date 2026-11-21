@@ -113,7 +113,7 @@ module.exports = function checkButtonRendering() {
         `Expected slight inlay shading: ${shadedInlays} pixels, peak ${strongestShade}`,
       );
     if (shadedLettering < 20) throw new Error("Expected slight shading on the raised lettering");
-    readFace(1, pixels, 0.52);
+    readFace(1, pixels, 0.32);
     let fadingLettering = 0;
     for (let i = 0; i < pixels.length; i += 4) {
       if (litPixels[i + 3] >= 250 && litPixels[i] < 130 && pixels[i] > litPixels[i] + 40)

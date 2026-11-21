@@ -3067,7 +3067,7 @@
   var QUICK_TAP_MS = 90;
   var TAP_RELEASE_MS = 70;
   var HOLD_RELEASE_MS = 110;
-  var LABEL_REVEAL_MS = 140;
+  var LABEL_REVEAL_MS = 180;
   var PLUG_DWELL_MS = 3e3;
   var PLUG_SEAT_MS = 200;
   var PLUG_BOOT_DELAY_MS = 145;
@@ -3210,7 +3210,7 @@
       rig.style.setProperty("--ready-light", current.readyLight.toFixed(3));
       const labelProgress = labelChangedAt === null ? 1 : clamp((time - labelChangedAt) / LABEL_REVEAL_MS, 0, 1);
       if (labelProgress === 1) labelChangedAt = null;
-      current.labelOpacity = 1 - 0.48 * (1 - labelProgress) ** 2;
+      current.labelOpacity = 1 - 0.68 * (1 - labelProgress) ** 2;
       rig.style.setProperty("--label-opacity", current.labelOpacity.toFixed(3));
       const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
         progress,

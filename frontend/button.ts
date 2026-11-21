@@ -28,7 +28,7 @@ import type { ButtonController, ButtonState, ResponseState, Renderer } from "./t
 const QUICK_TAP_MS = 90;
 const TAP_RELEASE_MS = 70;
 const HOLD_RELEASE_MS = 110;
-const LABEL_REVEAL_MS = 140;
+const LABEL_REVEAL_MS = 180;
 const PLUG_DWELL_MS = 3000;
 const PLUG_SEAT_MS = 200;
 const PLUG_BOOT_DELAY_MS = 145;
@@ -317,7 +317,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const labelProgress =
       labelChangedAt === null ? 1 : clamp((time - labelChangedAt) / LABEL_REVEAL_MS, 0, 1);
     if (labelProgress === 1) labelChangedAt = null;
-    current.labelOpacity = 1 - 0.48 * (1 - labelProgress) ** 2;
+    current.labelOpacity = 1 - 0.68 * (1 - labelProgress) ** 2;
     rig.style.setProperty("--label-opacity", current.labelOpacity.toFixed(3));
     const cable =
       power && stage.clientWidth && stage.clientHeight
