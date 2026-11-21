@@ -691,29 +691,16 @@
                 No saved clicks yet.
               </p>
             </div>
-            <div
-              id="achievement-notice"
-              class="achievement-notice"
-              lang="en"
-              dir="ltr"
-              aria-hidden="true"
-              hidden
-            >
+            <div id="achievement-notice" class="achievement-notice" aria-hidden="true" hidden>
               <svg class="achievement-icon" viewBox="0 0 48 48">
                 <use href="/achievement-icons.svg#medal" />
               </svg>
               <div>
                 <p id="achievement-notice-title">Achievement unlocked</p>
-                <strong id="achievement-notice-names"></strong>
+                <strong id="achievement-notice-names" lang="en" dir="ltr"></strong>
               </div>
             </div>
-            <p
-              id="achievement-announcement"
-              class="visually-hidden"
-              lang="en"
-              dir="ltr"
-              role="status"
-            ></p>
+            <p id="achievement-announcement" class="visually-hidden" role="status"></p>
           </div>
         </section>
         <section
@@ -782,9 +769,16 @@
               class="achievement-filters"
               role="group"
               aria-label="Filter achievements"
-              lang="en"
+              data-i18n-aria-label="filterAchievements"
             >
-              <button id="achievement-all" type="button" aria-pressed="true" lang="en">All</button>
+              <button
+                id="achievement-all"
+                type="button"
+                aria-pressed="true"
+                data-i18n="allAchievements"
+              >
+                All
+              </button>
               <button id="achievement-earned" type="button" aria-pressed="false" data-i18n="earned">
                 Earned
               </button>
@@ -792,14 +786,14 @@
                 Locked
               </button>
             </div>
-            <label class="achievement-spoilers" lang="en">
+            <label class="achievement-spoilers">
               <input id="achievement-spoilers" type="checkbox" />
-              Reveal locked requirements
+              <span data-i18n="revealRequirements">Reveal locked requirements</span>
             </label>
           </div>
           <ul id="achievement-list" class="achievement-list" role="list"></ul>
-          <p id="achievement-empty" class="achievement-empty" lang="en" dir="ltr" hidden></p>
-          <p class="achievement-footnote" lang="en" dir="ltr">
+          <p id="achievement-empty" class="achievement-empty" hidden></p>
+          <p class="achievement-footnote" data-i18n="tricksStored">
             Button tricks are saved in this browser.
           </p>
         </section>
@@ -816,8 +810,7 @@
       </footer>
     </div>
     <dialog
-      lang="en"
-      dir="ltr"
+      data-game-language
       id="options-dialog"
       class="options-dialog"
       aria-labelledby="options-title"
@@ -825,10 +818,16 @@
       <div class="options-header">
         <div class="options-heading">
           <div>
-            <h1 id="options-title">Options</h1>
-            <p class="field-hint">Saved in this browser.</p>
+            <h1 id="options-title" data-i18n="options">Options</h1>
+            <p class="field-hint" data-i18n="preferencesStored">Saved in this browser.</p>
           </div>
-          <button id="close-options" class="button button-quiet" type="button" autofocus>
+          <button
+            id="close-options"
+            class="button button-quiet"
+            type="button"
+            autofocus
+            data-i18n="done"
+          >
             Done
           </button>
         </div>
@@ -838,25 +837,34 @@
         <div class="options-stack">
           <section class="options-section" aria-labelledby="sound-options-title">
             <div class="options-section-heading">
-              <h2 id="sound-options-title">Sound</h2>
+              <h2 id="sound-options-title" data-i18n="soundHeading">Sound</h2>
               <label class="options-checkbox">
-                <input id="sound-enabled" type="checkbox" /> Sound effects
+                <input id="sound-enabled" type="checkbox" />
+                <span data-i18n="sound">Sound effects</span>
               </label>
             </div>
             <div class="option-field">
               <label class="sound-volume-label" for="sound-volume">
-                Volume <span id="sound-volume-value" aria-hidden="true">100%</span>
+                <span data-i18n="volume">Volume</span>
+                <span id="sound-volume-value" aria-hidden="true">100%</span>
               </label>
               <input id="sound-volume" type="range" min="0" max="100" value="100" />
             </div>
             <label class="options-checkbox">
-              <input id="sound-reverb" type="checkbox" checked /> Room reverb
+              <input id="sound-reverb" type="checkbox" checked />
+              <span data-i18n="roomReverb">Room reverb</span>
             </label>
             <div class="option-field">
-              <label for="sound-profile">Sound profile</label>
+              <label for="sound-profile" data-i18n="soundProfile">Sound profile</label>
               <div class="sound-profile-control">
                 <select id="sound-profile" aria-describedby="sound-profile-description"></select>
-                <button id="preview-sound" class="button button-quiet" type="button" disabled>
+                <button
+                  id="preview-sound"
+                  class="button button-quiet"
+                  type="button"
+                  disabled
+                  data-i18n="previewSound"
+                >
                   Preview sound
                 </button>
               </div>
@@ -864,52 +872,70 @@
             </div>
           </section>
           <section class="options-section" aria-labelledby="appearance-options-title">
-            <h2 id="appearance-options-title">Appearance</h2>
+            <h2 id="appearance-options-title" data-i18n="appearance">Appearance</h2>
             <div class="option-field">
-              <label for="motion-setting">Motion</label>
+              <label for="motion-setting" data-i18n="motionSetting">Motion</label>
               <select id="motion-setting">
-                <option value="auto">Auto · Follow browser</option>
-                <option value="on">Reduced · No motion or flashes</option>
-                <option value="off">Full · Animations and effects</option>
+                <option value="auto" data-i18n="motionAuto">Auto · Follow browser</option>
+                <option value="on" data-i18n="motionReduced">Reduced · No motion or flashes</option>
+                <option value="off" data-i18n="motionFull">Full · Animations and effects</option>
               </select>
             </div>
           </section>
         </div>
         <section class="options-section" aria-labelledby="offline-options-title">
           <div>
-            <h2 id="offline-options-title">Offline play</h2>
+            <h2 id="offline-options-title" data-i18n="offlinePlayHeading">Offline play</h2>
             <p id="local-save-summary" class="field-hint"></p>
           </div>
           <div class="local-save-actions">
-            <button class="button button-quiet" type="button" data-play-local>Play offline</button>
-            <button id="download-local" class="button button-quiet" type="button">
+            <button
+              class="button button-quiet"
+              type="button"
+              data-play-local
+              data-i18n="playOffline"
+            >
+              Play offline
+            </button>
+            <button
+              id="download-local"
+              class="button button-quiet"
+              type="button"
+              data-i18n="downloadSave"
+            >
               Download save
             </button>
           </div>
           <div class="option-field">
-            <label for="simulated-ping">Simulated ping</label>
+            <label for="simulated-ping" data-i18n="simulatedPingLabel">Simulated ping</label>
             <select id="simulated-ping" aria-describedby="simulated-ping-hint">
-              <option value="0">Instant</option>
-              <option value="50">Around 50 ms</option>
-              <option value="80">Around 80 ms</option>
-              <option value="250">Around 250 ms</option>
-              <option value="800">Around 800 ms</option>
+              <option value="0" data-i18n="instant">Instant</option>
+              <option value="50" data-ping>Around 50 ms</option>
+              <option value="80" data-ping>Around 80 ms</option>
+              <option value="250" data-ping>Around 250 ms</option>
+              <option value="800" data-ping>Around 800 ms</option>
             </select>
-            <p id="simulated-ping-hint" class="field-hint">
+            <p id="simulated-ping-hint" class="field-hint" data-i18n="simulatedPingHint">
               Delays offline feedback. Clicks are saved immediately.
             </p>
           </div>
           <fieldset class="save-replacement">
-            <legend>Replace local save</legend>
+            <legend data-i18n="replaceLocal">Replace local save</legend>
             <label class="options-checkbox">
-              <input id="replace-local" type="checkbox" /> Allow replacing my local save
+              <input id="replace-local" type="checkbox" />
+              <span data-i18n="allowReplaceLocal">Allow replacing my local save</span>
             </label>
             <div class="local-save-actions">
               <label class="button button-quiet import-local">
-                Import save
+                <span data-i18n="importSave">Import save</span>
                 <input id="import-local" type="file" accept=".json,application/json" />
               </label>
-              <button id="restart-local" class="button button-quiet" type="button">
+              <button
+                id="restart-local"
+                class="button button-quiet"
+                type="button"
+                data-i18n="restartSave"
+              >
                 Restart save
               </button>
               <button
@@ -917,6 +943,7 @@
                 class="button button-quiet"
                 type="button"
                 aria-describedby="copy-online-note"
+                data-i18n="copyAccount"
               >
                 Copy account progress
               </button>
@@ -928,16 +955,16 @@
         </section>
       </div>
       <details class="controls-help options-help">
-        <summary>Controls</summary>
+        <summary data-i18n="controlsTitle">Controls</summary>
         <p id="button-hint" data-game-language data-i18n="controls">
           Press with a mouse or touch, then release on or near the button. Each finger counts
           separately. With the button focused, Space or Enter adds one click on release. Holding
           never adds extra clicks.
         </p>
-        <p>
-          An amber +1 means a save is pending. The button shows green for a fast response, blue for
-          a standard response, purple for a slow response, and red for a failed or unconfirmed save.
-          Reduced motion uses a static color.
+        <p data-i18n="feedbackColors">
+          Amber means the save is pending or the response is slow. Green and blue indicate fast and
+          standard responses. Orange indicates a server cooldown. Red means the save failed or could
+          not be confirmed.
         </p>
       </details>
       <details class="technical-notes options-help" id="technical-notes">
@@ -945,9 +972,9 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <use href="/icons.svg#info" />
           </svg>
-          Game &amp; storage notes
+          <span data-i18n="technicalNotes">Game &amp; storage notes (English)</span>
         </summary>
-        <div class="technical-grid">
+        <div class="technical-grid" lang="en" dir="ltr">
           <article>
             <h2>Clicks &amp; saves</h2>
             <p>
@@ -968,11 +995,10 @@
             <h2>Ping &amp; storage</h2>
             <p>
               Online ping measures a click request, including server processing. +1 badges wait for
-              confirmation and compare timing to the last 20 pings. Amber means pending or slow; red
-              means failed or unconfirmed. Account progress stays in SQLite on the server. Server
-              limits pause online saves briefly; a countdown shows when play resumes. Rejected
-              clicks are not queued or replayed. Very regular or uninterrupted activity can also
-              trigger a brief cooldown.
+              confirmation and compare timing to the last 20 pings. Account progress stays in SQLite
+              on the server. Server limits pause online saves briefly; a countdown shows when play
+              resumes. Rejected clicks are not queued or replayed. Very regular or uninterrupted
+              activity can also trigger a brief cooldown.
             </p>
           </article>
           <article>
@@ -985,7 +1011,7 @@
             </p>
           </article>
         </div>
-        <p class="implementation-note">
+        <p class="implementation-note" lang="en" dir="ltr">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <use href="/icons.svg#terminal" />
           </svg>
@@ -993,7 +1019,7 @@
         </p>
       </details>
       <p class="options-attribution">
-        © bluehexagons · Licensed under
+        <bdi>© bluehexagons</bdi> ·
         <a
           draggable="false"
           href="https://github.com/bluehexagons/goclick/blob/main/LICENSE"
@@ -1005,6 +1031,7 @@
           draggable="false"
           href="https://github.com/bluehexagons/goclick"
           rel="noopener noreferrer"
+          data-i18n="sourceCode"
           >Source code</a
         >
       </p>

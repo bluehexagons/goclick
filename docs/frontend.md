@@ -15,7 +15,7 @@ pick up changes in an already running binary.
 | Pointer/keyboard input and feedback timing | `frontend/button.ts` |
 | Shared solid projection and lettering pose | `frontend/button-geometry.ts` |
 | WebGL solid, lighting, and texture atlas | `frontend/button-3d.ts` |
-| Language preferences, formatting, and messages | `frontend/i18n.ts`, `frontend/messages.ts` |
+| Language preferences, formatting, and messages | `frontend/i18n.ts`, `frontend/messages.ts`, `frontend/option-messages.ts` |
 | Motion and local-save options | `frontend/preferences.ts`, `frontend/app.ts` |
 | Local save coordination | `frontend/local-game.ts` |
 | Floating click feedback | `frontend/click-feedback.ts` |
@@ -216,7 +216,7 @@ browser profile. Close each context when finished.
 | --- | --- | --- |
 | `focus.browser.cjs` | `checkFocus(page, baseURL)` | Skip navigation, input modality, held keys, dialogs, hidden file picker |
 | `interaction.browser.cjs` | `checkInteraction(page, baseURL)` | Selection, native drag prevention, gameplay dragging, clipboard/manual sharing |
-| `language.browser.cjs` | `checkLanguage(page, baseURL)` | Eleven locales at 1280/320 px, Arabic sharing, next-click label restoration, reload persistence |
+| `language.browser.cjs` | `checkLanguage(page, baseURL)` | Gameplay and Options in eleven locales at 1280/320 px, Arabic sharing, next-click label restoration, reload persistence |
 | `local-save.browser.cjs` | `checkLocalSave(page, baseURL, options)` | Concurrent writes, replacement, and reloads across two tabs |
 | `renderer.browser.cjs` | Function passed to `page.evaluate` | Actual metal/engraving pixels and lettering illumination across tilts, finishes, and response progress |
 

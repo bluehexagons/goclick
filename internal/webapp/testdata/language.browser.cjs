@@ -132,6 +132,44 @@ async function checkLanguage(page, baseURL) {
         `${code}: missing accessible control`,
       );
       ensure(!state.overflow && state.controlsFit, `${code} at ${width}: horizontal overflow`);
+      await page.locator("#options-button").click();
+      const options = await page.locator("#options-dialog").evaluate((dialog) => {
+        const volume = dialog.querySelector("#sound-volume");
+        const percent = new Intl.NumberFormat(dialog.lang, { style: "percent" }).format(
+          volume.valueAsNumber / 100,
+        );
+        const ping = new Intl.NumberFormat(dialog.lang, { style: "unit", unit: "millisecond" });
+        return {
+          lang: dialog.lang,
+          dir: dialog.dir,
+          overflow: dialog.scrollWidth > dialog.clientWidth,
+          profileCount: dialog.querySelector("#sound-profile").options.length,
+          profileDescription: !!dialog.querySelector("#sound-profile-description").textContent,
+          volumeLocalized:
+            dialog.querySelector("#sound-volume-value").textContent === percent &&
+            volume.getAttribute("aria-valuetext") === percent,
+          pingLocalized: dialog
+            .querySelector('#simulated-ping option[value="50"]')
+            .textContent.replace(/\s/g, "")
+            .includes(ping.format(50).replace(/\s/g, "")),
+          notesLang: dialog.querySelector(".technical-grid").lang,
+        };
+      });
+      ensure(
+        options.lang === code && options.dir === state.dir,
+        `${code}: Options language or direction`,
+      );
+      ensure(!options.overflow, `${code} at ${width}: Options horizontal overflow`);
+      ensure(
+        options.profileCount === 6 && options.profileDescription,
+        `${code}: missing sound profile`,
+      );
+      ensure(
+        options.volumeLocalized && options.pingLocalized,
+        `${code}: Options numbers not localized`,
+      );
+      ensure(options.notesLang === "en", "English notes are missing their language");
+      await page.locator("#close-options").click();
     }
   }
   await choose("ar");
@@ -193,6 +231,21 @@ async function checkLanguage(page, baseURL) {
   ensure(
     (await page.locator("#click-count").textContent()) === new Intl.NumberFormat("ar").format(3),
     "Save changed on reload",
+  );
+  await page.locator("#open-achievements").click();
+  const achievements = page.locator("#achievement-view");
+  ensure((await achievements.getAttribute("dir")) === "rtl", "Achievements direction not applied");
+  ensure(
+    (await page.locator("#achievement-all").textContent()).trim() === "الكل",
+    "All filter is not translated",
+  );
+  ensure(
+    await achievements.getByRole("checkbox", { name: "إظهار شروط الإنجازات المقفلة" }).isVisible(),
+    "Achievement checkbox is missing its translated name",
+  );
+  ensure(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    "Arabic Achievements horizontal overflow",
   );
   ensure(requests.length === 0, "Language changes or local play sent account requests");
   ensure(errors.length === 0, `Browser errors: ${errors.join("; ")}`);

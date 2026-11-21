@@ -32,10 +32,10 @@ already be loaded to play; there is no service worker. Download a save before
 clearing browser data or moving to another device.
 
 The compact header language selector offers eleven game languages, remembers
-your choice, and initially follows your browser language. Gameplay and shared
-stats support right-to-left Arabic. The button occasionally changes its label
-to another language until the next click. Account forms, storage options, and
-administration remain English.
+your choice, and initially follows your browser language. Gameplay, Options,
+achievement controls, and shared stats support right-to-left Arabic. The button
+occasionally changes its label to another language until the next click. See the
+[localization guide](docs/localization.md) for coverage.
 
 **Achievements** cover lifetime clicks, streaks, total days and months played,
 period click totals, and playing at different hours of the same day. Days and

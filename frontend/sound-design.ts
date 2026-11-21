@@ -7,25 +7,25 @@ export const typicalSaveDelayMs = 50;
 export const soundProfiles = [
   {
     id: "classic",
-    name: "Classic",
-    description: "A metal switch with a low press and a lighter return.",
+    name: "profileClassic",
+    description: "profileClassicDescription",
   },
-  { id: "blip", name: "Blip", description: "Short electronic tones that rise in pitch." },
-  { id: "clack", name: "Clack", description: "A short, dry key click." },
+  { id: "blip", name: "profileBlip", description: "profileBlipDescription" },
+  { id: "clack", name: "profileClack", description: "profileClackDescription" },
   {
     id: "clunk",
-    name: "Clunk",
-    description: "A low, muffled thud.",
+    name: "profileClunk",
+    description: "profileClunkDescription",
   },
   {
     id: "low-beep",
-    name: "Low beep",
-    description: "A low tone with a soft attack.",
+    name: "profileLowBeep",
+    description: "profileLowBeepDescription",
   },
   {
     id: "soft-chime",
-    name: "Soft chime",
-    description: "A soft chime with a short decay.",
+    name: "profileSoftChime",
+    description: "profileSoftChimeDescription",
   },
 ] as const;
 export type SoundProfile = (typeof soundProfiles)[number]["id"];

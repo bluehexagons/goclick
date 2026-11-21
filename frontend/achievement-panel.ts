@@ -1,7 +1,13 @@
 import { badgesFor } from "./achievements.js";
 import type { Badge } from "./achievements.js";
 import { required as $ } from "./dom.js";
-import { currentLanguage, formatNumber, languageDirection, message as t } from "./i18n.js";
+import {
+  currentLanguage,
+  formatNumber,
+  languageDirection,
+  message as t,
+  onLanguageChange,
+} from "./i18n.js";
 import type { ClickProgress, Counters } from "./types.js";
 
 const screen = $("#achievement-view");
@@ -86,8 +92,7 @@ export function paintAchievementList() {
   list.append(...cards.map(card));
   empty.hidden = cards.length > 0;
   if (!cards.length)
-    empty.textContent =
-      filter === "locked" ? "You’ve earned every achievement." : "No achievements earned yet.";
+    empty.textContent = t(filter === "locked" ? "allAchievementsEarned" : "noAchievementsEarned");
 }
 
 for (const key of Object.keys(filters) as (keyof typeof filters)[]) {
@@ -127,6 +132,13 @@ function queueNotice(names: string[]) {
   showAchievementNotices();
 }
 
+function unlockTitle(count: number) {
+  return t(count === 1 ? "achievementUnlocked" : "achievementsUnlocked");
+}
+onLanguageChange(() => {
+  if (visible.size) noticeTitle.textContent = unlockTitle(visible.size);
+});
+
 export function showAchievementNotices() {
   if (noticeScheduled || !pending.size || game.hidden || document.hidden) return;
   noticeScheduled = true;
@@ -137,11 +149,11 @@ export function showAchievementNotices() {
     const earned = [...pending];
     pending.clear();
     for (const name of earned) visible.add(name);
-    noticeTitle.textContent = visible.size === 1 ? "Achievement unlocked" : "Achievements unlocked";
+    noticeTitle.textContent = unlockTitle(visible.size);
     noticeNames.textContent = [...visible].join(" · ");
     notice.hidden = false;
-    const title = earned.length === 1 ? "Achievement unlocked" : "Achievements unlocked";
-    live.textContent = `${title}. ${earned.join(". ")}.`;
+    const names = earned.join(". ");
+    live.textContent = `${unlockTitle(earned.length)}. ${languageDirection() === "rtl" ? `\u2066${names}\u2069` : names}.`;
     window.clearTimeout(noticeTimer);
     noticeTimer = window.setTimeout(hideAchievementNotice, 6500);
   });

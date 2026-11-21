@@ -209,25 +209,25 @@
   var soundProfiles = [
     {
       id: "classic",
-      name: "Classic",
-      description: "A metal switch with a low press and a lighter return."
+      name: "profileClassic",
+      description: "profileClassicDescription"
     },
-    { id: "blip", name: "Blip", description: "Short electronic tones that rise in pitch." },
-    { id: "clack", name: "Clack", description: "A short, dry key click." },
+    { id: "blip", name: "profileBlip", description: "profileBlipDescription" },
+    { id: "clack", name: "profileClack", description: "profileClackDescription" },
     {
       id: "clunk",
-      name: "Clunk",
-      description: "A low, muffled thud."
+      name: "profileClunk",
+      description: "profileClunkDescription"
     },
     {
       id: "low-beep",
-      name: "Low beep",
-      description: "A low tone with a soft attack."
+      name: "profileLowBeep",
+      description: "profileLowBeepDescription"
     },
     {
       id: "soft-chime",
-      name: "Soft chime",
-      description: "A soft chime with a short decay."
+      name: "profileSoftChime",
+      description: "profileSoftChimeDescription"
     }
   ];
   function isSoundProfile(value) {
@@ -2021,8 +2021,662 @@
       unlockTrick("touch-100");
   }
 
+  // frontend/option-messages.ts
+  var englishOptions = {
+    preferencesStored: "Saved in this browser.",
+    soundHeading: "Sound",
+    volume: "Volume",
+    roomReverb: "Room reverb",
+    soundProfile: "Sound profile",
+    previewSound: "Preview sound",
+    appearance: "Appearance",
+    motionSetting: "Motion",
+    motionAuto: "Auto \xB7 Follow browser",
+    motionReduced: "Reduced \xB7 No motion or flashes",
+    motionFull: "Full \xB7 Animations and effects",
+    offlinePlayHeading: "Offline play",
+    playOffline: "Play offline",
+    downloadSave: "Download save",
+    simulatedPingLabel: "Simulated ping",
+    simulatedPingHint: "Delays offline feedback. Clicks are saved immediately.",
+    instant: "Instant",
+    approximatePing: "Around {time}",
+    replaceLocal: "Replace local save",
+    allowReplaceLocal: "Allow replacing my local save",
+    importSave: "Import save",
+    restartSave: "Restart save",
+    copyAccount: "Copy account progress",
+    copyAccountHint: "Open your account counter to make its progress available to copy.",
+    copyAccountNote: "Replace the local save with the latest loaded progress for {name}.",
+    localSaveCount: "Clicks in your local save: {count}",
+    localSaveUnavailable: "Local save unavailable.",
+    controlsTitle: "Controls",
+    feedbackColors: "Amber means the save is pending or the response is slow. Green and blue indicate fast and standard responses. Orange indicates a server cooldown. Red means the save failed or could not be confirmed.",
+    technicalNotes: "Game & storage notes (English)",
+    sourceCode: "Source code",
+    settingsVisit: "Applied for this visit. Browser storage is unavailable.",
+    openLocalFailed: "Couldn\u2019t open the local save.",
+    backOnlineVisit: "Back online for this visit. Browser storage is unavailable.",
+    replaceConsent: "Check \u201CAllow replacing my local save\u201D first.",
+    waitPending: "Wait for pending clicks to finish, then try again.",
+    replacingLocal: "Replacing the local save\u2026",
+    localReplacedFailed: "Local save was not replaced.",
+    localRestarted: "Local save restarted.",
+    accountCopied: "Account progress copied to the local save.",
+    saveTooLarge: "Choose a local save smaller than 1 MiB.",
+    localImported: "Local save imported.",
+    importFailed: "Couldn\u2019t import this local save.",
+    localDownloaded: "Local save downloaded.",
+    downloadFailed: "Couldn\u2019t download the local save.",
+    profileClassic: "Classic",
+    profileClassicDescription: "A metal switch with a low press and a lighter return.",
+    profileBlip: "Blip",
+    profileBlipDescription: "Short electronic tones that rise in pitch.",
+    profileClack: "Clack",
+    profileClackDescription: "A short, dry key click.",
+    profileClunk: "Clunk",
+    profileClunkDescription: "A low, muffled thud.",
+    profileLowBeep: "Low beep",
+    profileLowBeepDescription: "A low tone with a soft attack.",
+    profileSoftChime: "Soft chime",
+    profileSoftChimeDescription: "A soft chime with a short decay."
+  };
+  var optionsTranslations = {
+    "zh-Hans": {
+      preferencesStored: "\u4FDD\u5B58\u5728\u6B64\u6D4F\u89C8\u5668\u4E2D\u3002",
+      soundHeading: "\u58F0\u97F3",
+      volume: "\u97F3\u91CF",
+      roomReverb: "\u623F\u95F4\u6DF7\u54CD",
+      soundProfile: "\u97F3\u6548\u98CE\u683C",
+      previewSound: "\u8BD5\u542C",
+      appearance: "\u5916\u89C2",
+      motionSetting: "\u52A8\u6548",
+      motionAuto: "\u81EA\u52A8 \xB7 \u8DDF\u968F\u6D4F\u89C8\u5668\u8BBE\u7F6E",
+      motionReduced: "\u51CF\u5C11 \xB7 \u5173\u95ED\u52A8\u6548\u548C\u95EA\u70C1",
+      motionFull: "\u5B8C\u6574 \xB7 \u542F\u7528\u52A8\u753B\u548C\u7279\u6548",
+      offlinePlayHeading: "\u79BB\u7EBF\u6E38\u73A9",
+      playOffline: "\u79BB\u7EBF\u6E38\u73A9",
+      downloadSave: "\u4E0B\u8F7D\u5B58\u6863",
+      simulatedPingLabel: "\u6A21\u62DF\u5EF6\u8FDF",
+      simulatedPingHint: "\u53EA\u5EF6\u8FDF\u79BB\u7EBF\u53CD\u9988\u3002\u70B9\u51FB\u4F1A\u7ACB\u5373\u4FDD\u5B58\u3002",
+      instant: "\u5373\u65F6",
+      approximatePing: "\u7EA6 {time}",
+      replaceLocal: "\u66FF\u6362\u672C\u5730\u5B58\u6863",
+      allowReplaceLocal: "\u5141\u8BB8\u66FF\u6362\u6211\u7684\u672C\u5730\u5B58\u6863",
+      importSave: "\u5BFC\u5165\u5B58\u6863",
+      restartSave: "\u91CD\u7F6E\u5B58\u6863",
+      copyAccount: "\u590D\u5236\u8D26\u6237\u8FDB\u5EA6",
+      copyAccountHint: "\u6253\u5F00\u8D26\u6237\u8BA1\u6570\u5668\u540E\u5373\u53EF\u590D\u5236\u8FDB\u5EA6\u3002",
+      copyAccountNote: "\u7528\u6700\u8FD1\u52A0\u8F7D\u7684 {name} \u7684\u8FDB\u5EA6\u66FF\u6362\u672C\u5730\u5B58\u6863\u3002",
+      localSaveCount: "\u672C\u5730\u5B58\u6863\u7684\u70B9\u51FB\u6570\uFF1A{count}",
+      localSaveUnavailable: "\u672C\u5730\u5B58\u6863\u4E0D\u53EF\u7528\u3002",
+      controlsTitle: "\u64CD\u4F5C\u8BF4\u660E",
+      feedbackColors: "\u7425\u73C0\u8272\u8868\u793A\u7B49\u5F85\u4FDD\u5B58\u6216\u54CD\u5E94\u8F83\u6162\u3002\u7EFF\u8272\u8868\u793A\u54CD\u5E94\u5FEB\uFF0C\u84DD\u8272\u8868\u793A\u54CD\u5E94\u6B63\u5E38\u3002\u6A59\u8272\u8868\u793A\u670D\u52A1\u5668\u5904\u4E8E\u51B7\u5374\u671F\u3002\u7EA2\u8272\u8868\u793A\u4FDD\u5B58\u5931\u8D25\u6216\u672A\u786E\u8BA4\u3002",
+      technicalNotes: "\u6E38\u620F\u548C\u5B58\u6863\u8BF4\u660E\uFF08\u82F1\u8BED\uFF09",
+      sourceCode: "\u6E90\u4EE3\u7801",
+      settingsVisit: "\u6D4F\u89C8\u5668\u5B58\u50A8\u4E0D\u53EF\u7528\u3002\u8BBE\u7F6E\u4EC5\u5728\u672C\u6B21\u8BBF\u95EE\u4E2D\u751F\u6548\u3002",
+      openLocalFailed: "\u65E0\u6CD5\u6253\u5F00\u672C\u5730\u5B58\u6863\u3002",
+      backOnlineVisit: "\u5DF2\u8FD4\u56DE\u5728\u7EBF\u6A21\u5F0F\u3002\u6D4F\u89C8\u5668\u5B58\u50A8\u4E0D\u53EF\u7528\uFF0C\u6B64\u8BBE\u7F6E\u4EC5\u5728\u672C\u6B21\u8BBF\u95EE\u4E2D\u751F\u6548\u3002",
+      replaceConsent: "\u8BF7\u5148\u52FE\u9009\u300C\u5141\u8BB8\u66FF\u6362\u6211\u7684\u672C\u5730\u5B58\u6863\u300D\u3002",
+      waitPending: "\u8BF7\u7B49\u5F85\u6240\u6709\u70B9\u51FB\u4FDD\u5B58\u5B8C\u6BD5\uFF0C\u518D\u8BD5\u4E00\u6B21\u3002",
+      replacingLocal: "\u6B63\u5728\u66FF\u6362\u672C\u5730\u5B58\u6863\u2026",
+      localReplacedFailed: "\u672A\u80FD\u66FF\u6362\u672C\u5730\u5B58\u6863\u3002",
+      localRestarted: "\u5DF2\u91CD\u7F6E\u672C\u5730\u5B58\u6863\u3002",
+      accountCopied: "\u5DF2\u5C06\u8D26\u6237\u8FDB\u5EA6\u590D\u5236\u5230\u672C\u5730\u5B58\u6863\u3002",
+      saveTooLarge: "\u8BF7\u9009\u62E9\u5C0F\u4E8E 1 MiB \u7684\u672C\u5730\u5B58\u6863\u3002",
+      localImported: "\u5DF2\u5BFC\u5165\u672C\u5730\u5B58\u6863\u3002",
+      importFailed: "\u65E0\u6CD5\u5BFC\u5165\u6B64\u672C\u5730\u5B58\u6863\u3002",
+      localDownloaded: "\u5DF2\u4E0B\u8F7D\u672C\u5730\u5B58\u6863\u3002",
+      downloadFailed: "\u65E0\u6CD5\u4E0B\u8F7D\u672C\u5730\u5B58\u6863\u3002",
+      profileClassic: "\u7ECF\u5178",
+      profileClassicDescription: "\u91D1\u5C5E\u5F00\u5173\u7684\u6309\u538B\u58F0\u4F4E\u6C89\uFF0C\u56DE\u5F39\u58F0\u8F7B\u4E00\u4E9B\u3002",
+      profileBlip: "\u7535\u5B50\u77ED\u97F3",
+      profileBlipDescription: "\u97F3\u9AD8\u4E0A\u626C\u7684\u77ED\u4FC3\u7535\u5B50\u97F3\u3002",
+      profileClack: "\u6E05\u8106",
+      profileClackDescription: "\u77ED\u4FC3\u3001\u5E72\u8106\u7684\u6309\u952E\u58F0\u3002",
+      profileClunk: "\u95F7\u54CD",
+      profileClunkDescription: "\u4F4E\u6C89\u7684\u649E\u51FB\u58F0\u3002",
+      profileLowBeep: "\u4F4E\u97F3\u63D0\u793A",
+      profileLowBeepDescription: "\u8D77\u97F3\u67D4\u548C\u7684\u4F4E\u97F3\u3002",
+      profileSoftChime: "\u8F7B\u67D4\u94C3\u97F3",
+      profileSoftChimeDescription: "\u5F88\u5FEB\u6D88\u6563\u7684\u8F7B\u67D4\u94C3\u97F3\u3002"
+    },
+    es: {
+      preferencesStored: "Guardado en este navegador.",
+      soundHeading: "Sonido",
+      volume: "Volumen",
+      roomReverb: "Reverberaci\xF3n de sala",
+      soundProfile: "Perfil de sonido",
+      previewSound: "Probar sonido",
+      appearance: "Apariencia",
+      motionSetting: "Movimiento",
+      motionAuto: "Autom\xE1tico \xB7 Seg\xFAn el navegador",
+      motionReduced: "Reducido \xB7 Sin movimiento ni destellos",
+      motionFull: "Completo \xB7 Animaciones y efectos",
+      offlinePlayHeading: "Juego sin conexi\xF3n",
+      playOffline: "Jugar sin conexi\xF3n",
+      downloadSave: "Descargar partida",
+      simulatedPingLabel: "Latencia simulada",
+      simulatedPingHint: "Retrasa la respuesta visual y sonora sin conexi\xF3n. Los clics se guardan al instante.",
+      instant: "Instant\xE1nea",
+      approximatePing: "Unos {time}",
+      replaceLocal: "Reemplazar la partida local",
+      allowReplaceLocal: "Permitir reemplazar mi partida local",
+      importSave: "Importar partida",
+      restartSave: "Reiniciar partida",
+      copyAccount: "Copiar el progreso de la cuenta",
+      copyAccountHint: "Abre el contador de tu cuenta para poder copiar su progreso.",
+      copyAccountNote: "Reemplaza la partida local con el \xFAltimo progreso cargado de {name}.",
+      localSaveCount: "Clics en tu partida local: {count}",
+      localSaveUnavailable: "La partida local no est\xE1 disponible.",
+      controlsTitle: "Controles",
+      feedbackColors: "El \xE1mbar indica un guardado pendiente o una respuesta lenta. El verde indica una respuesta r\xE1pida y el azul, una normal. El naranja indica una pausa temporal del servidor. El rojo indica que el guardado fall\xF3 o no se pudo confirmar.",
+      technicalNotes: "Notas sobre el juego y el guardado (en ingl\xE9s)",
+      sourceCode: "C\xF3digo fuente",
+      settingsVisit: "Aplicado durante esta visita. El almacenamiento del navegador no est\xE1 disponible.",
+      openLocalFailed: "No se pudo abrir la partida local.",
+      backOnlineVisit: "Has vuelto al modo en l\xEDnea durante esta visita. El almacenamiento del navegador no est\xE1 disponible.",
+      replaceConsent: "Marca \xABPermitir reemplazar mi partida local\xBB antes de continuar.",
+      waitPending: "Espera a que se guarden los clics pendientes y vuelve a intentarlo.",
+      replacingLocal: "Reemplazando la partida local\u2026",
+      localReplacedFailed: "No se reemplaz\xF3 la partida local.",
+      localRestarted: "Se reinici\xF3 la partida local.",
+      accountCopied: "Se copi\xF3 el progreso de la cuenta a la partida local.",
+      saveTooLarge: "Elige un archivo de partida local de menos de 1 MiB.",
+      localImported: "Se import\xF3 la partida local.",
+      importFailed: "No se pudo importar esta partida local.",
+      localDownloaded: "Se descarg\xF3 la partida local.",
+      downloadFailed: "No se pudo descargar la partida local.",
+      profileClassic: "Cl\xE1sico",
+      profileClassicDescription: "Un interruptor met\xE1lico con un sonido grave al pulsar y m\xE1s ligero al soltar.",
+      profileBlip: "Pitido electr\xF3nico",
+      profileBlipDescription: "Tonos electr\xF3nicos breves que suben de tono.",
+      profileClack: "Chasquido",
+      profileClackDescription: "Un sonido de tecla seco y breve.",
+      profileClunk: "Golpe sordo",
+      profileClunkDescription: "Un golpe grave y amortiguado.",
+      profileLowBeep: "Pitido grave",
+      profileLowBeepDescription: "Un tono grave que empieza suavemente.",
+      profileSoftChime: "Campanilla suave",
+      profileSoftChimeDescription: "Una campanilla suave que se apaga enseguida."
+    },
+    ar: {
+      preferencesStored: "\u062A\u064F\u062D\u0641\u0638 \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0645\u062A\u0635\u0641\u062D.",
+      soundHeading: "\u0627\u0644\u0635\u0648\u062A",
+      volume: "\u0645\u0633\u062A\u0648\u0649 \u0627\u0644\u0635\u0648\u062A",
+      roomReverb: "\u0635\u062F\u0649 \u0627\u0644\u063A\u0631\u0641\u0629",
+      soundProfile: "\u0646\u0645\u0637 \u0627\u0644\u0635\u0648\u062A",
+      previewSound: "\u0627\u0633\u062A\u0645\u0639 \u0625\u0644\u0649 \u0639\u064A\u0646\u0629",
+      appearance: "\u0627\u0644\u0645\u0638\u0647\u0631",
+      motionSetting: "\u0627\u0644\u062D\u0631\u0643\u0629",
+      motionAuto: "\u062A\u0644\u0642\u0627\u0626\u064A \xB7 \u062D\u0633\u0628 \u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0645\u062A\u0635\u0641\u062D",
+      motionReduced: "\u0645\u062E\u0641\u0651\u0636 \xB7 \u0628\u0644\u0627 \u062D\u0631\u0643\u0629 \u0623\u0648 \u0648\u0645\u0636\u0627\u062A",
+      motionFull: "\u0643\u0627\u0645\u0644 \xB7 \u0631\u0633\u0648\u0645 \u0645\u062A\u062D\u0631\u0643\u0629 \u0648\u062A\u0623\u062B\u064A\u0631\u0627\u062A",
+      offlinePlayHeading: "\u0627\u0644\u0644\u0639\u0628 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644",
+      playOffline: "\u0627\u0644\u0639\u0628 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644",
+      downloadSave: "\u062A\u0646\u0632\u064A\u0644 \u0627\u0644\u062D\u0641\u0638",
+      simulatedPingLabel: "\u0632\u0645\u0646 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0649",
+      simulatedPingHint: "\u064A\u0624\u062E\u0651\u0631 \u0638\u0647\u0648\u0631 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0641\u064A \u0648\u0636\u0639 \u0639\u062F\u0645 \u0627\u0644\u0627\u062A\u0635\u0627\u0644. \u062A\u064F\u062D\u0641\u0638 \u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0641\u0648\u0631\u064B\u0627.",
+      instant: "\u0641\u0648\u0631\u064A",
+      approximatePing: "\u0646\u062D\u0648 {time}",
+      replaceLocal: "\u0627\u0633\u062A\u0628\u062F\u0627\u0644 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A",
+      allowReplaceLocal: "\u0627\u0644\u0633\u0645\u0627\u062D \u0628\u0627\u0633\u062A\u0628\u062F\u0627\u0644 \u062D\u0641\u0638\u064A \u0627\u0644\u0645\u062D\u0644\u064A",
+      importSave: "\u0627\u0633\u062A\u064A\u0631\u0627\u062F \u062D\u0641\u0638",
+      restartSave: "\u0625\u0639\u0627\u062F\u0629 \u0628\u062F\u0621 \u0627\u0644\u062D\u0641\u0638",
+      copyAccount: "\u0646\u0633\u062E \u062A\u0642\u062F\u0651\u0645 \u0627\u0644\u062D\u0633\u0627\u0628",
+      copyAccountHint: "\u0627\u0641\u062A\u062D \u0639\u062F\u0651\u0627\u062F \u062D\u0633\u0627\u0628\u0643 \u0644\u062A\u062A\u0645\u0643\u0646 \u0645\u0646 \u0646\u0633\u062E \u062A\u0642\u062F\u0651\u0645\u0643.",
+      copyAccountNote: "\u0627\u0633\u062A\u0628\u062F\u0644 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A \u0628\u0622\u062E\u0631 \u062A\u0642\u062F\u0651\u0645 \u0645\u062D\u0645\u0651\u0644 \u0645\u0646 \u062D\u0633\u0627\u0628 {name}.",
+      localSaveCount: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0641\u064A \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A: {count}",
+      localSaveUnavailable: "\u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A \u063A\u064A\u0631 \u0645\u062A\u0627\u062D.",
+      controlsTitle: "\u0639\u0646\u0627\u0635\u0631 \u0627\u0644\u062A\u062D\u0643\u0651\u0645",
+      feedbackColors: "\u064A\u0634\u064A\u0631 \u0627\u0644\u0644\u0648\u0646 \u0627\u0644\u0643\u0647\u0631\u0645\u0627\u0646\u064A \u0625\u0644\u0649 \u062D\u0641\u0638 \u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631 \u0623\u0648 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0628\u0637\u064A\u0626\u0629. \u064A\u0634\u064A\u0631 \u0627\u0644\u0623\u062E\u0636\u0631 \u0625\u0644\u0649 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0633\u0631\u064A\u0639\u0629\u060C \u0648\u0627\u0644\u0623\u0632\u0631\u0642 \u0625\u0644\u0649 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0639\u0627\u062F\u064A\u0629. \u064A\u0634\u064A\u0631 \u0627\u0644\u0628\u0631\u062A\u0642\u0627\u0644\u064A \u0625\u0644\u0649 \u062A\u0648\u0642\u0641 \u0645\u0624\u0642\u062A \u0628\u0633\u0628\u0628 \u062D\u062F\u0651 \u0627\u0644\u062E\u0627\u062F\u0645. \u064A\u0639\u0646\u064A \u0627\u0644\u0623\u062D\u0645\u0631 \u0623\u0646 \u0627\u0644\u062D\u0641\u0638 \u0641\u0634\u0644 \u0623\u0648 \u062A\u0639\u0630\u0651\u0631 \u062A\u0623\u0643\u064A\u062F\u0647.",
+      technicalNotes: "\u0645\u0644\u0627\u062D\u0638\u0627\u062A \u0639\u0646 \u0627\u0644\u0644\u0639\u0628\u0629 \u0648\u0627\u0644\u062D\u0641\u0638 (\u0628\u0627\u0644\u0625\u0646\u062C\u0644\u064A\u0632\u064A\u0629)",
+      sourceCode: "\u0627\u0644\u0634\u064A\u0641\u0631\u0629 \u0627\u0644\u0645\u0635\u062F\u0631\u064A\u0629",
+      settingsVisit: "\u0637\u064F\u0628\u0651\u0642 \u0627\u0644\u0625\u0639\u062F\u0627\u062F \u0644\u0647\u0630\u0647 \u0627\u0644\u0632\u064A\u0627\u0631\u0629. \u0645\u0633\u0627\u062D\u0629 \u062A\u062E\u0632\u064A\u0646 \u0627\u0644\u0645\u062A\u0635\u0641\u062D \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629.",
+      openLocalFailed: "\u062A\u0639\u0630\u0651\u0631 \u0641\u062A\u062D \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A.",
+      backOnlineVisit: "\u062A\u0645\u062A \u0627\u0644\u0639\u0648\u062F\u0629 \u0625\u0644\u0649 \u0648\u0636\u0639 \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u0632\u064A\u0627\u0631\u0629. \u0645\u0633\u0627\u062D\u0629 \u062A\u062E\u0632\u064A\u0646 \u0627\u0644\u0645\u062A\u0635\u0641\u062D \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629.",
+      replaceConsent: "\u062D\u062F\u0651\u062F \xAB\u0627\u0644\u0633\u0645\u0627\u062D \u0628\u0627\u0633\u062A\u0628\u062F\u0627\u0644 \u062D\u0641\u0638\u064A \u0627\u0644\u0645\u062D\u0644\u064A\xBB \u0623\u0648\u0644\u064B\u0627.",
+      waitPending: "\u0627\u0646\u062A\u0638\u0631 \u0627\u0643\u062A\u0645\u0627\u0644 \u062D\u0641\u0638 \u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u0639\u0644\u0651\u0642\u0629\u060C \u062B\u0645 \u062D\u0627\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627.",
+      replacingLocal: "\u062C\u0627\u0631\u064D \u0627\u0633\u062A\u0628\u062F\u0627\u0644 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A\u2026",
+      localReplacedFailed: "\u0644\u0645 \u064A\u064F\u0633\u062A\u0628\u062F\u0644 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A.",
+      localRestarted: "\u0623\u064F\u0639\u064A\u062F \u0628\u062F\u0621 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A.",
+      accountCopied: "\u0646\u064F\u0633\u062E \u062A\u0642\u062F\u0651\u0645 \u0627\u0644\u062D\u0633\u0627\u0628 \u0625\u0644\u0649 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A.",
+      saveTooLarge: "\u0627\u062E\u062A\u0631 \u0645\u0644\u0641 \u062D\u0641\u0638 \u0645\u062D\u0644\u064A \u0623\u0635\u063A\u0631 \u0645\u0646 1 \u0645\u064A\u0628\u064A\u0628\u0627\u064A\u062A.",
+      localImported: "\u0627\u0633\u062A\u064F\u0648\u0631\u062F \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A.",
+      importFailed: "\u062A\u0639\u0630\u0651\u0631 \u0627\u0633\u062A\u064A\u0631\u0627\u062F \u0647\u0630\u0627 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A.",
+      localDownloaded: "\u0646\u064F\u0632\u0651\u0644 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A.",
+      downloadFailed: "\u062A\u0639\u0630\u0651\u0631 \u062A\u0646\u0632\u064A\u0644 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A.",
+      profileClassic: "\u0643\u0644\u0627\u0633\u064A\u0643\u064A",
+      profileClassicDescription: "\u0635\u0648\u062A \u0645\u0641\u062A\u0627\u062D \u0645\u0639\u062F\u0646\u064A \u0628\u0646\u0628\u0631\u0629 \u0645\u0646\u062E\u0641\u0636\u0629 \u0639\u0646\u062F \u0627\u0644\u0636\u063A\u0637 \u0648\u0623\u062E\u0641\u0651 \u0639\u0646\u062F \u0627\u0644\u0625\u0641\u0644\u0627\u062A.",
+      profileBlip: "\u0628\u064A\u0628 \u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A",
+      profileBlipDescription: "\u0646\u063A\u0645\u0627\u062A \u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A\u0629 \u0642\u0635\u064A\u0631\u0629 \u062A\u0635\u0639\u062F \u0641\u064A \u0627\u0644\u062D\u062F\u0629.",
+      profileClack: "\u0637\u064E\u0642\u0651\u0629",
+      profileClackDescription: "\u0635\u0648\u062A \u0645\u0641\u062A\u0627\u062D \u0642\u0635\u064A\u0631 \u0648\u062C\u0627\u0641.",
+      profileClunk: "\u062E\u0628\u0637\u0629 \u0645\u0643\u062A\u0648\u0645\u0629",
+      profileClunkDescription: "\u0635\u0648\u062A \u0627\u0631\u062A\u0637\u0627\u0645 \u0645\u0646\u062E\u0641\u0636 \u0648\u0645\u0643\u062A\u0648\u0645.",
+      profileLowBeep: "\u0635\u0641\u064A\u0631 \u0645\u0646\u062E\u0641\u0636",
+      profileLowBeepDescription: "\u0646\u063A\u0645\u0629 \u0645\u0646\u062E\u0641\u0636\u0629 \u062A\u0628\u062F\u0623 \u0628\u0647\u062F\u0648\u0621.",
+      profileSoftChime: "\u0631\u0646\u064A\u0646 \u0646\u0627\u0639\u0645",
+      profileSoftChimeDescription: "\u0631\u0646\u064A\u0646 \u062E\u0627\u0641\u062A \u064A\u062A\u0644\u0627\u0634\u0649 \u0628\u0633\u0631\u0639\u0629."
+    },
+    hi: {
+      preferencesStored: "\u0938\u0947\u091F\u093F\u0902\u0917 \u0907\u0938 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u092E\u0947\u0902 \u0938\u0939\u0947\u091C\u0940 \u091C\u093E\u0924\u0940 \u0939\u0948\u0902\u0964",
+      soundHeading: "\u0927\u094D\u0935\u0928\u093F",
+      volume: "\u0906\u0935\u093E\u091C\u093C \u0915\u093E \u0938\u094D\u0924\u0930",
+      roomReverb: "\u0915\u092E\u0930\u0947 \u0915\u0940 \u0917\u0942\u0901\u091C",
+      soundProfile: "\u0927\u094D\u0935\u0928\u093F \u0936\u0948\u0932\u0940",
+      previewSound: "\u0927\u094D\u0935\u0928\u093F \u0938\u0941\u0928\u0947\u0902",
+      appearance: "\u0926\u093F\u0916\u093E\u0935\u091F",
+      motionSetting: "\u0917\u0924\u093F",
+      motionAuto: "\u0905\u092A\u0928\u0947 \u0906\u092A \xB7 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u0915\u0940 \u0938\u0947\u091F\u093F\u0902\u0917 \u0915\u0947 \u0905\u0928\u0941\u0938\u093E\u0930",
+      motionReduced: "\u0915\u092E \xB7 \u0917\u0924\u093F \u0914\u0930 \u091A\u092E\u0915 \u0915\u0947 \u092C\u093F\u0928\u093E",
+      motionFull: "\u092A\u0942\u0930\u0940 \xB7 \u0910\u0928\u093F\u092E\u0947\u0936\u0928 \u0914\u0930 \u0907\u092B\u093C\u0947\u0915\u094D\u091F",
+      offlinePlayHeading: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u0947\u0932",
+      playOffline: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u0947\u0932\u0947\u0902",
+      downloadSave: "\u0938\u0947\u0935 \u0921\u093E\u0909\u0928\u0932\u094B\u0921 \u0915\u0930\u0947\u0902",
+      simulatedPingLabel: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u093F\u0902\u0917",
+      simulatedPingHint: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \u0926\u0947\u0930 \u0938\u0947 \u0926\u093F\u0916\u0924\u0940 \u0914\u0930 \u0938\u0941\u0928\u093E\u0908 \u0926\u0947\u0924\u0940 \u0939\u0948\u0964 \u0915\u094D\u0932\u093F\u0915 \u0924\u0941\u0930\u0902\u0924 \u0938\u0939\u0947\u091C\u0947 \u091C\u093E\u0924\u0947 \u0939\u0948\u0902\u0964",
+      instant: "\u0924\u0941\u0930\u0902\u0924",
+      approximatePing: "\u0932\u0917\u092D\u0917 {time}",
+      replaceLocal: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092C\u0926\u0932\u0947\u0902",
+      allowReplaceLocal: "\u092E\u0947\u0930\u093E \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092C\u0926\u0932\u0928\u0947 \u0915\u0940 \u0905\u0928\u0941\u092E\u0924\u093F \u0926\u0947\u0902",
+      importSave: "\u0938\u0947\u0935 \u0907\u0902\u092A\u094B\u0930\u094D\u091F \u0915\u0930\u0947\u0902",
+      restartSave: "\u0938\u0947\u0935 \u092B\u093F\u0930 \u0938\u0947 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902",
+      copyAccount: "\u0916\u093E\u0924\u0947 \u0915\u0940 \u092A\u094D\u0930\u0917\u0924\u093F \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902",
+      copyAccountHint: "\u092A\u094D\u0930\u0917\u0924\u093F \u0915\u0949\u092A\u0940 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0905\u092A\u0928\u0947 \u0916\u093E\u0924\u0947 \u0915\u093E \u0915\u093E\u0909\u0902\u091F\u0930 \u0916\u094B\u0932\u0947\u0902\u0964",
+      copyAccountNote: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0915\u0940 \u091C\u0917\u0939 {name} \u0915\u0940 \u092A\u093F\u091B\u0932\u0940 \u092C\u093E\u0930 \u0932\u094B\u0921 \u0915\u0940 \u0917\u0908 \u092A\u094D\u0930\u0917\u0924\u093F \u0930\u0916\u0947\u0902\u0964",
+      localSaveCount: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092E\u0947\u0902 \u0915\u094D\u0932\u093F\u0915: {count}",
+      localSaveUnavailable: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964",
+      controlsTitle: "\u0915\u0902\u091F\u094D\u0930\u094B\u0932",
+      feedbackColors: "\u0910\u0902\u092C\u0930 \u0930\u0902\u0917 \u092C\u0924\u093E\u0924\u093E \u0939\u0948 \u0915\u093F \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u091C\u093E \u0930\u0939\u093E \u0939\u0948 \u092F\u093E \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \u0927\u0940\u092E\u0940 \u0939\u0948\u0964 \u0939\u0930\u093E \u0930\u0902\u0917 \u0924\u0947\u091C\u093C \u0914\u0930 \u0928\u0940\u0932\u093E \u0938\u093E\u092E\u093E\u0928\u094D\u092F \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \u0926\u093F\u0916\u093E\u0924\u093E \u0939\u0948\u0964 \u0928\u093E\u0930\u0902\u0917\u0940 \u0915\u093E \u092E\u0924\u0932\u092C \u0939\u0948 \u0915\u093F \u0938\u0930\u094D\u0935\u0930 \u0928\u0947 \u0915\u0941\u091B \u0926\u0947\u0930 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0930\u094B\u0915 \u0926\u093F\u090F \u0939\u0948\u0902\u0964 \u0932\u093E\u0932 \u0915\u093E \u092E\u0924\u0932\u092C \u0939\u0948 \u0915\u093F \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E \u092F\u093E \u0909\u0938\u0915\u0940 \u092A\u0941\u0937\u094D\u091F\u093F \u0928\u0939\u0940\u0902 \u0939\u094B \u0938\u0915\u0940\u0964",
+      technicalNotes: "\u0917\u0947\u092E \u0914\u0930 \u0938\u0947\u0935 \u0915\u0940 \u091C\u093E\u0928\u0915\u093E\u0930\u0940 (\u0905\u0902\u0917\u094D\u0930\u0947\u091C\u093C\u0940 \u092E\u0947\u0902)",
+      sourceCode: "\u0938\u094B\u0930\u094D\u0938 \u0915\u094B\u0921",
+      settingsVisit: "\u0938\u0947\u091F\u093F\u0902\u0917 \u0907\u0938 \u092C\u093E\u0930 \u0915\u0947 \u0932\u093F\u090F \u0932\u093E\u0917\u0942 \u0939\u0948\u0964 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u0915\u093E \u0938\u094D\u091F\u094B\u0930\u0947\u091C \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964",
+      openLocalFailed: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0928\u0939\u0940\u0902 \u0916\u0941\u0932 \u0938\u0915\u093E\u0964",
+      backOnlineVisit: "\u0907\u0938 \u092C\u093E\u0930 \u0915\u0947 \u0932\u093F\u090F \u0911\u0928\u0932\u093E\u0907\u0928 \u092E\u094B\u0921 \u091A\u093E\u0932\u0942 \u0939\u0948\u0964 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u0915\u093E \u0938\u094D\u091F\u094B\u0930\u0947\u091C \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964",
+      replaceConsent: "\u092A\u0939\u0932\u0947 \u201C\u092E\u0947\u0930\u093E \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092C\u0926\u0932\u0928\u0947 \u0915\u0940 \u0905\u0928\u0941\u092E\u0924\u093F \u0926\u0947\u0902\u201D \u091A\u0941\u0928\u0947\u0902\u0964",
+      waitPending: "\u0932\u0902\u092C\u093F\u0924 \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u0947 \u091C\u093E\u0928\u0947 \u0924\u0915 \u0930\u0941\u0915\u0947\u0902, \u092B\u093F\u0930 \u0915\u094B\u0936\u093F\u0936 \u0915\u0930\u0947\u0902\u0964",
+      replacingLocal: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092C\u0926\u0932\u093E \u091C\u093E \u0930\u0939\u093E \u0939\u0948\u2026",
+      localReplacedFailed: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092C\u0926\u0932\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E\u0964",
+      localRestarted: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092B\u093F\u0930 \u0938\u0947 \u0936\u0941\u0930\u0942 \u0915\u0930 \u0926\u093F\u092F\u093E \u0917\u092F\u093E\u0964",
+      accountCopied: "\u0916\u093E\u0924\u0947 \u0915\u0940 \u092A\u094D\u0930\u0917\u0924\u093F \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092E\u0947\u0902 \u0915\u0949\u092A\u0940 \u0939\u094B \u0917\u0908\u0964",
+      saveTooLarge: "1 MiB \u0938\u0947 \u091B\u094B\u091F\u0940 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092B\u093C\u093E\u0907\u0932 \u091A\u0941\u0928\u0947\u0902\u0964",
+      localImported: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0907\u0902\u092A\u094B\u0930\u094D\u091F \u0939\u094B \u0917\u092F\u093E\u0964",
+      importFailed: "\u092F\u0939 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0907\u0902\u092A\u094B\u0930\u094D\u091F \u0928\u0939\u0940\u0902 \u0939\u094B \u0938\u0915\u093E\u0964",
+      localDownloaded: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0921\u093E\u0909\u0928\u0932\u094B\u0921 \u0939\u094B \u0917\u092F\u093E\u0964",
+      downloadFailed: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0921\u093E\u0909\u0928\u0932\u094B\u0921 \u0928\u0939\u0940\u0902 \u0939\u094B \u0938\u0915\u093E\u0964",
+      profileClassic: "\u0915\u094D\u0932\u093E\u0938\u093F\u0915",
+      profileClassicDescription: "\u0927\u093E\u0924\u0941 \u0915\u0947 \u0938\u094D\u0935\u093F\u091A \u0915\u0940 \u0906\u0935\u093E\u091C\u093C, \u0926\u092C\u093E\u0928\u0947 \u092A\u0930 \u0917\u0939\u0930\u0940 \u0914\u0930 \u091B\u094B\u0921\u093C\u0928\u0947 \u092A\u0930 \u0939\u0932\u094D\u0915\u0940\u0964",
+      profileBlip: "\u0907\u0932\u0947\u0915\u094D\u091F\u094D\u0930\u0949\u0928\u093F\u0915 \u092C\u0940\u092A",
+      profileBlipDescription: "\u091B\u094B\u091F\u0940 \u0907\u0932\u0947\u0915\u094D\u091F\u094D\u0930\u0949\u0928\u093F\u0915 \u0927\u094D\u0935\u0928\u093F\u092F\u093E\u0901 \u091C\u093F\u0928\u0915\u093E \u0938\u0941\u0930 \u090A\u092A\u0930 \u091C\u093E\u0924\u093E \u0939\u0948\u0964",
+      profileClack: "\u0916\u091F",
+      profileClackDescription: "\u0915\u0941\u0902\u091C\u0940 \u0915\u0940 \u091B\u094B\u091F\u0940, \u0938\u0942\u0916\u0940 \u0916\u091F\u0964",
+      profileClunk: "\u0927\u092A",
+      profileClunkDescription: "\u0926\u092C\u0940 \u0939\u0941\u0908, \u0917\u0939\u0930\u0940 \u091A\u094B\u091F \u0915\u0940 \u0906\u0935\u093E\u091C\u093C\u0964",
+      profileLowBeep: "\u0917\u0939\u0930\u0940 \u092C\u0940\u092A",
+      profileLowBeepDescription: "\u0927\u0940\u0930\u0947 \u0936\u0941\u0930\u0942 \u0939\u094B\u0928\u0947 \u0935\u093E\u0932\u093E \u0928\u0940\u091A\u093E \u0938\u0941\u0930\u0964",
+      profileSoftChime: "\u0939\u0932\u094D\u0915\u0940 \u0918\u0902\u091F\u0940",
+      profileSoftChimeDescription: "\u091C\u0932\u094D\u0926\u0940 \u0925\u092E \u091C\u093E\u0928\u0947 \u0935\u093E\u0932\u0940 \u0939\u0932\u094D\u0915\u0940 \u0918\u0902\u091F\u0940\u0964"
+    },
+    id: {
+      preferencesStored: "Disimpan di peramban ini.",
+      soundHeading: "Suara",
+      volume: "Volume",
+      roomReverb: "Gema ruangan",
+      soundProfile: "Profil suara",
+      previewSound: "Coba suara",
+      appearance: "Tampilan",
+      motionSetting: "Gerakan",
+      motionAuto: "Otomatis \xB7 Mengikuti peramban",
+      motionReduced: "Terbatas \xB7 Tanpa gerakan atau kilatan",
+      motionFull: "Penuh \xB7 Animasi dan efek",
+      offlinePlayHeading: "Mode luring",
+      playOffline: "Main luring",
+      downloadSave: "Unduh simpanan",
+      simulatedPingLabel: "Latensi simulasi",
+      simulatedPingHint: "Menunda umpan balik saat luring. Klik langsung disimpan.",
+      instant: "Seketika",
+      approximatePing: "Sekitar {time}",
+      replaceLocal: "Ganti simpanan lokal",
+      allowReplaceLocal: "Izinkan simpanan lokal saya diganti",
+      importSave: "Impor simpanan",
+      restartSave: "Mulai ulang simpanan",
+      copyAccount: "Salin progres akun",
+      copyAccountHint: "Buka penghitung akun untuk menyalin progresnya.",
+      copyAccountNote: "Ganti simpanan lokal dengan progres terbaru yang dimuat untuk {name}.",
+      localSaveCount: "Klik dalam simpanan lokal Anda: {count}",
+      localSaveUnavailable: "Simpanan lokal tidak tersedia.",
+      controlsTitle: "Kontrol",
+      feedbackColors: "Kuning ambar berarti penyimpanan masih tertunda atau responsnya lambat. Hijau menandakan respons cepat dan biru menandakan respons normal. Oranye menandakan jeda sementara dari server. Merah berarti penyimpanan gagal atau tidak dapat dikonfirmasi.",
+      technicalNotes: "Catatan permainan dan penyimpanan (bahasa Inggris)",
+      sourceCode: "Kode sumber",
+      settingsVisit: "Berlaku untuk kunjungan ini. Penyimpanan peramban tidak tersedia.",
+      openLocalFailed: "Simpanan lokal tidak dapat dibuka.",
+      backOnlineVisit: "Kembali daring untuk kunjungan ini. Penyimpanan peramban tidak tersedia.",
+      replaceConsent: "Centang \u201CIzinkan simpanan lokal saya diganti\u201D terlebih dahulu.",
+      waitPending: "Tunggu hingga klik yang tertunda disimpan, lalu coba lagi.",
+      replacingLocal: "Mengganti simpanan lokal\u2026",
+      localReplacedFailed: "Simpanan lokal tidak diganti.",
+      localRestarted: "Simpanan lokal dimulai ulang.",
+      accountCopied: "Progres akun disalin ke simpanan lokal.",
+      saveTooLarge: "Pilih berkas simpanan lokal yang lebih kecil dari 1 MiB.",
+      localImported: "Simpanan lokal diimpor.",
+      importFailed: "Simpanan lokal ini tidak dapat diimpor.",
+      localDownloaded: "Simpanan lokal diunduh.",
+      downloadFailed: "Simpanan lokal tidak dapat diunduh.",
+      profileClassic: "Klasik",
+      profileClassicDescription: "Sakelar logam yang berbunyi rendah saat ditekan dan lebih ringan saat dilepas.",
+      profileBlip: "Bip elektronik",
+      profileBlipDescription: "Nada elektronik pendek yang meninggi.",
+      profileClack: "Ketukan klik",
+      profileClackDescription: "Bunyi tombol yang pendek dan kering.",
+      profileClunk: "Benturan tumpul",
+      profileClunkDescription: "Bunyi benturan rendah dan teredam.",
+      profileLowBeep: "Bip rendah",
+      profileLowBeepDescription: "Nada rendah yang berawal lembut.",
+      profileSoftChime: "Denting lembut",
+      profileSoftChimeDescription: "Denting lembut yang cepat mereda."
+    },
+    "pt-BR": {
+      preferencesStored: "Salvo neste navegador.",
+      soundHeading: "Som",
+      volume: "Volume",
+      roomReverb: "Reverbera\xE7\xE3o de sala",
+      soundProfile: "Perfil de som",
+      previewSound: "Testar som",
+      appearance: "Apar\xEAncia",
+      motionSetting: "Movimento",
+      motionAuto: "Autom\xE1tico \xB7 Conforme o navegador",
+      motionReduced: "Reduzido \xB7 Sem movimento ou flashes",
+      motionFull: "Completo \xB7 Anima\xE7\xF5es e efeitos",
+      offlinePlayHeading: "Modo offline",
+      playOffline: "Jogar offline",
+      downloadSave: "Baixar save",
+      simulatedPingLabel: "Lat\xEAncia simulada",
+      simulatedPingHint: "Atrasa a resposta no modo offline. Os cliques s\xE3o salvos na hora.",
+      instant: "Instant\xE2nea",
+      approximatePing: "Cerca de {time}",
+      replaceLocal: "Substituir save local",
+      allowReplaceLocal: "Permitir substituir meu save local",
+      importSave: "Importar save",
+      restartSave: "Reiniciar save",
+      copyAccount: "Copiar progresso da conta",
+      copyAccountHint: "Abra o contador da sua conta para poder copiar o progresso.",
+      copyAccountNote: "Substitua o save local pelo \xFAltimo progresso carregado de {name}.",
+      localSaveCount: "Cliques no seu save local: {count}",
+      localSaveUnavailable: "O save local est\xE1 indispon\xEDvel.",
+      controlsTitle: "Controles",
+      feedbackColors: "\xC2mbar indica que o clique ainda est\xE1 sendo salvo ou que a resposta foi lenta. Verde indica uma resposta r\xE1pida e azul, uma normal. Laranja indica uma pausa tempor\xE1ria do servidor. Vermelho indica que o salvamento falhou ou n\xE3o p\xF4de ser confirmado.",
+      technicalNotes: "Notas sobre o jogo e o armazenamento (em ingl\xEAs)",
+      sourceCode: "C\xF3digo-fonte",
+      settingsVisit: "Aplicado nesta visita. O armazenamento do navegador est\xE1 indispon\xEDvel.",
+      openLocalFailed: "N\xE3o foi poss\xEDvel abrir o save local.",
+      backOnlineVisit: "Voc\xEA voltou ao modo online nesta visita. O armazenamento do navegador est\xE1 indispon\xEDvel.",
+      replaceConsent: "Marque \u201CPermitir substituir meu save local\u201D antes de continuar.",
+      waitPending: "Espere os cliques pendentes serem salvos e tente novamente.",
+      replacingLocal: "Substituindo o save local\u2026",
+      localReplacedFailed: "O save local n\xE3o foi substitu\xEDdo.",
+      localRestarted: "O save local foi reiniciado.",
+      accountCopied: "O progresso da conta foi copiado para o save local.",
+      saveTooLarge: "Escolha um arquivo de save local menor que 1 MiB.",
+      localImported: "O save local foi importado.",
+      importFailed: "N\xE3o foi poss\xEDvel importar este save local.",
+      localDownloaded: "O save local foi baixado.",
+      downloadFailed: "N\xE3o foi poss\xEDvel baixar o save local.",
+      profileClassic: "Cl\xE1ssico",
+      profileClassicDescription: "Um interruptor met\xE1lico com som grave ao pressionar e mais leve ao soltar.",
+      profileBlip: "Bipe eletr\xF4nico",
+      profileBlipDescription: "Tons eletr\xF4nicos curtos que sobem de frequ\xEAncia.",
+      profileClack: "Estalo",
+      profileClackDescription: "Um toque de tecla curto e seco.",
+      profileClunk: "Batida surda",
+      profileClunkDescription: "Uma batida grave e abafada.",
+      profileLowBeep: "Bipe grave",
+      profileLowBeepDescription: "Um tom grave que come\xE7a de forma suave.",
+      profileSoftChime: "Sino suave",
+      profileSoftChimeDescription: "Um toque suave de sino que desaparece r\xE1pido."
+    },
+    fr: {
+      preferencesStored: "Enregistr\xE9 dans ce navigateur.",
+      soundHeading: "Son",
+      volume: "Volume",
+      roomReverb: "R\xE9verb\xE9ration de pi\xE8ce",
+      soundProfile: "Profil sonore",
+      previewSound: "\xC9couter un aper\xE7u",
+      appearance: "Apparence",
+      motionSetting: "Animations",
+      motionAuto: "Auto \xB7 Selon le navigateur",
+      motionReduced: "R\xE9duites \xB7 Sans mouvement ni flash",
+      motionFull: "Compl\xE8tes \xB7 Animations et effets",
+      offlinePlayHeading: "Jeu hors ligne",
+      playOffline: "Jouer hors ligne",
+      downloadSave: "T\xE9l\xE9charger la sauvegarde",
+      simulatedPingLabel: "Latence simul\xE9e",
+      simulatedPingHint: "Retarde le retour visuel et sonore hors ligne. Les clics sont enregistr\xE9s imm\xE9diatement.",
+      instant: "Instantan\xE9e",
+      approximatePing: "Environ {time}",
+      replaceLocal: "Remplacer la sauvegarde locale",
+      allowReplaceLocal: "Autoriser le remplacement de ma sauvegarde locale",
+      importSave: "Importer une sauvegarde",
+      restartSave: "R\xE9initialiser la sauvegarde",
+      copyAccount: "Copier la progression du compte",
+      copyAccountHint: "Ouvrez le compteur de votre compte pour pouvoir copier sa progression.",
+      copyAccountNote: "Remplacez la sauvegarde locale par la derni\xE8re progression charg\xE9e pour {name}.",
+      localSaveCount: "Clics dans votre sauvegarde locale : {count}",
+      localSaveUnavailable: "La sauvegarde locale est indisponible.",
+      controlsTitle: "Commandes",
+      feedbackColors: "L\u2019ambre indique un enregistrement en attente ou une r\xE9ponse lente. Le vert indique une r\xE9ponse rapide et le bleu, une r\xE9ponse normale. L\u2019orange indique une pause impos\xE9e par le serveur. Le rouge indique que l\u2019enregistrement a \xE9chou\xE9 ou n\u2019a pas pu \xEAtre confirm\xE9.",
+      technicalNotes: "Notes sur le jeu et le stockage (en anglais)",
+      sourceCode: "Code source",
+      settingsVisit: "Appliqu\xE9 pour cette visite. Le stockage du navigateur est indisponible.",
+      openLocalFailed: "Impossible d\u2019ouvrir la sauvegarde locale.",
+      backOnlineVisit: "Retour en ligne pour cette visite. Le stockage du navigateur est indisponible.",
+      replaceConsent: "Cochez d\u2019abord \xAB Autoriser le remplacement de ma sauvegarde locale \xBB.",
+      waitPending: "Attendez l\u2019enregistrement des clics en attente, puis r\xE9essayez.",
+      replacingLocal: "Remplacement de la sauvegarde locale\u2026",
+      localReplacedFailed: "La sauvegarde locale n\u2019a pas \xE9t\xE9 remplac\xE9e.",
+      localRestarted: "La sauvegarde locale a \xE9t\xE9 r\xE9initialis\xE9e.",
+      accountCopied: "La progression du compte a \xE9t\xE9 copi\xE9e dans la sauvegarde locale.",
+      saveTooLarge: "Choisissez un fichier de sauvegarde locale de moins de 1 Mio.",
+      localImported: "La sauvegarde locale a \xE9t\xE9 import\xE9e.",
+      importFailed: "Impossible d\u2019importer cette sauvegarde locale.",
+      localDownloaded: "La sauvegarde locale a \xE9t\xE9 t\xE9l\xE9charg\xE9e.",
+      downloadFailed: "Impossible de t\xE9l\xE9charger la sauvegarde locale.",
+      profileClassic: "Classique",
+      profileClassicDescription: "Un interrupteur m\xE9tallique au son grave \xE0 la pression et plus l\xE9ger au rel\xE2chement.",
+      profileBlip: "Bip \xE9lectronique",
+      profileBlipDescription: "De brefs sons \xE9lectroniques qui montent dans les aigus.",
+      profileClack: "Clac",
+      profileClackDescription: "Un bruit de touche bref et sec.",
+      profileClunk: "Choc sourd",
+      profileClunkDescription: "Un impact grave et \xE9touff\xE9.",
+      profileLowBeep: "Bip grave",
+      profileLowBeepDescription: "Un son grave qui d\xE9marre en douceur.",
+      profileSoftChime: "Tintement doux",
+      profileSoftChimeDescription: "Un doux tintement qui s\u2019estompe rapidement."
+    },
+    ja: {
+      preferencesStored: "\u3053\u306E\u30D6\u30E9\u30A6\u30B6\u30FC\u306B\u4FDD\u5B58\u3055\u308C\u307E\u3059\u3002",
+      soundHeading: "\u30B5\u30A6\u30F3\u30C9",
+      volume: "\u97F3\u91CF",
+      roomReverb: "\u5BA4\u5185\u306E\u6B8B\u97FF",
+      soundProfile: "\u52B9\u679C\u97F3\u306E\u7A2E\u985E",
+      previewSound: "\u8A66\u8074",
+      appearance: "\u8868\u793A",
+      motionSetting: "\u52D5\u304D",
+      motionAuto: "\u81EA\u52D5 \xB7 \u30D6\u30E9\u30A6\u30B6\u30FC\u306E\u8A2D\u5B9A\u306B\u5F93\u3046",
+      motionReduced: "\u63A7\u3048\u3081 \xB7 \u52D5\u304D\u3068\u70B9\u6EC5\u3092\u6291\u3048\u308B",
+      motionFull: "\u3059\u3079\u3066 \xB7 \u30A2\u30CB\u30E1\u30FC\u30B7\u30E7\u30F3\u3068\u52B9\u679C\u3092\u8868\u793A",
+      offlinePlayHeading: "\u30AA\u30D5\u30E9\u30A4\u30F3\u30D7\u30EC\u30A4",
+      playOffline: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u30D7\u30EC\u30A4",
+      downloadSave: "\u30BB\u30FC\u30D6\u30C7\u30FC\u30BF\u3092\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9",
+      simulatedPingLabel: "\u7591\u4F3C\u9045\u5EF6",
+      simulatedPingHint: "\u30AA\u30D5\u30E9\u30A4\u30F3\u6642\u306E\u53CD\u5FDC\u3092\u9045\u3089\u305B\u307E\u3059\u3002\u30AF\u30EA\u30C3\u30AF\u306F\u3059\u3050\u306B\u4FDD\u5B58\u3055\u308C\u307E\u3059\u3002",
+      instant: "\u5373\u6642",
+      approximatePing: "\u7D04 {time}",
+      replaceLocal: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u306E\u7F6E\u304D\u63DB\u3048",
+      allowReplaceLocal: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u306E\u7F6E\u304D\u63DB\u3048\u3092\u8A31\u53EF",
+      importSave: "\u30BB\u30FC\u30D6\u3092\u30A4\u30F3\u30DD\u30FC\u30C8",
+      restartSave: "\u30BB\u30FC\u30D6\u3092\u30EA\u30BB\u30C3\u30C8",
+      copyAccount: "\u30A2\u30AB\u30A6\u30F3\u30C8\u306E\u9032\u884C\u72B6\u6CC1\u3092\u30B3\u30D4\u30FC",
+      copyAccountHint: "\u30A2\u30AB\u30A6\u30F3\u30C8\u306E\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u958B\u304F\u3068\u3001\u9032\u884C\u72B6\u6CC1\u3092\u30B3\u30D4\u30FC\u3067\u304D\u307E\u3059\u3002",
+      copyAccountNote: "\u6700\u5F8C\u306B\u8AAD\u307F\u8FBC\u3093\u3060 {name} \u306E\u9032\u884C\u72B6\u6CC1\u3067\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u7F6E\u304D\u63DB\u3048\u307E\u3059\u3002",
+      localSaveCount: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u306E\u30AF\u30EA\u30C3\u30AF\u6570\uFF1A{count}",
+      localSaveUnavailable: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002",
+      controlsTitle: "\u64CD\u4F5C\u65B9\u6CD5",
+      feedbackColors: "\u7425\u73C0\u8272\u306F\u4FDD\u5B58\u5F85\u3061\u3001\u307E\u305F\u306F\u5FDC\u7B54\u304C\u9045\u3044\u3053\u3068\u3092\u793A\u3057\u307E\u3059\u3002\u7DD1\u306F\u901F\u3044\u5FDC\u7B54\u3001\u9752\u306F\u901A\u5E38\u306E\u5FDC\u7B54\u3067\u3059\u3002\u30AA\u30EC\u30F3\u30B8\u306F\u30B5\u30FC\u30D0\u30FC\u306B\u3088\u308B\u4E00\u6642\u505C\u6B62\u3067\u3059\u3002\u8D64\u306F\u4FDD\u5B58\u306B\u5931\u6557\u3057\u305F\u304B\u3001\u4FDD\u5B58\u3092\u78BA\u8A8D\u3067\u304D\u306A\u304B\u3063\u305F\u3053\u3068\u3092\u793A\u3057\u307E\u3059\u3002",
+      technicalNotes: "\u30B2\u30FC\u30E0\u3068\u4FDD\u5B58\u306B\u3064\u3044\u3066\uFF08\u82F1\u8A9E\uFF09",
+      sourceCode: "\u30BD\u30FC\u30B9\u30B3\u30FC\u30C9",
+      settingsVisit: "\u4ECA\u56DE\u306E\u307F\u9069\u7528\u3057\u307E\u3057\u305F\u3002\u30D6\u30E9\u30A6\u30B6\u30FC\u306E\u4FDD\u5B58\u9818\u57DF\u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002",
+      openLocalFailed: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
+      backOnlineVisit: "\u4ECA\u56DE\u306E\u307F\u30AA\u30F3\u30E9\u30A4\u30F3\u306B\u623B\u308A\u307E\u3057\u305F\u3002\u30D6\u30E9\u30A6\u30B6\u30FC\u306E\u4FDD\u5B58\u9818\u57DF\u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002",
+      replaceConsent: "\u5148\u306B\u300C\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u306E\u7F6E\u304D\u63DB\u3048\u3092\u8A31\u53EF\u300D\u3092\u30AA\u30F3\u306B\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      waitPending: "\u4FDD\u7559\u4E2D\u306E\u30AF\u30EA\u30C3\u30AF\u304C\u4FDD\u5B58\u3055\u308C\u3066\u304B\u3089\u3001\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      replacingLocal: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u7F6E\u304D\u63DB\u3048\u3066\u3044\u307E\u3059\u2026",
+      localReplacedFailed: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u306F\u7F6E\u304D\u63DB\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
+      localRestarted: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F\u3002",
+      accountCopied: "\u30A2\u30AB\u30A6\u30F3\u30C8\u306E\u9032\u884C\u72B6\u6CC1\u3092\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u306B\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F\u3002",
+      saveTooLarge: "1 MiB \u672A\u6E80\u306E\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044\u3002",
+      localImported: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u307E\u3057\u305F\u3002",
+      importFailed: "\u3053\u306E\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u30A4\u30F3\u30DD\u30FC\u30C8\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
+      localDownloaded: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9\u3057\u307E\u3057\u305F\u3002",
+      downloadFailed: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
+      profileClassic: "\u30AF\u30E9\u30B7\u30C3\u30AF",
+      profileClassicDescription: "\u91D1\u5C5E\u30B9\u30A4\u30C3\u30C1\u306E\u4F4E\u3044\u62BC\u3057\u97F3\u3068\u3001\u8EFD\u3044\u623B\u308A\u97F3\u3002",
+      profileBlip: "\u96FB\u5B50\u97F3",
+      profileBlipDescription: "\u97F3\u7A0B\u304C\u4E0A\u304C\u308B\u77ED\u3044\u96FB\u5B50\u97F3\u3002",
+      profileClack: "\u30AB\u30C1\u30C3",
+      profileClackDescription: "\u77ED\u304F\u4E7E\u3044\u305F\u30AD\u30FC\u306E\u97F3\u3002",
+      profileClunk: "\u30B4\u30C8\u30C3",
+      profileClunkDescription: "\u3053\u3082\u3063\u305F\u4F4E\u3044\u6253\u97F3\u3002",
+      profileLowBeep: "\u4F4E\u3044\u30D3\u30FC\u30D7\u97F3",
+      profileLowBeepDescription: "\u67D4\u3089\u304B\u304F\u7ACB\u3061\u4E0A\u304C\u308B\u4F4E\u3044\u97F3\u3002",
+      profileSoftChime: "\u3084\u308F\u3089\u304B\u306A\u30C1\u30E3\u30A4\u30E0",
+      profileSoftChimeDescription: "\u4F59\u97FB\u306E\u77ED\u3044\u3084\u308F\u3089\u304B\u306A\u30C1\u30E3\u30A4\u30E0\u3002"
+    },
+    ru: {
+      preferencesStored: "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435.",
+      soundHeading: "\u0417\u0432\u0443\u043A",
+      volume: "\u0413\u0440\u043E\u043C\u043A\u043E\u0441\u0442\u044C",
+      roomReverb: "\u0420\u0435\u0432\u0435\u0440\u0431\u0435\u0440\u0430\u0446\u0438\u044F \u043A\u043E\u043C\u043D\u0430\u0442\u044B",
+      soundProfile: "\u0417\u0432\u0443\u043A\u043E\u0432\u043E\u0439 \u043F\u0440\u043E\u0444\u0438\u043B\u044C",
+      previewSound: "\u041F\u0440\u043E\u0441\u043B\u0443\u0448\u0430\u0442\u044C",
+      appearance: "\u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435",
+      motionSetting: "\u0410\u043D\u0438\u043C\u0430\u0446\u0438\u044F",
+      motionAuto: "\u0410\u0432\u0442\u043E \xB7 \u041F\u043E \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0430\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430",
+      motionReduced: "\u041C\u0438\u043D\u0438\u043C\u0443\u043C \xB7 \u0411\u0435\u0437 \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F \u0438 \u0432\u0441\u043F\u044B\u0448\u0435\u043A",
+      motionFull: "\u041F\u043E\u043B\u043D\u0430\u044F \xB7 \u0410\u043D\u0438\u043C\u0430\u0446\u0438\u044F \u0438 \u044D\u0444\u0444\u0435\u043A\u0442\u044B",
+      offlinePlayHeading: "\u0418\u0433\u0440\u0430 \u043E\u0444\u043B\u0430\u0439\u043D",
+      playOffline: "\u0418\u0433\u0440\u0430\u0442\u044C \u043E\u0444\u043B\u0430\u0439\u043D",
+      downloadSave: "\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435",
+      simulatedPingLabel: "\u0418\u043C\u0438\u0442\u0430\u0446\u0438\u044F \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0438",
+      simulatedPingHint: "\u0417\u0430\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442 \u043E\u0442\u043A\u043B\u0438\u043A \u0432 \u043E\u0444\u043B\u0430\u0439\u043D-\u0440\u0435\u0436\u0438\u043C\u0435. \u041A\u043B\u0438\u043A\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F \u0441\u0440\u0430\u0437\u0443.",
+      instant: "\u041C\u0433\u043D\u043E\u0432\u0435\u043D\u043D\u043E",
+      approximatePing: "\u041E\u043A\u043E\u043B\u043E {time}",
+      replaceLocal: "\u0417\u0430\u043C\u0435\u043D\u0438\u0442\u044C \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435",
+      allowReplaceLocal: "\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044C \u0437\u0430\u043C\u0435\u043D\u0443 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F",
+      importSave: "\u0418\u043C\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435",
+      restartSave: "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435",
+      copyAccount: "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430",
+      copyAccountHint: "\u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u0441\u0447\u0451\u0442\u0447\u0438\u043A \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430, \u0447\u0442\u043E\u0431\u044B \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441.",
+      copyAccountNote: "\u0417\u0430\u043C\u0435\u043D\u0438\u0442\u044C \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u043C \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043D\u044B\u043C \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441\u043E\u043C \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430 {name}.",
+      localSaveCount: "\u041A\u043B\u0438\u043A\u0438 \u0432 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u043C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0438: {count}",
+      localSaveUnavailable: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E.",
+      controlsTitle: "\u0423\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435",
+      feedbackColors: "\u042F\u043D\u0442\u0430\u0440\u043D\u044B\u0439 \u0446\u0432\u0435\u0442 \u043E\u0437\u043D\u0430\u0447\u0430\u0435\u0442, \u0447\u0442\u043E \u043A\u043B\u0438\u043A \u0435\u0449\u0451 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u0438\u043B\u0438 \u043E\u0442\u043A\u043B\u0438\u043A \u0431\u044B\u043B \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u044B\u043C. \u0417\u0435\u043B\u0451\u043D\u044B\u0439 \u0446\u0432\u0435\u0442 \u043E\u0437\u043D\u0430\u0447\u0430\u0435\u0442 \u0431\u044B\u0441\u0442\u0440\u044B\u0439 \u043E\u0442\u043A\u043B\u0438\u043A, \u0430 \u0441\u0438\u043D\u0438\u0439 \u2014 \u043E\u0431\u044B\u0447\u043D\u044B\u0439. \u041E\u0440\u0430\u043D\u0436\u0435\u0432\u044B\u0439 \u0446\u0432\u0435\u0442 \u043E\u0437\u043D\u0430\u0447\u0430\u0435\u0442 \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u0443\u044E \u043F\u0430\u0443\u0437\u0443 \u043D\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435. \u041A\u0440\u0430\u0441\u043D\u044B\u0439 \u0446\u0432\u0435\u0442 \u043E\u0437\u043D\u0430\u0447\u0430\u0435\u0442, \u0447\u0442\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043A\u043B\u0438\u043A \u0438\u043B\u0438 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C.",
+      technicalNotes: "\u041E\u0431 \u0438\u0433\u0440\u0435 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0438 (\u043D\u0430 \u0430\u043D\u0433\u043B\u0438\u0439\u0441\u043A\u043E\u043C)",
+      sourceCode: "\u0418\u0441\u0445\u043E\u0434\u043D\u044B\u0439 \u043A\u043E\u0434",
+      settingsVisit: "\u041F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u043E \u0442\u043E\u043B\u044C\u043A\u043E \u0432 \u044D\u0442\u043E\u0442 \u0440\u0430\u0437. \u0425\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E.",
+      openLocalFailed: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u044C \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435.",
+      backOnlineVisit: "\u0412\u044B \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u0432 \u043E\u043D\u043B\u0430\u0439\u043D-\u0440\u0435\u0436\u0438\u043C \u043D\u0430 \u0432\u0440\u0435\u043C\u044F \u044D\u0442\u043E\u0433\u043E \u043F\u043E\u0441\u0435\u0449\u0435\u043D\u0438\u044F. \u0425\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E.",
+      replaceConsent: "\u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u043E\u0442\u043C\u0435\u0442\u044C\u0442\u0435 \xAB\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044C \u0437\u0430\u043C\u0435\u043D\u0443 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F\xBB.",
+      waitPending: "\u0414\u043E\u0436\u0434\u0438\u0442\u0435\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \u043E\u0436\u0438\u0434\u0430\u044E\u0449\u0438\u0445 \u043A\u043B\u0438\u043A\u043E\u0432, \u0437\u0430\u0442\u0435\u043C \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+      replacingLocal: "\u0417\u0430\u043C\u0435\u043D\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F\u2026",
+      localReplacedFailed: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043D\u0435 \u0437\u0430\u043C\u0435\u043D\u0435\u043D\u043E.",
+      localRestarted: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0441\u0431\u0440\u043E\u0448\u0435\u043D\u043E.",
+      accountCopied: "\u041F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430 \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D \u0432 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435.",
+      saveTooLarge: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \u0440\u0430\u0437\u043C\u0435\u0440\u043E\u043C \u043C\u0435\u043D\u0435\u0435 1 \u041C\u0438\u0411.",
+      localImported: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0438\u043C\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u043E.",
+      importFailed: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0438\u043C\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u044D\u0442\u043E \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435.",
+      localDownloaded: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0441\u043A\u0430\u0447\u0430\u043D\u043E.",
+      downloadFailed: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043A\u0430\u0447\u0430\u0442\u044C \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435.",
+      profileClassic: "\u041A\u043B\u0430\u0441\u0441\u0438\u0447\u0435\u0441\u043A\u0438\u0439",
+      profileClassicDescription: "\u041C\u0435\u0442\u0430\u043B\u043B\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0430\u0442\u0435\u043B\u044C \u0441 \u043D\u0438\u0437\u043A\u0438\u043C \u0437\u0432\u0443\u043A\u043E\u043C \u043F\u0440\u0438 \u043D\u0430\u0436\u0430\u0442\u0438\u0438 \u0438 \u0431\u043E\u043B\u0435\u0435 \u043B\u0451\u0433\u043A\u0438\u043C \u043F\u0440\u0438 \u043E\u0442\u043F\u0443\u0441\u043A\u0430\u043D\u0438\u0438.",
+      profileBlip: "\u042D\u043B\u0435\u043A\u0442\u0440\u043E\u043D\u043D\u044B\u0439 \u0441\u0438\u0433\u043D\u0430\u043B",
+      profileBlipDescription: "\u041A\u043E\u0440\u043E\u0442\u043A\u0438\u0435 \u044D\u043B\u0435\u043A\u0442\u0440\u043E\u043D\u043D\u044B\u0435 \u0437\u0432\u0443\u043A\u0438 \u0441 \u043F\u043E\u0432\u044B\u0448\u0435\u043D\u0438\u0435\u043C \u0442\u043E\u043D\u0430.",
+      profileClack: "\u0429\u0435\u043B\u0447\u043E\u043A",
+      profileClackDescription: "\u041A\u043E\u0440\u043E\u0442\u043A\u0438\u0439 \u0441\u0443\u0445\u043E\u0439 \u0449\u0435\u043B\u0447\u043E\u043A \u043A\u043B\u0430\u0432\u0438\u0448\u0438.",
+      profileClunk: "\u0413\u043B\u0443\u0445\u043E\u0439 \u0443\u0434\u0430\u0440",
+      profileClunkDescription: "\u041D\u0438\u0437\u043A\u0438\u0439 \u043F\u0440\u0438\u0433\u043B\u0443\u0448\u0451\u043D\u043D\u044B\u0439 \u0443\u0434\u0430\u0440.",
+      profileLowBeep: "\u041D\u0438\u0437\u043A\u0438\u0439 \u0441\u0438\u0433\u043D\u0430\u043B",
+      profileLowBeepDescription: "\u041D\u0438\u0437\u043A\u0438\u0439 \u0442\u043E\u043D \u0441 \u043C\u044F\u0433\u043A\u0438\u043C \u043D\u0430\u0447\u0430\u043B\u043E\u043C.",
+      profileSoftChime: "\u041C\u044F\u0433\u043A\u0438\u0439 \u0437\u0432\u043E\u043D",
+      profileSoftChimeDescription: "\u041C\u044F\u0433\u043A\u0438\u0439 \u0437\u0432\u043E\u043D, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u0431\u044B\u0441\u0442\u0440\u043E \u0437\u0430\u0442\u0438\u0445\u0430\u0435\u0442."
+    },
+    de: {
+      preferencesStored: "In diesem Browser gespeichert.",
+      soundHeading: "Ton",
+      volume: "Lautst\xE4rke",
+      roomReverb: "Raumhall",
+      soundProfile: "Klangprofil",
+      previewSound: "Klang anh\xF6ren",
+      appearance: "Darstellung",
+      motionSetting: "Bewegung",
+      motionAuto: "Automatisch \xB7 Nach Browser-Einstellung",
+      motionReduced: "Reduziert \xB7 Ohne Bewegung oder Blitze",
+      motionFull: "Voll \xB7 Animationen und Effekte",
+      offlinePlayHeading: "Offline-Spiel",
+      playOffline: "Offline spielen",
+      downloadSave: "Spielstand herunterladen",
+      simulatedPingLabel: "Simulierte Latenz",
+      simulatedPingHint: "Verz\xF6gert die R\xFCckmeldung im Offline-Modus. Klicks werden sofort gespeichert.",
+      instant: "Sofort",
+      approximatePing: "Etwa {time}",
+      replaceLocal: "Lokalen Spielstand ersetzen",
+      allowReplaceLocal: "Ersetzen meines lokalen Spielstands erlauben",
+      importSave: "Spielstand importieren",
+      restartSave: "Spielstand zur\xFCcksetzen",
+      copyAccount: "Kontofortschritt kopieren",
+      copyAccountHint: "\xD6ffne den Z\xE4hler deines Kontos, um den Fortschritt kopieren zu k\xF6nnen.",
+      copyAccountNote: "Den lokalen Spielstand durch den zuletzt geladenen Fortschritt von {name} ersetzen.",
+      localSaveCount: "Klicks im lokalen Spielstand: {count}",
+      localSaveUnavailable: "Der lokale Spielstand ist nicht verf\xFCgbar.",
+      controlsTitle: "Bedienung",
+      feedbackColors: "Bernsteinfarben bedeutet, dass die Speicherung aussteht oder die Antwort langsam ist. Gr\xFCn steht f\xFCr eine schnelle Antwort, Blau f\xFCr eine normale. Orange zeigt eine vor\xFCbergehende Pause durch den Server an. Rot bedeutet, dass die Speicherung fehlgeschlagen ist oder sich nicht best\xE4tigen lie\xDF.",
+      technicalNotes: "Hinweise zu Spiel und Speicherung (Englisch)",
+      sourceCode: "Quellcode",
+      settingsVisit: "F\xFCr diesen Besuch \xFCbernommen. Der Browserspeicher ist nicht verf\xFCgbar.",
+      openLocalFailed: "Der lokale Spielstand konnte nicht ge\xF6ffnet werden.",
+      backOnlineVisit: "F\xFCr diesen Besuch wieder online. Der Browserspeicher ist nicht verf\xFCgbar.",
+      replaceConsent: "Aktiviere zuerst \u201EErsetzen meines lokalen Spielstands erlauben\u201C.",
+      waitPending: "Warte, bis alle ausstehenden Klicks gespeichert sind, und versuche es erneut.",
+      replacingLocal: "Lokaler Spielstand wird ersetzt \u2026",
+      localReplacedFailed: "Der lokale Spielstand wurde nicht ersetzt.",
+      localRestarted: "Der lokale Spielstand wurde zur\xFCckgesetzt.",
+      accountCopied: "Der Kontofortschritt wurde in den lokalen Spielstand kopiert.",
+      saveTooLarge: "W\xE4hle eine lokale Spielstandsdatei unter 1 MiB aus.",
+      localImported: "Der lokale Spielstand wurde importiert.",
+      importFailed: "Dieser lokale Spielstand konnte nicht importiert werden.",
+      localDownloaded: "Der lokale Spielstand wurde heruntergeladen.",
+      downloadFailed: "Der lokale Spielstand konnte nicht heruntergeladen werden.",
+      profileClassic: "Klassisch",
+      profileClassicDescription: "Ein Metallschalter mit tiefem Klang beim Dr\xFCcken und leichterem Klang beim Loslassen.",
+      profileBlip: "Elektronischer Piep",
+      profileBlipDescription: "Kurze elektronische T\xF6ne mit ansteigender Tonh\xF6he.",
+      profileClack: "Klack",
+      profileClackDescription: "Ein kurzes, trockenes Tastenger\xE4usch.",
+      profileClunk: "Dumpfer Schlag",
+      profileClunkDescription: "Ein tiefer, ged\xE4mpfter Schlag.",
+      profileLowBeep: "Tiefer Piep",
+      profileLowBeepDescription: "Ein tiefer Ton mit sanftem Einsatz.",
+      profileSoftChime: "Sanfter Glockenton",
+      profileSoftChimeDescription: "Ein sanfter Glockenton, der schnell verklingt."
+    }
+  };
+
   // frontend/messages.ts
   var english = {
+    ...englishOptions,
     fortnightActivity: "Fortnight activity",
     outOf: "{count} / {total}",
     daysActive: "Active days: {count}",
@@ -2037,6 +2691,14 @@
     consecutive: "{duration} in a row",
     earned: "Earned",
     locked: "Locked",
+    allAchievements: "All",
+    filterAchievements: "Filter achievements",
+    revealRequirements: "Reveal locked requirements",
+    allAchievementsEarned: "You\u2019ve earned every achievement.",
+    noAchievementsEarned: "No achievements earned yet.",
+    tricksStored: "Button tricks are saved in this browser.",
+    achievementUnlocked: "Achievement unlocked",
+    achievementsUnlocked: "Achievements unlocked",
     language: "Language",
     account: "Account",
     localGame: "Local game",
@@ -2120,6 +2782,7 @@
   };
   var translations = {
     "zh-Hans": {
+      ...optionsTranslations["zh-Hans"],
       fortnightActivity: "\u4E24\u5468\u6D3B\u8DC3\u5EA6",
       outOf: "{count} / {total}",
       daysActive: "\u6D3B\u8DC3\u5929\u6570\uFF1A{count}",
@@ -2134,6 +2797,14 @@
       consecutive: "\u8FDE\u7EED {duration}",
       earned: "\u5DF2\u83B7\u5F97",
       locked: "\u672A\u89E3\u9501",
+      allAchievements: "\u5168\u90E8",
+      filterAchievements: "\u7B5B\u9009\u6210\u5C31",
+      revealRequirements: "\u663E\u793A\u672A\u89E3\u9501\u6210\u5C31\u7684\u6761\u4EF6",
+      allAchievementsEarned: "\u4F60\u5DF2\u83B7\u5F97\u6240\u6709\u6210\u5C31\u3002",
+      noAchievementsEarned: "\u5C1A\u672A\u83B7\u5F97\u4EFB\u4F55\u6210\u5C31\u3002",
+      tricksStored: "\u6309\u94AE\u5F69\u86CB\u8BB0\u5F55\u4FDD\u5B58\u5728\u6B64\u6D4F\u89C8\u5668\u4E2D\u3002",
+      achievementUnlocked: "\u6210\u5C31\u5DF2\u89E3\u9501",
+      achievementsUnlocked: "\u6210\u5C31\u5DF2\u89E3\u9501",
       language: "\u8BED\u8A00",
       account: "\u8D26\u6237",
       localGame: "\u672C\u5730\u6E38\u620F",
@@ -2144,7 +2815,7 @@
       savedClicks: "\u5DF2\u4FDD\u5B58\u7684\u70B9\u51FB",
       localClicks: "\u672C\u5730\u70B9\u51FB",
       click: "\u70B9\u51FB",
-      clickAction: "\u70B9\u51FB\u589E\u52A0\u5206\u6570",
+      clickAction: "\u8BB0\u5F55\u4E00\u6B21\u70B9\u51FB",
       outletTest: "\u63D2\u5EA7\u6D4B\u8BD5",
       cordSlack: "\u677E\u5F1B\u7684\u7535\u7EBF",
       reconnectPlug: "\u91CD\u65B0\u63D2\u4E0A\u63D2\u5934",
@@ -2192,7 +2863,7 @@
       motion: "\u5F00\u542F\u52A8\u753B\u6548\u679C",
       motionHint: "\u5DF2\u5F00\u542F\u51CF\u5C11\u52A8\u6001\u6548\u679C\u3002\u70B9\u51FB\u5F00\u542F\u52A8\u753B\u3002",
       reload: "\u91CD\u65B0\u52A0\u8F7D\u8BA1\u6570",
-      controls: "\u7528\u9F20\u6807\u6216\u89E6\u6478\u6309\u4E0B\uFF0C\u7136\u540E\u5728\u6309\u94AE\u5185\u677E\u5F00\u3002\u6BCF\u6839\u624B\u6307\u5355\u72EC\u8BA1\u6570\u3002\u6309\u94AE\u83B7\u5F97\u7126\u70B9\u540E\uFF0C\u677E\u5F00\u7A7A\u683C\u952E\u6216\u56DE\u8F66\u952E\u53EF\u589E\u52A0\u4E00\u6B21\u70B9\u51FB\u3002\u6309\u4F4F\u4E0D\u4F1A\u589E\u52A0\u989D\u5916\u70B9\u51FB\u3002",
+      controls: "\u7528\u9F20\u6807\u6216\u89E6\u6478\u6309\u4E0B\uFF0C\u7136\u540E\u5728\u6309\u94AE\u4E0A\u6216\u9644\u8FD1\u677E\u5F00\u3002\u6BCF\u6839\u624B\u6307\u5355\u72EC\u8BA1\u6570\u3002\u6309\u94AE\u83B7\u5F97\u7126\u70B9\u65F6\uFF0C\u677E\u5F00\u7A7A\u683C\u952E\u6216\u56DE\u8F66\u952E\u53EF\u8BB0\u5F55\u4E00\u6B21\u70B9\u51FB\u3002\u6309\u4F4F\u4E0D\u4F1A\u589E\u52A0\u989D\u5916\u70B9\u51FB\u3002",
       loadError: "\u65E0\u6CD5\u52A0\u8F7D\u8BA1\u6570\uFF0C\u8BF7\u91CD\u8BD5\u3002",
       unconfirmedClick: "\u65E0\u6CD5\u786E\u8BA4\u70B9\u51FB\u3002\u8BF7\u91CD\u65B0\u52A0\u8F7D\u8BA1\u6570\u4EE5\u68C0\u67E5\u662F\u5426\u5DF2\u4FDD\u5B58\u3002",
       unsavedClick: "\u70B9\u51FB\u672A\u4FDD\u5B58\u3002\u8BF7\u68C0\u67E5\u7F51\u7EDC\u540E\u91CD\u8BD5\u3002",
@@ -2201,11 +2872,11 @@
       signOutError: "\u65E0\u6CD5\u9000\u51FA\u767B\u5F55\uFF0C\u8BF7\u91CD\u8BD5\u3002",
       shareTitle: "\u5206\u4EAB\u7EDF\u8BA1",
       done: "\u5B8C\u6210",
-      shareInstructions: "\u9009\u62E9\u8981\u5305\u542B\u7684\u5185\u5BB9\u3002\u66F4\u6539\u9009\u9879\u5C06\u66F4\u65B0\u9884\u89C8\uFF1B\u8BF7\u518D\u6B21\u590D\u5236\u4EE5\u5206\u4EAB\u4FEE\u6539\u540E\u7684\u6587\u672C\u3002",
+      shareInstructions: "\u9009\u62E9\u8981\u5305\u542B\u7684\u5185\u5BB9\uFF0C\u7136\u540E\u590D\u5236\u9884\u89C8\u6587\u672C\u3002",
       include: "\u5305\u542B",
       siteLink: "\u7F51\u7AD9\u94FE\u63A5",
       clickTotal: "\u70B9\u51FB\u603B\u6570",
-      shareDataNote: "\u70B9\u51FB\u603B\u6570\u4E3A\u7D2F\u8BA1\u503C\u3002\u5F53\u524D\u6458\u8981\u4E0D\u5305\u542B\u6BCF\u65E5\u548C\u6BCF\u5468\u603B\u6570\u3002",
+      shareDataNote: "\u603B\u6570\u5305\u62EC\u5F53\u524D\u5B58\u6863\u4E2D\u7684\u6240\u6709\u70B9\u51FB\u3002",
       preview: "\u9884\u89C8",
       statsToShare: "\u8981\u5206\u4EAB\u7684\u7EDF\u8BA1",
       copyText: "\u590D\u5236\u6587\u672C",
@@ -2216,7 +2887,8 @@
       playLink: "\u5F00\u59CB\u6E38\u620F\uFF1A{url}"
     },
     es: {
-      fortnightActivity: "Actividad de la quincena",
+      ...optionsTranslations["es"],
+      fortnightActivity: "Actividad de 14 d\xEDas",
       outOf: "{count} / {total}",
       daysActive: "D\xEDas activos: {count}",
       activityNote: "Cuenta los 14 d\xEDas hasta tu \xFAltimo clic. Los d\xEDas consecutivos dan puntos extra.",
@@ -2230,6 +2902,14 @@
       consecutive: "{duration} seguidos",
       earned: "Conseguido",
       locked: "Bloqueado",
+      allAchievements: "Todos",
+      filterAchievements: "Filtrar logros",
+      revealRequirements: "Mostrar los requisitos de los logros bloqueados",
+      allAchievementsEarned: "Has conseguido todos los logros.",
+      noAchievementsEarned: "A\xFAn no has conseguido ning\xFAn logro.",
+      tricksStored: "Los trucos del bot\xF3n se guardan en este navegador.",
+      achievementUnlocked: "Logro desbloqueado",
+      achievementsUnlocked: "Logros desbloqueados",
       language: "Idioma",
       account: "Cuenta",
       localGame: "Juego local",
@@ -2240,7 +2920,7 @@
       savedClicks: "Clics guardados",
       localClicks: "Clics locales",
       click: "Clic",
-      clickAction: "Haz clic para sumar un punto",
+      clickAction: "Registrar un clic",
       outletTest: "Prueba del enchufe",
       cordSlack: "Cable flojo",
       reconnectPlug: "Volver a conectar la clavija",
@@ -2288,7 +2968,7 @@
       motion: "Activar efectos de movimiento",
       motionHint: "El movimiento reducido est\xE1 activado. Activar efectos de movimiento.",
       reload: "Recargar contador",
-      controls: "Pulsa con el rat\xF3n o el dedo y suelta dentro del bot\xF3n. Cada dedo cuenta por separado. Con el bot\xF3n enfocado, Espacio o Intro a\xF1ade un clic al soltar. Mantener pulsado no a\xF1ade clics.",
+      controls: "Pulsa con el rat\xF3n o el dedo y suelta sobre el bot\xF3n o cerca de \xE9l. Cada dedo cuenta por separado. Con el bot\xF3n enfocado, suelta Espacio o Intro para registrar un clic. Mantener pulsado no a\xF1ade clics.",
       loadError: "No se pudo cargar el contador. Intenta recargarlo.",
       unconfirmedClick: "No se pudo confirmar el clic. Recarga el contador para comprobar si se guard\xF3.",
       unsavedClick: "Tu clic no se guard\xF3. Comprueba tu conexi\xF3n e int\xE9ntalo de nuevo.",
@@ -2297,11 +2977,11 @@
       signOutError: "No se pudo cerrar sesi\xF3n. Int\xE9ntalo de nuevo.",
       shareTitle: "Compartir estad\xEDsticas",
       done: "Listo",
-      shareInstructions: "Elige qu\xE9 incluir. Al cambiar una opci\xF3n se actualiza la vista previa; vuelve a copiar para compartir el texto personalizado.",
+      shareInstructions: "Elige qu\xE9 incluir y copia la vista previa.",
       include: "Incluir",
       siteLink: "Enlace al sitio",
       clickTotal: "Total de clics",
-      shareDataNote: "Los totales de clics son acumulativos. El resumen actual no incluye totales diarios ni semanales.",
+      shareDataNote: "El total incluye todos los clics de la partida actual.",
       preview: "Vista previa",
       statsToShare: "Estad\xEDsticas para compartir",
       copyText: "Copiar texto",
@@ -2312,6 +2992,7 @@
       playLink: "Jugar: {url}"
     },
     ar: {
+      ...optionsTranslations["ar"],
       fortnightActivity: "\u0646\u0634\u0627\u0637 \u0622\u062E\u0631 \u0623\u0633\u0628\u0648\u0639\u064A\u0646",
       outOf: "{count} \u0645\u0646 {total}",
       daysActive: "\u0623\u064A\u0627\u0645 \u0627\u0644\u0646\u0634\u0627\u0637: {count}",
@@ -2326,6 +3007,14 @@
       consecutive: "\u0645\u062A\u062A\u0627\u0644\u064A\u0629: {duration}",
       earned: "\u062A\u0645 \u062A\u062D\u0642\u064A\u0642\u0647",
       locked: "\u0645\u0642\u0641\u0644",
+      allAchievements: "\u0627\u0644\u0643\u0644",
+      filterAchievements: "\u062A\u0635\u0641\u064A\u0629 \u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A",
+      revealRequirements: "\u0625\u0638\u0647\u0627\u0631 \u0634\u0631\u0648\u0637 \u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A \u0627\u0644\u0645\u0642\u0641\u0644\u0629",
+      allAchievementsEarned: "\u0644\u0642\u062F \u062D\u0635\u0644\u062A \u0639\u0644\u0649 \u062C\u0645\u064A\u0639 \u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A.",
+      noAchievementsEarned: "\u0644\u0645 \u062A\u062D\u0635\u0644 \u0639\u0644\u0649 \u0623\u064A \u0625\u0646\u062C\u0627\u0632 \u0628\u0639\u062F.",
+      tricksStored: "\u062A\u064F\u062D\u0641\u0638 \u062D\u064A\u0644 \u0627\u0644\u0632\u0631 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0645\u062A\u0635\u0641\u062D.",
+      achievementUnlocked: "\u062A\u0645 \u0641\u062A\u062D \u0625\u0646\u062C\u0627\u0632",
+      achievementsUnlocked: "\u062A\u0645 \u0641\u062A\u062D \u0639\u062F\u0629 \u0625\u0646\u062C\u0627\u0632\u0627\u062A",
       language: "\u0627\u0644\u0644\u063A\u0629",
       account: "\u0627\u0644\u062D\u0633\u0627\u0628",
       localGame: "\u0644\u0639\u0628\u0629 \u0645\u062D\u0644\u064A\u0629",
@@ -2336,7 +3025,7 @@
       savedClicks: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0641\u0648\u0638\u0629",
       localClicks: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0644\u064A\u0629",
       click: "\u0627\u0646\u0642\u0631",
-      clickAction: "\u0627\u0646\u0642\u0631 \u0644\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0637\u0629",
+      clickAction: "\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0631\u0629",
       outletTest: "\u0627\u062E\u062A\u0628\u0627\u0631 \u0627\u0644\u0645\u0642\u0628\u0633",
       cordSlack: "\u0625\u0631\u062E\u0627\u0621 \u0627\u0644\u0633\u0644\u0643",
       reconnectPlug: "\u0625\u0639\u0627\u062F\u0629 \u062A\u0648\u0635\u064A\u0644 \u0627\u0644\u0642\u0627\u0628\u0633",
@@ -2384,7 +3073,7 @@
       motion: "\u062A\u0641\u0639\u064A\u0644 \u062A\u0623\u062B\u064A\u0631\u0627\u062A \u0627\u0644\u062D\u0631\u0643\u0629",
       motionHint: "\u062A\u0642\u0644\u064A\u0644 \u0627\u0644\u062D\u0631\u0643\u0629 \u0645\u0641\u0639\u0651\u0644. \u062A\u0641\u0639\u064A\u0644 \u062A\u0623\u062B\u064A\u0631\u0627\u062A \u0627\u0644\u062D\u0631\u0643\u0629.",
       reload: "\u0625\u0639\u0627\u062F\u0629 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F",
-      controls: "\u0627\u0636\u063A\u0637 \u0628\u0627\u0644\u0641\u0623\u0631\u0629 \u0623\u0648 \u0628\u0627\u0644\u0644\u0645\u0633\u060C \u062B\u0645 \u0623\u0641\u0644\u062A \u062F\u0627\u062E\u0644 \u0627\u0644\u0632\u0631. \u064A\u064F\u062D\u0633\u0628 \u0643\u0644 \u0625\u0635\u0628\u0639 \u0639\u0644\u0649 \u062D\u062F\u0629. \u0639\u0646\u062F \u062A\u0631\u0643\u064A\u0632 \u0627\u0644\u0632\u0631\u060C \u062A\u0636\u064A\u0641 \u0645\u0633\u0627\u0641\u0629 \u0623\u0648 \u0625\u062F\u062E\u0627\u0644 \u0646\u0642\u0631\u0629 \u0639\u0646\u062F \u0627\u0644\u0625\u0641\u0644\u0627\u062A. \u0627\u0644\u0636\u063A\u0637 \u0627\u0644\u0645\u0637\u0648\u0651\u0644 \u0644\u0627 \u064A\u0636\u064A\u0641 \u0646\u0642\u0631\u0627\u062A.",
+      controls: "\u0627\u0636\u063A\u0637 \u0628\u0627\u0644\u0641\u0623\u0631\u0629 \u0623\u0648 \u0628\u0627\u0644\u0644\u0645\u0633\u060C \u062B\u0645 \u0623\u0641\u0644\u062A \u0641\u0648\u0642 \u0627\u0644\u0632\u0631 \u0623\u0648 \u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u0647. \u064A\u064F\u062D\u0633\u0628 \u0643\u0644 \u0625\u0635\u0628\u0639 \u0639\u0644\u0649 \u062D\u062F\u0629. \u0639\u0646\u062F\u0645\u0627 \u064A\u0643\u0648\u0646 \u0627\u0644\u0632\u0631 \u0645\u0648\u0636\u0639 \u0627\u0644\u062A\u0631\u0643\u064A\u0632\u060C \u0623\u0641\u0644\u062A \u0645\u0641\u062A\u0627\u062D \u0627\u0644\u0645\u0633\u0627\u0641\u0629 \u0623\u0648 Enter \u0644\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0631\u0629 \u0648\u0627\u062D\u062F\u0629. \u0644\u0627 \u064A\u0636\u064A\u0641 \u0627\u0644\u0636\u063A\u0637 \u0627\u0644\u0645\u0637\u0648\u0651\u0644 \u0646\u0642\u0631\u0627\u062A.",
       loadError: "\u062A\u0639\u0630\u0651\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F. \u062D\u0627\u0648\u0644 \u0625\u0639\u0627\u062F\u0629 \u062A\u062D\u0645\u064A\u0644\u0647.",
       unconfirmedClick: "\u062A\u0639\u0630\u0651\u0631 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0646\u0642\u0631\u0629. \u0623\u0639\u062F \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F \u0644\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u062D\u0641\u0638\u0647\u0627.",
       unsavedClick: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638 \u0627\u0644\u0646\u0642\u0631\u0629. \u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u062A\u0635\u0627\u0644\u0643 \u0648\u062D\u0627\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627.",
@@ -2393,11 +3082,11 @@
       signOutError: "\u062A\u0639\u0630\u0651\u0631 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C. \u062D\u0627\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627.",
       shareTitle: "\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A",
       done: "\u062A\u0645",
-      shareInstructions: "\u0627\u062E\u062A\u0631 \u0645\u0627 \u062A\u0631\u064A\u062F \u062A\u0636\u0645\u064A\u0646\u0647. \u064A\u0624\u062F\u064A \u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u062E\u064A\u0627\u0631 \u0625\u0644\u0649 \u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629\u061B \u0627\u0646\u0633\u062E \u0645\u062C\u062F\u062F\u064B\u0627 \u0644\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0646\u0635 \u0627\u0644\u0645\u062E\u0635\u0651\u0635.",
+      shareInstructions: "\u0627\u062E\u062A\u0631 \u0645\u0627 \u062A\u0631\u064A\u062F \u062A\u0636\u0645\u064A\u0646\u0647\u060C \u062B\u0645 \u0627\u0646\u0633\u062E \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629.",
       include: "\u062A\u0636\u0645\u064A\u0646",
       siteLink: "\u0631\u0627\u0628\u0637 \u0627\u0644\u0645\u0648\u0642\u0639",
       clickTotal: "\u0645\u062C\u0645\u0648\u0639 \u0627\u0644\u0646\u0642\u0631\u0627\u062A",
-      shareDataNote: "\u0645\u062C\u0645\u0648\u0639 \u0627\u0644\u0646\u0642\u0631\u0627\u062A \u062A\u0631\u0627\u0643\u0645\u064A. \u0644\u0627 \u064A\u062A\u0636\u0645\u0646 \u0627\u0644\u0645\u0644\u062E\u0635 \u0627\u0644\u062D\u0627\u0644\u064A \u0645\u062C\u0627\u0645\u064A\u0639 \u064A\u0648\u0645\u064A\u0629 \u0623\u0648 \u0623\u0633\u0628\u0648\u0639\u064A\u0629.",
+      shareDataNote: "\u064A\u0634\u0645\u0644 \u0627\u0644\u0645\u062C\u0645\u0648\u0639 \u0643\u0644 \u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0641\u064A \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u062D\u0627\u0644\u064A.",
       preview: "\u0645\u0639\u0627\u064A\u0646\u0629",
       statsToShare: "\u0625\u062D\u0635\u0627\u0621\u0627\u062A \u0644\u0644\u0645\u0634\u0627\u0631\u0643\u0629",
       copyText: "\u0646\u0633\u062E \u0627\u0644\u0646\u0635",
@@ -2408,7 +3097,8 @@
       playLink: "\u0627\u0644\u0639\u0628: {url}"
     },
     hi: {
-      fortnightActivity: "\u092A\u0916\u0935\u093E\u0921\u093C\u0947 \u0915\u0940 \u0917\u0924\u093F\u0935\u093F\u0927\u093F",
+      ...optionsTranslations["hi"],
+      fortnightActivity: "14 \u0926\u093F\u0928\u094B\u0902 \u0915\u0940 \u0917\u0924\u093F\u0935\u093F\u0927\u093F",
       outOf: "{count} / {total}",
       daysActive: "\u0938\u0915\u094D\u0930\u093F\u092F \u0926\u093F\u0928: {count}",
       activityNote: "\u0906\u092A\u0915\u0947 \u092A\u093F\u091B\u0932\u0947 \u0915\u094D\u0932\u093F\u0915 \u0924\u0915 \u0915\u0947 14 \u0926\u093F\u0928\u094B\u0902 \u092A\u0930 \u0906\u0927\u093E\u0930\u093F\u0924\u0964 \u0932\u0917\u093E\u0924\u093E\u0930 \u0926\u093F\u0928\u094B\u0902 \u0915\u0947 \u0932\u093F\u090F \u0905\u0924\u093F\u0930\u093F\u0915\u094D\u0924 \u0905\u0902\u0915 \u092E\u093F\u0932\u0924\u0947 \u0939\u0948\u0902\u0964",
@@ -2422,6 +3112,14 @@
       consecutive: "\u0932\u0917\u093E\u0924\u093E\u0930 {duration}",
       earned: "\u092A\u094D\u0930\u093E\u092A\u094D\u0924",
       locked: "\u0932\u0949\u0915 \u0939\u0948",
+      allAchievements: "\u0938\u092D\u0940",
+      filterAchievements: "\u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901 \u091B\u093E\u0901\u091F\u0947\u0902",
+      revealRequirements: "\u0932\u0949\u0915 \u0915\u0940 \u0917\u0908 \u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u094B\u0902 \u0915\u0940 \u0936\u0930\u094D\u0924\u0947\u0902 \u0926\u093F\u0916\u093E\u090F\u0901",
+      allAchievementsEarned: "\u0906\u092A\u0928\u0947 \u0938\u092D\u0940 \u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901 \u0939\u093E\u0938\u093F\u0932 \u0915\u0930 \u0932\u0940 \u0939\u0948\u0902\u0964",
+      noAchievementsEarned: "\u0905\u092D\u0940 \u0915\u094B\u0908 \u0909\u092A\u0932\u092C\u094D\u0927\u093F \u0939\u093E\u0938\u093F\u0932 \u0928\u0939\u0940\u0902 \u0939\u0941\u0908 \u0939\u0948\u0964",
+      tricksStored: "\u092C\u091F\u0928 \u0915\u0940 \u0924\u0930\u0915\u0940\u092C\u0947\u0902 \u0907\u0938 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u092E\u0947\u0902 \u0938\u0939\u0947\u091C\u0940 \u091C\u093E\u0924\u0940 \u0939\u0948\u0902\u0964",
+      achievementUnlocked: "\u0909\u092A\u0932\u092C\u094D\u0927\u093F \u0905\u0928\u0932\u0949\u0915 \u0939\u0941\u0908",
+      achievementsUnlocked: "\u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901 \u0905\u0928\u0932\u0949\u0915 \u0939\u0941\u0908\u0902",
       language: "\u092D\u093E\u0937\u093E",
       account: "\u0916\u093E\u0924\u093E",
       localGame: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0916\u0947\u0932",
@@ -2432,7 +3130,7 @@
       savedClicks: "\u0938\u0939\u0947\u091C\u0947 \u0917\u090F \u0915\u094D\u0932\u093F\u0915",
       localClicks: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0915\u094D\u0932\u093F\u0915",
       click: "\u0915\u094D\u0932\u093F\u0915",
-      clickAction: "\u0905\u0902\u0915 \u092C\u0922\u093C\u093E\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902",
+      clickAction: "\u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u091C\u094B\u0921\u093C\u0947\u0902",
       outletTest: "\u0938\u0949\u0915\u0947\u091F \u0915\u0940 \u091C\u093E\u0901\u091A",
       cordSlack: "\u0922\u0940\u0932\u0940 \u0924\u093E\u0930",
       reconnectPlug: "\u092A\u094D\u0932\u0917 \u092B\u093F\u0930 \u0938\u0947 \u0932\u0917\u093E\u090F\u0901",
@@ -2480,7 +3178,7 @@
       motion: "\u092E\u094B\u0936\u0928 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902",
       motionHint: "\u0915\u092E \u0917\u0924\u093F \u091A\u093E\u0932\u0942 \u0939\u0948\u0964 \u092E\u094B\u0936\u0928 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902\u0964",
       reload: "\u0915\u093E\u0909\u0902\u091F\u0930 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902",
-      controls: "\u092E\u093E\u0909\u0938 \u092F\u093E \u0938\u094D\u092A\u0930\u094D\u0936 \u0938\u0947 \u0926\u092C\u093E\u090F\u0901, \u092B\u093F\u0930 \u092C\u091F\u0928 \u0915\u0947 \u0905\u0902\u0926\u0930 \u091B\u094B\u0921\u093C\u0947\u0902\u0964 \u0939\u0930 \u0909\u0901\u0917\u0932\u0940 \u0905\u0932\u0917 \u0917\u093F\u0928\u0940 \u091C\u093E\u0924\u0940 \u0939\u0948\u0964 \u092C\u091F\u0928 \u092A\u0930 \u092B\u093C\u094B\u0915\u0938 \u0939\u094B\u0928\u0947 \u092A\u0930 \u0938\u094D\u092A\u0947\u0938 \u092F\u093E \u090F\u0902\u091F\u0930 \u091B\u094B\u0921\u093C\u0928\u0947 \u0938\u0947 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u091C\u0941\u0921\u093C\u0924\u093E \u0939\u0948\u0964 \u0926\u092C\u093E\u090F \u0930\u0916\u0928\u0947 \u0938\u0947 \u0905\u0924\u093F\u0930\u093F\u0915\u094D\u0924 \u0915\u094D\u0932\u093F\u0915 \u0928\u0939\u0940\u0902 \u091C\u0941\u0921\u093C\u0924\u0947\u0964",
+      controls: "\u092E\u093E\u0909\u0938 \u092F\u093E \u0938\u094D\u092A\u0930\u094D\u0936 \u0938\u0947 \u0926\u092C\u093E\u090F\u0901, \u092B\u093F\u0930 \u092C\u091F\u0928 \u092A\u0930 \u092F\u093E \u0909\u0938\u0915\u0947 \u092A\u093E\u0938 \u091B\u094B\u0921\u093C\u0947\u0902\u0964 \u0939\u0930 \u0909\u0901\u0917\u0932\u0940 \u0905\u0932\u0917 \u0917\u093F\u0928\u0940 \u091C\u093E\u0924\u0940 \u0939\u0948\u0964 \u092C\u091F\u0928 \u092A\u0930 \u092B\u093C\u094B\u0915\u0938 \u0939\u094B\u0928\u0947 \u092A\u0930 \u0938\u094D\u092A\u0947\u0938 \u092F\u093E \u090F\u0902\u091F\u0930 \u091B\u094B\u0921\u093C\u0928\u0947 \u0938\u0947 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u091C\u0941\u0921\u093C\u0924\u093E \u0939\u0948\u0964 \u0926\u092C\u093E\u090F \u0930\u0916\u0928\u0947 \u0938\u0947 \u0905\u0924\u093F\u0930\u093F\u0915\u094D\u0924 \u0915\u094D\u0932\u093F\u0915 \u0928\u0939\u0940\u0902 \u091C\u0941\u0921\u093C\u0924\u0947\u0964",
       loadError: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0932\u094B\u0921 \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902\u0964",
       unconfirmedClick: "\u0915\u094D\u0932\u093F\u0915 \u0915\u0940 \u092A\u0941\u0937\u094D\u091F\u093F \u0928\u0939\u0940\u0902 \u0939\u0941\u0908\u0964 \u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \u092F\u093E \u0928\u0939\u0940\u0902, \u091C\u093E\u0901\u091A\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u093E\u0909\u0902\u091F\u0930 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902\u0964",
       unsavedClick: "\u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E\u0964 \u0915\u0928\u0947\u0915\u094D\u0936\u0928 \u091C\u093E\u0901\u091A\u0947\u0902 \u0914\u0930 \u092B\u093F\u0930 \u0915\u094B\u0936\u093F\u0936 \u0915\u0930\u0947\u0902\u0964",
@@ -2489,11 +3187,11 @@
       signOutError: "\u0938\u093E\u0907\u0928 \u0906\u0909\u091F \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964 \u092B\u093F\u0930 \u0915\u094B\u0936\u093F\u0936 \u0915\u0930\u0947\u0902\u0964",
       shareTitle: "\u0906\u0901\u0915\u0921\u093C\u0947 \u0938\u093E\u091D\u093E \u0915\u0930\u0947\u0902",
       done: "\u0939\u094B \u0917\u092F\u093E",
-      shareInstructions: "\u091A\u0941\u0928\u0947\u0902 \u0915\u093F \u0915\u094D\u092F\u093E \u0936\u093E\u092E\u093F\u0932 \u0915\u0930\u0928\u093E \u0939\u0948\u0964 \u0935\u093F\u0915\u0932\u094D\u092A \u092C\u0926\u0932\u0928\u0947 \u092A\u0930 \u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u092C\u0926\u0932\u0947\u0917\u093E; \u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092B\u093F\u0930 \u0938\u0947 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
+      shareInstructions: "\u091A\u0941\u0928\u0947\u0902 \u0915\u093F \u0915\u094D\u092F\u093E \u0936\u093E\u092E\u093F\u0932 \u0915\u0930\u0928\u093E \u0939\u0948, \u092B\u093F\u0930 \u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
       include: "\u0936\u093E\u092E\u093F\u0932 \u0915\u0930\u0947\u0902",
       siteLink: "\u0938\u093E\u0907\u091F \u0932\u093F\u0902\u0915",
       clickTotal: "\u0915\u0941\u0932 \u0915\u094D\u0932\u093F\u0915",
-      shareDataNote: "\u0915\u0941\u0932 \u0915\u094D\u0932\u093F\u0915 \u0938\u0902\u091A\u092F\u0940 \u0939\u0948\u0902\u0964 \u092E\u094C\u091C\u0942\u0926\u093E \u0938\u093E\u0930\u093E\u0902\u0936 \u092E\u0947\u0902 \u0926\u0948\u0928\u093F\u0915 \u0914\u0930 \u0938\u093E\u092A\u094D\u0924\u093E\u0939\u093F\u0915 \u0915\u0941\u0932 \u0936\u093E\u092E\u093F\u0932 \u0928\u0939\u0940\u0902 \u0939\u0948\u0902\u0964",
+      shareDataNote: "\u0915\u0941\u0932 \u092E\u0947\u0902 \u092E\u094C\u091C\u0942\u0926\u093E \u0938\u0947\u0935 \u0915\u0947 \u0938\u092D\u0940 \u0915\u094D\u0932\u093F\u0915 \u0936\u093E\u092E\u093F\u0932 \u0939\u0948\u0902\u0964",
       preview: "\u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928",
       statsToShare: "\u0938\u093E\u091D\u093E \u0915\u093F\u090F \u091C\u093E\u0928\u0947 \u0935\u093E\u0932\u0947 \u0906\u0901\u0915\u0921\u093C\u0947",
       copyText: "\u091F\u0947\u0915\u094D\u0938\u094D\u091F \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902",
@@ -2504,6 +3202,7 @@
       playLink: "\u0916\u0947\u0932\u0947\u0902: {url}"
     },
     id: {
+      ...optionsTranslations["id"],
       fortnightActivity: "Aktivitas dua pekan",
       outOf: "{count} / {total}",
       daysActive: "Hari aktif: {count}",
@@ -2518,6 +3217,14 @@
       consecutive: "{duration} berturut-turut",
       earned: "Diraih",
       locked: "Terkunci",
+      allAchievements: "Semua",
+      filterAchievements: "Filter pencapaian",
+      revealRequirements: "Tampilkan syarat pencapaian yang terkunci",
+      allAchievementsEarned: "Kamu sudah meraih semua pencapaian.",
+      noAchievementsEarned: "Belum ada pencapaian yang diraih.",
+      tricksStored: "Trik tombol disimpan di browser ini.",
+      achievementUnlocked: "Pencapaian terbuka",
+      achievementsUnlocked: "Pencapaian terbuka",
       language: "Bahasa",
       account: "Akun",
       localGame: "Permainan lokal",
@@ -2528,7 +3235,7 @@
       savedClicks: "Klik tersimpan",
       localClicks: "Klik lokal",
       click: "Klik",
-      clickAction: "Klik untuk menambah skor",
+      clickAction: "Tambahkan satu klik",
       outletTest: "Uji stopkontak",
       cordSlack: "Kabel kendur",
       reconnectPlug: "Pasang kembali steker",
@@ -2576,7 +3283,7 @@
       motion: "Aktifkan efek gerakan",
       motionHint: "Gerakan terbatas aktif. Aktifkan efek gerakan.",
       reload: "Muat ulang penghitung",
-      controls: "Tekan dengan tetikus atau sentuhan, lalu lepaskan di dalam tombol. Setiap jari dihitung terpisah. Saat tombol terfokus, melepas Spasi atau Enter menambah satu klik. Menahan tidak menambah klik.",
+      controls: "Tekan dengan tetikus atau sentuhan, lalu lepaskan di atas atau dekat tombol. Setiap jari dihitung terpisah. Saat tombol terfokus, lepas Spasi atau Enter untuk menambah satu klik. Menahan tidak menambah klik.",
       loadError: "Penghitung tidak dapat dimuat. Coba muat ulang.",
       unconfirmedClick: "Klik tidak dapat dikonfirmasi. Muat ulang penghitung untuk memeriksa apakah tersimpan.",
       unsavedClick: "Klik Anda tidak tersimpan. Periksa koneksi dan coba lagi.",
@@ -2585,11 +3292,11 @@
       signOutError: "Tidak dapat keluar. Silakan coba lagi.",
       shareTitle: "Bagikan statistik",
       done: "Selesai",
-      shareInstructions: "Pilih yang ingin disertakan. Mengubah opsi memperbarui pratinjau; salin lagi untuk membagikan teks yang disesuaikan.",
+      shareInstructions: "Pilih yang ingin disertakan, lalu salin pratinjau.",
       include: "Sertakan",
       siteLink: "Tautan situs",
       clickTotal: "Total klik",
-      shareDataNote: "Total klik bersifat kumulatif. Total harian dan mingguan tidak termasuk dalam ringkasan saat ini.",
+      shareDataNote: "Total mencakup semua klik dalam simpanan saat ini.",
       preview: "Pratinjau",
       statsToShare: "Statistik untuk dibagikan",
       copyText: "Salin teks",
@@ -2600,7 +3307,8 @@
       playLink: "Main: {url}"
     },
     "pt-BR": {
-      fortnightActivity: "Atividade da quinzena",
+      ...optionsTranslations["pt-BR"],
+      fortnightActivity: "Atividade de 14 dias",
       outOf: "{count} / {total}",
       daysActive: "Dias ativos: {count}",
       activityNote: "Conta os 14 dias at\xE9 o seu \xFAltimo clique. Dias consecutivos rendem pontos extras.",
@@ -2614,6 +3322,14 @@
       consecutive: "{duration} seguidos",
       earned: "Conquistado",
       locked: "Bloqueado",
+      allAchievements: "Todas",
+      filterAchievements: "Filtrar conquistas",
+      revealRequirements: "Mostrar requisitos das conquistas bloqueadas",
+      allAchievementsEarned: "Voc\xEA ganhou todas as conquistas.",
+      noAchievementsEarned: "Voc\xEA ainda n\xE3o ganhou nenhuma conquista.",
+      tricksStored: "Os truques do bot\xE3o s\xE3o salvos neste navegador.",
+      achievementUnlocked: "Conquista desbloqueada",
+      achievementsUnlocked: "Conquistas desbloqueadas",
       language: "Idioma",
       account: "Conta",
       localGame: "Jogo local",
@@ -2624,7 +3340,7 @@
       savedClicks: "Cliques salvos",
       localClicks: "Cliques locais",
       click: "Clique",
-      clickAction: "Clique para aumentar a pontua\xE7\xE3o",
+      clickAction: "Adicionar um clique",
       outletTest: "Teste da tomada",
       cordSlack: "Cabo frouxo",
       reconnectPlug: "Reconectar o plugue",
@@ -2672,7 +3388,7 @@
       motion: "Ativar efeitos de movimento",
       motionHint: "Movimento reduzido ativado. Ativar efeitos de movimento.",
       reload: "Recarregar contador",
-      controls: "Pressione com o mouse ou toque e solte dentro do bot\xE3o. Cada dedo conta separadamente. Com o bot\xE3o em foco, soltar Espa\xE7o ou Enter adiciona um clique. Segurar n\xE3o adiciona cliques.",
+      controls: "Pressione com o mouse ou toque e solte sobre o bot\xE3o ou perto dele. Cada dedo conta separadamente. Com o bot\xE3o em foco, solte Espa\xE7o ou Enter para adicionar um clique. Segurar n\xE3o adiciona cliques.",
       loadError: "N\xE3o foi poss\xEDvel carregar o contador. Tente recarregar.",
       unconfirmedClick: "N\xE3o foi poss\xEDvel confirmar seu clique. Recarregue o contador para verificar se foi salvo.",
       unsavedClick: "Seu clique n\xE3o foi salvo. Verifique sua conex\xE3o e tente novamente.",
@@ -2681,11 +3397,11 @@
       signOutError: "N\xE3o foi poss\xEDvel sair. Tente novamente.",
       shareTitle: "Compartilhar estat\xEDsticas",
       done: "Conclu\xEDdo",
-      shareInstructions: "Escolha o que incluir. Alterar uma op\xE7\xE3o atualiza a pr\xE9via; copie novamente para compartilhar o texto personalizado.",
+      shareInstructions: "Escolha o que incluir e copie a pr\xE9via.",
       include: "Incluir",
       siteLink: "Link do site",
       clickTotal: "Total de cliques",
-      shareDataNote: "O total de cliques \xE9 acumulativo. Totais di\xE1rios e semanais n\xE3o fazem parte do resumo atual.",
+      shareDataNote: "O total inclui todos os cliques do save atual.",
       preview: "Pr\xE9via",
       statsToShare: "Estat\xEDsticas para compartilhar",
       copyText: "Copiar texto",
@@ -2696,6 +3412,7 @@
       playLink: "Jogar: {url}"
     },
     fr: {
+      ...optionsTranslations["fr"],
       fortnightActivity: "Activit\xE9 sur deux semaines",
       outOf: "{count} / {total}",
       daysActive: "Jours actifs : {count}",
@@ -2710,6 +3427,14 @@
       consecutive: "{duration} de suite",
       earned: "Obtenu",
       locked: "Verrouill\xE9",
+      allAchievements: "Tous",
+      filterAchievements: "Filtrer les succ\xE8s",
+      revealRequirements: "Afficher les conditions des succ\xE8s verrouill\xE9s",
+      allAchievementsEarned: "Vous avez obtenu tous les succ\xE8s.",
+      noAchievementsEarned: "Vous n\u2019avez encore obtenu aucun succ\xE8s.",
+      tricksStored: "Les astuces du bouton sont enregistr\xE9es dans ce navigateur.",
+      achievementUnlocked: "Succ\xE8s d\xE9verrouill\xE9",
+      achievementsUnlocked: "Succ\xE8s d\xE9verrouill\xE9s",
       language: "Langue",
       account: "Compte",
       localGame: "Partie locale",
@@ -2720,7 +3445,7 @@
       savedClicks: "Clics enregistr\xE9s",
       localClicks: "Clics locaux",
       click: "Cliquez",
-      clickAction: "Cliquer pour ajouter un point",
+      clickAction: "Ajouter un clic",
       outletTest: "Test de la prise",
       cordSlack: "C\xE2ble d\xE9tendu",
       reconnectPlug: "Rebrancher la fiche",
@@ -2768,7 +3493,7 @@
       motion: "Activer les effets de mouvement",
       motionHint: "Les animations sont r\xE9duites. Activer les effets de mouvement.",
       reload: "Recharger le compteur",
-      controls: "Appuyez avec la souris ou le doigt, puis rel\xE2chez dans le bouton. Chaque doigt compte s\xE9par\xE9ment. Quand le bouton a le focus, rel\xE2cher Espace ou Entr\xE9e ajoute un clic. Maintenir n\u2019ajoute pas de clics.",
+      controls: "Appuyez avec la souris ou le doigt, puis rel\xE2chez sur le bouton ou \xE0 proximit\xE9. Chaque doigt compte s\xE9par\xE9ment. Lorsque le bouton a le focus, rel\xE2chez Espace ou Entr\xE9e pour ajouter un clic. Maintenir le bouton enfonc\xE9 n\u2019ajoute pas de clics.",
       loadError: "Impossible de charger le compteur. R\xE9essayez.",
       unconfirmedClick: "Impossible de confirmer le clic. Rechargez le compteur pour v\xE9rifier son enregistrement.",
       unsavedClick: "Votre clic n\u2019a pas \xE9t\xE9 enregistr\xE9. V\xE9rifiez votre connexion et r\xE9essayez.",
@@ -2777,11 +3502,11 @@
       signOutError: "Impossible de se d\xE9connecter. R\xE9essayez.",
       shareTitle: "Partager les statistiques",
       done: "Termin\xE9",
-      shareInstructions: "Choisissez les \xE9l\xE9ments \xE0 inclure. Modifier une option actualise l\u2019aper\xE7u ; copiez \xE0 nouveau pour partager le texte personnalis\xE9.",
+      shareInstructions: "Choisissez les \xE9l\xE9ments \xE0 inclure, puis copiez l\u2019aper\xE7u.",
       include: "Inclure",
       siteLink: "Lien du site",
       clickTotal: "Total des clics",
-      shareDataNote: "Le total des clics est cumulatif. Le r\xE9sum\xE9 actuel n\u2019inclut pas de totaux quotidiens ou hebdomadaires.",
+      shareDataNote: "Le total comprend tous les clics de la sauvegarde actuelle.",
       preview: "Aper\xE7u",
       statsToShare: "Statistiques \xE0 partager",
       copyText: "Copier le texte",
@@ -2792,6 +3517,7 @@
       playLink: "Jouer : {url}"
     },
     ja: {
+      ...optionsTranslations["ja"],
       fortnightActivity: "2\u9031\u9593\u306E\u30A2\u30AF\u30C6\u30A3\u30D3\u30C6\u30A3",
       outOf: "{count} / {total}",
       daysActive: "\u30A2\u30AF\u30C6\u30A3\u30D6\u65E5\u6570\uFF1A{count}",
@@ -2806,6 +3532,14 @@
       consecutive: "{duration}\u9023\u7D9A",
       earned: "\u7372\u5F97\u6E08\u307F",
       locked: "\u672A\u7372\u5F97",
+      allAchievements: "\u3059\u3079\u3066",
+      filterAchievements: "\u5B9F\u7E3E\u3092\u7D5E\u308A\u8FBC\u3080",
+      revealRequirements: "\u672A\u7372\u5F97\u306E\u5B9F\u7E3E\u306E\u6761\u4EF6\u3092\u8868\u793A",
+      allAchievementsEarned: "\u3059\u3079\u3066\u306E\u5B9F\u7E3E\u3092\u7372\u5F97\u3057\u307E\u3057\u305F\u3002",
+      noAchievementsEarned: "\u307E\u3060\u7372\u5F97\u3057\u305F\u5B9F\u7E3E\u306F\u3042\u308A\u307E\u305B\u3093\u3002",
+      tricksStored: "\u30DC\u30BF\u30F3\u306E\u96A0\u3057\u8981\u7D20\u306F\u3053\u306E\u30D6\u30E9\u30A6\u30B6\u30FC\u306B\u4FDD\u5B58\u3055\u308C\u307E\u3059\u3002",
+      achievementUnlocked: "\u5B9F\u7E3E\u3092\u7372\u5F97\u3057\u307E\u3057\u305F",
+      achievementsUnlocked: "\u8907\u6570\u306E\u5B9F\u7E3E\u3092\u7372\u5F97\u3057\u307E\u3057\u305F",
       language: "\u8A00\u8A9E",
       account: "\u30A2\u30AB\u30A6\u30F3\u30C8",
       localGame: "\u30ED\u30FC\u30AB\u30EB\u30B2\u30FC\u30E0",
@@ -2816,7 +3550,7 @@
       savedClicks: "\u4FDD\u5B58\u6E08\u307F\u30AF\u30EA\u30C3\u30AF",
       localClicks: "\u30ED\u30FC\u30AB\u30EB\u30AF\u30EA\u30C3\u30AF",
       click: "\u30AF\u30EA\u30C3\u30AF",
-      clickAction: "\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u30B9\u30B3\u30A2\u3092\u5897\u3084\u3059",
+      clickAction: "\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u8FFD\u52A0",
       outletTest: "\u30B3\u30F3\u30BB\u30F3\u30C8\u306E\u30C6\u30B9\u30C8",
       cordSlack: "\u30B3\u30FC\u30C9\u3092\u305F\u308B\u307E\u305B\u308B",
       reconnectPlug: "\u30D7\u30E9\u30B0\u3092\u5DEE\u3057\u76F4\u3059",
@@ -2864,7 +3598,7 @@
       motion: "\u52D5\u304D\u306E\u52B9\u679C\u3092\u6709\u52B9\u306B\u3059\u308B",
       motionHint: "\u52D5\u304D\u3092\u6291\u3048\u308B\u8A2D\u5B9A\u3067\u3059\u3002\u52D5\u304D\u306E\u52B9\u679C\u3092\u6709\u52B9\u306B\u3057\u307E\u3059\u3002",
       reload: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u518D\u8AAD\u307F\u8FBC\u307F",
-      controls: "\u30DE\u30A6\u30B9\u3084\u30BF\u30C3\u30C1\u3067\u62BC\u3057\u3001\u30DC\u30BF\u30F3\u306E\u5185\u5074\u3067\u96E2\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u6307\u3054\u3068\u306B\u6570\u3048\u307E\u3059\u3002\u30DC\u30BF\u30F3\u306B\u30D5\u30A9\u30FC\u30AB\u30B9\u304C\u3042\u308B\u3068\u304D\u306F\u3001\u30B9\u30DA\u30FC\u30B9\u307E\u305F\u306F Enter \u3092\u96E2\u3059\u30681\u30AF\u30EA\u30C3\u30AF\u52A0\u7B97\u3057\u307E\u3059\u3002\u9577\u62BC\u3057\u3067\u306F\u5897\u3048\u307E\u305B\u3093\u3002",
+      controls: "\u30DE\u30A6\u30B9\u3084\u30BF\u30C3\u30C1\u3067\u62BC\u3057\u3001\u30DC\u30BF\u30F3\u306E\u4E0A\u304B\u8FD1\u304F\u3067\u96E2\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u6307\u3054\u3068\u306B\u6570\u3048\u307E\u3059\u3002\u30DC\u30BF\u30F3\u306B\u30D5\u30A9\u30FC\u30AB\u30B9\u304C\u3042\u308B\u3068\u304D\u306F\u3001\u30B9\u30DA\u30FC\u30B9\u30AD\u30FC\u307E\u305F\u306F Enter \u30AD\u30FC\u3092\u96E2\u3059\u30681\u30AF\u30EA\u30C3\u30AF\u52A0\u7B97\u3055\u308C\u307E\u3059\u3002\u9577\u62BC\u3057\u3057\u3066\u3082\u5897\u3048\u307E\u305B\u3093\u3002",
       loadError: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       unconfirmedClick: "\u30AF\u30EA\u30C3\u30AF\u3092\u78BA\u8A8D\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u4FDD\u5B58\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       unsavedClick: "\u30AF\u30EA\u30C3\u30AF\u306F\u4FDD\u5B58\u3055\u308C\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u63A5\u7D9A\u3092\u78BA\u8A8D\u3057\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
@@ -2873,11 +3607,11 @@
       signOutError: "\u30ED\u30B0\u30A2\u30A6\u30C8\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       shareTitle: "\u8A18\u9332\u3092\u5171\u6709",
       done: "\u5B8C\u4E86",
-      shareInstructions: "\u542B\u3081\u308B\u5185\u5BB9\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044\u3002\u8A2D\u5B9A\u3092\u5909\u3048\u308B\u3068\u30D7\u30EC\u30D3\u30E5\u30FC\u304C\u66F4\u65B0\u3055\u308C\u307E\u3059\u3002\u5171\u6709\u3059\u308B\u524D\u306B\u518D\u5EA6\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      shareInstructions: "\u542B\u3081\u308B\u9805\u76EE\u3092\u9078\u3073\u3001\u30D7\u30EC\u30D3\u30E5\u30FC\u3092\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       include: "\u542B\u3081\u308B\u5185\u5BB9",
       siteLink: "\u30B5\u30A4\u30C8\u306E\u30EA\u30F3\u30AF",
       clickTotal: "\u5408\u8A08\u30AF\u30EA\u30C3\u30AF\u6570",
-      shareDataNote: "\u30AF\u30EA\u30C3\u30AF\u6570\u306F\u7D2F\u8A08\u3067\u3059\u3002\u73FE\u5728\u306E\u6982\u8981\u306B\u306F\u65E5\u5225\u30FB\u9031\u5225\u306E\u5408\u8A08\u306F\u542B\u307E\u308C\u307E\u305B\u3093\u3002",
+      shareDataNote: "\u73FE\u5728\u306E\u30BB\u30FC\u30D6\u30C7\u30FC\u30BF\u306B\u542B\u307E\u308C\u308B\u3059\u3079\u3066\u306E\u30AF\u30EA\u30C3\u30AF\u3092\u5408\u8A08\u3057\u3066\u3044\u307E\u3059\u3002",
       preview: "\u30D7\u30EC\u30D3\u30E5\u30FC",
       statsToShare: "\u5171\u6709\u3059\u308B\u8A18\u9332",
       copyText: "\u30C6\u30AD\u30B9\u30C8\u3092\u30B3\u30D4\u30FC",
@@ -2888,6 +3622,7 @@
       playLink: "\u30D7\u30EC\u30A4\uFF1A{url}"
     },
     ru: {
+      ...optionsTranslations["ru"],
       fortnightActivity: "\u0410\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C \u0437\u0430 \u0434\u0432\u0435 \u043D\u0435\u0434\u0435\u043B\u0438",
       outOf: "{count} / {total}",
       daysActive: "\u0410\u043A\u0442\u0438\u0432\u043D\u044B\u0445 \u0434\u043D\u0435\u0439: {count}",
@@ -2902,6 +3637,14 @@
       consecutive: "{duration} \u043F\u043E\u0434\u0440\u044F\u0434",
       earned: "\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u043E",
       locked: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E",
+      allAchievements: "\u0412\u0441\u0435",
+      filterAchievements: "\u0424\u0438\u043B\u044C\u0442\u0440 \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0439",
+      revealRequirements: "\u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0443\u0441\u043B\u043E\u0432\u0438\u044F \u0437\u0430\u043A\u0440\u044B\u0442\u044B\u0445 \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0439",
+      allAchievementsEarned: "\u0412\u044B \u043F\u043E\u043B\u0443\u0447\u0438\u043B\u0438 \u0432\u0441\u0435 \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F.",
+      noAchievementsEarned: "\u0423 \u0432\u0430\u0441 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442 \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0439.",
+      tricksStored: "\u0422\u0440\u044E\u043A\u0438 \u0441 \u043A\u043D\u043E\u043F\u043A\u043E\u0439 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435.",
+      achievementUnlocked: "\u0414\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u043E",
+      achievementsUnlocked: "\u0414\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u044B",
       language: "\u042F\u0437\u044B\u043A",
       account: "\u0410\u043A\u043A\u0430\u0443\u043D\u0442",
       localGame: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u0430\u044F \u0438\u0433\u0440\u0430",
@@ -2912,7 +3655,7 @@
       savedClicks: "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0435 \u043A\u043B\u0438\u043A\u0438",
       localClicks: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043A\u043B\u0438\u043A\u0438",
       click: "\u041D\u0430\u0436\u0430\u0442\u044C",
-      clickAction: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0447\u043A\u043E",
+      clickAction: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0434\u0438\u043D \u043A\u043B\u0438\u043A",
       outletTest: "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0440\u043E\u0437\u0435\u0442\u043A\u0438",
       cordSlack: "\u041E\u0441\u043B\u0430\u0431\u043B\u0435\u043D\u043D\u044B\u0439 \u0448\u043D\u0443\u0440",
       reconnectPlug: "\u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u0432\u0438\u043B\u043A\u0443 \u043E\u0431\u0440\u0430\u0442\u043D\u043E",
@@ -2960,7 +3703,7 @@
       motion: "\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0444\u0444\u0435\u043A\u0442\u044B \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F",
       motionHint: "\u0414\u0432\u0438\u0436\u0435\u043D\u0438\u0435 \u0443\u043C\u0435\u043D\u044C\u0448\u0435\u043D\u043E. \u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0444\u0444\u0435\u043A\u0442\u044B \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F.",
       reload: "\u041F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A",
-      controls: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u043C\u044B\u0448\u044C\u044E \u0438\u043B\u0438 \u043F\u0430\u043B\u044C\u0446\u0435\u043C \u0438 \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0432\u043D\u0443\u0442\u0440\u0438 \u043A\u043D\u043E\u043F\u043A\u0438. \u041A\u0430\u0436\u0434\u044B\u0439 \u043F\u0430\u043B\u0435\u0446 \u0441\u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E. \u041F\u0440\u0438 \u0444\u043E\u043A\u0443\u0441\u0435 \u043D\u0430 \u043A\u043D\u043E\u043F\u043A\u0435 \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u041F\u0440\u043E\u0431\u0435\u043B \u0438\u043B\u0438 Enter \u0434\u043B\u044F \u043E\u0434\u043D\u043E\u0433\u043E \u043A\u043B\u0438\u043A\u0430. \u0423\u0434\u0435\u0440\u0436\u0430\u043D\u0438\u0435 \u043D\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0435\u0442 \u043A\u043B\u0438\u043A\u043E\u0432.",
+      controls: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u043C\u044B\u0448\u044C\u044E \u0438\u043B\u0438 \u043F\u0430\u043B\u044C\u0446\u0435\u043C \u0438 \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043D\u0430 \u043A\u043D\u043E\u043F\u043A\u0435 \u0438\u043B\u0438 \u0440\u044F\u0434\u043E\u043C \u0441 \u043D\u0435\u0439. \u041A\u0430\u0436\u0434\u044B\u0439 \u043F\u0430\u043B\u0435\u0446 \u0443\u0447\u0438\u0442\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E. \u041A\u043E\u0433\u0434\u0430 \u043A\u043D\u043E\u043F\u043A\u0430 \u0432 \u0444\u043E\u043A\u0443\u0441\u0435, \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043F\u0440\u043E\u0431\u0435\u043B \u0438\u043B\u0438 Enter, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0434\u0438\u043D \u043A\u043B\u0438\u043A. \u0423\u0434\u0435\u0440\u0436\u0430\u043D\u0438\u0435 \u043D\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0435\u0442 \u043A\u043B\u0438\u043A\u043E\u0432.",
       loadError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.",
       unconfirmedClick: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u043A\u043B\u0438\u043A. \u041F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0441\u0447\u0451\u0442\u0447\u0438\u043A, \u0447\u0442\u043E\u0431\u044B \u043F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435.",
       unsavedClick: "\u041A\u043B\u0438\u043A \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435 \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
@@ -2969,11 +3712,11 @@
       signOutError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0432\u044B\u0439\u0442\u0438. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.",
       shareTitle: "\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u043E\u0439",
       done: "\u0413\u043E\u0442\u043E\u0432\u043E",
-      shareInstructions: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435, \u0447\u0442\u043E \u0432\u043A\u043B\u044E\u0447\u0438\u0442\u044C. \u0418\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u0435 \u043F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u0435\u0442 \u043F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440; \u0441\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043D\u043E\u0432\u043E \u043F\u0435\u0440\u0435\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u043E\u0439.",
+      shareInstructions: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435, \u0447\u0442\u043E \u0432\u043A\u043B\u044E\u0447\u0438\u0442\u044C, \u0437\u0430\u0442\u0435\u043C \u0441\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u043F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0430.",
       include: "\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C",
       siteLink: "\u0421\u0441\u044B\u043B\u043A\u0430 \u043D\u0430 \u0441\u0430\u0439\u0442",
       clickTotal: "\u0412\u0441\u0435\u0433\u043E \u043A\u043B\u0438\u043A\u043E\u0432",
-      shareDataNote: "\u0427\u0438\u0441\u043B\u043E \u043A\u043B\u0438\u043A\u043E\u0432 \u043D\u0430\u043A\u043E\u043F\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0435. \u0418\u0442\u043E\u0433\u0438 \u0437\u0430 \u0434\u0435\u043D\u044C \u0438 \u043D\u0435\u0434\u0435\u043B\u044E \u043D\u0435 \u0432\u0445\u043E\u0434\u044F\u0442 \u0432 \u0442\u0435\u043A\u0443\u0449\u0443\u044E \u0441\u0432\u043E\u0434\u043A\u0443.",
+      shareDataNote: "\u0412 \u0438\u0442\u043E\u0433 \u0432\u0445\u043E\u0434\u044F\u0442 \u0432\u0441\u0435 \u043A\u043B\u0438\u043A\u0438 \u0438\u0437 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F.",
       preview: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440",
       statsToShare: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0434\u043B\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
       copyText: "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0442\u0435\u043A\u0441\u0442",
@@ -2984,6 +3727,7 @@
       playLink: "\u0418\u0433\u0440\u0430\u0442\u044C: {url}"
     },
     de: {
+      ...optionsTranslations["de"],
       fortnightActivity: "Aktivit\xE4t in zwei Wochen",
       outOf: "{count} / {total}",
       daysActive: "Aktive Tage: {count}",
@@ -2998,6 +3742,14 @@
       consecutive: "{duration} in Folge",
       earned: "Erreicht",
       locked: "Gesperrt",
+      allAchievements: "Alle",
+      filterAchievements: "Erfolge filtern",
+      revealRequirements: "Voraussetzungen gesperrter Erfolge anzeigen",
+      allAchievementsEarned: "Du hast alle Erfolge erzielt.",
+      noAchievementsEarned: "Du hast noch keine Erfolge erzielt.",
+      tricksStored: "Button-Tricks werden in diesem Browser gespeichert.",
+      achievementUnlocked: "Erfolg freigeschaltet",
+      achievementsUnlocked: "Erfolge freigeschaltet",
       language: "Sprache",
       account: "Konto",
       localGame: "Lokales Spiel",
@@ -3008,7 +3760,7 @@
       savedClicks: "Gespeicherte Klicks",
       localClicks: "Lokale Klicks",
       click: "Klick",
-      clickAction: "Klicken, um den Punktestand zu erh\xF6hen",
+      clickAction: "Einen Klick hinzuf\xFCgen",
       outletTest: "Steckdosentest",
       cordSlack: "Lockeres Kabel",
       reconnectPlug: "Stecker wieder einstecken",
@@ -3056,7 +3808,7 @@
       motion: "Bewegungseffekte aktivieren",
       motionHint: "Reduzierte Bewegung ist aktiv. Bewegungseffekte aktivieren.",
       reload: "Z\xE4hler neu laden",
-      controls: "Mit Maus oder Finger dr\xFCcken und innerhalb des Buttons loslassen. Jeder Finger z\xE4hlt einzeln. Bei fokussiertem Button z\xE4hlt das Loslassen von Leertaste oder Enter als Klick. Halten erzeugt keine weiteren Klicks.",
+      controls: "Dr\xFCcke mit Maus oder Finger und lass auf der Schaltfl\xE4che oder in ihrer N\xE4he los. Jeder Finger z\xE4hlt einzeln. Wenn die Schaltfl\xE4che den Fokus hat, lass Leertaste oder Enter los, um einen Klick hinzuzuf\xFCgen. Halten erzeugt keine weiteren Klicks.",
       loadError: "Der Z\xE4hler konnte nicht geladen werden. Lade ihn erneut.",
       unconfirmedClick: "Der Klick konnte nicht best\xE4tigt werden. Lade den Z\xE4hler neu, um die Speicherung zu pr\xFCfen.",
       unsavedClick: "Dein Klick wurde nicht gespeichert. Pr\xFCfe deine Verbindung und versuche es erneut.",
@@ -3065,11 +3817,11 @@
       signOutError: "Abmelden fehlgeschlagen. Versuche es erneut.",
       shareTitle: "Statistik teilen",
       done: "Fertig",
-      shareInstructions: "W\xE4hle aus, was enthalten sein soll. \xC4nderungen aktualisieren die Vorschau. Kopiere den angepassten Text erneut zum Teilen.",
+      shareInstructions: "W\xE4hle aus, was enthalten sein soll, und kopiere dann die Vorschau.",
       include: "Einbeziehen",
       siteLink: "Link zur Website",
       clickTotal: "Klickzahl",
-      shareDataNote: "Die Klickzahl ist kumulativ. Tages- und Wochensummen sind in der aktuellen \xDCbersicht nicht enthalten.",
+      shareDataNote: "Die Summe enth\xE4lt alle Klicks des aktuellen Spielstands.",
       preview: "Vorschau",
       statsToShare: "Statistik zum Teilen",
       copyText: "Text kopieren",
@@ -3138,8 +3890,21 @@
     const key = `${code}:${unit}`;
     let formatter = unitFormats.get(key);
     if (!formatter) {
-      formatter = new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" });
+      formatter = new Intl.NumberFormat(code, {
+        style: "unit",
+        unit,
+        unitDisplay: unit === "millisecond" ? "short" : "long"
+      });
       unitFormats.set(key, formatter);
+    }
+    return formatter.format(value);
+  }
+  var percentFormats = /* @__PURE__ */ new Map();
+  function formatPercent(value, code = language) {
+    let formatter = percentFormats.get(code);
+    if (!formatter) {
+      formatter = new Intl.NumberFormat(code, { style: "percent" });
+      percentFormats.set(code, formatter);
     }
     return formatter.format(value);
   }
@@ -4903,7 +5668,7 @@
     list.append(...cards.map(card));
     empty.hidden = cards.length > 0;
     if (!cards.length)
-      empty.textContent = filter === "locked" ? "You\u2019ve earned every achievement." : "No achievements earned yet.";
+      empty.textContent = message2(filter === "locked" ? "allAchievementsEarned" : "noAchievementsEarned");
   }
   for (const key of Object.keys(filters)) {
     filters[key].addEventListener("click", () => {
@@ -4937,6 +5702,12 @@
     for (const name of names) pending.add(name);
     showAchievementNotices();
   }
+  function unlockTitle(count) {
+    return message2(count === 1 ? "achievementUnlocked" : "achievementsUnlocked");
+  }
+  onLanguageChange(() => {
+    if (visible.size) noticeTitle.textContent = unlockTitle(visible.size);
+  });
   function showAchievementNotices() {
     if (noticeScheduled || !pending.size || game.hidden || document.hidden) return;
     noticeScheduled = true;
@@ -4946,11 +5717,11 @@
       const earned = [...pending];
       pending.clear();
       for (const name of earned) visible.add(name);
-      noticeTitle.textContent = visible.size === 1 ? "Achievement unlocked" : "Achievements unlocked";
+      noticeTitle.textContent = unlockTitle(visible.size);
       noticeNames.textContent = [...visible].join(" \xB7 ");
       notice.hidden = false;
-      const title = earned.length === 1 ? "Achievement unlocked" : "Achievements unlocked";
-      live.textContent = `${title}. ${earned.join(". ")}.`;
+      const names = earned.join(". ");
+      live.textContent = `${unlockTitle(earned.length)}. ${languageDirection() === "rtl" ? `\u2066${names}\u2069` : names}.`;
       window.clearTimeout(noticeTimer);
       noticeTimer = window.setTimeout(hideAchievementNotice, 6500);
     });
@@ -5110,11 +5881,16 @@
   var soundReverbSetting = required("#sound-reverb");
   var soundProfileSetting = required("#sound-profile");
   var soundPreview = required("#preview-sound");
-  for (const profile2 of soundProfiles) {
+  var profileOptions = soundProfiles.map((profile2) => {
     const option = document.createElement("option");
     option.value = profile2.id;
-    option.textContent = profile2.name;
     soundProfileSetting.append(option);
+    return { option, name: profile2.name };
+  });
+  function paintSoundVolume(percent) {
+    const text = formatPercent(percent / 100);
+    soundVolumeValue.textContent = text;
+    soundVolumeSetting.setAttribute("aria-valuetext", text);
   }
   function updateSoundOptions() {
     const { sound: enabled2, soundProfile, soundVolume, soundReverb } = gameSettings.value;
@@ -5124,13 +5900,13 @@
     clickSound.setEnabled(enabled2);
     soundEnabled.checked = enabled2;
     soundVolumeSetting.value = String(soundVolume);
-    soundVolumeValue.textContent = `${soundVolume}%`;
+    paintSoundVolume(soundVolume);
     soundReverbSetting.checked = soundReverb;
     soundProfileSetting.value = soundProfile;
     soundPreview.disabled = !enabled2;
-    required("#sound-profile-description").textContent = soundProfiles.find(
-      (profile2) => profile2.id === soundProfile
-    ).description;
+    required("#sound-profile-description").textContent = message2(
+      soundProfiles.find((profile2) => profile2.id === soundProfile).description
+    );
     soundToggle.setAttribute("aria-pressed", String(enabled2));
     soundToggle.setAttribute("aria-label", message2("sound"));
     soundToggle.title = message2(enabled2 ? "soundOn" : "soundOff");
@@ -5845,10 +6621,33 @@
   var replaceLocalConsent = required("#replace-local");
   var importLocal = required("#import-local");
   optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
-  function optionsNotice(message3, error = false) {
+  var currentOptionsNotice = null;
+  function paintOptionsMessage(target, key, detail) {
+    target.textContent = message2(key);
+    if (detail) {
+      const diagnostic = document.createElement("bdi");
+      diagnostic.textContent = detail;
+      target.append(" ", diagnostic);
+    }
+  }
+  function paintOptionsNotice() {
     const notice2 = required("#options-status");
-    notice2.textContent = message3;
-    notice2.classList.toggle("notice-error", error);
+    if (currentOptionsNotice) {
+      const { key, detail } = currentOptionsNotice;
+      paintOptionsMessage(notice2, key, detail);
+    } else notice2.textContent = "";
+    notice2.classList.toggle("notice-error", currentOptionsNotice?.error ?? false);
+  }
+  function optionsNotice(key, error = false, detail) {
+    currentOptionsNotice = key ? { key, error, detail } : null;
+    paintOptionsNotice();
+  }
+  function paintOptionLabels() {
+    for (const { option, name } of profileOptions) option.textContent = message2(name);
+    for (const option of simulatedPingSetting.querySelectorAll("[data-ping]"))
+      option.textContent = message2("approximatePing", {
+        time: formatUnit(Number(option.value), "millisecond")
+      });
   }
   function updatePlayOptions() {
     const { motion: motion2, simulatedPing } = gameSettings.value;
@@ -5859,18 +6658,20 @@
   updatePlayOptions();
   function updateOptions() {
     required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
-    required("#copy-online-note").textContent = lastOnlineCounters ? `Replace the local save with the latest loaded progress for ${user?.username ?? "your account"}.` : "Open your account counter to make its progress available to copy.";
+    const name = user?.username;
+    required("#copy-online-note").textContent = lastOnlineCounters && name ? message2("copyAccountNote", { name: languageDirection() === "rtl" ? `\u2068${name}\u2069` : name }) : message2("copyAccountHint");
+    const summary = required("#local-save-summary");
     try {
       const data = localGame.read();
-      const count = data.click_count?.count ?? 0;
-      required("#local-save-summary").textContent = `${count.toLocaleString("en")} ${count === 1 ? "click" : "clicks"} in your local save.`;
+      summary.textContent = message2("localSaveCount", {
+        count: formatNumber(data.click_count?.count ?? 0)
+      });
     } catch (caught) {
-      const error = requestError(caught);
-      required("#local-save-summary").textContent = `Local save unavailable. ${error.message}`;
+      paintOptionsMessage(summary, "localSaveUnavailable", requestError(caught).message);
     }
   }
   required("#options-button").addEventListener("click", () => {
-    optionsNotice("");
+    optionsNotice();
     replaceLocalConsent.checked = false;
     updateOptions();
     optionsDialog.showModal();
@@ -5880,9 +6681,9 @@
   function saveOption(patch) {
     try {
       gameSettings.update(patch);
-      optionsNotice("");
+      optionsNotice();
     } catch {
-      optionsNotice("Applied for this visit. Browser storage is unavailable.", true);
+      optionsNotice("settingsVisit", true);
     }
   }
   soundEnabled.addEventListener("change", () => {
@@ -5890,7 +6691,7 @@
     if (gameSettings.value.sound) clickSound.prepare();
   });
   soundVolumeSetting.addEventListener("input", () => {
-    soundVolumeValue.textContent = `${soundVolumeSetting.value}%`;
+    paintSoundVolume(soundVolumeSetting.valueAsNumber);
     clickSound.setVolume(soundVolumeSetting.valueAsNumber / 100);
   });
   soundVolumeSetting.addEventListener("change", () => {
@@ -5946,8 +6747,7 @@
       openLocalGame(data);
       if (currentView === "game") clickButton.focus();
     } catch (caught) {
-      const error = requestError(caught);
-      optionsNotice(`Couldn\u2019t open the local save. ${error.message}`, true);
+      optionsNotice("openLocalFailed", true, requestError(caught).message);
       if (!optionsDialog.open) {
         updateOptions();
         optionsDialog.showModal();
@@ -5970,7 +6770,7 @@
     await boot();
     if (!remembered) {
       updateOptions();
-      optionsNotice("Back online for this visit. Browser storage is unavailable.", true);
+      optionsNotice("backOnlineVisit", true);
       optionsDialog.showModal();
     }
   });
@@ -6010,22 +6810,22 @@
   function canReplaceLocalSave() {
     if (localSaveReplacing) return false;
     if (!replaceLocalConsent.checked) {
-      optionsNotice("Check \u201CAllow replacing my local save\u201D first.", true);
+      optionsNotice("replaceConsent", true);
       replaceLocalConsent.focus();
       return false;
     }
     if (pendingClicks > 0) {
-      optionsNotice("Wait for pending clicks to finish, then try again.", true);
+      optionsNotice("waitPending", true);
       return false;
     }
     return true;
   }
-  async function replaceLocalSave(operation, message3) {
+  async function replaceLocalSave(operation, completion) {
     if (!canReplaceLocalSave()) return;
     localSaveReplacing = true;
     replaceLocalConsent.checked = false;
     updateGameControls();
-    optionsNotice("Replacing the local save\u2026");
+    optionsNotice("replacingLocal");
     try {
       const data = await operation();
       await localGame.change(() => localGame.replace(data));
@@ -6035,10 +6835,9 @@
         openLocalGame();
       }
       updateOptions();
-      optionsNotice(message3);
+      optionsNotice(completion);
     } catch (caught) {
-      const error = requestError(caught);
-      optionsNotice(`Local save was not replaced. ${error.message}`, true);
+      optionsNotice("localReplacedFailed", true, requestError(caught).message);
     } finally {
       localSaveReplacing = false;
       updateGameControls();
@@ -6047,12 +6846,12 @@
   }
   required("#restart-local").addEventListener(
     "click",
-    () => replaceLocalSave(() => ({}), "Local save restarted.")
+    () => replaceLocalSave(() => ({}), "localRestarted")
   );
   required("#copy-online-local").addEventListener("click", () => {
     if (!lastOnlineCounters) return;
     const snapshot = lastOnlineCounters;
-    replaceLocalSave(() => snapshot, "Account progress copied to the local save.");
+    replaceLocalSave(() => snapshot, "accountCopied");
   });
   importLocal.addEventListener("click", (event) => {
     if (!canReplaceLocalSave()) event.preventDefault();
@@ -6062,14 +6861,13 @@
     importLocal.value = "";
     if (!file) return;
     if (file.size > 1024 * 1024) {
-      optionsNotice("Choose a local save smaller than 1 MiB.", true);
+      optionsNotice("saveTooLarge", true);
       return;
     }
     try {
-      await replaceLocalSave(async () => localGame.decode(await file.text()), "Local save imported.");
+      await replaceLocalSave(async () => localGame.decode(await file.text()), "localImported");
     } catch (caught) {
-      const error = requestError(caught);
-      optionsNotice(`Couldn\u2019t import this local save. ${error.message}`, true);
+      optionsNotice("importFailed", true, requestError(caught).message);
     }
   });
   required("#download-local").addEventListener("click", async () => {
@@ -6083,10 +6881,9 @@
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 6e4);
-      optionsNotice("Local save downloaded.");
+      optionsNotice("localDownloaded");
     } catch (caught) {
-      const error = requestError(caught);
-      optionsNotice(`Couldn\u2019t download the local save. ${error.message}`, true);
+      optionsNotice("downloadFailed", true, requestError(caught).message);
     }
   });
   function synchronizeLocalSave() {
@@ -6104,7 +6901,10 @@
   var paintLanguagePicker = languagePicker();
   function applyLanguage() {
     translatePage();
+    paintOptionLabels();
     updateSoundOptions();
+    paintOptionsNotice();
+    if (optionsDialog.open) updateOptions();
     paintLanguagePicker();
     document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
     buttonLanguage.reset(currentLanguage());

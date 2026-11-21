@@ -65,14 +65,27 @@ export function formatNumber(value: number, code = language): string {
 const unitFormats = new Map<string, Intl.NumberFormat>();
 export function formatUnit(
   value: number,
-  unit: "day" | "week" | "month" | "year",
+  unit: "day" | "week" | "month" | "year" | "millisecond",
   code = language,
 ) {
   const key = `${code}:${unit}`;
   let formatter = unitFormats.get(key);
   if (!formatter) {
-    formatter = new Intl.NumberFormat(code, { style: "unit", unit, unitDisplay: "long" });
+    formatter = new Intl.NumberFormat(code, {
+      style: "unit",
+      unit,
+      unitDisplay: unit === "millisecond" ? "short" : "long",
+    });
     unitFormats.set(key, formatter);
+  }
+  return formatter.format(value);
+}
+const percentFormats = new Map<Language, Intl.NumberFormat>();
+export function formatPercent(value: number, code = language): string {
+  let formatter = percentFormats.get(code);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(code, { style: "percent" });
+    percentFormats.set(code, formatter);
   }
   return formatter.format(value);
 }

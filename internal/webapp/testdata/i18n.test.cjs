@@ -65,6 +65,14 @@ test("localization formats numbers and grammatical units without reinterpreting 
   i.setLanguage("ar");
   assert.equal(i.languageDirection(), "rtl");
   assert.equal(i.formatNumber(12345), new Intl.NumberFormat("ar").format(12345));
+  assert.equal(
+    i.formatPercent(0.37),
+    new Intl.NumberFormat("ar", { style: "percent" }).format(0.37),
+  );
+  assert.equal(
+    i.formatUnit(50, "millisecond"),
+    new Intl.NumberFormat("ar", { style: "unit", unit: "millisecond" }).format(50),
+  );
   i.setLanguage("ru");
   assert.equal(i.formatUnit(2, "day"), "2 дня");
   assert.equal(i.formatUnit(5, "day"), "5 дней");

@@ -1122,7 +1122,7 @@ select:focus,
 }
 .options-help > summary::after {
   content: "+";
-  margin-left: auto;
+  margin-inline-start: auto;
   font: 18px var(--mono);
   color: var(--gold);
 }
@@ -1481,7 +1481,7 @@ footer a {
   text-underline-offset: 3px;
 }
 .controls-help p {
-  text-align: left;
+  text-align: start;
   line-height: 1.7;
   margin: 4px 0 14px;
 }
@@ -1540,7 +1540,12 @@ body:has(.options-dialog[open]) {
   position: static;
   margin: 0;
   padding: 16px var(--options-padding);
+  gap: 12px;
   border: 0;
+}
+.options-header .options-heading h1 {
+  font-size: clamp(21px, 7vw, 27px);
+  overflow-wrap: anywhere;
 }
 .options-header .field-hint {
   margin-top: 3px;
@@ -1603,7 +1608,7 @@ body:has(.options-dialog[open]) {
   border-top: 1px solid var(--line);
 }
 .save-replacement legend {
-  padding: 0 8px 0 0;
+  padding-inline-end: 8px;
   font-size: 13px;
   font-weight: 700;
 }
@@ -1661,6 +1666,12 @@ select {
   flex: 0 0 auto;
   margin: 0;
   accent-color: var(--gold);
+}
+.options-checkbox > span,
+.sound-volume-label > [data-i18n],
+.import-local > span {
+  color: inherit;
+  font-weight: inherit;
 }
 .sound-volume-label {
   display: flex;

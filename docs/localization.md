@@ -2,16 +2,19 @@
 
 The header language selector translates the main game: account/local navigation,
 click totals, streaks, timestamps, pending/save/cooldown feedback, icon tooltips
-and accessible names, floating click feedback, control instructions, and the
-Share dialog and copied text. Pending and lingering feedback follows language
-changes without replaying animations or save acknowledgements. Local ping
-feedback explicitly identifies simulated timings. If the share preview changes
+and accessible names, floating click feedback, control instructions, achievement
+filters and unlock messages, and the Share dialog and copied text. Options
+translates audio profiles and descriptions, motion settings, local save tools
+and status messages, volume percentages, and simulated ping choices. Pending
+and lingering feedback follows language changes without replaying animations
+or save acknowledgements. Local ping feedback explicitly identifies simulated
+timings. If the share preview changes
 during a clipboard write or after a successful copy, the dialog asks for another
 copy rather than claiming the updated text is already on the clipboard.
-The landing page, sign-in/signup forms, Options/storage tools and technical notes,
-and administration remain English. The Options dialog has an explicit English
-language/direction; the translated gameplay instructions carry their own
-language/direction.
+The landing page, sign-in/signup forms, detailed game and storage notes,
+administration, achievement names and hints, and some badge requirements are in
+English. English technical notes and badge text carry their own language and
+direction.
 
 The supported languages are English, Simplified Chinese, Spanish, Arabic, Hindi,
 Indonesian, Brazilian Portuguese, French, Japanese, Russian, and German. The
@@ -71,8 +74,9 @@ when motion is reduced. The canvas fits long text inside the button face.
 
 ## Extending translations
 
-- `frontend/messages.ts` defines English message keys and a complete, type-checked
-  catalog per language. Keep matching interpolation fields in every translation.
+- `frontend/messages.ts` and `frontend/option-messages.ts` define English messages
+  and complete, type-checked catalogs per language. Keep matching interpolation
+  fields in every translation.
   Translate complete messages; avoid concatenating grammatical fragments. Use
   `Intl` for numbers, dates and grammatical units. Initial translations should
   receive native-speaker review as the language set develops.
@@ -91,5 +95,5 @@ when motion is reduced. The canvas fits long text inside the button face.
   any new screen behavior. Rebuild and commit embedded JavaScript with its source
   using the [README verification commands](../README.md#test). The optional
   [browser checks](frontend.md#browser-regressions) cover every language at
-  desktop/mobile sizes, Arabic sharing, preference persistence, and restoring
-  the button’s selected language on the next click.
+  desktop/mobile sizes, localized Options, Arabic sharing, preference
+  persistence, and restoring the button’s selected language on the next click.

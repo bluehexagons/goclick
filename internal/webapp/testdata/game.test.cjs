@@ -1278,6 +1278,37 @@ test("saved game language applies on boot and cross-tab updates do not make acco
   assert.deepEqual(h.requests, []);
 });
 
+test("an open Options dialog translates sound and save feedback without resetting preferences", async () => {
+  const h = await harness({
+    storage: [
+      ["goclick.settings.v1", '{"soundProfile":"clunk","soundVolume":37,"soundReverb":false}'],
+    ],
+  });
+  h.element("#options-button").fire("click");
+  await h.element("#restart-local").fire("click");
+  const notice = h.element("#options-status");
+  assert.match(notice.textContent, /Allow replacing/);
+  const settings = h.storage.get("goclick.settings.v1");
+
+  h.storage.set("goclick.language.v1", "ar");
+  h.window.fire("storage", { key: "goclick.language.v1" });
+  const profile = h.element("#sound-profile");
+  const volume = h.element("#sound-volume");
+  const percent = new Intl.NumberFormat("ar", { style: "percent" }).format(0.37);
+  assert.equal(h.element("#options-dialog").open, true);
+  assert.match(notice.textContent, /السماح/);
+  assert.equal(notice.classList.contains("notice-error"), true);
+  assert.equal(profile.value, "clunk");
+  assert.notEqual(profile.children.find((option) => option.value === "clunk").textContent, "Clunk");
+  assert.notEqual(h.element("#sound-profile-description").textContent, "A low, muffled thud.");
+  assert.equal(volume.value, "37");
+  assert.equal(volume.attributes.get("aria-valuetext"), percent);
+  assert.equal(h.element("#sound-volume-value").textContent, percent);
+  assert.equal(h.element("#sound-reverb").checked, false);
+  assert.equal(h.storage.get("goclick.settings.v1"), settings);
+  assert.deepEqual(h.requests, []);
+});
+
 test("share preview and errors follow language changes without losing the current state", async () => {
   const h = await harness();
   await h.element("#share-stats").fire("click");
@@ -1584,6 +1615,9 @@ test("new achievements announce without replaying loaded or synchronized badges"
   assert.equal(live.textContent, "Achievements unlocked. Sentence. Paragraph. U-Turn.");
   assert.equal(h.element("#achievement-notice-names").textContent, "Sentence · Paragraph · U-Turn");
   assert.equal(h.document.activeElement, button);
+  h.chooseLanguage("fr");
+  assert.equal(h.element("#achievement-notice-title").textContent, "Succès déverrouillés");
+  assert.equal(live.textContent, "Achievements unlocked. Sentence. Paragraph. U-Turn.");
 
   h.runTimers();
   assert.equal(notice.hidden, true);
