@@ -96,17 +96,20 @@ module.exports = function checkButtonRendering() {
     readFace(0, pixels);
     readFace(1, litPixels);
     let shadedInlays = 0;
+    let shadedLettering = 0;
     let strongestShade = 0;
     for (let i = 0; i < pixels.length; i += 4) {
       if (pixels[i + 3] < 250) continue;
       const shade = litPixels[i] - pixels[i];
       strongestShade = Math.max(strongestShade, shade);
       if (shade > 12) shadedInlays++;
+      if (litPixels[i] >= 35 && litPixels[i] <= 130 && shade >= 4) shadedLettering++;
     }
     if (shadedInlays < 80 || strongestShade > 45 || gl.getError() !== gl.NO_ERROR)
       throw new Error(
         `Expected slight inlay shading: ${shadedInlays} pixels, peak ${strongestShade}`,
       );
+    if (shadedLettering < 20) throw new Error("Expected slight shading on the raised lettering");
   } finally {
     gl.uniformMatrix3fv(locations.rotation, false, saved.rotation);
     gl.uniform4fv(locations.letteringPose, saved.letteringPose);

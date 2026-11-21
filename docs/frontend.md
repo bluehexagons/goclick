@@ -38,9 +38,9 @@ WebGL allocation, shader compilation, or texture upload fails, the CSS button
 stays usable with the same material artwork and visible label. Graphics
 initialize only for a visible button.
 
-The engraved tracks are slightly shaded at rest. Mouse hover or keyboard focus
-eases that shading away to reveal the original finish. Reduced motion changes
-the shading immediately.
+The engraved tracks and raised lettering are slightly shaded at rest. Mouse
+hover or keyboard focus eases that shading away to reveal the original finish.
+Reduced motion changes the shading immediately.
 Press-down compresses the solid and changes gold to copper immediately. Raised
 lettering grows by 22% and lights up while held, with a moving reflection.
 Release returns the lettering and finish together in 70 ms for taps or 110 ms

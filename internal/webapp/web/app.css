@@ -885,6 +885,7 @@ select:focus,
     rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(var(--button-pop, 1));
 }
 .click-button {
+  --resting-shade: calc((1 - var(--ready-light, 0)) * (1 - var(--copper, 0)));
   position: absolute;
   inset: 0;
   width: 100%;
@@ -929,7 +930,7 @@ select:focus,
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  --channel-shade: calc(17% * (1 - var(--ready-light, 0)) * (1 - var(--copper, 0)));
+  --channel-shade: calc(17% * var(--resting-shade));
   --channel-glow: clamp(0%, calc(var(--glow-intensity, 0) * 180%), 100%);
   background:
     linear-gradient(
@@ -945,6 +946,7 @@ select:focus,
   pointer-events: none;
 }
 .button-label {
+  --label-metal: color-mix(in srgb, #684d1f, #214b34 calc(var(--copper, 0) * 100%));
   position: relative;
   z-index: 1;
   display: block;
@@ -958,7 +960,7 @@ select:focus,
     in srgb,
     color-mix(
       in srgb,
-      color-mix(in srgb, #684d1f, #214b34 calc(var(--copper, 0) * 100%)),
+      color-mix(in srgb, var(--label-metal), black calc(10% * var(--resting-shade))),
       var(--glow-color, #38b875) calc(var(--label-ink, 0) * 100%)
     ),
     #fff2b8 calc(var(--label-light, 0) * 100%)

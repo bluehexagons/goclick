@@ -1203,8 +1203,9 @@
       float band = exp(-bandDistance * bandDistance);
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
+      float restingShade = (1. - readyLight) * (1. - copper);
       // Shade the existing recesses without replacing their material detail.
-      gold *= 1. - .17 * luminous * (1. - readyLight) * (1. - copper) * frontFace;
+      gold *= 1. - .17 * luminous * restingShade * frontFace;
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
@@ -1231,6 +1232,7 @@
       vec3 inscription = mix(surface * vec3(.36, .30, .22), patina * .62, copper);
       inscription *= .55 + .65 * bevelLight;
       inscription += vec3(.95, .75, .35) * bevelGlint * .32;
+      inscription *= 1. - .10 * restingShade;
       inscription = mix(inscription, lightColor * .55, letteringPose.w * .7);
       // A soft, moving reflection rather than a white patch across the word.
       float sheenDistance = (labelUV.x - letteringAccent.y) * 5.;
