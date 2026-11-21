@@ -1164,6 +1164,7 @@
     uniform float responseProgress;
     uniform float holdLight;
     uniform float powerLight;
+    uniform float readyLight;
     uniform vec3 responseColor;
     uniform vec4 letteringPose;
     uniform vec2 letteringAccent;
@@ -1202,6 +1203,9 @@
       float band = exp(-bandDistance * bandDistance);
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
+      vec2 reflectionOffset = (texCoord - vec2(.26, .14)) * vec2(1., 1.45);
+      float reflection = 1. - smoothstep(0., .85, length(reflectionOffset));
+      gold = mix(gold, vec3(1., .92, .63), readyLight * reflection * .30 * frontFace);
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
@@ -1277,6 +1281,7 @@
       "responseProgress",
       "holdLight",
       "powerLight",
+      "readyLight",
       "responseColor",
       "letteringPose",
       "letteringAccent",
@@ -1498,6 +1503,7 @@
       gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
       gl.uniform1f(uniforms.holdLight, state.holdLight ?? 0);
       gl.uniform1f(uniforms.powerLight, (state.drainLight ?? 0) + (state.bootLight ?? 0));
+      gl.uniform1f(uniforms.readyLight, state.readyLight ?? 0);
       gl.uniform3f(uniforms.responseColor, ...state.responseColor || [0.38, 0.84, 0.8]);
       const letterPose = projectButtonLettering(state);
       gl.uniform4f(
@@ -3062,7 +3068,11 @@
   var CORD_MODE_MS = 260;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
-    let plugProgress2 = function(time) {
+    let readyTarget2 = function() {
+      return Number(
+        current.powered !== false && !button.disabled && !document.hidden && (mouseOver || document.activeElement === button && document.documentElement.dataset.focusInput === "keyboard" && document.hasFocus())
+      );
+    }, plugProgress2 = function(time) {
       if (plugState === "seated" || plugStartedAt === null) return 1;
       return clamp((time - plugStartedAt) / plugTransitionDuration[plugState], 0, 1);
     }, buttonStaysPut2 = function() {
@@ -3188,6 +3198,9 @@
       const progress = plugProgress2(time);
       current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
       current.bootLight = bootStartedAt === null ? 0 : powerBootLighting(time - bootStartedAt);
+      if (reducedMotion.matches) readiness = readyTarget2();
+      current.readyLight = current.powered === false ? 0 : readiness * (1 - current.copper);
+      rig.style.setProperty("--ready-light", current.readyLight.toFixed(3));
       const cable = power && stage.clientWidth && stage.clientHeight ? projectButtonPower(current, button.offsetWidth, plugState, {
         progress,
         looseBeforeDetach,
@@ -3300,6 +3313,10 @@
       const dt = lastFrame ? clamp((time - lastFrame) / (1e3 / 60), 0.25, 2) : 1;
       lastFrame = time;
       let moving = false;
+      const ready = readyTarget2();
+      readiness += (ready - readiness) * (1 - Math.exp(-0.28 * dt));
+      if (Math.abs(ready - readiness) > 5e-3) moving = true;
+      else readiness = ready;
       for (const key of keys) {
         const coasting = time < coastUntil && (key === "x" || key === "y");
         const from = key === "x" ? coastFromX : coastFromY;
@@ -3602,6 +3619,7 @@
       const near = (dx, dy) => event.clientX >= rect.left + dx - slop && event.clientX <= rect.right + dx + slop && event.clientY >= rect.top + dy - slop && event.clientY <= rect.bottom + dy + slop;
       const inViewport = event.clientX >= 0 && event.clientX < window.innerWidth && event.clientY >= 0 && event.clientY < window.innerHeight;
       const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
+      if (event.pointerType === "mouse" && (cancelled || !inside)) mouseOver = false;
       const point = pointers.get(event.pointerId);
       if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
       pointers.delete(event.pointerId);
@@ -3632,7 +3650,7 @@
       target.x = target.y = 0;
       animate2();
     };
-    plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
+    readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -3695,6 +3713,8 @@
     let coastUntil = 0;
     let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
+    let mouseOver = false;
+    let readiness = 0;
     let activatingRelease = null;
     let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, achievementTimer = 0, beatTimer = 0, phase = "idle";
     let responseStarted = null;
@@ -3778,6 +3798,16 @@
       if (!pointers.size && !buttonStaysPut2() && activeKey === null && performance.now() >= coastUntil)
         reset2(false);
     });
+    button.addEventListener("pointerenter", (event) => {
+      if (event.pointerType !== "mouse") return;
+      mouseOver = true;
+      animate2();
+    });
+    button.addEventListener("pointerleave", (event) => {
+      if (event.pointerType !== "mouse") return;
+      mouseOver = false;
+      animate2();
+    });
     button.addEventListener("pointerdown", (event) => {
       if (gameButton && event.pointerType === "mouse" && event.button === 1) event.preventDefault();
       if (button.disabled || event.button !== 0 || activeKey !== null || pointers.has(event.pointerId))
@@ -3835,8 +3865,10 @@
         activateRelease2({ source: "keyboard" });
       }
     });
+    button.addEventListener("focus", animate2);
     button.addEventListener("blur", () => {
       if (activeKey !== null) reset2();
+      else animate2();
     });
     button.addEventListener("click", (event) => {
       if (!activatingRelease && (event.detail > 0 || event.pointerType)) {
@@ -3855,8 +3887,14 @@
     });
     new MutationObserver(() => {
       if (button.disabled) reset2();
-      else if (plugState === "unplugged") paint2();
+      else {
+        if (plugState === "unplugged") paint2();
+        animate2();
+      }
     }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
+    new MutationObserver(() => {
+      if (document.activeElement === button) animate2();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-focus-input"] });
     new MutationObserver(() => paint2()).observe(required(".button-label", button), {
       childList: true,
       characterData: true,
@@ -3878,20 +3916,30 @@
         effects.replaceChildren();
       }
     });
-    window.addEventListener("blur", () => reset2());
+    window.addEventListener("focus", () => {
+      if (document.activeElement === button) animate2();
+    });
+    window.addEventListener("blur", () => {
+      mouseOver = false;
+      reset2();
+    });
     window.addEventListener("resize", () => {
       if (buttonStaysPut2()) keepParkedButtonInView2();
       reset2();
     });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
+        mouseOver = false;
         plugStartedAt = null;
         drainStartedAt = null;
         bootStartedAt = null;
         seating = null;
         plugSwing.reset(current.x);
         reset2();
-      } else bootIfVisible2();
+      } else {
+        bootIfVisible2();
+        if (document.activeElement === button) animate2();
+      }
     });
     new ResizeObserver(() => {
       if (buttonStaysPut2() && !pointers.size && keepParkedButtonInView2()) animate2();
@@ -3911,6 +3959,7 @@
     tactileButtons.set(button, { reset: reset2, respond: respond2 });
   }
   var movedOffPlug;
+  var readyTarget;
   var plugProgress;
   var buttonStaysPut;
   var cordSlackAmount;

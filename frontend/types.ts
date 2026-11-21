@@ -53,6 +53,7 @@ export interface ButtonState {
   holdLight?: number;
   drainLight?: number;
   bootLight?: number;
+  readyLight?: number;
   labelCharge?: number;
   labelPhase?: number;
   x: number;

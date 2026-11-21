@@ -131,6 +131,8 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
   }
   const document = Object.assign(new Element(), {
     hidden: false,
+    documentElement: new Element(),
+    hasFocus: () => true,
     querySelector: (selector) => (selector === ".game-readout" ? readout : null),
     querySelectorAll: () => [button],
     createElement: () => new Element(),
@@ -226,6 +228,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     button,
     stage,
     rig,
+    document,
     readout,
     controller,
     power,
@@ -363,6 +366,66 @@ test("press-down compresses immediately before any animation frame or saved clic
   assert.ok(parseFloat(h.rig.props.get("--glow-intensity")) > 0.8);
   assert.equal(h.stage.classes.has("is-pressed"), true);
   assert.equal(h.clicks.length, 0);
+});
+
+test("mouse hover eases into the copper press and returns with the release", () => {
+  const h = harness(false);
+  const light = () => Number(h.rig.props.get("--ready-light") || 0);
+  const mouse = { pointerType: "mouse" };
+  h.pointer("pointerenter", 1);
+  assert.equal(h.hasFrame(), false, "touch must not start hover");
+  h.pointer("pointerenter", 1, mouse);
+  h.frame(16);
+  assert.ok(light() > 0 && light() < 1);
+  for (let time = 32; time <= 400; time += 16) h.frame(time);
+  assert.equal(light(), 1);
+  assert.equal(h.hasFrame(), false, "settled hover should stop rendering");
+  assert.deepEqual(h.sounds, []);
+  assert.deepEqual(h.clicks, []);
+
+  h.setTime(420);
+  h.pointer("pointerdown", 1, mouse);
+  assert.equal(light(), 0);
+  assert.equal(Number(h.rig.props.get("--copper")), 1);
+  h.setTime(450);
+  h.pointer("pointerup", 1, mouse);
+  const releaseLight = light();
+  assert.ok(releaseLight > 0 && releaseLight < 1);
+  h.frame(480);
+  assert.ok(light() > releaseLight && light() < 1);
+  h.frame(530);
+  assert.equal(light(), 1);
+  assert.equal(h.clicks.length, 1);
+
+  h.pointer("pointerleave", 1, mouse);
+  h.frame(546);
+  assert.ok(light() > 0 && light() < 1);
+  for (let time = 562; time <= 900; time += 16) h.frame(time);
+  assert.equal(light(), 0);
+});
+
+test("keyboard focus and mouse hover give a static cue with reduced motion", () => {
+  const h = harness();
+  const light = () => Number(h.rig.props.get("--ready-light"));
+  h.document.activeElement = h.button;
+  h.document.documentElement.dataset.focusInput = "pointer";
+  h.button.fire("focus");
+  assert.equal(light(), 0);
+  h.document.documentElement.dataset.focusInput = "keyboard";
+  h.button.fire("focus");
+  assert.equal(light(), 1);
+  h.button.fire("keydown", { key: " " });
+  assert.equal(light(), 0);
+  h.button.fire("keyup", { key: " " });
+  assert.equal(light(), 1);
+  h.document.activeElement = null;
+  h.button.fire("blur");
+  assert.equal(light(), 0);
+  h.pointer("pointerenter", 1, { pointerType: "mouse" });
+  assert.equal(light(), 1);
+  h.setDisabled(true);
+  assert.equal(light(), 0);
+  assert.equal(h.hasFrame(), false);
 });
 
 test("response glows finish without releasing another held pointer", () => {

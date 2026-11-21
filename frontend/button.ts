@@ -115,6 +115,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let coastFromX = 0,
     coastFromY = 0;
   let activeKey: string | null = null;
+  let mouseOver = false;
+  let readiness = 0;
   let activatingRelease: ButtonActivation | null = null;
   let pressedAt = 0,
     releasedAt: number | null = null,
@@ -127,6 +129,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let responseStarted: number | null = null;
   let responseDuration = 500;
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+  function readyTarget() {
+    return Number(
+      current.powered !== false &&
+        !button.disabled &&
+        !document.hidden &&
+        (mouseOver ||
+          (document.activeElement === button &&
+            document.documentElement.dataset.focusInput === "keyboard" &&
+            document.hasFocus())),
+    );
+  }
 
   function plugProgress(time: number) {
     if (plugState === "seated" || plugStartedAt === null) return 1;
@@ -292,6 +306,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const progress = plugProgress(time);
     current.drainLight = drainStartedAt === null ? 0 : powerDrainLighting(time - drainStartedAt);
     current.bootLight = bootStartedAt === null ? 0 : powerBootLighting(time - bootStartedAt);
+    if (reducedMotion.matches) readiness = readyTarget();
+    // Let the copper finish take over on press, then bring the reflection
+    // back in with the same release curve if hover or keyboard focus persists.
+    current.readyLight = current.powered === false ? 0 : readiness * (1 - current.copper);
+    rig.style.setProperty("--ready-light", current.readyLight.toFixed(3));
     const cable =
       power && stage.clientWidth && stage.clientHeight
         ? projectButtonPower(current, button.offsetWidth, plugState, {
@@ -440,6 +459,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const dt = lastFrame ? clamp((time - lastFrame) / (1000 / 60), 0.25, 2) : 1;
     lastFrame = time;
     let moving = false;
+    const ready = readyTarget();
+    readiness += (ready - readiness) * (1 - Math.exp(-0.28 * dt));
+    if (Math.abs(ready - readiness) > 0.005) moving = true;
+    else readiness = ready;
     for (const key of keys) {
       const coasting = time < coastUntil && (key === "x" || key === "y");
       const from = key === "x" ? coastFromX : coastFromY;
@@ -513,7 +536,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (reducedMotion.matches) {
       for (const key of keys) {
         // Deliberate drag follows the pointer directly in reduced motion.
-        // Hover, tilt, springs, and release animation remain suppressed.
+        // Pointer tracking, tilt, springs, and release animation remain suppressed.
         current[key] =
           (pointers.size || buttonStaysPut()) && (key === "x" || key === "y") ? target[key] : 0;
         velocity[key] = 0;
@@ -905,6 +928,16 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     )
       reset(false);
   });
+  button.addEventListener("pointerenter", (event) => {
+    if (event.pointerType !== "mouse") return;
+    mouseOver = true;
+    animate();
+  });
+  button.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "mouse") return;
+    mouseOver = false;
+    animate();
+  });
   button.addEventListener("pointerdown", (event) => {
     if (gameButton && event.pointerType === "mouse" && event.button === 1) event.preventDefault();
     if (
@@ -955,6 +988,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       event.clientY >= 0 &&
       event.clientY < window.innerHeight;
     const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
+    if (event.pointerType === "mouse" && (cancelled || !inside)) mouseOver = false;
     const point = pointers.get(event.pointerId)!;
     // A cancelled finger can be independent of another one still holding the
     // button. Neither cancellation nor an outside release may replay its press
@@ -1027,8 +1061,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       activateRelease({ source: "keyboard" });
     }
   });
+  button.addEventListener("focus", animate);
   button.addEventListener("blur", () => {
     if (activeKey !== null) reset();
+    else animate();
   });
   button.addEventListener("click", (event) => {
     if (!activatingRelease && (event.detail > 0 || event.pointerType)) {
@@ -1047,8 +1083,15 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   });
   new MutationObserver(() => {
     if (button.disabled) reset();
-    else if (plugState === "unplugged") paint();
+    else {
+      if (plugState === "unplugged") paint();
+      animate();
+    }
   }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
+  // Focus can stay on the button as input switches between mouse and keyboard.
+  new MutationObserver(() => {
+    if (document.activeElement === button) animate();
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-focus-input"] });
   // Lettering changes also need a redraw when reduced motion has no active frame.
   new MutationObserver(() => paint()).observe(required(".button-label", button), {
     childList: true,
@@ -1071,20 +1114,30 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       effects.replaceChildren();
     }
   });
-  window.addEventListener("blur", () => reset());
+  window.addEventListener("focus", () => {
+    if (document.activeElement === button) animate();
+  });
+  window.addEventListener("blur", () => {
+    mouseOver = false;
+    reset();
+  });
   window.addEventListener("resize", () => {
     if (buttonStaysPut()) keepParkedButtonInView();
     reset();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
+      mouseOver = false;
       plugStartedAt = null;
       drainStartedAt = null;
       bootStartedAt = null;
       seating = null;
       plugSwing.reset(current.x);
       reset();
-    } else bootIfVisible();
+    } else {
+      bootIfVisible();
+      if (document.activeElement === button) animate();
+    }
   });
 
   // The CSS button is usable immediately. Compile graphics only for a visible

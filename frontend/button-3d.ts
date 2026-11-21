@@ -77,6 +77,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     uniform float responseProgress;
     uniform float holdLight;
     uniform float powerLight;
+    uniform float readyLight;
     uniform vec3 responseColor;
     uniform vec4 letteringPose;
     uniform vec2 letteringAccent;
@@ -115,6 +116,9 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       float band = exp(-bandDistance * bandDistance);
       float glint = pow(max(dot(n, normalize(light + view)), 0.), 100.);
       gold += vec3(1., .92, .79) * (specular * .38 + copper * (band * .38 + glint * .7));
+      vec2 reflectionOffset = (texCoord - vec2(.26, .14)) * vec2(1., 1.45);
+      float reflection = 1. - smoothstep(0., .85, length(reflectionOffset));
+      gold = mix(gold, vec3(1., .92, .63), readyLight * reflection * .30 * frontFace);
       // Etched channels glow locally; the metal receives no blanket color wash.
       float pulseDistance = (texCoord.x - responseProgress) * 5.;
       float pulse = .8 + .2 * exp(-pulseDistance * pulseDistance);
@@ -191,6 +195,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     "responseProgress",
     "holdLight",
     "powerLight",
+    "readyLight",
     "responseColor",
     "letteringPose",
     "letteringAccent",
@@ -429,6 +434,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
     gl.uniform1f(uniforms.holdLight, state.holdLight ?? 0);
     gl.uniform1f(uniforms.powerLight, (state.drainLight ?? 0) + (state.bootLight ?? 0));
+    gl.uniform1f(uniforms.readyLight, state.readyLight ?? 0);
     gl.uniform3f(uniforms.responseColor, ...(state.responseColor || [0.38, 0.84, 0.8]));
     const letterPose = projectButtonLettering(state);
     gl.uniform4f(

@@ -38,6 +38,9 @@ WebGL allocation, shader compilation, or texture upload fails, the CSS button
 stays usable with the same material artwork and visible label. Graphics
 initialize only for a visible button.
 
+Mouse hover and keyboard focus ease in a warm reflection. It gives way to the
+copper finish on press and returns with the release if the button is still
+hovered or focused. Reduced motion shows the reflection without a fade.
 Press-down compresses the solid and changes gold to copper immediately. Raised
 lettering grows by 22% and lights up while held, with a moving reflection.
 Release returns the lettering and finish together in 70 ms for taps or 110 ms
