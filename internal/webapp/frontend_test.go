@@ -6,16 +6,23 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"testing/fstest"
 )
 
-func TestFrontendBrowserCompatibilityAssets(t *testing.T) {
+func frontendTestApp(t *testing.T) *App {
+	t.Helper()
 	static, err := fs.Sub(webFiles, "web")
 	if err != nil {
 		t.Fatalf("open embedded frontend: %v", err)
 	}
-	app := &App{static: static}
+	assets, err := loadPublicAssets(static)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &App{publicAssets: assets}
+}
 
+func TestFrontendBrowserCompatibilityAssets(t *testing.T) {
+	app := frontendTestApp(t)
 	indexResponse := httptest.NewRecorder()
 	app.frontend(indexResponse, httptest.NewRequest(http.MethodGet, "/", nil))
 	if indexResponse.Code != http.StatusOK {
@@ -68,11 +75,7 @@ func TestFrontendCannotExposeAdminPageThroughEncodedPaths(t *testing.T) {
 }
 
 func TestFrontendOnlyServesPublicAssets(t *testing.T) {
-	static, err := fs.Sub(webFiles, "web")
-	if err != nil {
-		t.Fatal(err)
-	}
-	app := &App{static: static}
+	app := frontendTestApp(t)
 	for _, target := range []string{
 		"/", "/index.html", "/app.js", "/app.css",
 		"/admin.js", "/admin.css", "/favicon.svg", "/icons.svg", "/achievement-icons.svg", "/language-flags.svg",
@@ -84,10 +87,36 @@ func TestFrontendOnlyServesPublicAssets(t *testing.T) {
 			t.Fatalf("public asset %s returned %d", target, response.Code)
 		}
 	}
-	app.static = fstest.MapFS{"private.txt": {Data: []byte("private embedded content")}}
-	response := httptest.NewRecorder()
-	app.frontend(response, httptest.NewRequest(http.MethodGet, "/private.txt", nil))
-	if response.Code != http.StatusNotFound || strings.Contains(response.Body.String(), "private embedded content") {
-		t.Fatal("new embedded files must not be automatically exposed")
+	for _, target := range []string{"/admin.html", "/missing.js"} {
+		response := httptest.NewRecorder()
+		app.frontend(response, httptest.NewRequest(http.MethodGet, target, nil))
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("non-public asset %s returned %d", target, response.Code)
+		}
+	}
+}
+
+func TestFrontendRevalidatesUnchangedAssets(t *testing.T) {
+	app := frontendTestApp(t)
+	for _, name := range []string{"/", "/app.js", "/app.css"} {
+		initial := httptest.NewRecorder()
+		app.frontend(initial, httptest.NewRequest(http.MethodGet, name, nil))
+		etag := initial.Header().Get("ETag")
+		if initial.Code != http.StatusOK || etag == "" || initial.Body.Len() == 0 {
+			t.Fatalf("first request for %s returned %d with ETag %q", name, initial.Code, etag)
+		}
+		conditional := httptest.NewRequest(http.MethodGet, name, nil)
+		conditional.Header.Set("If-None-Match", etag)
+		cached := httptest.NewRecorder()
+		app.frontend(cached, conditional)
+		if cached.Code != http.StatusNotModified || cached.Body.Len() != 0 || cached.Header().Get("Cache-Control") != "no-cache" {
+			t.Fatalf("unchanged %s returned %d with %d bytes and cache control %q", name, cached.Code, cached.Body.Len(), cached.Header().Get("Cache-Control"))
+		}
+		conditional.Header.Set("If-None-Match", `"old-content"`)
+		changed := httptest.NewRecorder()
+		app.frontend(changed, conditional)
+		if changed.Code != http.StatusOK || changed.Body.String() != initial.Body.String() {
+			t.Fatalf("changed %s returned %d with %d bytes", name, changed.Code, changed.Body.Len())
+		}
 	}
 }

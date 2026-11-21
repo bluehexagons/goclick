@@ -314,13 +314,15 @@
   }
   function pager(selector, page, total, onPage) {
     const element = required(selector);
-    element.replaceChildren(
-      node(
-        "span",
-        "",
-        `${number(total)} record${total === 1 ? "" : "s"} \xB7 Page ${page} of ${Math.max(1, Math.ceil(total / 25))}`
-      )
+    const focused = Array.from(element.children).findIndex(
+      (child) => child === document.activeElement
     );
+    const summary = node(
+      "span",
+      "",
+      `${number(total)} record${total === 1 ? "" : "s"} \xB7 Page ${page} of ${Math.max(1, Math.ceil(total / 25))}`
+    );
+    const buttons = [];
     for (const [label, next, disabled] of [
       ["Previous", page - 1, page <= 1],
       ["Next", page + 1, page * 25 >= total]
@@ -329,7 +331,17 @@
       button.type = "button";
       button.disabled = disabled;
       button.addEventListener("click", () => onPage(next).catch(report));
-      element.append(button);
+      buttons.push(button);
+    }
+    element.replaceChildren(summary, ...buttons);
+    if (focused > 0) {
+      const target = buttons[focused - 1];
+      const available = target && !target.disabled ? target : buttons.find((button) => !button.disabled);
+      if (available) available.focus();
+      else {
+        summary.tabIndex = -1;
+        summary.focus();
+      }
     }
   }
   function report(error) {

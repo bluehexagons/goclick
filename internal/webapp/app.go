@@ -16,7 +16,6 @@ import (
 	"net"
 	"net/http"
 	"net/mail"
-	"path"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -75,6 +74,7 @@ type App struct {
 	limiter           *limiter
 	dummyHash         []byte
 	static            fs.FS
+	publicAssets      map[string]frontendAsset
 	backupDir         string
 	requestGate       sync.RWMutex
 	passwordSlots     chan struct{}
@@ -137,6 +137,10 @@ func New(database *store.Store, config Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open embedded frontend: %w", err)
 	}
+	publicAssets, err := loadPublicAssets(static)
+	if err != nil {
+		return nil, err
+	}
 
 	app := &App{
 		clicksPerMinute:   config.ClicksPerMinute,
@@ -151,6 +155,7 @@ func New(database *store.Store, config Config) (*App, error) {
 		now:               config.Now,
 		dummyHash:         dummyHash,
 		static:            static,
+		publicAssets:      publicAssets,
 		backupDir:         config.BackupDir,
 		passwordSlots:     make(chan struct{}, config.PasswordConcurrency),
 	}
@@ -278,23 +283,23 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		a.internalError(w, r, "hash signup password", err)
 		return
 	}
-	user, err := a.store.CreateUser(r.Context(), payload.Username, email, string(hash), a.now())
+	raw, previous, err := newSessionTokens(r)
+	if err != nil {
+		a.internalError(w, r, "generate signup session", err)
+		return
+	}
+	now := a.now()
+	expires := now.Add(a.sessionTTL)
+	user, err := a.store.Register(r.Context(), payload.Username, email, string(hash), raw, previous, expires, now)
 	if errors.Is(err, store.ErrConflict) {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": []string{"Username or email is already in use"}})
 		return
 	}
 	if err != nil {
-		a.internalError(w, r, "create signup user", err)
+		a.internalError(w, r, "register user", err)
 		return
 	}
-	if err := a.startSession(w, r, user); err != nil {
-		if errors.Is(err, store.ErrCredentialsChanged) {
-			invalidCredentials(w)
-			return
-		}
-		a.internalError(w, r, "start signup session", err)
-		return
-	}
+	a.setSessionCookie(w, raw, expires, now)
 	writeJSON(w, http.StatusCreated, map[string]any{"user": publicUser(user)})
 }
 
@@ -504,17 +509,25 @@ func entityResponse(counters store.Counters) entitiesResponse {
 	}
 }
 
-func (a *App) startSession(w http.ResponseWriter, r *http.Request, user store.User) error {
-	raw := make([]byte, 32)
+func newSessionTokens(r *http.Request) (raw, previous []byte, err error) {
+	raw = make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
-		return fmt.Errorf("generate session token: %w", err)
+		return nil, nil, fmt.Errorf("generate session token: %w", err)
 	}
-	now := a.now()
-	expires := now.Add(a.sessionTTL)
 	previous, _, valid := rawSessionToken(r)
 	if !valid {
 		previous = nil
 	}
+	return raw, previous, nil
+}
+
+func (a *App) startSession(w http.ResponseWriter, r *http.Request, user store.User) error {
+	raw, previous, err := newSessionTokens(r)
+	if err != nil {
+		return err
+	}
+	now := a.now()
+	expires := now.Add(a.sessionTTL)
 	if err := a.store.ReplaceSession(r.Context(), raw, previous, user, expires, now); err != nil {
 		return err
 	}
@@ -671,37 +684,6 @@ func (a *App) recoverPanic(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
-}
-
-func (a *App) frontend(w http.ResponseWriter, r *http.Request) {
-	requested := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
-	if requested == "." || requested == "" {
-		requested = "index.html"
-	}
-	// Serve only public assets here. Escaped slashes and dots can reach this
-	// fallback instead of the protected /admin.html route, and future embedded
-	// files must not become public merely by being added to the web directory.
-	switch requested {
-	case "index.html", "app.js", "app.css",
-		"admin.js", "admin.css", "favicon.svg", "icons.svg", "achievement-icons.svg", "language-flags.svg",
-		"button-material.svg", "button-glow.svg", "background-grain.svg":
-	default:
-		http.NotFound(w, r)
-		return
-	}
-	content, err := fs.ReadFile(a.static, requested)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	if contentType := mime.TypeByExtension(path.Ext(requested)); contentType != "" {
-		w.Header().Set("Content-Type", contentType)
-	}
-	// Asset filenames are intentionally stable, so revalidate them on each page
-	// load to avoid pairing new markup with stale JavaScript after a deployment.
-	w.Header().Set("Cache-Control", "no-cache")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(content)
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {

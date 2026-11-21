@@ -180,8 +180,10 @@ create these overlaps; existing accounts keep their identities.
   HSTS in HTTPS mode, and transactional counter updates reduce common abuse and
   consistency risks.
 - Expired server-side sessions are reaped at startup and every 24 hours.
-- Signing in replaces the current session transactionally; a failed replacement
-  preserves the previous session. Shutdown waits for active requests to drain.
+- Signing in replaces the current session transactionally. Signup also creates
+  the account and its initial session together. If either operation fails before
+  committing, the previous session remains valid. Shutdown waits for active
+  requests to drain.
 
 Use a dedicated, service-owned database directory in production. New directories
 are created with mode `0700`; existing directory permissions are left intact.

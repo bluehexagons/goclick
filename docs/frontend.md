@@ -190,7 +190,8 @@ with the last loaded account counters. Replacement requires confirmation.
 Invalid imports and failed writes preserve the previous save. Web Locks
 serialize writes across tabs; IndexedDB transactions provide the fallback.
 Without either mechanism, writes fail without altering saved progress. Tabs
-observe changes, and a persisted local-mode startup skips session checks.
+observe changes while preserving feedback for clicks saved in the current tab.
+A persisted local-mode startup skips session checks.
 
 Share copies the current click total, UTC streaks, and site link, then opens
 options to customize the text. Daily/weekly click totals are not included.

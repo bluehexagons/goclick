@@ -177,29 +177,13 @@ func TestPasswordResetDuringLoginCannotIssueSession(t *testing.T) {
 	}
 }
 
-func TestPasswordResetDuringSignupCannotIssueSession(t *testing.T) {
-	app, db, client, previousID := adminTestApp(t)
-	now := time.Now().UTC()
-	calls := 0
-	app.now = func() time.Time {
-		calls++
-		if calls == 2 { // Signup created the account; session creation is next.
-			user, err := db.UserByUsername(context.Background(), "signup_reset")
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := db.SetPassword(context.Background(), user.ID, "replacement-password", now); err != nil {
-				t.Fatal(err)
-			}
-		}
-		return now
-	}
-	response := jsonRequest(t, client, "POST", "http://goclick.test/api/auth/signup", map[string]string{"username": "signup_reset", "password": "password123"}, nil)
+func TestConflictingSignupPreservesPreviousSession(t *testing.T) {
+	_, _, client, previousID := adminTestApp(t)
+	response := jsonRequest(t, client, "POST", "http://goclick.test/api/auth/signup", map[string]string{"username": "test_admin", "password": "password123"}, nil)
 	response.Body.Close()
-	if calls != 2 || response.StatusCode != http.StatusUnauthorized || len(response.Cookies()) != 0 {
-		t.Fatalf("stale signup issued a session: status=%d cookies=%d calls=%d", response.StatusCode, len(response.Cookies()), calls)
+	if response.StatusCode != http.StatusUnprocessableEntity || len(response.Cookies()) != 0 {
+		t.Fatalf("conflicting signup issued a session: status=%d cookies=%d", response.StatusCode, len(response.Cookies()))
 	}
-	app.now = func() time.Time { return now }
 	response = jsonRequest(t, client, "GET", "http://goclick.test/api/me", nil, nil)
 	var user publicUserResponse
 	decodeResponse(t, response, &user)

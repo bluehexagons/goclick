@@ -278,7 +278,7 @@
                     privately. Restoring a snapshot revokes all sessions.
                   </p>
                 </details>
-                <form id="export-form">
+                <form id="export-form" action="/api/admin/backups/export" method="post">
                   <input
                     type="text"
                     name="username"
@@ -324,7 +324,12 @@
                 <p class="field-hint">
                   The backup restores its saved passwords and administrator roles.
                 </p>
-                <form id="restore-form">
+                <form
+                  id="restore-form"
+                  action="/api/admin/backups/restore"
+                  method="post"
+                  enctype="multipart/form-data"
+                >
                   <input
                     type="text"
                     name="username"

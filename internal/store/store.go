@@ -372,6 +372,38 @@ func (s *Store) CreateUser(ctx context.Context, username string, email *string, 
 		return User{}, err
 	}
 	defer tx.Rollback()
+	user, err := createUser(ctx, tx, username, email, passwordHash, now)
+	if err != nil {
+		return User{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return User{}, err
+	}
+	return user, nil
+}
+
+// Register creates the account, starts its first session, and revokes the
+// previous session in one transaction. A failed signup leaves both untouched.
+func (s *Store) Register(ctx context.Context, username string, email *string, passwordHash string, rawToken, previousToken []byte, expiresAt, now time.Time) (User, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return User{}, fmt.Errorf("begin registration: %w", err)
+	}
+	defer tx.Rollback()
+	user, err := createUser(ctx, tx, username, email, passwordHash, now)
+	if err != nil {
+		return User{}, err
+	}
+	if err := writeSession(ctx, tx, rawToken, previousToken, user.ID, expiresAt, now); err != nil {
+		return User{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return User{}, fmt.Errorf("commit registration: %w", err)
+	}
+	return user, nil
+}
+
+func createUser(ctx context.Context, tx *sql.Tx, username string, email *string, passwordHash string, now time.Time) (User, error) {
 	// Imported usernames and email addresses are preserved verbatim and may
 	// overlap. New registrations must not make another account's login ambiguous.
 	var overlap bool
@@ -398,16 +430,7 @@ func (s *Store) CreateUser(ctx context.Context, username string, email *string, 
 	if _, err := tx.ExecContext(ctx, `INSERT INTO player_activity(user_id,action,occurred_at) VALUES (?, 'signup', ?)`, id, formatTime(now)); err != nil {
 		return User{}, err
 	}
-	// Return the account as created inside this transaction. A post-commit read
-	// could pick up an operator password reset that signup has not verified.
-	user, err := scanUser(tx.QueryRowContext(ctx, `SELECT id,username,email,password_hash,admin,created_at,updated_at FROM users WHERE id=?`, id))
-	if err != nil {
-		return User{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return User{}, err
-	}
-	return user, nil
+	return scanUser(tx.QueryRowContext(ctx, `SELECT id,username,email,password_hash,admin,created_at,updated_at FROM users WHERE id=?`, id))
 }
 
 func (s *Store) UserByIdentifier(ctx context.Context, identifier string) (User, error) {
@@ -511,8 +534,18 @@ func (s *Store) replaceSession(ctx context.Context, rawToken, previousToken []by
 			return ErrCredentialsChanged
 		}
 	}
+	if err := writeSession(ctx, tx, rawToken, previousToken, userID, expiresAt, now); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit session replacement: %w", err)
+	}
+	return nil
+}
+
+func writeSession(ctx context.Context, tx *sql.Tx, rawToken, previousToken []byte, userID int64, expiresAt, now time.Time) error {
 	hash := sha256.Sum256(rawToken)
-	_, err = tx.ExecContext(ctx, `
+	_, err := tx.ExecContext(ctx, `
 		INSERT INTO sessions (token_hash, user_id, expires_at, created_at)
 		VALUES (?, ?, ?, ?)`, hash[:], userID, expiresAt.Unix(), now.Unix())
 	if err != nil {
@@ -526,9 +559,6 @@ func (s *Store) replaceSession(ctx context.Context, rawToken, previousToken []by
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO player_activity(user_id,action,occurred_at) VALUES (?, 'sign_in', ?)`, userID, formatTime(now)); err != nil {
 		return fmt.Errorf("record sign in: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit session replacement: %w", err)
 	}
 	return nil
 }

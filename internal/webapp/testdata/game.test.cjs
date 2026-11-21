@@ -1057,10 +1057,27 @@ test("external local-save changes received during a write are reconciled after i
   gate.resolve();
   await click;
   assert.equal(h.element("#click-count").textContent, "42");
+  h.runTimers();
+  assert.equal(typeof h.feedback[0].ms, "number");
+  h.element("#options-button").fire("click");
+  assert.equal(h.element("#local-save-summary").textContent, "Clicks in your local save: 42");
   h.storage.delete("goclick.local.v1");
   h.window.fire("storage", { key: null });
   assert.equal(h.element("#click-count").textContent, "0");
+  assert.equal(h.element("#local-save-summary").textContent, "Clicks in your local save: 0");
   assert.deepEqual(h.requests, []);
+});
+
+test("a successful response without a click count is an unconfirmed save", async () => {
+  const h = await harness();
+  h.fetch(async () => response({ message: "OK" }));
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, "10");
+  assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*Reload your counter/);
+  assert.equal(h.element("#retry-game-button").hidden, false);
+  assert.equal(h.feedback[0].uncertain, true);
+  assert.equal(h.feedback[0].ms, undefined);
+  assert.deepEqual(h.requests, [{ url: "/api/clicks", method: "POST" }]);
 });
 
 test("a timed-out click releases pending controls without replaying an uncertain save", async () => {

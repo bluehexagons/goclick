@@ -8,6 +8,51 @@ import (
 	"time"
 )
 
+func TestRegisterRollsBackAccountAndSessionTogether(t *testing.T) {
+	db := openTestStore(t)
+	previous := createTestUser(t, db, "previous_signup_account")
+	ctx := context.Background()
+	now := time.Now().UTC()
+	expires := now.Add(time.Hour)
+	oldToken, newToken := []byte("previous session"), []byte("registration session")
+	if err := db.CreateSession(ctx, oldToken, previous.ID, expires, now); err != nil {
+		t.Fatal(err)
+	}
+	// Reject the final activity write, after both sessions have been touched.
+	if _, err := db.db.Exec(`CREATE TRIGGER fail_registration BEFORE INSERT ON player_activity
+		WHEN new.action='sign_in' BEGIN SELECT RAISE(ABORT,'cannot record sign-in'); END`); err != nil {
+		t.Fatal(err)
+	}
+	register := func() (User, error) {
+		return db.Register(ctx, "registration_player", nil, previous.PasswordHash, newToken, oldToken, expires, now)
+	}
+	if _, err := register(); err == nil {
+		t.Fatal("registration survived a failed session write")
+	}
+	if _, err := db.UserByUsername(ctx, "registration_player"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("failed registration left an account: %v", err)
+	}
+	if _, err := db.UserBySession(ctx, newToken, now); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("failed registration left a session: %v", err)
+	}
+	if user, err := db.UserBySession(ctx, oldToken, now); err != nil || user.ID != previous.ID {
+		t.Fatalf("failed registration revoked the previous session: %v", err)
+	}
+	if _, err := db.db.Exec(`DROP TRIGGER fail_registration`); err != nil {
+		t.Fatal(err)
+	}
+	registered, err := register()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user, err := db.UserBySession(ctx, newToken, now); err != nil || user.ID != registered.ID {
+		t.Fatalf("registered account has no session: %v", err)
+	}
+	if _, err := db.UserBySession(ctx, oldToken, now); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("registration did not revoke the previous session: %v", err)
+	}
+}
+
 func TestSessionActivityRenewsWithoutWritingEveryClick(t *testing.T) {
 	db := openTestStore(t)
 	user := createTestUser(t, db, "rolling_session")

@@ -1,6 +1,6 @@
 import "./focus.js";
 import "./interaction.js";
-import { request, requestError, retryAfterMilliseconds } from "./http.js";
+import { request, RequestError, requestError, retryAfterMilliseconds } from "./http.js";
 import { required as $ } from "./dom.js";
 import { gameSettings, isSimulatedPing, motionPreference } from "./preferences.js";
 import { localGame } from "./local-game.js";
@@ -817,11 +817,16 @@ clickButton.addEventListener("click", async (event) => {
       headers: { "X-GoClick-User-ID": user.id },
     });
     if (generation !== clickGeneration) return;
+    const count = data.click_count?.count;
+    if (typeof count !== "number" || !Number.isInteger(count) || count < 1) {
+      const error = new RequestError("The server response did not include a saved click count.");
+      error.uncertain = true;
+      throw error;
+    }
     paintLastClick(true);
     renderCounters(data, false, true);
     recordSavedButtonClick(event);
-    if ((data.click_count?.count ?? 0) >= (lastOnlineCounters?.click_count?.count ?? 0))
-      lastOnlineCounters = data;
+    if (count >= (lastOnlineCounters?.click_count?.count ?? 0)) lastOnlineCounters = data;
     feedback.success(performance.now() - started);
     saved = true;
   } catch (caught) {
@@ -1019,10 +1024,18 @@ function openLocalGame(data?: Counters) {
     updateGameControls();
     setConnection();
   } catch {
-    gameReady = false;
-    updateGameControls();
-    showGameError("localLoadError", true);
+    showLocalLoadError();
   }
+}
+function showLocalLoadError() {
+  gameReady = false;
+  updateGameControls();
+  showGameError("localLoadError", true);
+}
+function resetLocalSaveFeedback() {
+  lastClicks.delete("local");
+  clearAchievementNotice();
+  resetClickState();
 }
 function startLocalGame() {
   if (pendingClicks > 0 || signingOut || localSaveReplacing) return;
@@ -1128,8 +1141,7 @@ async function replaceLocalSave(
     const data = await operation();
     await localGame.change(() => localGame.replace(data));
     if (localMode) {
-      clearAchievementNotice();
-      resetClickState();
+      resetLocalSaveFeedback();
       openLocalGame();
     }
     updateOptions();
@@ -1184,13 +1196,31 @@ $<HTMLButtonElement>("#download-local").addEventListener("click", async () => {
   }
 });
 function synchronizeLocalSave() {
-  if (!localMode) return;
-  if (pendingClicks > 0 || localSaveReplacing) {
-    localRefreshQueued = true;
-    return;
+  if (localMode) {
+    if (pendingClicks > 0 || localSaveReplacing) {
+      localRefreshQueued = true;
+      return;
+    }
+    localRefreshQueued = false;
+    try {
+      const data = localGame.read();
+      const previous = displayedCounters.click_count;
+      const current = data.click_count;
+      if (!gameReady || (current?.count ?? 0) < (previous?.count ?? 0)) {
+        resetLocalSaveFeedback();
+        replaceLocalConsent.checked = false;
+        openLocalGame(data);
+      } else {
+        // A click in another tab does not cancel this tab's pending visual
+        // and audio acknowledgement or move its keyboard focus.
+        applyLoadedCounters(data);
+      }
+    } catch {
+      resetLocalSaveFeedback();
+      showLocalLoadError();
+    }
   }
-  resetClickState();
-  openLocalGame();
+  if (optionsDialog.open) updateOptions();
 }
 window.addEventListener("storage", (event) => {
   if (event.key === localGame.key || event.key === null) synchronizeLocalSave();
