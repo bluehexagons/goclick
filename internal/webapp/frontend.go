@@ -40,11 +40,16 @@ func loadPublicAssets(static fs.FS) (map[string]frontendAsset, error) {
 	return assets, nil
 }
 
-func (a *App) frontend(w http.ResponseWriter, r *http.Request) {
-	name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+func publicAssetName(requestPath string) string {
+	name := strings.TrimPrefix(path.Clean(requestPath), "/")
 	if name == "." || name == "" {
-		name = "index.html"
+		return "index.html"
 	}
+	return name
+}
+
+func (a *App) frontend(w http.ResponseWriter, r *http.Request) {
+	name := publicAssetName(r.URL.Path)
 	asset, ok := a.publicAssets[name]
 	if !ok {
 		http.NotFound(w, r)

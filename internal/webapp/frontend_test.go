@@ -120,3 +120,27 @@ func TestFrontendRevalidatesUnchangedAssets(t *testing.T) {
 		}
 	}
 }
+
+func TestPublicAssetsDoNotExhaustAccountOrHealthBudget(t *testing.T) {
+	app, _, _, _ := adminTestApp(t)
+	handler := app.Handler()
+	get := func(method, target string) int {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(method, target, nil))
+		return response.Code
+	}
+	for i := 0; i < 600; i++ {
+		if status := get(http.MethodHead, "/app.js"); status != http.StatusOK {
+			t.Fatalf("asset %d returned %d", i+1, status)
+		}
+	}
+	if status := get(http.MethodGet, "/"); status != http.StatusTooManyRequests {
+		t.Fatalf("exhausted asset budget returned %d", status)
+	}
+	if status := get(http.MethodGet, "/api/game"); status != http.StatusUnauthorized {
+		t.Fatalf("account endpoint was throttled by asset traffic: %d", status)
+	}
+	if status := get(http.MethodGet, "/up"); status != http.StatusOK {
+		t.Fatalf("health check was throttled by asset traffic: %d", status)
+	}
+}

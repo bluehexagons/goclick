@@ -174,8 +174,9 @@ create these overlaps; existing accounts keep their identities.
   together, and foreign keys remain enabled after a connection is replaced.
 - Mutations use Go's standard cross-origin protection, and cookies are HttpOnly and
   `SameSite=Strict`.
-- Login, signup, total requests, and authenticated clicks have independent
-  in-memory rate limits. Add proxy-level limits for multi-instance deployments.
+- Login, signup, general requests, click submissions, public assets, and health
+  checks have independent in-memory rate limits. Add proxy-level limits for
+  multi-instance deployments.
 - Strict body/header limits, HTTP timeouts, parameterized SQL, security headers,
   HSTS in HTTPS mode, and transactional counter updates reduce common abuse and
   consistency risks.

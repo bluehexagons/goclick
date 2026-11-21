@@ -612,16 +612,18 @@ func userFromContext(ctx context.Context) store.User {
 
 func (a *App) globalLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key, budget, window := "request:", 200, 5*time.Minute
 		if r.Method == http.MethodPost &&
 			(r.URL.Path == "/api/clicks" || r.URL.Path == "/entities/increment") {
-			if ok, retry := a.limiter.allow("click-ip:"+a.clientIP(r), a.clicksPerIPMinute, time.Minute); !ok {
-				rateLimited(w, retry)
-				return
+			key, budget, window = "click-ip:", a.clicksPerIPMinute, time.Minute
+		} else if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			if r.URL.Path == "/up" {
+				key, budget, window = "health:", 60, time.Minute
+			} else if _, public := a.publicAssets[publicAssetName(r.URL.Path)]; public {
+				key, budget = "asset:", 600
 			}
-			next.ServeHTTP(w, r)
-			return
 		}
-		if ok, retry := a.limiter.allow("request:"+a.clientIP(r), 200, 5*time.Minute); !ok {
+		if ok, retry := a.limiter.allow(key+a.clientIP(r), budget, window); !ok {
 			rateLimited(w, retry)
 			return
 		}
