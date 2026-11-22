@@ -608,7 +608,9 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
 
 function refreshGame() {
   if (localMode) {
-    if (isPlayerView()) openLocalGame();
+    if (!isPlayerView()) return;
+    if (pendingClicks > 0 || localSaveReplacing) localRefreshQueued = true;
+    else openLocalGame();
     return;
   }
   if (!isPlayerView() || !user || signingOut || offline || document.hidden) return;
@@ -1027,6 +1029,8 @@ function openLocalGame(data?: Counters) {
 }
 function showLocalLoadError() {
   gameReady = false;
+  resetLocalSaveFeedback();
+  renderCounters({}, true);
   updateGameControls();
   showGameError("localLoadError", true);
 }
@@ -1224,7 +1228,6 @@ function synchronizeLocalSave() {
         applyLoadedCounters(data);
       }
     } catch {
-      resetLocalSaveFeedback();
       showLocalLoadError();
     }
   }

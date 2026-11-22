@@ -1076,6 +1076,50 @@ test("external local-save changes received during a write are reconciled after i
   assert.deepEqual(h.requests, []);
 });
 
+test("regaining focus during a local write waits for its achievement announcement", async () => {
+  const gate = deferred();
+  const h = await harness({
+    storage: [["goclick.mode", "local"]],
+    locks: {
+      request: async (_key, operation) => {
+        const saved = operation();
+        await gate.promise;
+        return saved;
+      },
+    },
+  });
+  const click = h.element("#click-button").fire("click");
+  h.window.fire("focus");
+  assert.equal(h.element("#achievement-count").textContent, "0 / 15");
+  assert.equal(h.element("#achievement-announcement").textContent, "");
+  gate.resolve();
+  await click;
+  assert.equal(h.element("#achievement-count").textContent, "1 / 15");
+  assert.equal(h.element("#achievement-notice").hidden, false);
+  assert.equal(h.element("#achievement-notice-names").textContent, "Gone Click");
+  assert.deepEqual(h.requests, []);
+});
+
+test("an unreadable local save clears stale achievements and can recover from storage", async () => {
+  const h = await harness({ storage: [["goclick.mode", "local"]] });
+  await h.element("#click-button").fire("click");
+  const key = "goclick.local.v1";
+  const saved = h.storage.get(key);
+  h.storage.set(key, "{");
+  h.window.fire("storage", { key });
+  assert.equal(h.element("#achievement-count").textContent, "0 / 15");
+  assert.equal(h.element("#achievement-notice").hidden, true);
+  assert.equal(h.element("#click-button").disabled, true);
+  assert.equal(h.element("#game-error").hidden, false);
+  h.storage.set(key, saved);
+  h.window.fire("storage", { key });
+  assert.equal(h.element("#achievement-count").textContent, "1 / 15");
+  assert.equal(h.element("#achievement-notice").hidden, true);
+  assert.equal(h.element("#click-button").disabled, false);
+  assert.equal(h.element("#game-error").hidden, true);
+  assert.deepEqual(h.requests, []);
+});
+
 test("a successful response without a click count is an unconfirmed save", async () => {
   const h = await harness();
   h.fetch(async () => response({ message: "OK" }));

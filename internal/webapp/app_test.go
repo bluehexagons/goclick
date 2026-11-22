@@ -64,6 +64,27 @@ func TestAccountClickAndLogoutFlow(t *testing.T) {
 		t.Fatalf("click response = %+v", clicked)
 	}
 
+	for _, request := range []struct {
+		method string
+		path   string
+		count  int64
+	}{
+		{http.MethodGet, "/entities/current", 1},
+		{http.MethodPost, "/entities/increment", 2},
+	} {
+		response := jsonRequest(t, client, request.method, baseURL+request.path, nil, nil)
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("%s = %d: %s", request.path, response.StatusCode, readBody(t, response))
+		}
+		var legacy map[string]entity
+		decodeResponse(t, response, &legacy)
+		if len(legacy) != 4 || legacy["click_count"].Count != request.count ||
+			legacy["streak_counter_day"].Count != 1 || legacy["streak_counter_month"].Count != 1 ||
+			legacy["streak_counter_year"].Count != 1 {
+			t.Fatalf("%s returned unexpected legacy counters: %+v", request.path, legacy)
+		}
+	}
+
 	response = jsonRequest(t, client, http.MethodDelete, baseURL+"/api/auth/logout", nil, nil)
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("logout status = %d", response.StatusCode)

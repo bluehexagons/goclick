@@ -401,8 +401,8 @@ func (a *App) current(w http.ResponseWriter, r *http.Request) {
 	}
 	response := entityResponse(counters)
 	if r.URL.Path == "/entities/current" {
-		response.Progress = nil
-		response.Achievements = nil
+		writeJSON(w, http.StatusOK, response.counterEntities)
+		return
 	}
 	writeJSON(w, http.StatusOK, response)
 }
@@ -453,8 +453,8 @@ func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 	}
 	response := entityResponse(counters)
 	if r.URL.Path == "/entities/increment" {
-		response.Progress = nil
-		response.Achievements = nil
+		writeJSON(w, http.StatusOK, response.counterEntities)
+		return
 	}
 	writeJSON(w, http.StatusOK, response)
 }
@@ -481,14 +481,18 @@ type entity struct {
 	ModifiedTime *string `json:"modified_time"`
 }
 
+type counterEntities struct {
+	ClickCount         *entity `json:"click_count"`
+	StreakCounterDay   *entity `json:"streak_counter_day"`
+	StreakCounterMonth *entity `json:"streak_counter_month"`
+	StreakCounterYear  *entity `json:"streak_counter_year"`
+}
+
 type entitiesResponse struct {
-	ClickCount         *entity                  `json:"click_count"`
-	StreakCounterDay   *entity                  `json:"streak_counter_day"`
-	StreakCounterMonth *entity                  `json:"streak_counter_month"`
-	StreakCounterYear  *entity                  `json:"streak_counter_year"`
-	Progress           *store.ClickProgress     `json:"progress,omitempty"`
-	Achievements       *store.ClickAchievements `json:"achievements,omitempty"`
-	EarnedBadges       []string                 `json:"earned_badges"`
+	counterEntities
+	Progress     *store.ClickProgress     `json:"progress,omitempty"`
+	Achievements *store.ClickAchievements `json:"achievements,omitempty"`
+	EarnedBadges []string                 `json:"earned_badges"`
 }
 
 func entityResponse(counters store.Counters) entitiesResponse {
