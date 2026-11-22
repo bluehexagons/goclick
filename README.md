@@ -43,9 +43,10 @@ period click totals, and playing at different hours of the same day. Days and
 months use UTC. Weeks run Monday through Sunday in UTC, and one saved click
 counts toward a weekly streak. Earned achievements survive breaks. The server
 awards online achievements for the signed-in account. During offline play,
-the browser calculates achievements from its local save.
-Open **Achievements** in the header to see your activity and filter badges by
-earned or locked. Locked badges show hints until you turn on **Reveal locked
+the browser calculates achievements from its local save. Open **Achievements**
+in the header to see your activity and filter badges by earned or locked.
+Signed-out players can browse their local badges without starting a game.
+Locked badges show hints until you turn on **Reveal locked
 requirements**. Your browser remembers this choice. New unlocks appear briefly
 during play.
 

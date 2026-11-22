@@ -2625,6 +2625,7 @@
     timeUntilReset: "{time} remaining",
     localReset: "Local reset: {time}",
     achievements: "Achievements",
+    offlineAchievements: "Offline achievements",
     weekRule: "One saved click counts for the week, Monday through Sunday (UTC).",
     firstClick: "First click",
     clickMilestone: "{count} clicks",
@@ -2729,6 +2730,7 @@
       timeUntilReset: "\u5269\u4F59 {time}",
       localReset: "\u672C\u5730\u91CD\u7F6E\u65F6\u95F4\uFF1A{time}",
       achievements: "\u6210\u5C31",
+      offlineAchievements: "\u79BB\u7EBF\u6210\u5C31",
       weekRule: "\u6BCF\u5468\u4ECE\u5468\u4E00\u5230\u5468\u65E5\uFF08UTC\uFF09\uFF0C\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\u5373\u7B97\u6D3B\u8DC3\u4E00\u5468\u3002",
       firstClick: "\u9996\u6B21\u70B9\u51FB",
       clickMilestone: "\u70B9\u51FB {count} \u6B21",
@@ -2832,6 +2834,7 @@
       timeUntilReset: "Quedan {time}",
       localReset: "Reinicio en hora local: {time}",
       achievements: "Logros",
+      offlineAchievements: "Logros sin conexi\xF3n",
       weekRule: "Un clic guardado cuenta para la semana, de lunes a domingo (UTC).",
       firstClick: "Primer clic",
       clickMilestone: "{count} clics",
@@ -2935,6 +2938,7 @@
       timeUntilReset: "\u0645\u062A\u0628\u0642\u064D\u0651 {time}",
       localReset: "\u0648\u0642\u062A \u0627\u0644\u062A\u062C\u062F\u064A\u062F \u0645\u062D\u0644\u064A\u064B\u0627: {time}",
       achievements: "\u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A",
+      offlineAchievements: "\u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644",
       weekRule: "\u062A\u0643\u0641\u064A \u0646\u0642\u0631\u0629 \u0645\u062D\u0641\u0648\u0638\u0629 \u0648\u0627\u062D\u062F\u0629 \u0644\u0627\u062D\u062A\u0633\u0627\u0628 \u0627\u0644\u0623\u0633\u0628\u0648\u0639\u060C \u0645\u0646 \u0627\u0644\u0627\u062B\u0646\u064A\u0646 \u0625\u0644\u0649 \u0627\u0644\u0623\u062D\u062F (UTC).",
       firstClick: "\u0623\u0648\u0644 \u0646\u0642\u0631\u0629",
       clickMilestone: "\u0639\u062F\u062F \u0627\u0644\u0646\u0642\u0631\u0627\u062A: {count}",
@@ -3038,6 +3042,7 @@
       timeUntilReset: "{time} \u0936\u0947\u0937",
       localReset: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0930\u0940\u0938\u0947\u091F \u0938\u092E\u092F: {time}",
       achievements: "\u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901",
+      offlineAchievements: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901",
       weekRule: "\u0938\u094B\u092E\u0935\u093E\u0930 \u0938\u0947 \u0930\u0935\u093F\u0935\u093E\u0930 (UTC) \u0915\u0947 \u092C\u0940\u091A \u090F\u0915 \u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \u0915\u094D\u0932\u093F\u0915 \u0909\u0938 \u0938\u092A\u094D\u0924\u093E\u0939 \u0915\u0947 \u0932\u093F\u090F \u0915\u093E\u092B\u093C\u0940 \u0939\u0948\u0964",
       firstClick: "\u092A\u0939\u0932\u093E \u0915\u094D\u0932\u093F\u0915",
       clickMilestone: "{count} \u0915\u094D\u0932\u093F\u0915",
@@ -3141,6 +3146,7 @@
       timeUntilReset: "Tersisa {time}",
       localReset: "Waktu reset lokal: {time}",
       achievements: "Pencapaian",
+      offlineAchievements: "Pencapaian luring",
       weekRule: "Satu klik tersimpan sudah cukup untuk satu minggu, Senin sampai Minggu (UTC).",
       firstClick: "Klik pertama",
       clickMilestone: "{count} klik",
@@ -3244,6 +3250,7 @@
       timeUntilReset: "Restam {time}",
       localReset: "Rein\xEDcio no hor\xE1rio local: {time}",
       achievements: "Conquistas",
+      offlineAchievements: "Conquistas offline",
       weekRule: "Um clique salvo conta para a semana, de segunda a domingo (UTC).",
       firstClick: "Primeiro clique",
       clickMilestone: "{count} cliques",
@@ -3347,6 +3354,7 @@
       timeUntilReset: "Encore {time}",
       localReset: "R\xE9initialisation en heure locale : {time}",
       achievements: "Succ\xE8s",
+      offlineAchievements: "Succ\xE8s hors ligne",
       weekRule: "Un clic enregistr\xE9 compte pour la semaine, du lundi au dimanche (UTC).",
       firstClick: "Premier clic",
       clickMilestone: "Clics : {count}",
@@ -3450,6 +3458,7 @@
       timeUntilReset: "\u6B8B\u308A {time}",
       localReset: "\u73FE\u5730\u306E\u30EA\u30BB\u30C3\u30C8\u6642\u523B\uFF1A{time}",
       achievements: "\u5B9F\u7E3E",
+      offlineAchievements: "\u30AA\u30D5\u30E9\u30A4\u30F3\u306E\u5B9F\u7E3E",
       weekRule: "\u6708\u66DC\u304B\u3089\u65E5\u66DC\u307E\u3067\uFF08UTC\uFF09\u306B1\u56DE\u30AF\u30EA\u30C3\u30AF\u3092\u4FDD\u5B58\u3059\u308B\u3068\u3001\u305D\u306E\u9031\u304C\u8A18\u9332\u3055\u308C\u307E\u3059\u3002",
       firstClick: "\u521D\u30AF\u30EA\u30C3\u30AF",
       clickMilestone: "{count}\u30AF\u30EA\u30C3\u30AF",
@@ -3553,6 +3562,7 @@
       timeUntilReset: "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C {time}",
       localReset: "\u0421\u043C\u0435\u043D\u0430 \u0434\u043D\u044F \u043F\u043E \u043C\u0435\u0441\u0442\u043D\u043E\u043C\u0443 \u0432\u0440\u0435\u043C\u0435\u043D\u0438: {time}",
       achievements: "\u0414\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F",
+      offlineAchievements: "\u041E\u0444\u043B\u0430\u0439\u043D-\u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F",
       weekRule: "\u041E\u0434\u0438\u043D \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043A\u043B\u0438\u043A \u0437\u0430\u0441\u0447\u0438\u0442\u044B\u0432\u0430\u0435\u0442 \u043D\u0435\u0434\u0435\u043B\u044E \u0441 \u043F\u043E\u043D\u0435\u0434\u0435\u043B\u044C\u043D\u0438\u043A\u0430 \u043F\u043E \u0432\u043E\u0441\u043A\u0440\u0435\u0441\u0435\u043D\u044C\u0435 (UTC).",
       firstClick: "\u041F\u0435\u0440\u0432\u044B\u0439 \u043A\u043B\u0438\u043A",
       clickMilestone: "\u041A\u043B\u0438\u043A\u0438: {count}",
@@ -3656,6 +3666,7 @@
       timeUntilReset: "Noch {time}",
       localReset: "Tageswechsel in Ortszeit: {time}",
       achievements: "Erfolge",
+      offlineAchievements: "Offline-Erfolge",
       weekRule: "Ein gespeicherter Klick z\xE4hlt f\xFCr die Woche von Montag bis Sonntag (UTC).",
       firstClick: "Erster Klick",
       clickMilestone: "{count} Klicks",
@@ -5699,8 +5710,10 @@
   var loginForm = required("#login-form");
   var signupForm = required("#signup-form");
   var clickButton = required("#click-button");
+  var guestClickButton = required("#guest-click-button");
   var achievementsLink = required("#open-achievements");
   var playLink = required("#back-to-game");
+  var achievementTitle = required("#achievement-title");
   var buttonLanguage = createButtonLanguage(currentLanguage());
   var buttonLabel = required(".button-label", clickButton);
   var counterCard = required("#counter-card");
@@ -5822,19 +5835,24 @@
   function isPlayerView(view = currentView) {
     return view === "game" || view === "achievements";
   }
+  function isGuestAchievements() {
+    return currentView === "achievements" && !localMode && !user;
+  }
   function pageFromLocation() {
     return new URLSearchParams(window.location.search).get("view") === "achievements" ? "achievements" : "game";
   }
   function navigatePlayerPage() {
-    if (!isPlayerView()) return;
-    const view = pageFromLocation();
+    if (!isPlayerView() && currentView !== "home") return;
+    const page = pageFromLocation();
+    const view = page === "game" && !user && !localMode ? "home" : page;
     if (view === currentView) return;
     show(view);
     if (view === "game") (clickButton.disabled ? required("#main-content") : clickButton).focus();
+    if (view === "home") guestClickButton.focus();
   }
   for (const link of [achievementsLink, playLink]) {
     link.addEventListener("click", (event) => {
-      if (!isPlayerView() || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      if (!isPlayerView() && currentView !== "home" || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
         return;
       event.preventDefault();
       if (link === achievementsLink === (currentView === "achievements")) return;
@@ -5843,6 +5861,22 @@
     });
   }
   window.addEventListener("popstate", navigatePlayerPage);
+  function showHome() {
+    if (pageFromLocation() === "achievements") window.history.replaceState(null, "", playLink.href);
+    show("home");
+  }
+  function paintAchievementTitle() {
+    achievementTitle.textContent = message2(localMode || !user ? "offlineAchievements" : "achievements");
+  }
+  function renderGuestAchievements() {
+    try {
+      renderProgress(localGame.read(), true);
+      showError("#game-error", "");
+    } catch {
+      renderProgress({}, true);
+      showGameError("localLoadError");
+    }
+  }
   function show(view) {
     const changed = view !== currentView;
     if (changed) {
@@ -5859,15 +5893,17 @@
     views.game.hidden = view !== "game";
     views.achievements.hidden = view !== "achievements";
     playerStatus.hidden = !player;
-    achievementsLink.hidden = !player;
+    achievementsLink.hidden = !player && view !== "home";
     achievementsLink.setAttribute("aria-current", view === "achievements" ? "page" : "false");
     if (changed) {
       showReset(player);
       if (view === "achievements") {
         hideAchievementNotice();
-        renderProgress(displayedCounters, localMode);
+        if (isGuestAchievements()) renderGuestAchievements();
+        else renderProgress(displayedCounters, localMode);
+        paintAchievementTitle();
         paintAchievementList();
-        required("#achievement-title").focus();
+        achievementTitle.focus();
       } else if (view === "game") {
         showAchievementNotices();
       } else {
@@ -5876,8 +5912,8 @@
     }
     loginForm.hidden = view !== "login";
     signupForm.hidden = view !== "signup";
-    required("#guest-nav").hidden = player || view === "loading";
-    required("#user-nav").hidden = !player || localMode;
+    required("#guest-nav").hidden = player && !isGuestAchievements() || view === "loading";
+    required("#user-nav").hidden = !player || localMode || !user;
     required("#local-nav").hidden = !player || !localMode;
     if (changed && view !== "loading" && !motionPreference.matches) {
       const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
@@ -6181,6 +6217,7 @@
     return load;
   }
   function refreshGame() {
+    if (isGuestAchievements()) return renderGuestAchievements();
     if (localMode) {
       if (!isPlayerView()) return;
       if (pendingClicks > 0 || localSaveReplacing) localRefreshQueued = true;
@@ -6228,8 +6265,10 @@
     button.addEventListener("click", () => {
       if (authenticating) return;
       const view = button.dataset.view;
-      if (view === "home" && user) openGame();
-      else if (view === "home" || view === "login" || view === "signup") show(view);
+      if (view === "home") {
+        if (user) openGame();
+        else showHome();
+      } else if (view === "login" || view === "signup") show(view);
     });
   });
   document.querySelectorAll("[data-toggle-password]").forEach((button) => {
@@ -6332,7 +6371,7 @@
     try {
       await api("/api/auth/logout", { method: "DELETE" });
       setUser(null);
-      show("home");
+      showHome();
     } catch {
       gameReady = true;
       showGameError("signOutError", true);
@@ -6420,7 +6459,7 @@
       }
     }
   });
-  async function boot() {
+  async function boot(returningOnline = false) {
     if (localMode) {
       openLocalGame();
       return;
@@ -6441,7 +6480,8 @@
       if (generation2 !== clickGeneration || localMode) return;
       if (error.status === 401) {
         setUser(null);
-        show("home");
+        if (!returningOnline && pageFromLocation() === "achievements") show("achievements");
+        else showHome();
         return;
       }
       required(".loading-spinner").hidden = true;
@@ -6597,8 +6637,6 @@
       gameReady = false;
       resetClickState();
       optionsDialog.close();
-      if (scoreFirstClick && pageFromLocation() === "achievements")
-        window.history.replaceState(null, "", playLink.href);
       openLocalGame(data);
       if (currentView === "game") clickButton.focus();
       if (scoreFirstClick) {
@@ -6614,7 +6652,7 @@
       }
     }
   }
-  required("#guest-click-button").addEventListener("click", () => {
+  guestClickButton.addEventListener("click", () => {
     if (currentView === "home") return startLocalGame(true);
   });
   document.querySelectorAll("[data-play-local]").forEach((button) => button.addEventListener("click", () => startLocalGame()));
@@ -6631,7 +6669,7 @@
     gameReady = false;
     resetClickState();
     renderCounters({}, true);
-    await boot();
+    await boot(true);
     if (!remembered) {
       updateOptions();
       optionsNotice("backOnlineVisit", true);
@@ -6695,7 +6733,7 @@
       if (localMode) {
         resetLocalSaveFeedback();
         openLocalGame();
-      }
+      } else if (isGuestAchievements()) renderGuestAchievements();
       updateOptions();
       optionsNotice(completion);
     } catch (caught) {
@@ -6749,7 +6787,8 @@
     }
   });
   function synchronizeLocalSave() {
-    if (localMode) {
+    if (isGuestAchievements()) renderGuestAchievements();
+    else if (localMode) {
       if (pendingClicks > 0 || localSaveReplacing) {
         localRefreshQueued = true;
         return;
@@ -6786,7 +6825,9 @@
     document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
     buttonLanguage.reset(currentLanguage());
     paintButtonLanguage(currentLanguage());
-    renderCounters(displayedCounters, true);
+    if (isGuestAchievements()) renderGuestAchievements();
+    else renderCounters(displayedCounters, true);
+    if (currentView === "achievements") paintAchievementTitle();
     if (offlineStartNotice.textContent) offlineStartNotice.textContent = message2("playingOffline");
     if (isPlayerView()) paintReset(true);
     updatePendingIndicator();

@@ -46,8 +46,10 @@ const views = {
 const loginForm = $<HTMLFormElement>("#login-form");
 const signupForm = $<HTMLFormElement>("#signup-form");
 const clickButton = $<HTMLButtonElement>("#click-button");
+const guestClickButton = $<HTMLButtonElement>("#guest-click-button");
 const achievementsLink = $<HTMLAnchorElement>("#open-achievements");
 const playLink = $<HTMLAnchorElement>("#back-to-game");
+const achievementTitle = $("#achievement-title");
 const buttonLanguage = createButtonLanguage(currentLanguage());
 const buttonLabel = $(".button-label", clickButton);
 const counterCard = $("#counter-card");
@@ -179,6 +181,10 @@ function isPlayerView(view = currentView) {
   return view === "game" || view === "achievements";
 }
 
+function isGuestAchievements() {
+  return currentView === "achievements" && !localMode && !user;
+}
+
 function pageFromLocation() {
   return new URLSearchParams(window.location.search).get("view") === "achievements"
     ? "achievements"
@@ -186,17 +192,19 @@ function pageFromLocation() {
 }
 
 function navigatePlayerPage() {
-  if (!isPlayerView()) return;
-  const view = pageFromLocation();
+  if (!isPlayerView() && currentView !== "home") return;
+  const page = pageFromLocation();
+  const view = page === "game" && !user && !localMode ? "home" : page;
   if (view === currentView) return;
   show(view);
   if (view === "game") (clickButton.disabled ? $("#main-content") : clickButton).focus();
+  if (view === "home") guestClickButton.focus();
 }
 
 for (const link of [achievementsLink, playLink]) {
   link.addEventListener("click", (event) => {
     if (
-      !isPlayerView() ||
+      (!isPlayerView() && currentView !== "home") ||
       event.button !== 0 ||
       event.metaKey ||
       event.ctrlKey ||
@@ -211,6 +219,25 @@ for (const link of [achievementsLink, playLink]) {
   });
 }
 window.addEventListener("popstate", navigatePlayerPage);
+
+function showHome() {
+  if (pageFromLocation() === "achievements") window.history.replaceState(null, "", playLink.href);
+  show("home");
+}
+
+function paintAchievementTitle() {
+  achievementTitle.textContent = t(localMode || !user ? "offlineAchievements" : "achievements");
+}
+
+function renderGuestAchievements() {
+  try {
+    renderProgress(localGame.read(), true);
+    showError("#game-error", "");
+  } catch {
+    renderProgress({}, true);
+    showGameError("localLoadError");
+  }
+}
 
 function show(view: View) {
   const changed = view !== currentView;
@@ -228,15 +255,17 @@ function show(view: View) {
   views.game.hidden = view !== "game";
   views.achievements.hidden = view !== "achievements";
   playerStatus.hidden = !player;
-  achievementsLink.hidden = !player;
+  achievementsLink.hidden = !player && view !== "home";
   achievementsLink.setAttribute("aria-current", view === "achievements" ? "page" : "false");
   if (changed) {
     showReset(player);
     if (view === "achievements") {
       hideAchievementNotice();
-      renderProgress(displayedCounters, localMode);
+      if (isGuestAchievements()) renderGuestAchievements();
+      else renderProgress(displayedCounters, localMode);
+      paintAchievementTitle();
       paintAchievementList();
-      $("#achievement-title").focus();
+      achievementTitle.focus();
     } else if (view === "game") {
       showAchievementNotices();
     } else {
@@ -245,8 +274,8 @@ function show(view: View) {
   }
   loginForm.hidden = view !== "login";
   signupForm.hidden = view !== "signup";
-  $("#guest-nav").hidden = player || view === "loading";
-  $("#user-nav").hidden = !player || localMode;
+  $("#guest-nav").hidden = (player && !isGuestAchievements()) || view === "loading";
+  $("#user-nav").hidden = !player || localMode || !user;
   $("#local-nav").hidden = !player || !localMode;
   if (changed && view !== "loading" && !motionPreference.matches) {
     const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
@@ -607,6 +636,7 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
 }
 
 function refreshGame() {
+  if (isGuestAchievements()) return renderGuestAchievements();
   if (localMode) {
     if (!isPlayerView()) return;
     if (pendingClicks > 0 || localSaveReplacing) localRefreshQueued = true;
@@ -659,8 +689,10 @@ document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => 
   button.addEventListener("click", () => {
     if (authenticating) return;
     const view = button.dataset.view;
-    if (view === "home" && user) openGame();
-    else if (view === "home" || view === "login" || view === "signup") show(view);
+    if (view === "home") {
+      if (user) openGame();
+      else showHome();
+    } else if (view === "login" || view === "signup") show(view);
   });
 });
 
@@ -768,7 +800,7 @@ logoutButton.addEventListener("click", async () => {
   try {
     await api("/api/auth/logout", { method: "DELETE" });
     setUser(null);
-    show("home");
+    showHome();
   } catch {
     gameReady = true;
     showGameError("signOutError", true);
@@ -865,7 +897,7 @@ clickButton.addEventListener("click", async (event) => {
   }
 });
 
-async function boot() {
+async function boot(returningOnline = false) {
   if (localMode) {
     openLocalGame();
     return;
@@ -886,7 +918,8 @@ async function boot() {
     if (generation !== clickGeneration || localMode) return;
     if (error.status === 401) {
       setUser(null);
-      show("home");
+      if (!returningOnline && pageFromLocation() === "achievements") show("achievements");
+      else showHome();
       return;
     }
     $(".loading-spinner").hidden = true;
@@ -1049,8 +1082,6 @@ function startLocalGame(scoreFirstClick = false) {
     gameReady = false;
     resetClickState();
     optionsDialog.close();
-    if (scoreFirstClick && pageFromLocation() === "achievements")
-      window.history.replaceState(null, "", playLink.href);
     openLocalGame(data);
     if (currentView === "game") clickButton.focus();
     if (scoreFirstClick) {
@@ -1066,7 +1097,7 @@ function startLocalGame(scoreFirstClick = false) {
     }
   }
 }
-$("#guest-click-button").addEventListener("click", () => {
+guestClickButton.addEventListener("click", () => {
   if (currentView === "home") return startLocalGame(true);
 });
 document
@@ -1085,7 +1116,7 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
   gameReady = false;
   resetClickState();
   renderCounters({}, true);
-  await boot();
+  await boot(true);
   if (!remembered) {
     updateOptions();
     optionsNotice("backOnlineVisit", true);
@@ -1155,7 +1186,7 @@ async function replaceLocalSave(
     if (localMode) {
       resetLocalSaveFeedback();
       openLocalGame();
-    }
+    } else if (isGuestAchievements()) renderGuestAchievements();
     updateOptions();
     optionsNotice(completion);
   } catch (caught) {
@@ -1208,7 +1239,8 @@ $<HTMLButtonElement>("#download-local").addEventListener("click", async () => {
   }
 });
 function synchronizeLocalSave() {
-  if (localMode) {
+  if (isGuestAchievements()) renderGuestAchievements();
+  else if (localMode) {
     if (pendingClicks > 0 || localSaveReplacing) {
       localRefreshQueued = true;
       return;
@@ -1248,7 +1280,9 @@ function applyLanguage() {
   document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
   buttonLanguage.reset(currentLanguage());
   paintButtonLanguage(currentLanguage());
-  renderCounters(displayedCounters, true);
+  if (isGuestAchievements()) renderGuestAchievements();
+  else renderCounters(displayedCounters, true);
+  if (currentView === "achievements") paintAchievementTitle();
   if (offlineStartNotice.textContent) offlineStartNotice.textContent = t("playingOffline");
   if (isPlayerView()) paintReset(true);
   updatePendingIndicator();

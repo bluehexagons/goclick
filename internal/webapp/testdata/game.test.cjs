@@ -1553,6 +1553,60 @@ test("loading the achievements URL opens its screen and reset times match gamepl
   assert.equal(h.element("#streak-reset-ring").attributes.get("stroke-dasharray"), `${elapsed} 1`);
 });
 
+test("signed-out players can browse saved badges without changing play mode or adding clicks", async () => {
+  const key = "goclick.local.v1";
+  const save = JSON.stringify({
+    format: "goclick-local",
+    version: 1,
+    counters: counters(25),
+  });
+  const h = await harness({
+    initialFetch: async () => response({}, 401),
+    expectedCount: 0,
+    storage: [[key, save]],
+  });
+  const link = h.element("#open-achievements");
+  const title = h.element("#achievement-title");
+  assert.equal(link.hidden, false);
+  link.fire("click", { button: 0 });
+  assert.equal(h.window.location.search, "?view=achievements");
+  assert.equal(h.element("#achievement-view").hidden, false);
+  assert.equal(h.element("#guest-nav").hidden, false);
+  assert.equal(h.element("#local-nav").hidden, true);
+  assert.equal(h.document.activeElement, title);
+  assert.equal(title.textContent, "Offline achievements");
+  assert.equal(h.element("#achievement-count").textContent, "2 / 15");
+  h.chooseLanguage("es");
+  assert.equal(title.textContent, "Logros sin conexión");
+  assert.deepEqual(h.requests, []);
+  assert.equal(h.storage.get(key), save);
+  assert.equal(h.storage.has("goclick.mode"), false);
+
+  h.element("#back-to-game").fire("click", { button: 0 });
+  assert.equal(h.window.location.search, "");
+  assert.equal(h.element("#home-view").hidden, false);
+  assert.equal(h.document.activeElement, h.element("#guest-click-button"));
+});
+
+test("signing in from a signed-out achievements deep link shows account badges", async () => {
+  const key = "goclick.local.v1";
+  const save = JSON.stringify({ format: "goclick-local", version: 1, counters: counters(100) });
+  const h = await harness({
+    url: "https://goclick.example/?view=achievements",
+    initialFetch: async () => response({}, 401),
+    expectedCount: 0,
+    storage: [[key, save]],
+  });
+  assert.equal(h.element("#achievement-count").textContent, "3 / 15");
+  h.context.show("login");
+  h.fetch(async (url) => response(url === "/api/auth/login" ? { user: player } : game(1)));
+  await h.element("#login-form").fire("submit");
+  assert.equal(h.element("#achievement-title").textContent, "Achievements");
+  assert.equal(h.element("#achievement-count").textContent, "1 / 15");
+  assert.equal(h.element("#user-nav").hidden, false);
+  assert.equal(h.storage.get(key), save);
+});
+
 test("the streak readout uses singular and plural units in the selected language", async () => {
   const h = await harness({
     initialFetch: async () =>
