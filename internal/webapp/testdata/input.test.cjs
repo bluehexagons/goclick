@@ -280,7 +280,6 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
         }
       }
     },
-    hasTrick: runtime.load("button-tricks").hasTrick,
     sounds,
     hardwareSounds,
     soundCancellations: () => soundCancellations,
@@ -807,21 +806,6 @@ test("the cable SVG follows dragging and resizing while the wall outlet stays fi
   assert.ok(Number.isFinite(Number(h.stage.props.get("--cord-scale"))));
 });
 
-test("a continuous hold unlocks after ten seconds while cancellation clears the timer", () => {
-  const h = harness();
-  h.pointer("pointerdown", 1);
-  h.pointer("pointercancel", 1);
-  h.runTimer(10_000);
-  assert.equal(h.hasTrick("hold"), false);
-  h.pointer("pointerdown", 1);
-  assert.equal(h.hasTrick("hold"), false);
-  h.runTimer(10_000);
-  assert.equal(h.hasTrick("hold"), true);
-  assert.equal(h.clicks.length, 0);
-  h.pointer("pointerup", 1);
-  assert.equal(h.clicks.length, 1);
-});
-
 test("long pulls in different directions unseat the plug without scoring a click", () => {
   const h = harness(true, true);
   const move = (x, y) =>
@@ -836,9 +820,8 @@ test("long pulls in different directions unseat the plug without scoring a click
   for (const x of [180, 145, 160, 165, 185]) move(x, 0);
   move(-160, 0);
   move(0, -160);
-  assert.equal(h.hasTrick("loose-plug"), false);
+  assert.equal(h.power.dataset.plug, undefined);
   move(0, 160);
-  assert.equal(h.hasTrick("loose-plug"), true);
   assert.equal(h.power.dataset.plug, "loose");
   assert.notEqual(h.plug.attributes.get("transform"), "translate(0 29)");
   h.pointer("pointercancel", 1);
@@ -863,10 +846,9 @@ test("adding and lifting a finger preserves the drag and never counts as another
   h.pointer("pointerup", 2, { clientX: 335, clientY: 168 });
   assert.deepEqual(h.position(), position);
   assert.equal(h.clicks.length, 1);
-  assert.equal(h.hasTrick("loose-plug"), false);
+  assert.equal(h.power.dataset.plug, undefined);
 
   move(0, 140);
-  assert.equal(h.hasTrick("loose-plug"), true);
   assert.equal(h.power.dataset.plug, "loose");
 });
 
@@ -1414,13 +1396,12 @@ test("nearby releases count and fast drags can release ahead of the painted face
   }
 });
 
-test("hold glow and its audio beat repeat after the achievement has been earned", () => {
+test("hold glow and its audio beat repeat on a subsequent hold", () => {
   const h = harness(false);
   h.pointer("pointerdown", 1);
   h.setTime(10_000);
   h.runTimer(10_000);
   h.frame(10_000);
-  assert.equal(h.hasTrick("hold"), true);
   h.pointer("pointerup", 1);
   h.pointer("pointerdown", 1);
   h.setTime(12_000);
@@ -1434,9 +1415,8 @@ test("hold glow and its audio beat repeat after the achievement has been earned"
   assert.equal(h.sounds.filter((kind) => kind === "hold").length, 1);
 });
 
-test("an auxiliary mouse click earns Wrong Button without activating the button", () => {
+test("an auxiliary mouse click does not activate the button", () => {
   const h = harness();
   assert.equal(h.button.fire("auxclick", { button: 2 }), false);
-  assert.equal(h.hasTrick("wrong-button"), true);
   assert.equal(h.clicks.length, 0);
 });

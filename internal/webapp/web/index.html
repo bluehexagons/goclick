@@ -106,7 +106,6 @@
             data-i18n-aria-label="localGame"
             hidden
           >
-            <span class="local-badge" data-i18n="offline">Offline</span>
             <button
               id="leave-local"
               class="button button-quiet"
@@ -177,7 +176,9 @@
 
         <section id="home-view" class="home" hidden>
           <h1>Go Click</h1>
-          <p class="home-greeting">Sign in to save clicks to your account.</p>
+          <p class="home-greeting">
+            Click to play offline, or sign in to save clicks to your account.
+          </p>
           <div class="button-stage">
             <svg class="button-power" aria-hidden="true" focusable="false">
               <g class="power-outlet">
@@ -210,8 +211,7 @@
                   class="click-button"
                   type="button"
                   data-tactile-button
-                  data-view="login"
-                  aria-label="Sign in"
+                  aria-label="Click to play offline"
                 >
                   <span class="button-label">Click</span>
                 </button>
@@ -221,8 +221,6 @@
           <p class="home-signup">
             <button class="text-link" type="button" data-view="signup">Create an account</button>
           </p>
-          <button class="button button-quiet" type="button" data-play-local>Play offline</button>
-          <p class="field-hint">Offline progress is saved in this browser.</p>
         </section>
 
         <section id="auth-view" class="auth-layout" hidden>
@@ -430,9 +428,6 @@
           >
             Offline. Clicking is paused. The counter refreshes when you reconnect.
           </p>
-          <p id="local-mode-note" class="local-mode-note" hidden data-i18n="localMode">
-            Offline · local save
-          </p>
           <div class="play-layout">
             <div id="counter-card" class="counter-card">
               <span id="counter-label" class="visually-hidden">Saved clicks</span>
@@ -557,6 +552,7 @@
               </div>
             </div>
             <div class="game-readout">
+              <p id="offline-start-notice" class="offline-start-notice" role="status"></p>
               <div class="counter-actions">
                 <button
                   id="refresh-counter"
@@ -718,11 +714,11 @@
               <div>
                 <h1 id="achievement-title" data-i18n="achievements" tabindex="-1">Achievements</h1>
                 <div class="achievement-summary">
-                  <strong id="achievement-count">0 / 24</strong>
+                  <strong id="achievement-count">0 / 15</strong>
                   <progress
                     id="achievement-meter"
                     value="0"
-                    max="24"
+                    max="15"
                     aria-label="Achievements"
                     data-i18n-aria-label="achievements"
                   ></progress>
@@ -793,9 +789,6 @@
           </div>
           <ul id="achievement-list" class="achievement-list" role="list"></ul>
           <p id="achievement-empty" class="achievement-empty" hidden></p>
-          <p class="achievement-footnote" data-i18n="tricksStored">
-            Button tricks are saved in this browser.
-          </p>
         </section>
       </main>
 

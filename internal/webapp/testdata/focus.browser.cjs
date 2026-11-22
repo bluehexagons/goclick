@@ -51,16 +51,18 @@ module.exports = async function checkFocus(page, baseURL) {
   );
   await waitInlays("guest-click-button", 1);
 
-  await page.locator("#home-view [data-play-local]").click();
+  await page.locator("#guest-click-button").click();
   const pointer = await focus();
   ensure(
     pointer.id === "click-button" && pointer.outline === "none",
     "Pointer-started local play must focus the button quietly",
   );
+  await page.mouse.move(0, 0);
   await waitInlays("click-button", 0);
   const button = page.locator("#click-button"),
     count = page.locator("#click-count");
-  const before = Number(await count.textContent());
+  await page.waitForFunction(() => document.querySelector("#click-count").textContent === "1");
+  const before = 1;
   await button.click();
   await page.waitForFunction(
     (expected) => Number(document.querySelector("#click-count").textContent) === expected,

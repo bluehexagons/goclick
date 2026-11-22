@@ -11,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -51,15 +52,15 @@ func TestAccountClickAndLogoutFlow(t *testing.T) {
 	response = jsonRequest(t, client, http.MethodGet, baseURL+"/api/clicks", nil, nil)
 	var empty entitiesResponse
 	decodeResponse(t, response, &empty)
-	if empty.ClickCount != nil {
-		t.Fatalf("new user's click count = %+v, want nil", empty.ClickCount)
+	if empty.ClickCount != nil || empty.EarnedBadges == nil || len(empty.EarnedBadges) != 0 {
+		t.Fatalf("new user's counters = %+v, want no clicks or badges", empty)
 	}
 
 	response = jsonRequest(t, client, http.MethodPost, baseURL+"/api/clicks", nil, nil)
 	var clicked entitiesResponse
 	decodeResponse(t, response, &clicked)
 	if clicked.ClickCount == nil || clicked.ClickCount.Count != 1 ||
-		clicked.StreakCounterDay.Count != 1 {
+		clicked.StreakCounterDay.Count != 1 || !slices.Equal(clicked.EarnedBadges, []string{"gone-click"}) {
 		t.Fatalf("click response = %+v", clicked)
 	}
 
@@ -107,9 +108,14 @@ func TestGameSnapshotBindsCountersToItsAuthenticatedUser(t *testing.T) {
 		client *http.Client
 		id     int64
 		clicks int
-	}{{adminClient, adminID, 7}, {playerClient, signup.User.ID, 3}} {
+		badges []string
+	}{
+		{adminClient, adminID, 25, []string{"gone-click", "sentence"}},
+		{playerClient, signup.User.ID, 3, []string{"gone-click"}},
+	} {
+		now := time.Now()
 		for range account.clicks {
-			if _, err := db.Increment(context.Background(), account.id, time.Now()); err != nil {
+			if _, err := db.Increment(context.Background(), account.id, now); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -127,6 +133,9 @@ func TestGameSnapshotBindsCountersToItsAuthenticatedUser(t *testing.T) {
 		decodeResponse(t, response, &state)
 		if state.User.ID != account.id || state.Counters.ClickCount == nil || state.Counters.ClickCount.Count != int64(account.clicks) {
 			t.Fatalf("snapshot combined accounts: %+v", state)
+		}
+		if !slices.Equal(state.Counters.EarnedBadges, account.badges) {
+			t.Fatalf("earned badges = %v, want %v for account %d", state.Counters.EarnedBadges, account.badges, account.id)
 		}
 	}
 	guest := &http.Client{Transport: handlerTransport{handler: app.Handler()}}

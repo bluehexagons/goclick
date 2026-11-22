@@ -27,14 +27,13 @@ import {
 import type { Language } from "./i18n.js";
 import type { MessageKey } from "./messages.js";
 import { parseStoredTimestamp } from "./timestamp.js";
-import type { User, Counters, GameState } from "./types.js";
+import type { Activation, User, Counters, GameState } from "./types.js";
 import {
   clearAchievementNotice,
   hideAchievementNotice,
   paintAchievementList,
   showAchievementNotices,
 } from "./achievement-panel.js";
-import { recordSavedButtonClick, unlockTrick } from "./button-tricks.js";
 import { paintReset, renderProgress, showReset } from "./progress-panel.js";
 
 const views = {
@@ -136,6 +135,8 @@ let displayedCounters: Counters = {};
 const lastClicks = new Map<string, { time: string | null; saved: number }>();
 const lastClickKey = () => (localMode ? "local" : `account:${user?.id ?? ""}`);
 const lastClick = $("#last-click");
+const offlineStartNotice = $("#offline-start-notice");
+let offlineStartTimer = 0;
 let gameReady = false;
 let pendingClicks = 0;
 let localSaveReplacing = false;
@@ -233,8 +234,7 @@ function show(view: View) {
     showReset(player);
     if (view === "achievements") {
       hideAchievementNotice();
-      renderProgress(displayedCounters);
-      if (gameReady) unlockTrick("achievements");
+      renderProgress(displayedCounters, localMode);
       paintAchievementList();
       $("#achievement-title").focus();
     } else if (view === "game") {
@@ -389,6 +389,8 @@ function setUser(nextUser: User | null) {
 
 function resetClickState() {
   clickGeneration++;
+  window.clearTimeout(offlineStartTimer);
+  offlineStartNotice.textContent = "";
   cooldownUntil = 0;
   window.clearTimeout(cooldownTimer);
   $("#play-status").hidden = true;
@@ -438,7 +440,6 @@ function updateGameControls() {
   $<HTMLButtonElement>("#share-stats").disabled =
     !gameReady || signingOut || pendingClicks > 0 || !!counterLoad || localSaveReplacing;
   $("#network-notice").hidden = !offline || localMode;
-  $("#local-mode-note").hidden = !localMode;
   $("#counter-label").textContent = t(localMode ? "localClicks" : "savedClicks");
   $(".connection-label").textContent = t(localMode ? "simPing" : "ping");
   document.querySelectorAll<HTMLButtonElement>("[data-play-local]").forEach((button) => {
@@ -496,7 +497,7 @@ function renderCounters(data: Counters, allowDecrease = false, announce = false)
   )
     return;
   displayedCounters = data;
-  const progress = renderProgress(data, announce);
+  const progress = renderProgress(data, localMode, announce);
   for (const [id, count, unit] of [
     ["click-count", clicks?.count ?? 0],
     ["day-streak", data.streak_counter_day?.count ?? 0, "day"],
@@ -529,18 +530,16 @@ function applyLoadedCounters(data: Counters) {
     lastClicks.set(key, { time: data.click_count?.modified_time ?? null, saved: 0 });
   renderCounters(data, true);
   gameReady = true;
-  if (currentView === "achievements") unlockTrick("achievements");
 }
 
 function paintLastClick(saved = false) {
   const entry = lastClicks.get(lastClickKey());
-  lastClick.hidden = !entry;
-  if (!entry) return;
+  lastClick.hidden = !entry?.time;
+  if (!entry?.time) return;
   if (saved) entry.saved = Math.min(6, entry.saved + 1);
-  const time = entry.time;
-  lastClick.textContent = time
-    ? t("lastClick", { time: parseStoredTimestamp(time).toLocaleString(currentLanguage()) })
-    : t("noClicks");
+  lastClick.textContent = t("lastClick", {
+    time: parseStoredTimestamp(entry.time).toLocaleString(currentLanguage()),
+  });
   lastClick.style.setProperty("--last-click-opacity", String(1 - entry.saved / 6));
   lastClick.setAttribute("aria-hidden", String(entry.saved >= 6));
 }
@@ -825,7 +824,6 @@ clickButton.addEventListener("click", async (event) => {
     }
     paintLastClick(true);
     renderCounters(data, false, true);
-    recordSavedButtonClick(event);
     if (count >= (lastOnlineCounters?.click_count?.count ?? 0)) lastOnlineCounters = data;
     feedback.success(performance.now() - started);
     saved = true;
@@ -1037,7 +1035,7 @@ function resetLocalSaveFeedback() {
   clearAchievementNotice();
   resetClickState();
 }
-function startLocalGame() {
+function startLocalGame(scoreFirstClick = false) {
   if (pendingClicks > 0 || signingOut || localSaveReplacing) return;
   try {
     const data = localGame.read();
@@ -1047,8 +1045,15 @@ function startLocalGame() {
     gameReady = false;
     resetClickState();
     optionsDialog.close();
+    if (scoreFirstClick && pageFromLocation() === "achievements")
+      window.history.replaceState(null, "", playLink.href);
     openLocalGame(data);
     if (currentView === "game") clickButton.focus();
+    if (scoreFirstClick) {
+      offlineStartNotice.textContent = t("playingOffline");
+      offlineStartTimer = window.setTimeout(() => (offlineStartNotice.textContent = ""), 4000);
+      return clickLocal();
+    }
   } catch (caught) {
     optionsNotice("openLocalFailed", true, requestError(caught).message);
     if (!optionsDialog.open) {
@@ -1057,9 +1062,12 @@ function startLocalGame() {
     }
   }
 }
+$("#guest-click-button").addEventListener("click", () => {
+  if (currentView === "home") return startLocalGame(true);
+});
 document
   .querySelectorAll<HTMLButtonElement>("[data-play-local]")
-  .forEach((button) => button.addEventListener("click", startLocalGame));
+  .forEach((button) => button.addEventListener("click", () => startLocalGame()));
 $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
   if (pendingClicks > 0 || localSaveReplacing || authenticating) return;
   let remembered = true;
@@ -1072,6 +1080,7 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
   clearAchievementNotice();
   gameReady = false;
   resetClickState();
+  renderCounters({}, true);
   await boot();
   if (!remembered) {
     updateOptions();
@@ -1079,7 +1088,7 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
     optionsDialog.showModal();
   }
 });
-async function clickLocal(event: MouseEvent) {
+async function clickLocal(event: Activation = { detail: 0, clientX: 0, clientY: 0 }) {
   if (!gameReady || localSaveReplacing) return;
   const feedback = clickFeedback.start(clickButton, event, true),
     generation = clickGeneration,
@@ -1095,7 +1104,6 @@ async function clickLocal(event: MouseEvent) {
     if (generation !== clickGeneration) return;
     paintLastClick(true);
     renderCounters(data, false, true);
-    recordSavedButtonClick(event);
     showError("#game-error", "");
     window.setTimeout(() => {
       if (generation !== clickGeneration) return;
@@ -1238,6 +1246,7 @@ function applyLanguage() {
   buttonLanguage.reset(currentLanguage());
   paintButtonLanguage(currentLanguage());
   renderCounters(displayedCounters, true);
+  if (offlineStartNotice.textContent) offlineStartNotice.textContent = t("playingOffline");
   if (isPlayerView()) paintReset(true);
   updatePendingIndicator();
   updateGameControls();

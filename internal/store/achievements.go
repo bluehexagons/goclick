@@ -46,6 +46,40 @@ func (a *ClickAchievements) unlock() {
 	}
 }
 
+// EarnedBadgeIDs derives account unlocks from durable click and streak data.
+// The IDs are part of the game API and are independent of display names.
+func (c Counters) EarnedBadgeIDs() []string {
+	p, a := c.Progress, c.Achievements
+	earned := make([]string, 0, 15)
+	for _, badge := range [...]struct {
+		id  string
+		won bool
+	}{
+		{"gone-click", c.Clicks >= 1},
+		{"sentence", c.Clicks >= 25},
+		{"paragraph", c.Clicks >= 100},
+		{"essay", c.Clicks >= 500},
+		{"clicks-for-days", p.BestDayStreak >= 3},
+		{"one-week-streak", p.BestDayStreak >= 7},
+		{"good-to-see-you-again", p.BestWeekStreak >= 2},
+		{"double-fortnight", p.BestWeekStreak >= 4},
+		{"busy-day", a.Earned&century != 0},
+		{"brisk-pace", a.Earned&fourDigits != 0},
+		{"high-score", a.Earned&fiveGrand != 0},
+		{"three-visits", a.Earned&threeVisits != 0},
+		{"returning-clicker", a.ActiveDays >= 10},
+		{"welcome-back", a.ActiveMonths >= 3},
+	} {
+		if badge.won {
+			earned = append(earned, badge.id)
+		}
+	}
+	if len(earned) >= 10 {
+		earned = append(earned, "recursion")
+	}
+	return earned
+}
+
 // record takes a batch of one or more clicks from the same UTC hour. The
 // previous recorded instant, when present, is at or before the new one.
 func (a *ClickAchievements) record(previous *time.Time, now time.Time, count int64) {

@@ -9,7 +9,6 @@ import {
 } from "./progress.js";
 import type { Counters } from "./types.js";
 import { renderAchievements } from "./achievement-panel.js";
-import { onTrickUnlock } from "./button-tricks.js";
 
 const activityRail = $("#activity-days");
 const dayMarks = Array.from({ length: fortnight }, () => {
@@ -61,10 +60,11 @@ let resetMinute = NaN;
 let nextReset = NaN;
 let resetTimer = 0;
 let shownCounters: Counters = {};
-onTrickUnlock((local) => renderProgress(shownCounters, local));
+let shownLocalMode = false;
 
-export function renderProgress(data: Counters, announce = false) {
+export function renderProgress(data: Counters, local: boolean, announce = false) {
   shownCounters = data;
+  shownLocalMode = local;
   const progress =
     data.progress ??
     seedProgress(data.click_count?.modified_time, data.streak_counter_day?.count ?? 0);
@@ -84,7 +84,7 @@ export function renderProgress(data: Counters, announce = false) {
       );
   }
 
-  renderAchievements(data, progress, announce);
+  renderAchievements(data, progress, local, announce);
   return progress;
 }
 
@@ -98,7 +98,7 @@ export function paintReset(force = false) {
     nextReset = next;
     // Period badge meters reset on the calendar. The activity score still
     // reflects the dates ending on the last saved click.
-    if (!$("#achievement-view").hidden) renderProgress(shownCounters);
+    if (!$("#achievement-view").hidden) renderProgress(shownCounters, shownLocalMode);
   }
   const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
   const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;

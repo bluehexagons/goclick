@@ -1369,15 +1369,13 @@ footer a {
   width: 20px;
   height: 20px;
 }
-.local-badge {
+.offline-start-notice {
   color: var(--teal);
-  font: 12px var(--mono);
+  font-size: 13px;
+  margin: 0;
 }
-.local-mode-note {
-  color: var(--teal);
-  font-size: 12px;
-  margin: -6px 0 20px;
-  line-height: 1.6;
+.offline-start-notice:empty {
+  position: absolute;
 }
 
 .click-button {
@@ -1765,9 +1763,6 @@ select {
     margin: -20px -20px 0;
     padding: 16px 20px;
   }
-  .local-badge {
-    display: none;
-  }
 }
 :root[data-reduced-motion="true"] *,
 :root[data-reduced-motion="true"] *::before,
@@ -1888,7 +1883,6 @@ select {
   text-align: start;
 }
 [lang="ar"] .last-click,
-[lang="ar"] .local-mode-note,
 [lang="ar"] .streak-heading h2 {
   letter-spacing: normal;
 }
@@ -2232,7 +2226,6 @@ select {
   background: #372a14;
 }
 .achievement-description,
-.achievement-footnote,
 .achievement-empty {
   margin: 4px 0 0;
   text-align: start;
@@ -2240,7 +2233,6 @@ select {
   font-size: 13px;
   line-height: 1.45;
 }
-.achievement-footnote,
 .achievement-empty {
   margin-block-start: 16px;
 }

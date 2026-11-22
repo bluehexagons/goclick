@@ -187,11 +187,15 @@ the quieter page texture through a soft-light blend.
 Offline play has one local save slot. Options can download/import a
 `goclick-local` version 1 JSON save, restart the slot, or explicitly replace it
 with the last loaded account counters. Replacement requires confirmation.
+This explicit copy seeds the local save's progress. The browser calculates
+offline badges from that save, while online play uses the badge IDs returned
+by the server for the active account.
 Invalid imports and failed writes preserve the previous save. Web Locks
 serialize writes across tabs; IndexedDB transactions provide the fallback.
 Without either mechanism, writes fail without altering saved progress. Tabs
 observe changes while preserving feedback for clicks saved in the current tab.
-A persisted local-mode startup skips session checks.
+A persisted local-mode startup skips session checks. Pressing the home button
+while signed out opens the local game and saves the first click there.
 
 Share copies the current click total, UTC streaks, and site link, then opens
 options to customize the text. Daily/weekly click totals are not included.

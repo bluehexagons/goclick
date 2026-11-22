@@ -488,25 +488,28 @@ type entitiesResponse struct {
 	StreakCounterYear  *entity                  `json:"streak_counter_year"`
 	Progress           *store.ClickProgress     `json:"progress,omitempty"`
 	Achievements       *store.ClickAchievements `json:"achievements,omitempty"`
+	EarnedBadges       []string                 `json:"earned_badges"`
 }
 
 func entityResponse(counters store.Counters) entitiesResponse {
+	response := entitiesResponse{
+		Progress:     &counters.Progress,
+		Achievements: &counters.Achievements,
+		EarnedBadges: counters.EarnedBadgeIDs(),
+	}
 	if !counters.Exists {
-		return entitiesResponse{Progress: &counters.Progress, Achievements: &counters.Achievements}
+		return response
 	}
 	var modified *string
 	if counters.LastClickedAt != nil {
 		value := counters.LastClickedAt.Format(time.RFC3339Nano)
 		modified = &value
 	}
-	return entitiesResponse{
-		ClickCount:         &entity{Count: counters.Clicks, ModifiedTime: modified},
-		StreakCounterDay:   &entity{Count: counters.DayStreak, ModifiedTime: modified},
-		StreakCounterMonth: &entity{Count: counters.MonthStreak, ModifiedTime: modified},
-		StreakCounterYear:  &entity{Count: counters.YearStreak, ModifiedTime: modified},
-		Progress:           &counters.Progress,
-		Achievements:       &counters.Achievements,
-	}
+	response.ClickCount = &entity{Count: counters.Clicks, ModifiedTime: modified}
+	response.StreakCounterDay = &entity{Count: counters.DayStreak, ModifiedTime: modified}
+	response.StreakCounterMonth = &entity{Count: counters.MonthStreak, ModifiedTime: modified}
+	response.StreakCounterYear = &entity{Count: counters.YearStreak, ModifiedTime: modified}
+	return response
 }
 
 func newSessionTokens(r *http.Request) (raw, previous []byte, err error) {

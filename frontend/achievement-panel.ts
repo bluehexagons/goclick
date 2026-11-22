@@ -142,7 +142,6 @@ onLanguageChange(() => {
 export function showAchievementNotices() {
   if (noticeScheduled || !pending.size || game.hidden || document.hidden) return;
   noticeScheduled = true;
-  // A saved click can also earn a button trick in the same turn.
   void Promise.resolve().then(() => {
     noticeScheduled = false;
     if (!pending.size || game.hidden || document.hidden) return;
@@ -159,8 +158,13 @@ export function showAchievementNotices() {
   });
 }
 
-export function renderAchievements(data: Counters, progress: ClickProgress, announce: boolean) {
-  const next = badgesFor(data, progress);
+export function renderAchievements(
+  data: Counters,
+  progress: ClickProgress,
+  local: boolean,
+  announce: boolean,
+) {
+  const next = badgesFor(data, progress, local);
   const key = `${currentLanguage()}:${next
     .map(({ earned, meter }) => `${Number(earned)}-${meter?.count ?? ""}`)
     .join(",")}`;

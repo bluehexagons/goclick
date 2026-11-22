@@ -32,7 +32,8 @@ module.exports = async function checkInteraction(page, baseURL) {
     "Native page drag must be cancelled",
   );
 
-  await page.locator("#home-view [data-play-local]").click();
+  await page.locator("#guest-click-button").click();
+  await page.getByText("Continuing offline.", { exact: true }).waitFor();
   const button = await page.locator("#click-button").boundingBox();
   await page.mouse.move(button.x + button.width / 2, button.y + button.height / 2);
   await page.mouse.down();
@@ -40,7 +41,7 @@ module.exports = async function checkInteraction(page, baseURL) {
     steps: 6,
   });
   await page.mouse.up();
-  await page.waitForFunction(() => document.querySelector("#click-count").textContent === "1");
+  await page.waitForFunction(() => document.querySelector("#click-count").textContent === "2");
   ensure((await selection()) === "", "Gameplay dragging must not select the page");
 
   await page.evaluate(() => {
@@ -55,7 +56,7 @@ module.exports = async function checkInteraction(page, baseURL) {
   const copied = await page.evaluate(() => window.copiedStats);
   ensure(
     copied ===
-      `Go Click · Offline\nLocal clicks: 1\nUTC streaks: 1 day · 1 month · 1 year\nPlay: ${origin}`,
+      `Go Click · Offline\nLocal clicks: 2\nUTC streaks: 1 day · 1 month · 1 year\nPlay: ${origin}`,
     "Share must copy the displayed local stats",
   );
   await page.locator("#close-share").click();

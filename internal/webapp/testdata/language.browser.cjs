@@ -15,7 +15,7 @@ async function checkLanguage(page, baseURL) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(baseURL);
   await page.locator("#home-view").waitFor({ state: "visible" });
-  await page.locator("#home-view [data-play-local]").click();
+  await page.locator("#guest-click-button").click();
   await page.locator("#game-view").waitFor({ state: "visible" });
   requests.length = 0;
   const selector = page.locator("#language-setting");
@@ -181,7 +181,7 @@ async function checkLanguage(page, baseURL) {
   await page.keyboard.press("Space");
   await page.waitForFunction(
     () =>
-      document.querySelector("#click-count").textContent === new Intl.NumberFormat("ar").format(1),
+      document.querySelector("#click-count").textContent === new Intl.NumberFormat("ar").format(2),
   );
   // Force the surprise branch while keeping the scoring/input path unchanged.
   await page.evaluate(() => {
@@ -211,7 +211,7 @@ async function checkLanguage(page, baseURL) {
   });
   await page.waitForFunction(
     () =>
-      document.querySelector("#click-count").textContent === new Intl.NumberFormat("ar").format(3),
+      document.querySelector("#click-count").textContent === new Intl.NumberFormat("ar").format(4),
   );
   await page.locator("#share-stats").click();
   await page.locator("#share-dialog").waitFor({ state: "visible" });
@@ -229,7 +229,7 @@ async function checkLanguage(page, baseURL) {
   await page.locator("#game-view").waitFor({ state: "visible" });
   ensure((await selectedName.getAttribute("lang")) === "ar", "Language did not survive reload");
   ensure(
-    (await page.locator("#click-count").textContent()) === new Intl.NumberFormat("ar").format(3),
+    (await page.locator("#click-count").textContent()) === new Intl.NumberFormat("ar").format(4),
     "Save changed on reload",
   );
   await page.locator("#open-achievements").click();
@@ -252,7 +252,7 @@ async function checkLanguage(page, baseURL) {
   return {
     languages: codes.length,
     widths: [1280, 320],
-    localClicks: 3,
+    localClicks: 4,
     accountRequests: requests.length,
     errors,
   };

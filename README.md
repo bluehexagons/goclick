@@ -25,7 +25,8 @@ bursts of white noise for their click and impact textures. Releases are
 shorter and lighter. Clustered replies share a quiet ping, with failures taking
 priority. Muting stops active sounds immediately.
 
-**Play offline** keeps a separate local save in this browser, without account
+Click the home button while signed out to start playing offline. **Play
+offline** in Options switches to the same browser save without account
 requests or online click limits. Download/import a save or restart it from
 Options. Local clicks never upload or change account progress. The page must
 already be loaded to play; there is no service worker. Download a save before
@@ -40,9 +41,9 @@ occasionally changes its label to another language until the next click. See the
 **Achievements** cover lifetime clicks, streaks, total days and months played,
 period click totals, and playing at different hours of the same day. Days and
 months use UTC. Weeks run Monday through Sunday in UTC, and one saved click
-counts toward a weekly streak. Earned achievements survive breaks. Online and
-offline saves track calendar progress separately. Button tricks are discoveries
-stored in the current browser and are shared between online and offline play.
+counts toward a weekly streak. Earned achievements survive breaks. The server
+awards online achievements for the signed-in account. During offline play,
+the browser calculates achievements from its local save.
 Open **Achievements** in the header to see your activity and filter badges by
 earned or locked. Locked badges show hints until you turn on **Reveal locked
 requirements**. Your browser remembers this choice. New unlocks appear briefly
@@ -126,6 +127,8 @@ is a 14-bit activity mask, with the last saved click's UTC date in bit zero
 and earlier dates in increasing bit positions. The `achievements` object contains
 capped period click totals, a mask of UTC hours played that day, capped total
 active days and months, and a mask of earned period badges.
+The `earned_badges` array lists the IDs of all achievements earned by the
+authenticated account.
 
 The browser rechecks the game snapshot when it regains focus. A later return
 supersedes an older read still in flight. Changing accounts also updates an open

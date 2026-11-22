@@ -2,7 +2,6 @@ import { currentLanguage, formatNumber, formatUnit, message as t } from "./i18n.
 import type { Language } from "./i18n.js";
 import type { ClickProgress, Counters } from "./types.js";
 
-import { hasTrick, savedTouchClicks } from "./button-tricks.js";
 import {
   century,
   emptyClickAchievements,
@@ -13,7 +12,7 @@ import {
   utcWeek,
 } from "./progress.js";
 
-export type BadgeIcon = "medal" | "clicks" | "calendar" | "pace" | "discovery";
+export type BadgeIcon = "medal" | "clicks" | "calendar" | "pace";
 
 export interface Badge {
   icon: BadgeIcon;
@@ -38,7 +37,8 @@ function requirements(language: Language) {
   return translatedRequirements.get(language)!;
 }
 
-export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
+export function badgesFor(data: Counters, progress: ClickProgress, local: boolean): Badge[] {
+  const accountBadges = new Set(data.earned_badges);
   const language = currentLanguage();
   const clicks = data.click_count?.count ?? 0;
   const calendar = data.achievements ?? emptyClickAchievements;
@@ -55,15 +55,17 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
   }
   const localized = language === "en" ? [] : requirements(language);
   function badge(
+    id: string,
     icon: BadgeIcon,
     name: string,
     hint: string,
     description: string,
-    earned: boolean,
+    earnedOffline: boolean,
     translation?: string,
     current?: number,
     total?: number,
   ): Badge {
+    const earned = local ? earnedOffline : accountBadges.has(id);
     return {
       icon,
       name,
@@ -79,6 +81,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
   }
   const badges = [
     badge(
+      "gone-click",
       "medal",
       "Gone Click",
       "An early milestone.",
@@ -89,6 +92,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       1,
     ),
     badge(
+      "sentence",
       "clicks",
       "Sentence",
       "A few clicks in.",
@@ -99,6 +103,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       25,
     ),
     badge(
+      "paragraph",
       "clicks",
       "Paragraph",
       "The clicks add up.",
@@ -109,6 +114,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       100,
     ),
     badge(
+      "essay",
       "clicks",
       "Essay",
       "No time limit.",
@@ -119,6 +125,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       500,
     ),
     badge(
+      "clicks-for-days",
       "calendar",
       "Clicks for Days",
       "A short run of consecutive days.",
@@ -129,6 +136,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       3,
     ),
     badge(
+      "one-week-streak",
       "calendar",
       "One-Week Streak",
       "A longer daily streak.",
@@ -139,6 +147,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       7,
     ),
     badge(
+      "good-to-see-you-again",
       "calendar",
       "Good to See You Again",
       "Check in again next week.",
@@ -149,6 +158,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       2,
     ),
     badge(
+      "double-fortnight",
       "calendar",
       "Double Fortnight",
       "A longer weekly streak.",
@@ -159,6 +169,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       4,
     ),
     badge(
+      "busy-day",
       "pace",
       "Busy Day",
       "Clicks within one UTC day.",
@@ -169,6 +180,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       100,
     ),
     badge(
+      "brisk-pace",
       "pace",
       "Brisk Pace",
       "Clicks within one UTC week.",
@@ -179,6 +191,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       1000,
     ),
     badge(
+      "high-score",
       "pace",
       "High Score",
       "Clicks within one UTC month.",
@@ -189,6 +202,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       5000,
     ),
     badge(
+      "three-visits",
       "pace",
       "Three Visits",
       "Different times on the same day.",
@@ -199,6 +213,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       3,
     ),
     badge(
+      "returning-clicker",
       "calendar",
       "Returning Clicker",
       "The days can be spread out.",
@@ -209,6 +224,7 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       10,
     ),
     badge(
+      "welcome-back",
       "calendar",
       "Welcome Back",
       "An occasional visit is enough.",
@@ -218,79 +234,11 @@ export function badgesFor(data: Counters, progress: ClickProgress): Badge[] {
       calendar.active_months,
       3,
     ),
-    badge(
-      "discovery",
-      "Hold It",
-      "The button can wait.",
-      "Hold the button for 10 seconds.",
-      hasTrick("hold"),
-    ),
-    badge(
-      "discovery",
-      "Behind the Button",
-      "The button has a back.",
-      "Drag the button far enough to reveal the outlet.",
-      hasTrick("outlet"),
-    ),
-    badge(
-      "discovery",
-      "Key Player",
-      "Keyboard input.",
-      "Press and release Space or Enter with the game button focused.",
-      hasTrick("keyboard"),
-    ),
-    badge(
-      "discovery",
-      "U-Turn",
-      "A return trip.",
-      "Drag the button away, return it to its starting point, then release to save a click.",
-      hasTrick("u-turn"),
-    ),
-    badge(
-      "discovery",
-      "That Seems Unsafe",
-      "The cord has some slack.",
-      "Loosen the plug by making at least four long pulls in at least three different directions.",
-      hasTrick("loose-plug"),
-    ),
-    badge(
-      "discovery",
-      "Alternative Press",
-      "There’s more than one way to click.",
-      "Save one click with the keyboard and one with a pointer, in either order.",
-      hasTrick("saved-keyboard") && hasTrick("saved-pointer"),
-      undefined,
-      Number(hasTrick("saved-keyboard")) + Number(hasTrick("saved-pointer")),
-      2,
-    ),
-    badge(
-      "discovery",
-      "Mobile Mogul",
-      "Touch input.",
-      "Save 100 clicks using touch in one session.",
-      hasTrick("touch-100"),
-      undefined,
-      savedTouchClicks(),
-      100,
-    ),
-    badge(
-      "discovery",
-      "Wrong Button",
-      "That’s a mouse button too.",
-      "Click the game button with the middle or right mouse button.",
-      hasTrick("wrong-button"),
-    ),
-    badge(
-      "medal",
-      "Curiosity",
-      "A look around the interface.",
-      "Open the Achievements screen.",
-      hasTrick("achievements"),
-    ),
   ];
   const earned = badges.filter((entry) => entry.earned).length;
   badges.push(
     badge(
+      "recursion",
       "medal",
       "Recursion",
       "Achievements count toward this one.",

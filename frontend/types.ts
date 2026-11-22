@@ -36,6 +36,7 @@ export interface ClickAchievements {
 export type Counters = Partial<Record<CounterKind, Counter | null>> & {
   progress?: ClickProgress;
   achievements?: ClickAchievements;
+  earned_badges?: string[];
 };
 export interface GameState {
   user: User;

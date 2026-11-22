@@ -561,7 +561,7 @@
   var gameSettings = (() => {
     const key = "goclick.settings.v1";
     const browser = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const listeners3 = /* @__PURE__ */ new Set();
+    const listeners2 = /* @__PURE__ */ new Set();
     const settingListeners = /* @__PURE__ */ new Set();
     let value = {
       motion: "auto",
@@ -592,7 +592,7 @@
         return value.motion === "on" || value.motion === "auto" && browser.matches;
       },
       addEventListener(type, callback) {
-        if (type === "change") listeners3.add(callback);
+        if (type === "change") listeners2.add(callback);
       }
     };
     let appliedMotion;
@@ -602,7 +602,7 @@
       for (const callback of settingListeners) callback();
       if (matches === appliedMotion) return;
       appliedMotion = matches;
-      for (const callback of listeners3) callback({ matches });
+      for (const callback of listeners2) callback({ matches });
     }
     browser.addEventListener("change", apply);
     window.addEventListener("storage", (event) => {
@@ -1961,66 +1961,6 @@
     }
   };
 
-  // frontend/button-tricks.ts
-  var tricks = [
-    "hold",
-    "outlet",
-    "keyboard",
-    "u-turn",
-    "loose-plug",
-    "saved-keyboard",
-    "saved-pointer",
-    "touch-100",
-    "wrong-button",
-    "achievements"
-  ];
-  var trickPrefix = "goclick.trick.";
-  var earnedTricks = /* @__PURE__ */ new Set();
-  var listeners = /* @__PURE__ */ new Set();
-  for (const trick of tricks) {
-    try {
-      if (localStorage.getItem(trickPrefix + trick) === "1") earnedTricks.add(trick);
-    } catch {
-    }
-  }
-  function hasTrick(trick) {
-    return earnedTricks.has(trick);
-  }
-  function unlockTrick(trick) {
-    if (hasTrick(trick)) return;
-    earnedTricks.add(trick);
-    try {
-      localStorage.setItem(trickPrefix + trick, "1");
-    } catch {
-    }
-    for (const listener of listeners) listener(true);
-  }
-  function onTrickUnlock(listener) {
-    listeners.add(listener);
-  }
-  window.addEventListener("storage", (event) => {
-    const trick = tricks.find((name) => event.key === trickPrefix + name);
-    if (trick && event.newValue === "1" && !hasTrick(trick)) {
-      earnedTricks.add(trick);
-      for (const listener of listeners) listener(false);
-    }
-  });
-  var activations = /* @__PURE__ */ new WeakMap();
-  var touchClicks = 0;
-  var savedTouchClicks = () => touchClicks;
-  function rememberButtonActivation(event, activation) {
-    activations.set(event, activation);
-  }
-  function recordSavedButtonClick(event) {
-    const activation = activations.get(event);
-    if (!activation) return;
-    activations.delete(event);
-    unlockTrick(activation.source === "keyboard" ? "saved-keyboard" : "saved-pointer");
-    if (activation.uTurn) unlockTrick("u-turn");
-    if (activation.source === "touch" && !hasTrick("touch-100") && ++touchClicks === 100)
-      unlockTrick("touch-100");
-  }
-
   // frontend/option-messages.ts
   var englishOptions = {
     preferencesStored: "Saved in this browser.",
@@ -2696,7 +2636,6 @@
     revealRequirements: "Reveal locked requirements",
     allAchievementsEarned: "You\u2019ve earned every achievement.",
     noAchievementsEarned: "No achievements earned yet.",
-    tricksStored: "Button tricks are saved in this browser.",
     achievementUnlocked: "Achievement unlocked",
     achievementsUnlocked: "Achievements unlocked",
     language: "Language",
@@ -2724,7 +2663,6 @@
     feedbackSimulatedHint: "Simulated response \xB7 {time} ms \xB7 recent average {average} ms",
     copyChanged: "Preview changed. Copy again to share the updated text.",
     lastClick: "Last click {time}",
-    noClicks: "No saved clicks yet.",
     timezone: "Shown in your local time zone",
     refresh: "Refresh counter",
     share: "Share",
@@ -2745,7 +2683,7 @@
     streaks: "Streaks",
     streakLabel: "Click streaks",
     networkNotice: "Offline. Clicking is paused. The counter refreshes when you reconnect.",
-    localMode: "Offline \xB7 local save",
+    playingOffline: "Continuing offline.",
     offline: "Offline",
     backOnline: "Back online",
     signOut: "Sign out",
@@ -2802,7 +2740,6 @@
       revealRequirements: "\u663E\u793A\u672A\u89E3\u9501\u6210\u5C31\u7684\u6761\u4EF6",
       allAchievementsEarned: "\u4F60\u5DF2\u83B7\u5F97\u6240\u6709\u6210\u5C31\u3002",
       noAchievementsEarned: "\u5C1A\u672A\u83B7\u5F97\u4EFB\u4F55\u6210\u5C31\u3002",
-      tricksStored: "\u6309\u94AE\u5F69\u86CB\u8BB0\u5F55\u4FDD\u5B58\u5728\u6B64\u6D4F\u89C8\u5668\u4E2D\u3002",
       achievementUnlocked: "\u6210\u5C31\u5DF2\u89E3\u9501",
       achievementsUnlocked: "\u6210\u5C31\u5DF2\u89E3\u9501",
       language: "\u8BED\u8A00",
@@ -2830,7 +2767,6 @@
       feedbackSimulatedHint: "\u6A21\u62DF\u54CD\u5E94 \xB7 {time} ms \xB7 \u8FD1\u671F\u5E73\u5747 {average} ms",
       copyChanged: "\u9884\u89C8\u5DF2\u66F4\u6539\u3002\u8BF7\u518D\u6B21\u590D\u5236\u4EE5\u5206\u4EAB\u66F4\u65B0\u540E\u7684\u6587\u672C\u3002",
       lastClick: "\u4E0A\u6B21\u70B9\u51FB\uFF1A{time}",
-      noClicks: "\u5C1A\u65E0\u5DF2\u4FDD\u5B58\u7684\u70B9\u51FB\u3002",
       timezone: "\u6309\u60A8\u7684\u672C\u5730\u65F6\u533A\u663E\u793A",
       refresh: "\u5237\u65B0\u8BA1\u6570",
       share: "\u5206\u4EAB",
@@ -2851,7 +2787,7 @@
       streaks: "\u8FDE\u7EED\u8BB0\u5F55",
       streakLabel: "\u8FDE\u7EED\u70B9\u51FB\u8BB0\u5F55",
       networkNotice: "\u7F51\u7EDC\u5DF2\u65AD\u5F00\uFF0C\u70B9\u51FB\u5DF2\u6682\u505C\u3002\u91CD\u65B0\u8FDE\u63A5\u540E\u5C06\u5237\u65B0\u5DF2\u4FDD\u5B58\u7684\u8FDB\u5EA6\u3002",
-      localMode: "\u79BB\u7EBF \xB7 \u672C\u5730\u5B58\u6863",
+      playingOffline: "\u7EE7\u7EED\u79BB\u7EBF\u6E38\u73A9\u3002",
       offline: "\u79BB\u7EBF",
       backOnline: "\u8FD4\u56DE\u5728\u7EBF\u6A21\u5F0F",
       signOut: "\u9000\u51FA\u767B\u5F55",
@@ -2907,7 +2843,6 @@
       revealRequirements: "Mostrar los requisitos de los logros bloqueados",
       allAchievementsEarned: "Has conseguido todos los logros.",
       noAchievementsEarned: "A\xFAn no has conseguido ning\xFAn logro.",
-      tricksStored: "Los trucos del bot\xF3n se guardan en este navegador.",
       achievementUnlocked: "Logro desbloqueado",
       achievementsUnlocked: "Logros desbloqueados",
       language: "Idioma",
@@ -2935,7 +2870,6 @@
       feedbackSimulatedHint: "Respuesta simulada \xB7 {time} ms \xB7 media reciente {average} ms",
       copyChanged: "La vista previa cambi\xF3. Copia de nuevo para compartir el texto actualizado.",
       lastClick: "\xDAltimo clic: {time}",
-      noClicks: "A\xFAn no hay clics guardados.",
       timezone: "Se muestra en tu zona horaria local",
       refresh: "Actualizar contador",
       share: "Compartir",
@@ -2956,7 +2890,7 @@
       streaks: "Rachas",
       streakLabel: "Rachas de clics",
       networkNotice: "No tienes conexi\xF3n. Los clics est\xE1n en pausa. Tu progreso guardado se actualizar\xE1 al reconectarte.",
-      localMode: "Sin conexi\xF3n \xB7 guardado local",
+      playingOffline: "Seguimos sin conexi\xF3n.",
       offline: "Sin conexi\xF3n",
       backOnline: "Volver al modo en l\xEDnea",
       signOut: "Cerrar sesi\xF3n",
@@ -3012,7 +2946,6 @@
       revealRequirements: "\u0625\u0638\u0647\u0627\u0631 \u0634\u0631\u0648\u0637 \u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A \u0627\u0644\u0645\u0642\u0641\u0644\u0629",
       allAchievementsEarned: "\u0644\u0642\u062F \u062D\u0635\u0644\u062A \u0639\u0644\u0649 \u062C\u0645\u064A\u0639 \u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A.",
       noAchievementsEarned: "\u0644\u0645 \u062A\u062D\u0635\u0644 \u0639\u0644\u0649 \u0623\u064A \u0625\u0646\u062C\u0627\u0632 \u0628\u0639\u062F.",
-      tricksStored: "\u062A\u064F\u062D\u0641\u0638 \u062D\u064A\u0644 \u0627\u0644\u0632\u0631 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0645\u062A\u0635\u0641\u062D.",
       achievementUnlocked: "\u062A\u0645 \u0641\u062A\u062D \u0625\u0646\u062C\u0627\u0632",
       achievementsUnlocked: "\u062A\u0645 \u0641\u062A\u062D \u0639\u062F\u0629 \u0625\u0646\u062C\u0627\u0632\u0627\u062A",
       language: "\u0627\u0644\u0644\u063A\u0629",
@@ -3040,7 +2973,6 @@
       feedbackSimulatedHint: "\u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0627\u0629 \xB7 {time} ms \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average} ms",
       copyChanged: "\u062A\u063A\u064A\u0651\u0631\u062A \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629. \u0627\u0646\u0633\u062E \u0645\u062C\u062F\u062F\u064B\u0627 \u0644\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0646\u0635 \u0627\u0644\u0645\u062D\u062F\u0651\u062B.",
       lastClick: "\u0622\u062E\u0631 \u0646\u0642\u0631\u0629: {time}",
-      noClicks: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0646\u0642\u0631\u0627\u062A \u0645\u062D\u0641\u0648\u0638\u0629 \u0628\u0639\u062F.",
       timezone: "\u064A\u064F\u0639\u0631\u0636 \u0628\u062A\u0648\u0642\u064A\u062A\u0643 \u0627\u0644\u0645\u062D\u0644\u064A",
       refresh: "\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0639\u062F\u0627\u062F",
       share: "\u0645\u0634\u0627\u0631\u0643\u0629",
@@ -3061,7 +2993,7 @@
       streaks: "\u0633\u0644\u0627\u0633\u0644 \u0645\u062A\u062A\u0627\u0644\u064A\u0629",
       streakLabel: "\u0633\u0644\u0627\u0633\u0644 \u0627\u0644\u0646\u0642\u0631 \u0627\u0644\u0645\u062A\u062A\u0627\u0644\u064A\u0629",
       networkNotice: "\u0623\u0646\u062A \u063A\u064A\u0631 \u0645\u062A\u0635\u0644. \u0627\u0644\u0646\u0642\u0631 \u0645\u062A\u0648\u0642\u0641 \u0645\u0624\u0642\u062A\u064B\u0627. \u0633\u064A\u064F\u062D\u062F\u064E\u0651\u062B \u062A\u0642\u062F\u0645\u0643 \u0627\u0644\u0645\u062D\u0641\u0648\u0638 \u0639\u0646\u062F \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0627\u062A\u0635\u0627\u0644.",
-      localMode: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644 \xB7 \u062D\u0641\u0638 \u0645\u062D\u0644\u064A",
+      playingOffline: "\u0645\u062A\u0627\u0628\u0639\u0629 \u0627\u0644\u0644\u0639\u0628 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644.",
       offline: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644",
       backOnline: "\u0627\u0644\u0639\u0648\u062F\u0629 \u0644\u0644\u0627\u062A\u0635\u0627\u0644",
       signOut: "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C",
@@ -3117,7 +3049,6 @@
       revealRequirements: "\u0932\u0949\u0915 \u0915\u0940 \u0917\u0908 \u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u094B\u0902 \u0915\u0940 \u0936\u0930\u094D\u0924\u0947\u0902 \u0926\u093F\u0916\u093E\u090F\u0901",
       allAchievementsEarned: "\u0906\u092A\u0928\u0947 \u0938\u092D\u0940 \u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901 \u0939\u093E\u0938\u093F\u0932 \u0915\u0930 \u0932\u0940 \u0939\u0948\u0902\u0964",
       noAchievementsEarned: "\u0905\u092D\u0940 \u0915\u094B\u0908 \u0909\u092A\u0932\u092C\u094D\u0927\u093F \u0939\u093E\u0938\u093F\u0932 \u0928\u0939\u0940\u0902 \u0939\u0941\u0908 \u0939\u0948\u0964",
-      tricksStored: "\u092C\u091F\u0928 \u0915\u0940 \u0924\u0930\u0915\u0940\u092C\u0947\u0902 \u0907\u0938 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u092E\u0947\u0902 \u0938\u0939\u0947\u091C\u0940 \u091C\u093E\u0924\u0940 \u0939\u0948\u0902\u0964",
       achievementUnlocked: "\u0909\u092A\u0932\u092C\u094D\u0927\u093F \u0905\u0928\u0932\u0949\u0915 \u0939\u0941\u0908",
       achievementsUnlocked: "\u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901 \u0905\u0928\u0932\u0949\u0915 \u0939\u0941\u0908\u0902",
       language: "\u092D\u093E\u0937\u093E",
@@ -3145,7 +3076,6 @@
       feedbackSimulatedHint: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \xB7 {time} ms \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average} ms",
       copyChanged: "\u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u092C\u0926\u0932 \u0917\u092F\u093E \u0939\u0948\u0964 \u0928\u092F\u093E \u091F\u0947\u0915\u094D\u0938\u094D\u091F \u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092B\u093F\u0930 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
       lastClick: "\u092A\u093F\u091B\u0932\u093E \u0915\u094D\u0932\u093F\u0915: {time}",
-      noClicks: "\u0905\u092D\u0940 \u0915\u094B\u0908 \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E \u0939\u0948\u0964",
       timezone: "\u0906\u092A\u0915\u0947 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u092E\u092F \u0915\u094D\u0937\u0947\u0924\u094D\u0930 \u092E\u0947\u0902 \u0926\u093F\u0916\u093E\u092F\u093E \u0917\u092F\u093E \u0939\u0948",
       refresh: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0915\u0930\u0947\u0902",
       share: "\u0938\u093E\u091D\u093E \u0915\u0930\u0947\u0902",
@@ -3166,7 +3096,7 @@
       streaks: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u093E \u0915\u094D\u0930\u092E",
       streakLabel: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0915\u094D\u0932\u093F\u0915 \u0915\u0947 \u0915\u094D\u0930\u092E",
       networkNotice: "\u0906\u092A \u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0939\u0948\u0902\u0964 \u0915\u094D\u0932\u093F\u0915 \u0930\u0941\u0915\u0947 \u0939\u0941\u090F \u0939\u0948\u0902\u0964 \u0926\u094B\u092C\u093E\u0930\u093E \u091C\u0941\u0921\u093C\u0928\u0947 \u092A\u0930 \u0938\u0939\u0947\u091C\u0940 \u0917\u0908 \u092A\u094D\u0930\u0917\u0924\u093F \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0939\u094B\u0917\u0940\u0964",
-      localMode: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \xB7 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935",
+      playingOffline: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u0947\u0932 \u091C\u093E\u0930\u0940 \u0939\u0948\u0964",
       offline: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928",
       backOnline: "\u0911\u0928\u0932\u093E\u0907\u0928 \u0932\u094C\u091F\u0947\u0902",
       signOut: "\u0938\u093E\u0907\u0928 \u0906\u0909\u091F \u0915\u0930\u0947\u0902",
@@ -3222,7 +3152,6 @@
       revealRequirements: "Tampilkan syarat pencapaian yang terkunci",
       allAchievementsEarned: "Kamu sudah meraih semua pencapaian.",
       noAchievementsEarned: "Belum ada pencapaian yang diraih.",
-      tricksStored: "Trik tombol disimpan di browser ini.",
       achievementUnlocked: "Pencapaian terbuka",
       achievementsUnlocked: "Pencapaian terbuka",
       language: "Bahasa",
@@ -3250,7 +3179,6 @@
       feedbackSimulatedHint: "Respons simulasi \xB7 {time} ms \xB7 rata-rata terkini {average} ms",
       copyChanged: "Pratinjau berubah. Salin lagi untuk membagikan teks terbaru.",
       lastClick: "Klik terakhir: {time}",
-      noClicks: "Belum ada klik tersimpan.",
       timezone: "Ditampilkan dalam zona waktu lokal Anda",
       refresh: "Muat ulang penghitung",
       share: "Bagikan",
@@ -3271,7 +3199,7 @@
       streaks: "Rentetan",
       streakLabel: "Rentetan klik",
       networkNotice: "Anda sedang luring. Klik dijeda. Progres tersimpan akan diperbarui saat tersambung kembali.",
-      localMode: "Luring \xB7 simpanan lokal",
+      playingOffline: "Melanjutkan permainan secara luring.",
       offline: "Luring",
       backOnline: "Kembali daring",
       signOut: "Keluar",
@@ -3327,7 +3255,6 @@
       revealRequirements: "Mostrar requisitos das conquistas bloqueadas",
       allAchievementsEarned: "Voc\xEA ganhou todas as conquistas.",
       noAchievementsEarned: "Voc\xEA ainda n\xE3o ganhou nenhuma conquista.",
-      tricksStored: "Os truques do bot\xE3o s\xE3o salvos neste navegador.",
       achievementUnlocked: "Conquista desbloqueada",
       achievementsUnlocked: "Conquistas desbloqueadas",
       language: "Idioma",
@@ -3355,7 +3282,6 @@
       feedbackSimulatedHint: "Resposta simulada \xB7 {time} ms \xB7 m\xE9dia recente {average} ms",
       copyChanged: "A pr\xE9via mudou. Copie novamente para compartilhar o texto atualizado.",
       lastClick: "\xDAltimo clique: {time}",
-      noClicks: "Nenhum clique salvo ainda.",
       timezone: "Exibido no seu fuso hor\xE1rio local",
       refresh: "Atualizar contador",
       share: "Compartilhar",
@@ -3376,7 +3302,7 @@
       streaks: "Sequ\xEAncias",
       streakLabel: "Sequ\xEAncias de cliques",
       networkNotice: "Voc\xEA est\xE1 sem conex\xE3o. Os cliques est\xE3o pausados. Seu progresso salvo ser\xE1 atualizado ao reconectar.",
-      localMode: "Offline \xB7 save local",
+      playingOffline: "Continuando offline.",
       offline: "Offline",
       backOnline: "Voltar ao modo online",
       signOut: "Sair",
@@ -3432,7 +3358,6 @@
       revealRequirements: "Afficher les conditions des succ\xE8s verrouill\xE9s",
       allAchievementsEarned: "Vous avez obtenu tous les succ\xE8s.",
       noAchievementsEarned: "Vous n\u2019avez encore obtenu aucun succ\xE8s.",
-      tricksStored: "Les astuces du bouton sont enregistr\xE9es dans ce navigateur.",
       achievementUnlocked: "Succ\xE8s d\xE9verrouill\xE9",
       achievementsUnlocked: "Succ\xE8s d\xE9verrouill\xE9s",
       language: "Langue",
@@ -3460,7 +3385,6 @@
       feedbackSimulatedHint: "R\xE9ponse simul\xE9e \xB7 {time} ms \xB7 moyenne r\xE9cente {average} ms",
       copyChanged: "L\u2019aper\xE7u a chang\xE9. Copiez \xE0 nouveau pour partager le texte actualis\xE9.",
       lastClick: "Dernier clic : {time}",
-      noClicks: "Aucun clic enregistr\xE9 pour le moment.",
       timezone: "Affich\xE9 dans votre fuseau horaire local",
       refresh: "Actualiser le compteur",
       share: "Partager",
@@ -3481,7 +3405,7 @@
       streaks: "S\xE9ries",
       streakLabel: "S\xE9ries de clics",
       networkNotice: "Vous \xEAtes hors ligne. Les clics sont suspendus. Votre progression sera actualis\xE9e \xE0 la reconnexion.",
-      localMode: "Hors ligne \xB7 sauvegarde locale",
+      playingOffline: "La partie continue hors ligne.",
       offline: "Hors ligne",
       backOnline: "Revenir en ligne",
       signOut: "Se d\xE9connecter",
@@ -3537,7 +3461,6 @@
       revealRequirements: "\u672A\u7372\u5F97\u306E\u5B9F\u7E3E\u306E\u6761\u4EF6\u3092\u8868\u793A",
       allAchievementsEarned: "\u3059\u3079\u3066\u306E\u5B9F\u7E3E\u3092\u7372\u5F97\u3057\u307E\u3057\u305F\u3002",
       noAchievementsEarned: "\u307E\u3060\u7372\u5F97\u3057\u305F\u5B9F\u7E3E\u306F\u3042\u308A\u307E\u305B\u3093\u3002",
-      tricksStored: "\u30DC\u30BF\u30F3\u306E\u96A0\u3057\u8981\u7D20\u306F\u3053\u306E\u30D6\u30E9\u30A6\u30B6\u30FC\u306B\u4FDD\u5B58\u3055\u308C\u307E\u3059\u3002",
       achievementUnlocked: "\u5B9F\u7E3E\u3092\u7372\u5F97\u3057\u307E\u3057\u305F",
       achievementsUnlocked: "\u8907\u6570\u306E\u5B9F\u7E3E\u3092\u7372\u5F97\u3057\u307E\u3057\u305F",
       language: "\u8A00\u8A9E",
@@ -3565,7 +3488,6 @@
       feedbackSimulatedHint: "\u6A21\u64EC\u5FDC\u7B54 \xB7 {time} ms \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average} ms",
       copyChanged: "\u30D7\u30EC\u30D3\u30E5\u30FC\u304C\u5909\u308F\u308A\u307E\u3057\u305F\u3002\u66F4\u65B0\u3055\u308C\u305F\u30C6\u30AD\u30B9\u30C8\u3092\u5171\u6709\u3059\u308B\u306B\u306F\u3001\u3082\u3046\u4E00\u5EA6\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       lastClick: "\u6700\u5F8C\u306E\u30AF\u30EA\u30C3\u30AF\uFF1A{time}",
-      noClicks: "\u4FDD\u5B58\u6E08\u307F\u30AF\u30EA\u30C3\u30AF\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002",
       timezone: "\u304A\u4F4F\u307E\u3044\u306E\u30BF\u30A4\u30E0\u30BE\u30FC\u30F3\u3067\u8868\u793A",
       refresh: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u66F4\u65B0",
       share: "\u5171\u6709",
@@ -3586,7 +3508,7 @@
       streaks: "\u9023\u7D9A\u8A18\u9332",
       streakLabel: "\u30AF\u30EA\u30C3\u30AF\u306E\u9023\u7D9A\u8A18\u9332",
       networkNotice: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u3059\u3002\u30AF\u30EA\u30C3\u30AF\u306F\u4E00\u6642\u505C\u6B62\u4E2D\u3067\u3059\u3002\u518D\u63A5\u7D9A\u3059\u308B\u3068\u4FDD\u5B58\u6E08\u307F\u306E\u9032\u884C\u72B6\u6CC1\u3092\u66F4\u65B0\u3057\u307E\u3059\u3002",
-      localMode: "\u30AA\u30D5\u30E9\u30A4\u30F3 \xB7 \u30ED\u30FC\u30AB\u30EB\u4FDD\u5B58",
+      playingOffline: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u7D9A\u3051\u307E\u3059\u3002",
       offline: "\u30AA\u30D5\u30E9\u30A4\u30F3",
       backOnline: "\u30AA\u30F3\u30E9\u30A4\u30F3\u306B\u623B\u308B",
       signOut: "\u30ED\u30B0\u30A2\u30A6\u30C8",
@@ -3642,7 +3564,6 @@
       revealRequirements: "\u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0443\u0441\u043B\u043E\u0432\u0438\u044F \u0437\u0430\u043A\u0440\u044B\u0442\u044B\u0445 \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0439",
       allAchievementsEarned: "\u0412\u044B \u043F\u043E\u043B\u0443\u0447\u0438\u043B\u0438 \u0432\u0441\u0435 \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F.",
       noAchievementsEarned: "\u0423 \u0432\u0430\u0441 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442 \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0439.",
-      tricksStored: "\u0422\u0440\u044E\u043A\u0438 \u0441 \u043A\u043D\u043E\u043F\u043A\u043E\u0439 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435.",
       achievementUnlocked: "\u0414\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u043E",
       achievementsUnlocked: "\u0414\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u044B",
       language: "\u042F\u0437\u044B\u043A",
@@ -3670,7 +3591,6 @@
       feedbackSimulatedHint: "\u0421\u0438\u043C\u0443\u043B\u044F\u0446\u0438\u044F \u043E\u0442\u0432\u0435\u0442\u0430 \xB7 {time} \u043C\u0441 \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average} \u043C\u0441",
       copyChanged: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0438\u0437\u043C\u0435\u043D\u0438\u043B\u0441\u044F. \u0421\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043D\u043E\u0432\u043E \u043F\u0435\u0440\u0435\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u043E\u0439.",
       lastClick: "\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043A\u043B\u0438\u043A: {time}",
-      noClicks: "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0445 \u043A\u043B\u0438\u043A\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442.",
       timezone: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E \u0432 \u0432\u0430\u0448\u0435\u043C \u0447\u0430\u0441\u043E\u0432\u043E\u043C \u043F\u043E\u044F\u0441\u0435",
       refresh: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A",
       share: "\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F",
@@ -3691,7 +3611,7 @@
       streaks: "\u0421\u0435\u0440\u0438\u0438",
       streakLabel: "\u0421\u0435\u0440\u0438\u0438 \u043A\u043B\u0438\u043A\u043E\u0432",
       networkNotice: "\u041D\u0435\u0442 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u044F. \u041A\u043B\u0438\u043A\u0438 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B. \u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043E\u0431\u043D\u043E\u0432\u0438\u0442\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u044F.",
-      localMode: "\u041E\u0444\u043B\u0430\u0439\u043D \xB7 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435",
+      playingOffline: "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u0435\u043C \u0438\u0433\u0440\u0443 \u043E\u0444\u043B\u0430\u0439\u043D.",
       offline: "\u041E\u0444\u043B\u0430\u0439\u043D",
       backOnline: "\u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043E\u043D\u043B\u0430\u0439\u043D",
       signOut: "\u0412\u044B\u0439\u0442\u0438",
@@ -3747,7 +3667,6 @@
       revealRequirements: "Voraussetzungen gesperrter Erfolge anzeigen",
       allAchievementsEarned: "Du hast alle Erfolge erzielt.",
       noAchievementsEarned: "Du hast noch keine Erfolge erzielt.",
-      tricksStored: "Button-Tricks werden in diesem Browser gespeichert.",
       achievementUnlocked: "Erfolg freigeschaltet",
       achievementsUnlocked: "Erfolge freigeschaltet",
       language: "Sprache",
@@ -3775,7 +3694,6 @@
       feedbackSimulatedHint: "Simulierte Antwort \xB7 {time} ms \xB7 letzter Durchschnitt {average} ms",
       copyChanged: "Die Vorschau wurde ge\xE4ndert. Kopiere den aktualisierten Text erneut zum Teilen.",
       lastClick: "Letzter Klick: {time}",
-      noClicks: "Noch keine Klicks gespeichert.",
       timezone: "Anzeige in deiner lokalen Zeitzone",
       refresh: "Z\xE4hler aktualisieren",
       share: "Teilen",
@@ -3796,7 +3714,7 @@
       streaks: "Serien",
       streakLabel: "Klickserien",
       networkNotice: "Du bist offline. Klicken ist pausiert. Dein gespeicherter Fortschritt wird beim Verbinden aktualisiert.",
-      localMode: "Offline \xB7 lokaler Spielstand",
+      playingOffline: "Das Spiel wird offline fortgesetzt.",
       offline: "Offline",
       backOnline: "Zur\xFCck zum Onlinespiel",
       signOut: "Abmelden",
@@ -3849,7 +3767,7 @@
   ];
   var languageStorageKey = "goclick.language.v1";
   var language = "en";
-  var listeners2 = /* @__PURE__ */ new Set();
+  var listeners = /* @__PURE__ */ new Set();
   function supportedLanguage(value) {
     return languages.find((item) => item.code === value)?.code;
   }
@@ -3909,12 +3827,12 @@
     return formatter.format(value);
   }
   function onLanguageChange(listener) {
-    listeners2.add(listener);
+    listeners.add(listener);
   }
   function setLanguage(code) {
     if (language === code) return;
     language = code;
-    for (const listener of listeners2) listener();
+    for (const listener of listeners) listener();
   }
   function rememberLanguage(code) {
     setLanguage(code);
@@ -4198,16 +4116,6 @@
       );
       renderer?.draw(current);
       const readoutMoving = readout && (dt > 0 || reducedMotion.matches) && moveReadout2(readout, dt);
-      if (outletControl && pointers.size && !hasTrick("outlet") && Math.hypot(current.x, current.y) > 45) {
-        const plate = outletControl.getBoundingClientRect();
-        const face = button.getBoundingClientRect();
-        const x = plate.left + plate.width / 2;
-        const y = plate.top + plate.height / 2;
-        const insetX = plate.width / 4;
-        const insetY = plate.height * 0.36;
-        if (x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight && (x - insetX > 0 && x - insetX < face.left || x + insetX < window.innerWidth && x + insetX > face.right || y - insetY > 0 && y - insetY < face.top || y + insetY < window.innerHeight && y + insetY > face.bottom))
-          unlockTrick("outlet");
-      }
       return readoutMoving;
     }, moveReadout2 = function(readout2, dt) {
       let offset = 0;
@@ -4350,11 +4258,6 @@
       } else burst2(true);
       holdTimer = window.setTimeout(() => setPhase2("held"), 180);
       scheduleHoldBeat2();
-      if (gameButton && !hasTrick("hold")) {
-        achievementTimer = window.setTimeout(() => {
-          if (!button.disabled && !document.hidden && phase !== "idle") unlockTrick("hold");
-        }, holdDuration);
-      }
     }, aimHover2 = function(event) {
       const rect = stage.getBoundingClientRect();
       const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
@@ -4369,7 +4272,6 @@
       if (cancelled && gameButton) clickSound.cancelPending();
       activeKey = null;
       window.clearTimeout(holdTimer);
-      window.clearTimeout(achievementTimer);
       window.clearTimeout(beatTimer);
       current.holdLight = 0;
       const wasPressed = phase !== "idle";
@@ -4455,7 +4357,6 @@
           power.dataset.plug = nextPlug;
           if (nextPlug === "loose") {
             clickSound.hardware("plug-loose");
-            unlockTrick("loose-plug");
           } else {
             outletTouch = null;
             if (outletControl) outletControl.disabled = true;
@@ -4510,8 +4411,8 @@
           () => particle.remove()
         );
       }
-    }, activateRelease2 = function(activation, event) {
-      activatingRelease = activation;
+    }, activateRelease2 = function(event) {
+      activatingRelease = true;
       try {
         if (event)
           button.dispatchEvent(
@@ -4525,7 +4426,7 @@
           );
         else button.click();
       } finally {
-        activatingRelease = null;
+        activatingRelease = false;
       }
     }, pressOutlet2 = function() {
       if (!outletControl || plugState === "unplugged" || document.hidden) return;
@@ -4560,13 +4461,7 @@
         }
         release2(cancelled || !inside);
       } else aimPointers2();
-      if (!cancelled && inside && !button.disabled) {
-        const uTurn = point.wentAway && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) <= Math.max(12, button.offsetWidth * 0.05);
-        activateRelease2(
-          { source: event.pointerType === "touch" ? "touch" : "pointer", uTurn },
-          event
-        );
-      }
+      if (!cancelled && inside && !button.disabled) activateRelease2(event);
       if (pointers.size || buttonStaysPut2()) return;
       if (!cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
         coastUntil = performance.now() + 80;
@@ -4647,8 +4542,8 @@
     let activeKey = null;
     let mouseOver = false;
     let readiness = 0;
-    let activatingRelease = null;
-    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, achievementTimer = 0, beatTimer = 0, phase = "idle";
+    let activatingRelease = false;
+    let pressedAt = 0, releasedAt = null, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, beatTimer = 0, phase = "idle";
     let responseStarted = null;
     let responseDuration = 500;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -4720,8 +4615,6 @@
         point.movedAt = now;
         point.x = event.clientX;
         point.y = event.clientY;
-        if (gameButton && !point.wentAway && Math.hypot(point.x - point.startX, point.y - point.startY) >= Math.max(45, button.offsetWidth * 0.35))
-          point.wentAway = true;
         aimPointers2(true);
       } else if (!pointers.size && !buttonStaysPut2() && activeKey === null && event.pointerType === "mouse")
         aimHover2(event);
@@ -4754,8 +4647,7 @@
         startY: event.clientY,
         vx: 0,
         vy: 0,
-        movedAt: performance.now(),
-        wentAway: false
+        movedAt: performance.now()
       });
       if (pointers.size === 1) {
         dragFromX = target.x = current.x;
@@ -4774,10 +4666,8 @@
     button.addEventListener("dragstart", (event) => event.preventDefault());
     button.addEventListener("contextmenu", (event) => event.preventDefault());
     button.addEventListener("auxclick", (event) => {
-      if (gameButton && !button.disabled && (event.button === 1 || event.button === 2)) {
+      if (gameButton && !button.disabled && (event.button === 1 || event.button === 2))
         event.preventDefault();
-        unlockTrick("wrong-button");
-      }
     });
     button.addEventListener("keydown", (event) => {
       if (button.disabled || event.key !== " " && event.key !== "Enter") return;
@@ -4792,10 +4682,7 @@
       event.preventDefault();
       if (event.key !== activeKey) return;
       release2();
-      if (!button.disabled) {
-        if (gameButton) unlockTrick("keyboard");
-        activateRelease2({ source: "keyboard" });
-      }
+      if (!button.disabled) activateRelease2();
     });
     button.addEventListener("focus", animate2);
     button.addEventListener("blur", () => {
@@ -4809,7 +4696,6 @@
         return;
       }
       if (button.disabled) return;
-      if (gameButton && activatingRelease) rememberButtonActivation(event, activatingRelease);
       if (event.detail === 0 && !activatingRelease) {
         begin2();
         release2();
@@ -5340,7 +5226,8 @@
     }
     return translatedRequirements.get(language2);
   }
-  function badgesFor(data, progress) {
+  function badgesFor(data, progress, local) {
+    const accountBadges = new Set(data.earned_badges);
     const language2 = currentLanguage();
     const clicks = data.click_count?.count ?? 0;
     const calendar = data.achievements ?? emptyClickAchievements;
@@ -5354,7 +5241,8 @@
       for (let bits = calendar.hours; bits; bits >>>= 1) hours += bits & 1;
     }
     const localized = language2 === "en" ? [] : requirements(language2);
-    function badge(icon, name, hint, description, earned2, translation, current, total) {
+    function badge(id, icon, name, hint, description, earnedOffline, translation, current, total) {
+      const earned2 = local ? earnedOffline : accountBadges.has(id);
       return {
         icon,
         name,
@@ -5367,6 +5255,7 @@
     }
     const badges2 = [
       badge(
+        "gone-click",
         "medal",
         "Gone Click",
         "An early milestone.",
@@ -5377,6 +5266,7 @@
         1
       ),
       badge(
+        "sentence",
         "clicks",
         "Sentence",
         "A few clicks in.",
@@ -5387,6 +5277,7 @@
         25
       ),
       badge(
+        "paragraph",
         "clicks",
         "Paragraph",
         "The clicks add up.",
@@ -5397,6 +5288,7 @@
         100
       ),
       badge(
+        "essay",
         "clicks",
         "Essay",
         "No time limit.",
@@ -5407,6 +5299,7 @@
         500
       ),
       badge(
+        "clicks-for-days",
         "calendar",
         "Clicks for Days",
         "A short run of consecutive days.",
@@ -5417,6 +5310,7 @@
         3
       ),
       badge(
+        "one-week-streak",
         "calendar",
         "One-Week Streak",
         "A longer daily streak.",
@@ -5427,6 +5321,7 @@
         7
       ),
       badge(
+        "good-to-see-you-again",
         "calendar",
         "Good to See You Again",
         "Check in again next week.",
@@ -5437,6 +5332,7 @@
         2
       ),
       badge(
+        "double-fortnight",
         "calendar",
         "Double Fortnight",
         "A longer weekly streak.",
@@ -5447,6 +5343,7 @@
         4
       ),
       badge(
+        "busy-day",
         "pace",
         "Busy Day",
         "Clicks within one UTC day.",
@@ -5457,6 +5354,7 @@
         100
       ),
       badge(
+        "brisk-pace",
         "pace",
         "Brisk Pace",
         "Clicks within one UTC week.",
@@ -5467,6 +5365,7 @@
         1e3
       ),
       badge(
+        "high-score",
         "pace",
         "High Score",
         "Clicks within one UTC month.",
@@ -5477,6 +5376,7 @@
         5e3
       ),
       badge(
+        "three-visits",
         "pace",
         "Three Visits",
         "Different times on the same day.",
@@ -5487,6 +5387,7 @@
         3
       ),
       badge(
+        "returning-clicker",
         "calendar",
         "Returning Clicker",
         "The days can be spread out.",
@@ -5497,6 +5398,7 @@
         10
       ),
       badge(
+        "welcome-back",
         "calendar",
         "Welcome Back",
         "An occasional visit is enough.",
@@ -5505,80 +5407,12 @@
         void 0,
         calendar.active_months,
         3
-      ),
-      badge(
-        "discovery",
-        "Hold It",
-        "The button can wait.",
-        "Hold the button for 10 seconds.",
-        hasTrick("hold")
-      ),
-      badge(
-        "discovery",
-        "Behind the Button",
-        "The button has a back.",
-        "Drag the button far enough to reveal the outlet.",
-        hasTrick("outlet")
-      ),
-      badge(
-        "discovery",
-        "Key Player",
-        "Keyboard input.",
-        "Press and release Space or Enter with the game button focused.",
-        hasTrick("keyboard")
-      ),
-      badge(
-        "discovery",
-        "U-Turn",
-        "A return trip.",
-        "Drag the button away, return it to its starting point, then release to save a click.",
-        hasTrick("u-turn")
-      ),
-      badge(
-        "discovery",
-        "That Seems Unsafe",
-        "The cord has some slack.",
-        "Loosen the plug by making at least four long pulls in at least three different directions.",
-        hasTrick("loose-plug")
-      ),
-      badge(
-        "discovery",
-        "Alternative Press",
-        "There\u2019s more than one way to click.",
-        "Save one click with the keyboard and one with a pointer, in either order.",
-        hasTrick("saved-keyboard") && hasTrick("saved-pointer"),
-        void 0,
-        Number(hasTrick("saved-keyboard")) + Number(hasTrick("saved-pointer")),
-        2
-      ),
-      badge(
-        "discovery",
-        "Mobile Mogul",
-        "Touch input.",
-        "Save 100 clicks using touch in one session.",
-        hasTrick("touch-100"),
-        void 0,
-        savedTouchClicks(),
-        100
-      ),
-      badge(
-        "discovery",
-        "Wrong Button",
-        "That\u2019s a mouse button too.",
-        "Click the game button with the middle or right mouse button.",
-        hasTrick("wrong-button")
-      ),
-      badge(
-        "medal",
-        "Curiosity",
-        "A look around the interface.",
-        "Open the Achievements screen.",
-        hasTrick("achievements")
       )
     ];
     const earned = badges2.filter((entry) => entry.earned).length;
     badges2.push(
       badge(
+        "recursion",
         "medal",
         "Recursion",
         "Achievements count toward this one.",
@@ -5726,8 +5560,8 @@
       noticeTimer = window.setTimeout(hideAchievementNotice, 6500);
     });
   }
-  function renderAchievements(data, progress, announce) {
-    const next = badgesFor(data, progress);
+  function renderAchievements(data, progress, local, announce) {
+    const next = badgesFor(data, progress, local);
     const key = `${currentLanguage()}:${next.map(({ earned, meter: meter2 }) => `${Number(earned)}-${meter2?.count ?? ""}`).join(",")}`;
     if (key === badgeKey) return;
     if (announce && badges.length) {
@@ -5794,9 +5628,10 @@
   var nextReset = NaN;
   var resetTimer = 0;
   var shownCounters = {};
-  onTrickUnlock((local) => renderProgress(shownCounters, local));
-  function renderProgress(data, announce = false) {
+  var shownLocalMode = false;
+  function renderProgress(data, local, announce = false) {
     shownCounters = data;
+    shownLocalMode = local;
     const progress = data.progress ?? seedProgress(data.click_count?.modified_time, data.streak_counter_day?.count ?? 0);
     const activityKey = `${currentLanguage()}:${progress.recent_days}`;
     if (activityKey !== lastActivity) {
@@ -5813,7 +5648,7 @@
           Boolean(progress.recent_days & 1 << fortnight - 1 - index)
         );
     }
-    renderAchievements(data, progress, announce);
+    renderAchievements(data, progress, local, announce);
     return progress;
   }
   function paintReset(force = false) {
@@ -5824,7 +5659,7 @@
     const { next, elapsed, minutesLeft } = utcReset(now);
     if (next !== nextReset) {
       nextReset = next;
-      if (!required("#achievement-view").hidden) renderProgress(shownCounters);
+      if (!required("#achievement-view").hidden) renderProgress(shownCounters, shownLocalMode);
     }
     const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
     const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;
@@ -5949,6 +5784,8 @@
   var lastClicks = /* @__PURE__ */ new Map();
   var lastClickKey = () => localMode ? "local" : `account:${user?.id ?? ""}`;
   var lastClick = required("#last-click");
+  var offlineStartNotice = required("#offline-start-notice");
+  var offlineStartTimer = 0;
   var gameReady = false;
   var pendingClicks = 0;
   var localSaveReplacing = false;
@@ -6028,8 +5865,7 @@
       showReset(player);
       if (view === "achievements") {
         hideAchievementNotice();
-        renderProgress(displayedCounters);
-        if (gameReady) unlockTrick("achievements");
+        renderProgress(displayedCounters, localMode);
         paintAchievementList();
         required("#achievement-title").focus();
       } else if (view === "game") {
@@ -6158,6 +5994,8 @@
   }
   function resetClickState() {
     clickGeneration++;
+    window.clearTimeout(offlineStartTimer);
+    offlineStartNotice.textContent = "";
     cooldownUntil = 0;
     window.clearTimeout(cooldownTimer);
     required("#play-status").hidden = true;
@@ -6193,7 +6031,6 @@
     retryGameButton.disabled = refreshCounterButton.disabled || !!counterLoad;
     required("#share-stats").disabled = !gameReady || signingOut || pendingClicks > 0 || !!counterLoad || localSaveReplacing;
     required("#network-notice").hidden = !offline || localMode;
-    required("#local-mode-note").hidden = !localMode;
     required("#counter-label").textContent = message2(localMode ? "localClicks" : "savedClicks");
     required(".connection-label").textContent = message2(localMode ? "simPing" : "ping");
     document.querySelectorAll("[data-play-local]").forEach((button) => {
@@ -6241,7 +6078,7 @@
     if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks)
       return;
     displayedCounters = data;
-    const progress = renderProgress(data, announce);
+    const progress = renderProgress(data, localMode, announce);
     for (const [id, count, unit] of [
       ["click-count", clicks?.count ?? 0],
       ["day-streak", data.streak_counter_day?.count ?? 0, "day"],
@@ -6272,15 +6109,15 @@
       lastClicks.set(key, { time: data.click_count?.modified_time ?? null, saved: 0 });
     renderCounters(data, true);
     gameReady = true;
-    if (currentView === "achievements") unlockTrick("achievements");
   }
   function paintLastClick(saved = false) {
     const entry = lastClicks.get(lastClickKey());
-    lastClick.hidden = !entry;
-    if (!entry) return;
+    lastClick.hidden = !entry?.time;
+    if (!entry?.time) return;
     if (saved) entry.saved = Math.min(6, entry.saved + 1);
-    const time = entry.time;
-    lastClick.textContent = time ? message2("lastClick", { time: parseStoredTimestamp(time).toLocaleString(currentLanguage()) }) : message2("noClicks");
+    lastClick.textContent = message2("lastClick", {
+      time: parseStoredTimestamp(entry.time).toLocaleString(currentLanguage())
+    });
     lastClick.style.setProperty("--last-click-opacity", String(1 - entry.saved / 6));
     lastClick.setAttribute("aria-hidden", String(entry.saved >= 6));
   }
@@ -6543,7 +6380,6 @@
       }
       paintLastClick(true);
       renderCounters(data, false, true);
-      recordSavedButtonClick(event);
       if (count >= (lastOnlineCounters?.click_count?.count ?? 0)) lastOnlineCounters = data;
       feedback.success(performance.now() - started);
       saved = true;
@@ -6747,7 +6583,7 @@
     clearAchievementNotice();
     resetClickState();
   }
-  function startLocalGame() {
+  function startLocalGame(scoreFirstClick = false) {
     if (pendingClicks > 0 || signingOut || localSaveReplacing) return;
     try {
       const data = localGame.read();
@@ -6757,8 +6593,15 @@
       gameReady = false;
       resetClickState();
       optionsDialog.close();
+      if (scoreFirstClick && pageFromLocation() === "achievements")
+        window.history.replaceState(null, "", playLink.href);
       openLocalGame(data);
       if (currentView === "game") clickButton.focus();
+      if (scoreFirstClick) {
+        offlineStartNotice.textContent = message2("playingOffline");
+        offlineStartTimer = window.setTimeout(() => offlineStartNotice.textContent = "", 4e3);
+        return clickLocal();
+      }
     } catch (caught) {
       optionsNotice("openLocalFailed", true, requestError(caught).message);
       if (!optionsDialog.open) {
@@ -6767,7 +6610,10 @@
       }
     }
   }
-  document.querySelectorAll("[data-play-local]").forEach((button) => button.addEventListener("click", startLocalGame));
+  required("#guest-click-button").addEventListener("click", () => {
+    if (currentView === "home") return startLocalGame(true);
+  });
+  document.querySelectorAll("[data-play-local]").forEach((button) => button.addEventListener("click", () => startLocalGame()));
   required("#leave-local").addEventListener("click", async () => {
     if (pendingClicks > 0 || localSaveReplacing || authenticating) return;
     let remembered = true;
@@ -6780,6 +6626,7 @@
     clearAchievementNotice();
     gameReady = false;
     resetClickState();
+    renderCounters({}, true);
     await boot();
     if (!remembered) {
       updateOptions();
@@ -6787,7 +6634,7 @@
       optionsDialog.showModal();
     }
   });
-  async function clickLocal(event) {
+  async function clickLocal(event = { detail: 0, clientX: 0, clientY: 0 }) {
     if (!gameReady || localSaveReplacing) return;
     const feedback = clickFeedback.start(clickButton, event, true), generation2 = clickGeneration, acknowledgement = ++localAcknowledgement;
     const base = gameSettings.value.simulatedPing;
@@ -6800,7 +6647,6 @@
       if (generation2 !== clickGeneration) return;
       paintLastClick(true);
       renderCounters(data, false, true);
-      recordSavedButtonClick(event);
       showError("#game-error", "");
       window.setTimeout(() => {
         if (generation2 !== clickGeneration) return;
@@ -6938,6 +6784,7 @@
     buttonLanguage.reset(currentLanguage());
     paintButtonLanguage(currentLanguage());
     renderCounters(displayedCounters, true);
+    if (offlineStartNotice.textContent) offlineStartNotice.textContent = message2("playingOffline");
     if (isPlayerView()) paintReset(true);
     updatePendingIndicator();
     updateGameControls();

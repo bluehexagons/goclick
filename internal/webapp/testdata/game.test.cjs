@@ -5,7 +5,13 @@ const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
 
 const player = { id: "1", username: "player", admin: false };
-const counters = (count) => ({ click_count: { count } });
+const counters = (count) => ({
+  click_count: { count },
+  earned_badges: ["gone-click", "sentence", "paragraph", "essay"].slice(
+    0,
+    [1, 25, 100, 500].filter((target) => count >= target).length,
+  ),
+});
 const game = (count, user = player) => ({ user, counters: counters(count) });
 const response = (body, status = 200) => ({
   ok: status < 400,
@@ -128,6 +134,9 @@ async function harness(options = {}) {
   const window = Object.assign(new Element(), {
     location,
     history: {
+      replaceState(_, __, href) {
+        location.href = href;
+      },
       pushState(_, __, href) {
         location.href = href;
       },
@@ -223,7 +232,6 @@ async function harness(options = {}) {
   requests.length = 0;
   return {
     context,
-    rememberButtonActivation: runtime.load("button-tricks").rememberButtonActivation,
     element,
     chooseLanguage(code) {
       return element("#language-menu")
@@ -736,7 +744,7 @@ test("remembered local play starts and runs without any account API calls", asyn
   assert.deepEqual(h.requests, []);
   assert.equal(h.element("#click-count").textContent, "12");
   assert.equal(JSON.parse(h.storage.get("goclick.local.v1")).counters.click_count.count, 12);
-  assert.equal(h.element("#local-mode-note").hidden, false);
+  assert.equal(h.element("#local-nav").hidden, false);
 });
 
 test("entering local mode isolates account progress and returning rechecks the account", async () => {
@@ -811,7 +819,7 @@ test("the production game bundle boots without leaking application functions", a
 
 test("the production local-mode bundle skips account requests on startup", async () => {
   const h = await harness({ production: true, storage: [["goclick.mode", "local"]] });
-  assert.equal(h.element("#local-mode-note").hidden, false);
+  assert.equal(h.element("#local-nav").hidden, false);
   assert.deepEqual(h.startupRequests, []);
 });
 
@@ -1431,17 +1439,19 @@ test("older click replies cannot roll back a more recent score or earned badges"
     best_day_streak: 7,
     best_week_streak: 2,
   };
-  faster.resolve(response({ ...counters(25), progress }));
+  const latest = counters(25);
+  latest.earned_badges.push("clicks-for-days", "one-week-streak", "good-to-see-you-again");
+  faster.resolve(response({ ...latest, progress }));
   await second;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
   assert.equal(h.element("#week-streak").textContent, "2");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 24");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 15");
   slower.resolve(
     response({ ...counters(24), progress: { ...progress, recent_days: 63, best_day_streak: 6 } }),
   );
   await first;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 24");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 15");
 });
 
 test("achievements use their own view and a pending unlock waits for gameplay", async () => {
@@ -1461,7 +1471,7 @@ test("achievements use their own view and a pending unlock waits for gameplay", 
 
   pending.resolve(response(counters(25)));
   await click;
-  assert.equal(h.element("#achievement-count").textContent, "3 / 24");
+  assert.equal(h.element("#achievement-count").textContent, "2 / 15");
   assert.equal(toast.hidden, true);
   h.fetch(async () => response(game(25)));
   await h.context.refreshGame();
@@ -1472,7 +1482,7 @@ test("achievements use their own view and a pending unlock waits for gameplay", 
   assert.equal(achievementView.hidden, true);
   assert.equal(h.document.activeElement, button);
   assert.equal(toast.hidden, false);
-  assert.equal(h.element("#achievement-notice-names").textContent, "Curiosity · Sentence");
+  assert.equal(h.element("#achievement-notice-names").textContent, "Sentence");
 });
 
 test("loading the achievements URL opens its screen and reset times match gameplay", async () => {
@@ -1528,63 +1538,43 @@ test("the streak readout uses singular and plural units in the selected language
   assert.equal(h.element("#month-streak-unit").hidden, true);
 });
 
-test("Curiosity can be the tenth other achievement and earn Recursion once", async () => {
-  const tricks = [
-    "hold",
-    "outlet",
-    "keyboard",
-    "u-turn",
-    "loose-plug",
-    "saved-keyboard",
-    "saved-pointer",
-    "touch-100",
-    "wrong-button",
-  ];
-  const h = await harness({
-    initialFetch: async () => response(game(1)),
-    expectedCount: 1,
-    storage: tricks.map((trick) => [`goclick.trick.${trick}`, "1"]),
-  });
-  assert.equal(h.element("#achievement-count").textContent, "9 / 24");
-  h.element("#open-achievements").fire("click", { button: 0 });
-  assert.equal(h.element("#achievement-count").textContent, "11 / 24");
-  h.element("#back-to-game").fire("click", { button: 0 });
-  await settle();
-  assert.equal(h.element("#achievement-notice-names").textContent, "Curiosity · Recursion");
-  h.runTimers();
-  h.element("#open-achievements").fire("click", { button: 0 });
-  h.element("#back-to-game").fire("click", { button: 0 });
-  await settle();
-  assert.equal(h.element("#achievement-notice").hidden, true);
-});
-
-test("opening Achievements directly loads counters before awarding Curiosity and Recursion", async () => {
+test("account badge status comes from the server and offline badges stay with the local save", async () => {
   const h = await harness({
     url: "https://goclick.example/?view=achievements",
     initialFetch: async () =>
-      response({
-        user: player,
-        counters: {
-          ...counters(100),
-          progress: { recent_days: 127, week_streak: 2, best_day_streak: 7, best_week_streak: 2 },
-          achievements: {
-            day_clicks: 100,
-            week_clicks: 100,
-            month_clicks: 100,
-            hours: 7,
-            active_days: 10,
-            active_months: 2,
-            earned: 9,
-          },
-        },
-      }),
-    expectedCount: 100,
+      response({ user: player, counters: { ...counters(25), earned_badges: ["gone-click"] } }),
+    expectedCount: 25,
   });
-  assert.equal(h.element("#achievement-count").textContent, "11 / 24");
-  assert.equal(h.element("#achievement-notice").hidden, true);
+  const count = h.element("#achievement-count");
+  assert.equal(count.textContent, "1 / 15");
+  h.context.startLocalGame();
+  assert.equal(count.textContent, "0 / 15");
   h.element("#back-to-game").fire("click", { button: 0 });
-  await settle();
-  assert.equal(h.element("#achievement-notice-names").textContent, "Curiosity · Recursion");
+  for (let i = 0; i < 25; i++) await h.element("#click-button").fire("click");
+  assert.equal(count.textContent, "2 / 15");
+  assert.deepEqual(h.requests, []);
+  h.fetch(async () => response(game(1, { ...player, id: "2" })));
+  await h.element("#leave-local").fire("click");
+  assert.equal(count.textContent, "1 / 15");
+  assert.equal(h.element("#achievement-notice").hidden, true);
+  h.context.startLocalGame();
+  assert.equal(count.textContent, "2 / 15");
+});
+
+test("the guest button saves its first click offline and briefly tells the player", async () => {
+  const h = await harness({ initialFetch: async () => response({}, 401), expectedCount: 0 });
+  assert.equal(h.element("#home-view").hidden, false);
+  await h.element("#guest-click-button").fire("click");
+  assert.equal(h.element("#game-view").hidden, false);
+  assert.equal(h.element("#login-form").hidden, true);
+  assert.equal(h.element("#click-count").textContent, "1");
+  assert.equal(h.element("#last-click").hidden, true);
+  assert.equal(h.element("#offline-start-notice").textContent, "Continuing offline.");
+  assert.equal(h.document.activeElement, h.element("#click-button"));
+  assert.equal(JSON.parse(h.storage.get("goclick.local.v1")).counters.click_count.count, 1);
+  assert.deepEqual(h.requests, []);
+  h.runTimers();
+  assert.equal(h.element("#offline-start-notice").textContent, "");
 });
 
 test("the last-click timestamp stays fixed and fades only after six confirmed saves", async () => {
@@ -1609,32 +1599,27 @@ test("the last-click timestamp stays fixed and fades only after six confirmed sa
   assert.equal(last.attributes.get("aria-hidden"), "true");
 });
 
-test("new achievements announce without replaying loaded or synchronized badges", async () => {
+test("new achievements announce without replaying loaded badges", async () => {
   const h = await harness();
   const notice = h.element("#achievement-notice");
   const live = h.element("#achievement-announcement");
   const button = h.element("#click-button");
   assert.equal(notice.hidden, true);
   assert.equal(live.textContent, "");
-  h.window.fire("storage", { key: "goclick.trick.hold", newValue: "1" });
-  assert.equal(h.element("#achievement-count").textContent, "2 / 24");
-  assert.equal(notice.hidden, true);
   h.fetch(async () => response({ error: "Save failed" }, 500));
   await button.fire("click");
   assert.equal(live.textContent, "");
 
   h.fetch(async () => response(counters(100)));
-  const event = {};
-  h.rememberButtonActivation(event, { source: "pointer", uTurn: true });
   button.focus();
-  await button.events.get("click")(event);
+  await button.fire("click");
   assert.equal(notice.hidden, false);
-  assert.equal(live.textContent, "Achievements unlocked. Sentence. Paragraph. U-Turn.");
-  assert.equal(h.element("#achievement-notice-names").textContent, "Sentence · Paragraph · U-Turn");
+  assert.equal(live.textContent, "Achievements unlocked. Sentence. Paragraph.");
+  assert.equal(h.element("#achievement-notice-names").textContent, "Sentence · Paragraph");
   assert.equal(h.document.activeElement, button);
   h.chooseLanguage("fr");
   assert.equal(h.element("#achievement-notice-title").textContent, "Succès déverrouillés");
-  assert.equal(live.textContent, "Achievements unlocked. Sentence. Paragraph. U-Turn.");
+  assert.equal(live.textContent, "Achievements unlocked. Sentence. Paragraph.");
 
   h.runTimers();
   assert.equal(notice.hidden, true);
@@ -1661,30 +1646,4 @@ test("a save confirmed in a hidden tab announces its badge after returning", asy
   await settle();
   assert.equal(notice.hidden, false);
   assert.equal(h.element("#achievement-notice-names").textContent, "Sentence");
-});
-
-test("saved input badges count only confirmed releases and count touch clicks once", async () => {
-  const h = await harness();
-  const click = async (source, uTurn = false) => {
-    const event = { detail: source === "keyboard" ? 0 : 1 };
-    h.rememberButtonActivation(event, { source, uTurn });
-    await h.element("#click-button").events.get("click")(event);
-  };
-  const earned = (key) => h.storage.get("goclick.trick." + key);
-  h.fetch(async () => response({ error: "Save failed" }, 500));
-  await click("touch", true);
-  assert.equal(earned("u-turn"), undefined);
-  assert.equal(earned("saved-pointer"), undefined);
-
-  let count = 10;
-  h.fetch(async () => response(counters(++count)));
-  for (let i = 0; i < 99; i++) await click("touch");
-  assert.equal(earned("touch-100"), undefined);
-  assert.equal(earned("saved-pointer"), "1");
-  await click("keyboard");
-  assert.equal(earned("saved-keyboard"), "1");
-  assert.equal(earned("touch-100"), undefined);
-  await click("touch", true);
-  assert.equal(earned("touch-100"), "1");
-  assert.equal(earned("u-turn"), "1");
 });
