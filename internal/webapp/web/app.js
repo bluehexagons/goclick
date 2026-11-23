@@ -6365,15 +6365,14 @@
     if (authenticating || signingOut) return;
     showError("#game-error", "");
     signingOut = true;
-    gameReady = false;
     updateGameControls();
     logoutButton.disabled = true;
     try {
       await api("/api/auth/logout", { method: "DELETE" });
+      gameReady = false;
       setUser(null);
       showHome();
     } catch {
-      gameReady = true;
       showGameError("signOutError", true);
     } finally {
       signingOut = false;

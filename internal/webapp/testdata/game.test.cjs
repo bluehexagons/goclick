@@ -732,6 +732,23 @@ test("a late refresh response cannot reopen the game after signing out", async (
   assert.equal(h.element("#click-count").textContent, "0");
 });
 
+test("a failed sign-out leaves play paused after a failed counter refresh", async () => {
+  const h = await harness();
+  h.fetch(async () => response({}, 503));
+  await h.context.refreshGame();
+  await h.element("#logout-button").fire("click");
+  assert.equal(h.element("#click-button").disabled, true);
+  assert.equal(h.element("#share-stats").disabled, true);
+  const retry = h.element("#retry-game-button");
+  assert.equal(retry.hidden, false);
+  assert.equal(retry.disabled, false);
+
+  h.fetch(async () => response(game(15)));
+  await retry.fire("click");
+  assert.equal(h.element("#click-count").textContent, "15");
+  assert.equal(h.element("#click-button").disabled, false);
+});
+
 test("remembered local play starts and runs without any account API calls", async () => {
   const h = await harness({ storage: [["goclick.mode", "local"]] });
   assert.deepEqual(h.startupRequests, []);
