@@ -264,9 +264,9 @@ deployments.
 
 ## Test
 
-For frontend changes, use Node.js 24.22.3+ within 24.x (LTS) or
-26.13.1+ within 26.x (Current). `.nvmrc` selects Node 24.22.3; tooling versions
-are locked in `package-lock.json`:
+For frontend changes, use Node.js 24.22.3+ within 24.x or 26.13.1+ within 26.x.
+Both are LTS lines. `.nvmrc` selects Node 24.22.3. Tooling versions are locked
+in `package-lock.json`:
 
 ```bash
 npm ci
@@ -281,7 +281,7 @@ go test -race ./...
 go vet ./...
 test -z "$(gofmt -l .)"
 go mod verify
-go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...
 ```
 
 Rebuild frontend assets **before Go tests or restarting the server** whenever
