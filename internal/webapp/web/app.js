@@ -1601,7 +1601,7 @@
         rebuild();
       }, GRAPHICS_RETRY_DELAY);
     }
-    function resume2() {
+    function resume() {
       cancelRetry();
       canRetry = true;
       rebuild();
@@ -1719,10 +1719,10 @@
       event.preventDefault();
       suspend2();
     });
-    canvas.addEventListener("webglcontextrestored", resume2);
+    canvas.addEventListener("webglcontextrestored", resume);
     label.addEventListener("contextrestored", () => {
       if (resources) return;
-      if (visible2()) resume2();
+      if (visible2()) resume();
       else suspend2();
     });
     const sources = ["/button-material.svg", "/button-glow.svg"];
@@ -1736,7 +1736,7 @@
       image.src = source;
     }
     window.addEventListener("scroll", () => draw(), { passive: true });
-    return { draw, resume: resume2, suspend: suspend2 };
+    return { draw, resume, suspend: suspend2 };
   }
 
   // frontend/sound.ts
@@ -1752,7 +1752,8 @@
   var room = null;
   var previewRoom = null;
   var suspending = null;
-  var generation = 0;
+  var pendingResumes = /* @__PURE__ */ new Set();
+  var pendingCue = null;
   var voices = /* @__PURE__ */ new Set();
   var previewVoices = /* @__PURE__ */ new Set();
   var previewPending = false;
@@ -1763,7 +1764,7 @@
   var responseAt = -Infinity;
   var responseWasFailure = false;
   function cancelPending() {
-    generation++;
+    pendingCue = null;
     previewPending = false;
     for (const voice of previewVoices) removeVoice(voice, true);
     clearRoom(true);
@@ -1808,6 +1809,7 @@
     if (context) context.onstatechange = null;
     context = null;
     suspending = null;
+    pendingResumes.clear();
     try {
       output?.disconnect();
     } catch {
@@ -1828,9 +1830,29 @@
     } catch {
     }
   }
-  function resume(audio) {
-    return audio.resume().then(() => {
-      if (audio === context && (!enabled || document.hidden)) suspend();
+  function requestResume(audio, source) {
+    if (pendingResumes.has(source)) return;
+    const request2 = audio.resume();
+    pendingResumes.add(source);
+    function settled(resumed) {
+      if (audio !== context) return;
+      pendingResumes.delete(source);
+      if (!resumed || audio.state !== "running") {
+        if (!pendingResumes.size) pendingCue = null;
+        return;
+      }
+      if (!enabled || document.hidden) {
+        suspend();
+        return;
+      }
+      const cue = pendingCue;
+      pendingCue = null;
+      if (cue && performance.now() - cue.requestedAt <= maxUnlockDelay) cue.emit(audio);
+    }
+    void request2.then(
+      () => settled(true),
+      () => settled(false)
+    ).catch(() => {
     });
   }
   function synthesize(audio, kind, preview = false, when) {
@@ -1911,13 +1933,15 @@
     if (!enabled || document.hidden) return;
     try {
       const audio = audioContext(true);
-      if (audio && (audio.state !== "running" || suspending))
-        void resume(audio).catch(() => {
-        });
+      if (audio && (audio.state !== "running" || suspending)) requestResume(audio, "prepare");
     } catch {
     }
   }
-  function withAudio(gesture, emit, { preview = false, allowCreate = gesture } = {}) {
+  function withAudio(gesture, emit, {
+    preview = false,
+    allowCreate = gesture,
+    source = gesture ? "gesture" : "boot"
+  } = {}) {
     if (!enabled || document.hidden) return;
     try {
       const audio = audioContext(allowCreate);
@@ -1926,15 +1950,10 @@
         cancelPending();
         previewPending = preview;
       }
-      const current = generation;
       if (audio.state === "running" && !suspending) emit(audio);
       else if (allowCreate) {
-        const requestedAt = performance.now();
-        void resume(audio).then(() => {
-          if (enabled && !document.hidden && current === generation && audio === context && audio.state === "running" && performance.now() - requestedAt <= maxUnlockDelay)
-            emit(audio);
-        }).catch(() => {
-        });
+        pendingCue = { emit, requestedAt: performance.now() };
+        requestResume(audio, source);
       }
     } catch {
     }
@@ -1950,17 +1969,21 @@
         return;
       }
       const physical = kind === "press" || kind === "release";
-      withAudio(physical, (audio) => {
-        const now = performance.now();
-        const failure = kind === "error" || kind === "limited";
-        if (!physical && now - responseAt < responseInterval && (!failure || responseWasFailure))
-          return;
-        synthesize(audio, kind);
-        if (!physical) {
-          responseAt = now;
-          responseWasFailure = failure;
-        }
-      });
+      withAudio(
+        physical,
+        (audio) => {
+          const now = performance.now();
+          const failure = kind === "error" || kind === "limited";
+          if (!physical && now - responseAt < responseInterval && (!failure || responseWasFailure))
+            return;
+          synthesize(audio, kind);
+          if (!physical) {
+            responseAt = now;
+            responseWasFailure = failure;
+          }
+        },
+        { source: kind === "press" ? "press" : "gesture" }
+      );
     },
     setPowered(value) {
       powered = value;
@@ -5074,7 +5097,7 @@
       clicks: required("#include-share-clicks"),
       streaks: required("#include-share-streaks")
     };
-    let generation2 = 0, feedbackTimer = 0, clearTimer = 0, busy = false, currentStats = null;
+    let generation = 0, feedbackTimer = 0, clearTimer = 0, busy = false, currentStats = null;
     let announcement = null;
     function announce(key) {
       announcement = key;
@@ -5110,7 +5133,7 @@
     async function copyCurrent(openDialog) {
       if (busy || !currentStats) return;
       busy = true;
-      const current = generation2;
+      const current = generation;
       const summary = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
       text.value = summary;
       text.lang = currentLanguage();
@@ -5126,16 +5149,16 @@
       if (openDialog && !dialog.open) dialog.showModal();
       try {
         await clipboardWrite;
-        if (current === generation2) announce(summary === text.value ? "copied" : "copyChanged");
+        if (current === generation) announce(summary === text.value ? "copied" : "copyChanged");
       } catch {
-        if (current !== generation2) return;
+        if (current !== generation) return;
         announce("clipboardUnavailable");
         if (dialog.open && summary === text.value) {
           text.focus();
           text.select();
         }
       } finally {
-        if (current === generation2) {
+        if (current === generation) {
           busy = false;
           button.setAttribute("aria-busy", "false");
           copyButton.setAttribute("aria-busy", "false");
@@ -5157,7 +5180,7 @@
     for (const option of Object.values(options)) option.addEventListener("change", updatePreview);
     return {
       reset() {
-        generation2++;
+        generation++;
         busy = false;
         currentStats = null;
         window.clearTimeout(feedbackTimer);
@@ -6078,14 +6101,14 @@
     return request(url, { ...options, headers });
   }
   async function readGameState() {
-    const generation2 = clickGeneration;
+    const generation = clickGeneration;
     for (; ; ) {
       const epoch = identityEpoch;
       try {
         const state = await api("/api/game");
-        if (epoch === identityEpoch || generation2 !== clickGeneration) return state;
+        if (epoch === identityEpoch || generation !== clickGeneration) return state;
       } catch (error) {
-        if (epoch === identityEpoch || generation2 !== clickGeneration) throw error;
+        if (epoch === identityEpoch || generation !== clickGeneration) throw error;
       }
     }
   }
@@ -6132,7 +6155,7 @@
     updateGameControls();
   }
   function updateGameControls() {
-    clickButton.disabled = !gameReady || offline && !localMode || signingOut || authenticating && !localMode || localMode && localSaveReplacing || !localMode && pendingClicks >= maxPendingClicks;
+    clickButton.disabled = !gameReady || offline && !localMode || signingOut || authenticating && !localMode || localMode && localSaveReplacing || pendingClicks >= maxPendingClicks;
     clickButton.setAttribute("aria-disabled", String(clickButton.disabled || coolingDown()));
     refreshCounterButton.disabled = offline && !localMode || signingOut || pendingClicks > 0 || localMode && localSaveReplacing;
     refreshCounterButton.setAttribute(
@@ -6243,7 +6266,7 @@
       refreshQueued = true;
       return Promise.resolve();
     }
-    let generation2 = clickGeneration;
+    let generation = clickGeneration;
     const focusButton = currentView === "login" || currentView === "signup";
     show(pageFromLocation());
     showError("#game-error", "");
@@ -6257,11 +6280,11 @@
     const load = (async () => {
       try {
         const state = await (initialGame ?? readGameState());
-        if (generation2 !== clickGeneration) return;
+        if (generation !== clickGeneration) return;
         const activeLoad = counterLoad;
         setUser(state.user);
         counterLoad = activeLoad;
-        generation2 = clickGeneration;
+        generation = clickGeneration;
         counterLoadOwner = owner;
         lastOnlineCounters = state.counters;
         applyLoadedCounters(state.counters);
@@ -6271,7 +6294,7 @@
         setConnection();
       } catch (caught) {
         const error = requestError(caught);
-        if (generation2 !== clickGeneration) return;
+        if (generation !== clickGeneration) return;
         if (error.status === 401) {
           if (user && !signingOut) handleExpiredSession();
         } else {
@@ -6280,7 +6303,7 @@
           setConnection(null, "error");
         }
       } finally {
-        if (generation2 === clickGeneration) counterCard.setAttribute("aria-busy", "false");
+        if (generation === clickGeneration) counterCard.setAttribute("aria-busy", "false");
         if (counterLoadOwner === owner) {
           counterLoad = null;
           counterLoadOwner = null;
@@ -6372,7 +6395,7 @@
     if (authenticating || signingOut) return;
     showError("#login-error", "");
     setAuthenticating(true, loginForm);
-    const generation2 = clickGeneration;
+    const generation = clickGeneration;
     let signedIn = false;
     try {
       const form = new FormData(loginForm);
@@ -6384,7 +6407,7 @@
           identifier_type: form.get("identifier_type") ?? "auto"
         })
       });
-      if (generation2 !== clickGeneration || currentView !== "login") {
+      if (generation !== clickGeneration || currentView !== "login") {
         if (!localMode) await boot();
         return;
       }
@@ -6394,7 +6417,7 @@
       await openGame();
     } catch (caught) {
       const error = requestError(caught);
-      if (generation2 === clickGeneration && currentView === "login")
+      if (generation === clickGeneration && currentView === "login")
         showError("#login-error", error.message, true);
     } finally {
       setAuthenticating(false, loginForm);
@@ -6412,14 +6435,14 @@
       return;
     }
     setAuthenticating(true, signupForm);
-    const generation2 = clickGeneration;
+    const generation = clickGeneration;
     let signedIn = false;
     try {
       const result = await api("/api/auth/signup", {
         method: "POST",
         body: JSON.stringify(Object.fromEntries(form.entries()))
       });
-      if (generation2 !== clickGeneration || currentView !== "signup") {
+      if (generation !== clickGeneration || currentView !== "signup") {
         if (!localMode) await boot();
         return;
       }
@@ -6429,7 +6452,7 @@
       await openGame();
     } catch (caught) {
       const error = requestError(caught);
-      if (generation2 === clickGeneration && currentView === "signup")
+      if (generation === clickGeneration && currentView === "signup")
         showError("#signup-error", error.message, true);
     } finally {
       setAuthenticating(false, signupForm);
@@ -6463,7 +6486,7 @@
       await clickLocal(event);
       return;
     }
-    if (!user || !gameReady || offline && !localMode || signingOut || authenticating || !localMode && pendingClicks >= maxPendingClicks)
+    if (!user || !gameReady || offline && !localMode || signingOut || authenticating || pendingClicks >= maxPendingClicks)
       return;
     if (coolingDown()) {
       tactileButtons.get(clickButton)?.respond("limited");
@@ -6479,7 +6502,7 @@
     const feedback = clickFeedback.start(clickButton, event);
     updateGameControls();
     const started = performance.now();
-    const generation2 = clickGeneration;
+    const generation = clickGeneration;
     setConnection(null, "loading");
     let saved = false;
     try {
@@ -6487,7 +6510,7 @@
         method: "POST",
         headers: { "X-GoClick-User-ID": user.id }
       });
-      if (generation2 !== clickGeneration) return;
+      if (generation !== clickGeneration) return;
       const count = data.click_count?.count;
       if (typeof count !== "number" || !Number.isInteger(count) || count < 1) {
         const error = new RequestError("The server response did not include a saved click count.");
@@ -6501,7 +6524,7 @@
       saved = true;
     } catch (caught) {
       const error = requestError(caught);
-      if (generation2 !== clickGeneration) return;
+      if (generation !== clickGeneration) return;
       feedback.fail(error.uncertain, error.status === 429);
       if (error.status === 401) {
         if (user && !signingOut) handleExpiredSession();
@@ -6521,7 +6544,7 @@
       if (error.uncertain) retryGameButton.hidden = false;
       setConnection(null, "error");
     } finally {
-      if (generation2 === clickGeneration) {
+      if (generation === clickGeneration) {
         pendingClicks--;
         updatePendingIndicator();
         updateGameControls();
@@ -6539,7 +6562,7 @@
       openLocalGame();
       return;
     }
-    const generation2 = clickGeneration;
+    const generation = clickGeneration;
     show("loading");
     views.loading.setAttribute("aria-busy", "true");
     required(".loading-spinner").hidden = false;
@@ -6547,12 +6570,12 @@
     retryBootButton.hidden = true;
     try {
       const state = await readGameState();
-      if (generation2 !== clickGeneration || localMode) return;
+      if (generation !== clickGeneration || localMode) return;
       setUser(state.user);
       await openGame(state);
     } catch (caught) {
       const error = requestError(caught);
-      if (generation2 !== clickGeneration || localMode) return;
+      if (generation !== clickGeneration || localMode) return;
       if (error.status === 401) {
         setUser(null);
         if (!returningOnline && pageFromLocation() === "achievements") show("achievements");
@@ -6752,32 +6775,34 @@
     }
   });
   async function clickLocal(event = { detail: 0, clientX: 0, clientY: 0 }) {
-    if (!gameReady || localSaveReplacing) return;
-    const feedback = clickFeedback.start(clickButton, event, true), generation2 = clickGeneration, acknowledgement = ++localAcknowledgement;
+    if (!gameReady || localSaveReplacing || pendingClicks >= maxPendingClicks) return;
+    const feedback = clickFeedback.start(clickButton, event, true), generation = clickGeneration, acknowledgement = ++localAcknowledgement;
     const base = gameSettings.value.simulatedPing;
     const simulated = Math.round(base * (0.7 + Math.random() * 0.6));
     pendingClicks++;
+    updatePendingIndicator();
     updateGameControls();
     setConnection(null, "loading");
     try {
       const data = await localGame.change(() => localGame.increment());
-      if (generation2 !== clickGeneration) return;
+      if (generation !== clickGeneration) return;
       paintLastClick(true);
       renderCounters(data, false, true);
       showError("#game-error", "");
       window.setTimeout(() => {
-        if (generation2 !== clickGeneration) return;
+        if (generation !== clickGeneration) return;
         feedback.success(simulated);
         if (acknowledgement === localAcknowledgement) setConnection(simulated);
       }, simulated);
     } catch {
-      if (generation2 !== clickGeneration) return;
+      if (generation !== clickGeneration) return;
       feedback.fail(false);
       setConnection(null, "error");
       showGameError("localClickError", true);
     } finally {
-      if (generation2 === clickGeneration) {
+      if (generation === clickGeneration) {
         pendingClicks--;
+        updatePendingIndicator();
         updateGameControls();
         if (pendingClicks === 0 && localRefreshQueued) synchronizeLocalSave();
       }

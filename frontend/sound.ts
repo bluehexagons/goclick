@@ -21,7 +21,9 @@ let roomImpulse: AudioBuffer | null = null;
 let room: ConvolverNode | null = null;
 let previewRoom: ConvolverNode | null = null;
 let suspending: Promise<void> | null = null;
-let generation = 0;
+type ResumeSource = "boot" | "prepare" | "press" | "gesture";
+const pendingResumes = new Set<ResumeSource>();
+let pendingCue: { emit: (audio: AudioContext) => void; requestedAt: number } | null = null;
 const voices = new Set<AudioBufferSourceNode>();
 const previewVoices = new Set<AudioBufferSourceNode>();
 let previewPending = false;
@@ -34,7 +36,7 @@ let responseAt = -Infinity;
 let responseWasFailure = false;
 
 function cancelPending() {
-  generation++;
+  pendingCue = null;
   previewPending = false;
   for (const voice of previewVoices) removeVoice(voice, true);
   clearRoom(true);
@@ -87,6 +89,7 @@ function discardContext() {
   if (context) context.onstatechange = null;
   context = null;
   suspending = null;
+  pendingResumes.clear();
   try {
     output?.disconnect();
   } catch {
@@ -111,11 +114,33 @@ function suspend() {
   }
 }
 
-function resume(audio: AudioContext) {
-  return audio.resume().then(() => {
-    // A delayed unlock must not leave a muted/background device running.
-    if (audio === context && (!enabled || document.hidden)) suspend();
-  });
+function requestResume(audio: AudioContext, source: ResumeSource) {
+  if (pendingResumes.has(source)) return;
+  const request = audio.resume();
+  pendingResumes.add(source);
+  function settled(resumed: boolean) {
+    if (audio !== context) return;
+    pendingResumes.delete(source);
+    if (!resumed || audio.state !== "running") {
+      if (!pendingResumes.size) pendingCue = null;
+      return;
+    }
+    if (!enabled || document.hidden) {
+      suspend();
+      return;
+    }
+    const cue = pendingCue;
+    pendingCue = null;
+    if (cue && performance.now() - cue.requestedAt <= maxUnlockDelay) cue.emit(audio);
+  }
+  void request
+    .then(
+      () => settled(true),
+      () => settled(false),
+    )
+    .catch(() => {
+      // Audio is optional; a failed device must never affect gameplay.
+    });
 }
 
 function synthesize(audio: AudioContext, kind: SoundCue, preview = false, when?: number) {
@@ -207,10 +232,7 @@ function prepare() {
   if (!enabled || document.hidden) return;
   try {
     const audio = audioContext(true);
-    if (audio && (audio.state !== "running" || suspending))
-      void resume(audio).catch(() => {
-        // A later press/release can retry if the toggle gesture was blocked.
-      });
+    if (audio && (audio.state !== "running" || suspending)) requestResume(audio, "prepare");
   } catch {
     // Enabling sound must stay usable when the audio device is unavailable.
   }
@@ -219,7 +241,11 @@ function prepare() {
 function withAudio(
   gesture: boolean,
   emit: (audio: AudioContext) => void,
-  { preview = false, allowCreate = gesture } = {},
+  {
+    preview = false,
+    allowCreate = gesture,
+    source = gesture ? "gesture" : "boot",
+  }: { preview?: boolean; allowCreate?: boolean; source?: ResumeSource } = {},
 ) {
   if (!enabled || document.hidden) return;
   try {
@@ -229,27 +255,12 @@ function withAudio(
       cancelPending();
       previewPending = preview;
     }
-    const current = generation;
     if (audio.state === "running" && !suspending) emit(audio);
     else if (allowCreate) {
-      const requestedAt = performance.now();
-      // Retry inside every gesture: touch browsers may allow audio only on
-      // release. An autoplay request or gesture that has gone stale is silent.
-      void resume(audio)
-        .then(() => {
-          if (
-            enabled &&
-            !document.hidden &&
-            current === generation &&
-            audio === context &&
-            audio.state === "running" &&
-            performance.now() - requestedAt <= maxUnlockDelay
-          )
-            emit(audio);
-        })
-        .catch(() => {
-          // Audio is optional; a blocked device must never affect gameplay.
-        });
+      // Autoplay and pointer-down can both be blocked while a release is
+      // allowed. Keep their requests independent, and keep only the latest cue.
+      pendingCue = { emit, requestedAt: performance.now() };
+      requestResume(audio, source);
     }
   } catch {
     // Unsupported or unavailable audio must never prevent a click from saving.
@@ -268,20 +279,24 @@ export const clickSound = {
       return;
     }
     const physical = kind === "press" || kind === "release";
-    withAudio(physical, (audio) => {
-      const now = performance.now();
-      const failure = kind === "error" || kind === "limited";
-      // Replies can arrive together after network or event-loop delays. Keep
-      // them quiet by sounding one per short window, without queuing a burst.
-      // A failure can always interrupt a window started by a success cue.
-      if (!physical && now - responseAt < responseInterval && (!failure || responseWasFailure))
-        return;
-      synthesize(audio, kind);
-      if (!physical) {
-        responseAt = now;
-        responseWasFailure = failure;
-      }
-    });
+    withAudio(
+      physical,
+      (audio) => {
+        const now = performance.now();
+        const failure = kind === "error" || kind === "limited";
+        // Replies can arrive together after network or event-loop delays. Keep
+        // them quiet by sounding one per short window, without queuing a burst.
+        // A failure can always interrupt a window started by a success cue.
+        if (!physical && now - responseAt < responseInterval && (!failure || responseWasFailure))
+          return;
+        synthesize(audio, kind);
+        if (!physical) {
+          responseAt = now;
+          responseWasFailure = failure;
+        }
+      },
+      { source: kind === "press" ? "press" : "gesture" },
+    );
   },
   setPowered(value: boolean) {
     powered = value;

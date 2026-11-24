@@ -119,6 +119,8 @@ release their graph; only a new gesture or opt-in creates a replacement.
 Cancelling a gesture or losing focus also discards its pending audio; an unlock
 delayed more than 150 ms never replays the old sound. Partial audio setup and
 playback failures clean up their resources so a later gesture can retry.
+While audio is blocked, startup, opt-in, press, and release or other gestures
+each share one pending resume request. Only the latest cue can play on unlock.
 Eight bounded voices keep rapid multi-touch play from building an audio queue.
 Responses arriving within 80 ms share a cue instead of stacking
 pings. Error/cooldown cues can override a success cue's window, and suppress
@@ -198,6 +200,8 @@ Invalid imports and failed writes preserve the previous save. Web Locks
 serialize writes across tabs; IndexedDB transactions provide the fallback.
 Without either mechanism, writes fail without altering saved progress. Tabs
 observe changes while preserving feedback for clicks saved in the current tab.
+Offline play pauses input at the same six pending saves as online play to
+bound the write queue while another tab holds the save lock.
 A persisted local-mode startup skips session checks. Pressing the home button
 while signed out opens the local game and saves the first click there.
 

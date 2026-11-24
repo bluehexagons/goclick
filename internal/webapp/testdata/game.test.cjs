@@ -647,6 +647,38 @@ test("a refresh waits for pending clicks instead of replacing their results", as
   );
 });
 
+test("a stalled local save bounds pending clicks and re-enables play once they are saved", async () => {
+  const gate = deferred();
+  let attempts = 0;
+  const h = await harness({
+    storage: [["goclick.mode", "local"]],
+    locks: {
+      request(_, operation) {
+        attempts++;
+        return gate.promise.then(operation);
+      },
+    },
+  });
+  const button = h.element("#click-button");
+  const clicks = Array.from({ length: 80 }, () => button.fire("click"));
+  assert.equal(attempts, 6);
+  assert.equal(button.disabled, true);
+  h.runTimers();
+  const pending = h.element("#pending-clicks");
+  assert.equal(pending.hidden, false);
+  assert.match(pending.textContent, /6/);
+  assert.equal(h.feedback.length, 6);
+  assert.equal(h.element("#click-count").textContent, "0");
+
+  gate.resolve();
+  await Promise.all(clicks);
+  assert.equal(button.disabled, false);
+  assert.equal(pending.hidden, true);
+  assert.equal(h.element("#click-count").textContent, "6");
+  await button.fire("click");
+  assert.equal(h.element("#click-count").textContent, "7");
+});
+
 test("offline clicks are paused and reconnection reads progress without replaying", async () => {
   const h = await harness();
   h.window.fire("offline");

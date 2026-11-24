@@ -369,19 +369,29 @@ test("rapid input bounds voices, ended sources disconnect, and mute stops all au
   assert.equal(h.sources.length, 100);
 });
 
-test("suspended audio retries on release, coalesces playback, and never queues response pings", async () => {
+test("suspended audio bounds pending resumes and retains only the latest physical cue", async () => {
   const h = harness({ state: "suspended" });
   h.sound.setEnabled(true);
-  for (let i = 0; i < 20; i++) h.sound.play("press");
-  h.sound.play("release");
+  h.sound.hardware("boot");
+  h.sound.prepare();
+  for (let i = 0; i < 1000; i++) h.sound.play("press");
+  assert.equal(h.resumes(), 3);
+  for (let i = 0; i < 1000; i++) h.sound.play("release");
   h.sound.play("saved");
-  assert.equal(h.resumes(), 21);
+  assert.equal(h.resumes(), 4);
+  assert.equal(h.contexts[0].pendingResumes.length, 4);
   assert.equal(h.sources.length, 0);
   h.resume();
   await settle();
   assert.equal(h.sources.length, 1);
   h.sound.play("saved");
   assert.equal(h.sources.length, 2);
+  h.transition("interrupted");
+  h.sound.play("release");
+  assert.equal(h.resumes(), 5);
+  h.resume();
+  await settle();
+  assert.equal(h.sources.length, 3);
 });
 
 for (const action of ["mute", "hide"])

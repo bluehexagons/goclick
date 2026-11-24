@@ -452,7 +452,7 @@ function updateGameControls() {
     signingOut ||
     (authenticating && !localMode) ||
     (localMode && localSaveReplacing) ||
-    (!localMode && pendingClicks >= maxPendingClicks);
+    pendingClicks >= maxPendingClicks;
   // Keep the physical button responsive while a server cooldown is active;
   // the activation handler suppresses requests until its deadline expires.
   clickButton.setAttribute("aria-disabled", String(clickButton.disabled || coolingDown()));
@@ -823,7 +823,7 @@ clickButton.addEventListener("click", async (event) => {
     (offline && !localMode) ||
     signingOut ||
     authenticating ||
-    (!localMode && pendingClicks >= maxPendingClicks)
+    pendingClicks >= maxPendingClicks
   )
     return;
   if (coolingDown()) {
@@ -1123,13 +1123,14 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
   }
 });
 async function clickLocal(event: Activation = { detail: 0, clientX: 0, clientY: 0 }) {
-  if (!gameReady || localSaveReplacing) return;
+  if (!gameReady || localSaveReplacing || pendingClicks >= maxPendingClicks) return;
   const feedback = clickFeedback.start(clickButton, event, true),
     generation = clickGeneration,
     acknowledgement = ++localAcknowledgement;
   const base = gameSettings.value.simulatedPing;
   const simulated = Math.round(base * (0.7 + Math.random() * 0.6));
   pendingClicks++;
+  updatePendingIndicator();
   updateGameControls();
   setConnection(null, "loading");
   try {
@@ -1152,6 +1153,7 @@ async function clickLocal(event: Activation = { detail: 0, clientX: 0, clientY: 
   } finally {
     if (generation === clickGeneration) {
       pendingClicks--;
+      updatePendingIndicator();
       updateGameControls();
       if (pendingClicks === 0 && localRefreshQueued) synchronizeLocalSave();
     }
