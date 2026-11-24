@@ -7,6 +7,7 @@ import type { ClickAchievements, ClickProgress, Counters } from "./types.js";
 // One local slot, intentionally unrelated to authentication or the account API.
 const localGame = (() => {
   const key = "goclick.local.v1";
+  const coordinationTimeout = 10000;
   const kinds = counterKinds;
   function validate(counters: unknown): Counters {
     if (!isRecord(counters)) throw new Error("Invalid local counters.");
@@ -194,13 +195,45 @@ const localGame = (() => {
   }
   // Operations are synchronous so an IndexedDB read/write transaction can
   // provide the same cross-tab exclusion on browsers without Web Locks.
-  function change<T>(operation: () => T): Promise<T> {
-    if (navigator.locks) return navigator.locks.request(key, operation);
+  async function change<T>(operation: () => T): Promise<T> {
+    const controller = new AbortController();
+    const { signal } = controller;
+    const timer = window.setTimeout(() => {
+      controller.abort(new Error("The local save was busy for too long. Try again."));
+    }, coordinationTimeout);
+    const run = () => {
+      // Only timing out before the operation starts can guarantee no write.
+      if (signal.aborted) throw signal.reason;
+      window.clearTimeout(timer);
+      return operation();
+    };
+    try {
+      return navigator.locks
+        ? await navigator.locks.request(key, { signal }, run)
+        : await changeWithIndexedDB(run, signal);
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+  function changeWithIndexedDB<T>(operation: () => T, signal: AbortSignal): Promise<T> {
     if (typeof indexedDB === "undefined")
       return Promise.reject(new Error("This browser cannot safely coordinate the local save."));
     return new Promise((resolve, reject) => {
       const opening = indexedDB.open("goclick-local-locks", 1);
       let blocked = false;
+      let transaction: IDBTransaction | undefined;
+      signal.addEventListener(
+        "abort",
+        () => {
+          reject(signal.reason);
+          try {
+            transaction?.abort();
+          } catch {
+            // A transaction that finished on its own will close via its event.
+          }
+        },
+        { once: true },
+      );
       opening.onupgradeneeded = () => opening.result.createObjectStore("locks");
       opening.onerror = () => reject(opening.error);
       opening.onblocked = () => {
@@ -209,28 +242,30 @@ const localGame = (() => {
       };
       opening.onsuccess = () => {
         const database = opening.result;
-        if (blocked) {
+        if (blocked || signal.aborted) {
           database.close();
           return;
         }
         let result: T;
         let failure: unknown;
         try {
-          const transaction = database.transaction("locks", "readwrite");
-          transaction.oncomplete = () => {
+          const writeLock = database.transaction("locks", "readwrite");
+          transaction = writeLock;
+          writeLock.oncomplete = () => {
             database.close();
             resolve(result);
           };
-          transaction.onabort = () => {
+          writeLock.onabort = () => {
             database.close();
-            reject(failure ?? transaction.error ?? new Error("Local save coordination failed."));
+            reject(failure ?? writeLock.error ?? new Error("Local save coordination failed."));
           };
-          transaction.objectStore("locks").get(key).onsuccess = () => {
+          writeLock.objectStore("locks").get(key).onsuccess = () => {
+            if (signal.aborted) return;
             try {
               result = operation();
             } catch (error) {
               failure = error;
-              transaction.abort();
+              writeLock.abort();
             }
           };
         } catch (error) {

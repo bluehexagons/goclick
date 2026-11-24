@@ -202,6 +202,8 @@ Without either mechanism, writes fail without altering saved progress. Tabs
 observe changes while preserving feedback for clicks saved in the current tab.
 Offline play pauses input at the same six pending saves as online play to
 bound the write queue while another tab holds the save lock.
+If coordination takes more than ten seconds, waiting operations fail before
+touching the save, and the controls are available again.
 A persisted local-mode startup skips session checks. Pressing the home button
 while signed out opens the local game and saves the first click there.
 

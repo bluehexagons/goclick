@@ -5,8 +5,19 @@ const { frontend } = require("./frontend.cjs");
 
 function harness(options = {}) {
   const storage = new Map();
+  const timers = new Map();
+  let timerId = 0;
   let tail = Promise.resolve();
   const runtime = frontend({
+    AbortController,
+    indexedDB: options.indexedDB,
+    window: {
+      setTimeout(callback) {
+        timers.set(++timerId, callback);
+        return timerId;
+      },
+      clearTimeout: (id) => timers.delete(id),
+    },
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),
@@ -15,7 +26,7 @@ function harness(options = {}) {
       ? {}
       : {
           locks: {
-            request: (_, callback) => {
+            request: (_key, _options, callback) => {
               const next = tail.then(callback);
               tail = next.catch(() => {});
               return next;
@@ -23,7 +34,16 @@ function harness(options = {}) {
           },
         },
   });
-  return { game: runtime.load("local-game").localGame, storage };
+  return {
+    game: runtime.load("local-game").localGame,
+    storage,
+    expire() {
+      for (const [id, callback] of timers) {
+        timers.delete(id);
+        callback();
+      }
+    },
+  };
 }
 
 test("local streaks use UTC day, calendar month and year boundaries", () => {
@@ -90,6 +110,37 @@ test("missing cross-tab coordination refuses a local write without changing the 
   );
   assert.equal(storage.get(game.key), saved);
 });
+
+for (const phase of ["opening the database", "waiting for the transaction"])
+  test(`timing out while ${phase} cancels the IndexedDB-side save`, async () => {
+    const read = {};
+    const writeLock = {
+      objectStore: () => ({ get: () => read }),
+      abort() {
+        this.aborted = true;
+        this.onabort();
+      },
+    };
+    const database = {
+      transaction: () => writeLock,
+      close() {
+        this.closed = true;
+      },
+    };
+    const opening = { result: database };
+    const h = harness({ withoutLocks: true, indexedDB: { open: () => opening } });
+    const saving = h.game.change(() => h.game.increment());
+    if (phase === "waiting for the transaction") opening.onsuccess();
+    h.expire();
+    await assert.rejects(saving, /busy for too long/);
+    if (phase === "opening the database") opening.onsuccess();
+    else {
+      assert.equal(writeLock.aborted, true);
+      read.onsuccess();
+    }
+    assert.equal(database.closed, true);
+    assert.equal(h.storage.has(h.game.key), false);
+  });
 
 test("older local saves seed progress from their daily streak and preserve badges across gaps", () => {
   const { game, storage } = harness();

@@ -150,8 +150,8 @@ async function harness(options = {}) {
     clearTimeout(id) {
       timers.delete(id);
     },
-    setTimeout(callback) {
-      timers.set(++timerID, callback);
+    setTimeout(callback, delay) {
+      timers.set(++timerID, { callback, delay });
       return timerID;
     },
   });
@@ -244,9 +244,11 @@ async function harness(options = {}) {
     startupRequests,
     storage,
     feedback,
-    runTimers() {
-      while (timers.size) {
-        const [id, callback] = timers.entries().next().value;
+    runTimers(maxDelay = Infinity) {
+      for (;;) {
+        const timer = [...timers].find(([, { delay }]) => (delay ?? 0) <= maxDelay);
+        if (!timer) return;
+        const [id, { callback }] = timer;
         timers.delete(id);
         callback();
       }
@@ -653,7 +655,7 @@ test("a stalled local save bounds pending clicks and re-enables play once they a
   const h = await harness({
     storage: [["goclick.mode", "local"]],
     locks: {
-      request(_, operation) {
+      request(_key, _options, operation) {
         attempts++;
         return gate.promise.then(operation);
       },
@@ -663,7 +665,7 @@ test("a stalled local save bounds pending clicks and re-enables play once they a
   const clicks = Array.from({ length: 80 }, () => button.fire("click"));
   assert.equal(attempts, 6);
   assert.equal(button.disabled, true);
-  h.runTimers();
+  h.runTimers(180);
   const pending = h.element("#pending-clicks");
   assert.equal(pending.hidden, false);
   assert.match(pending.textContent, /6/);
@@ -677,6 +679,39 @@ test("a stalled local save bounds pending clicks and re-enables play once they a
   assert.equal(h.element("#click-count").textContent, "6");
   await button.fire("click");
   assert.equal(h.element("#click-count").textContent, "7");
+});
+
+test("a local save timeout releases play without scoring the timed-out click later", async () => {
+  const gate = deferred();
+  let lockReady = false;
+  const h = await harness({
+    storage: [["goclick.mode", "local"]],
+    locks: {
+      request(_key, { signal }, operation) {
+        if (lockReady) return Promise.resolve(operation());
+        return new Promise((resolve, reject) => {
+          signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+          void gate.promise.then(() => {
+            if (!signal.aborted) resolve(operation());
+          });
+        });
+      },
+    },
+  });
+  const saving = h.element("#click-button").fire("click");
+  assert.equal(h.element("#leave-local").disabled, true);
+  h.runTimers();
+  await saving;
+  assert.equal(h.element("#leave-local").disabled, false);
+  assert.equal(h.element("#pending-clicks").hidden, true);
+  assert.equal(h.feedback[0].failed, true);
+  assert.equal(h.element("#click-count").textContent, "0");
+  lockReady = true;
+  gate.resolve();
+  await settle();
+  assert.equal(h.storage.has("goclick.local.v1"), false);
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, "1");
 });
 
 test("offline clicks are paused and reconnection reads progress without replaying", async () => {
@@ -1044,7 +1079,7 @@ test("a queued local replacement pauses play, mode changes, and duplicate replac
   const h = await harness({
     storage: [["goclick.mode", "local"]],
     locks: {
-      request: async (_key, operation) => {
+      request: async (_key, _options, operation) => {
         operations++;
         await gate.promise;
         return operation();
@@ -1099,7 +1134,7 @@ test("external local-save changes received during a write are reconciled after i
   const h = await harness({
     storage: [["goclick.mode", "local"]],
     locks: {
-      request: async (_key, operation) => {
+      request: async (_key, _options, operation) => {
         const saved = operation();
         await gate.promise;
         return saved;
@@ -1130,7 +1165,7 @@ test("regaining focus during a local write waits for its achievement announcemen
   const h = await harness({
     storage: [["goclick.mode", "local"]],
     locks: {
-      request: async (_key, operation) => {
+      request: async (_key, _options, operation) => {
         const saved = operation();
         await gate.promise;
         return saved;

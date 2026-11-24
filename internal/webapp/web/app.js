@@ -731,6 +731,7 @@
   // frontend/local-game.ts
   var localGame = /* @__PURE__ */ (() => {
     const key = "goclick.local.v1";
+    const coordinationTimeout = 1e4;
     const kinds = counterKinds;
     function validate(counters) {
       if (!isRecord(counters)) throw new Error("Invalid local counters.");
@@ -870,13 +871,41 @@
       counters.achievements = advanceAchievements(counters.achievements, previous, time);
       return write(counters);
     }
-    function change(operation) {
-      if (navigator.locks) return navigator.locks.request(key, operation);
+    async function change(operation) {
+      const controller = new AbortController();
+      const { signal } = controller;
+      const timer = window.setTimeout(() => {
+        controller.abort(new Error("The local save was busy for too long. Try again."));
+      }, coordinationTimeout);
+      const run = () => {
+        if (signal.aborted) throw signal.reason;
+        window.clearTimeout(timer);
+        return operation();
+      };
+      try {
+        return navigator.locks ? await navigator.locks.request(key, { signal }, run) : await changeWithIndexedDB(run, signal);
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+    function changeWithIndexedDB(operation, signal) {
       if (typeof indexedDB === "undefined")
         return Promise.reject(new Error("This browser cannot safely coordinate the local save."));
       return new Promise((resolve, reject) => {
         const opening = indexedDB.open("goclick-local-locks", 1);
         let blocked = false;
+        let transaction;
+        signal.addEventListener(
+          "abort",
+          () => {
+            reject(signal.reason);
+            try {
+              transaction?.abort();
+            } catch {
+            }
+          },
+          { once: true }
+        );
         opening.onupgradeneeded = () => opening.result.createObjectStore("locks");
         opening.onerror = () => reject(opening.error);
         opening.onblocked = () => {
@@ -885,28 +914,30 @@
         };
         opening.onsuccess = () => {
           const database = opening.result;
-          if (blocked) {
+          if (blocked || signal.aborted) {
             database.close();
             return;
           }
           let result;
           let failure;
           try {
-            const transaction = database.transaction("locks", "readwrite");
-            transaction.oncomplete = () => {
+            const writeLock = database.transaction("locks", "readwrite");
+            transaction = writeLock;
+            writeLock.oncomplete = () => {
               database.close();
               resolve(result);
             };
-            transaction.onabort = () => {
+            writeLock.onabort = () => {
               database.close();
-              reject(failure ?? transaction.error ?? new Error("Local save coordination failed."));
+              reject(failure ?? writeLock.error ?? new Error("Local save coordination failed."));
             };
-            transaction.objectStore("locks").get(key).onsuccess = () => {
+            writeLock.objectStore("locks").get(key).onsuccess = () => {
+              if (signal.aborted) return;
               try {
                 result = operation();
               } catch (error) {
                 failure = error;
-                transaction.abort();
+                writeLock.abort();
               }
             };
           } catch (error) {
