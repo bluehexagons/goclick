@@ -76,6 +76,8 @@ export interface ButtonController {
 }
 export interface Renderer {
   draw(state?: ButtonState): void;
+  resume(): void;
+  suspend(): void;
 }
 
 export interface Page<T> {

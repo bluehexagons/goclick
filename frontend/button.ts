@@ -93,6 +93,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const target = { ...current },
     velocity = { ...current };
   let renderer: Renderer | null = null;
+  let stageWasVisible = false;
   let setupFrame = 0,
     frame = 0,
     lastFrame = 0;
@@ -1096,6 +1097,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       plugSwing.reset(current.x);
       reset();
     } else {
+      scheduleRenderer();
       bootIfVisible();
       if (document.activeElement === button) animate();
     }
@@ -1103,20 +1105,28 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
 
   // The CSS button is usable immediately. Compile graphics only for a visible
   // stage, after its first paint; hidden login/game buttons do no startup work.
+  function scheduleRenderer() {
+    if (setupFrame || document.hidden || !stage.clientWidth || !stage.clientHeight) return;
+    setupFrame = requestAnimationFrame(() => {
+      setupFrame = 0;
+      if (document.hidden || !stage.clientWidth || !stage.clientHeight) return;
+      renderer ??= createButtonRenderer(stage, button);
+      renderer.resume();
+      bootIfVisible();
+      paint();
+    });
+  }
   new ResizeObserver(() => {
     if (buttonStaysPut() && !pointers.size && keepParkedButtonInView()) animate();
-    if (!renderer && !setupFrame && stage.clientWidth && stage.clientHeight) {
-      setupFrame = requestAnimationFrame(() => {
-        setupFrame = 0;
-        if (!stage.clientWidth || !stage.clientHeight) return;
-        renderer = createButtonRenderer(stage, button);
-        bootIfVisible();
-        paint();
-      });
+    const visible = stage.clientWidth > 0 && stage.clientHeight > 0;
+    if (visible && (!stageWasVisible || !renderer)) {
+      scheduleRenderer();
     } else {
+      if (!visible) renderer?.suspend();
       bootIfVisible();
       paint();
     }
+    stageWasVisible = visible;
   }).observe(stage);
   tactileButtons.set(button, { reset, respond });
 }

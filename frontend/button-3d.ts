@@ -17,15 +17,7 @@ const LABEL_MAX_WIDTH = 560;
 function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Renderer {
   const canvas = required<HTMLCanvasElement>(".button-scene", stage);
   const rig = required(".button-rig", stage);
-  const maybeGL = (() => {
-    try {
-      return canvas.getContext("webgl", { alpha: true, antialias: true, premultipliedAlpha: true });
-    } catch {
-      return null;
-    }
-  })();
-  if (!maybeGL) return { draw() {} };
-  const gl: WebGLRenderingContext = maybeGL;
+  let gl: WebGLRenderingContext | null = null;
 
   const vertexSource = `
     attribute vec3 position;
@@ -170,16 +162,19 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       gl_FragColor = vec4(gold, 1.);
     }`;
 
-  function shader(type: number, source: string) {
+  function shader(gl: WebGLRenderingContext, type: number, source: string) {
     const item = gl.createShader(type);
     if (!item) throw new Error("Button shader allocation failed");
-    gl.shaderSource(item, source);
-    gl.compileShader(item);
-    if (!gl.getShaderParameter(item, gl.COMPILE_STATUS)) {
+    try {
+      gl.shaderSource(item, source);
+      gl.compileShader(item);
+      if (!gl.getShaderParameter(item, gl.COMPILE_STATUS))
+        throw new Error("Button shader could not compile");
+      return item;
+    } catch (error) {
       gl.deleteShader(item);
-      throw new Error("Button shader could not compile");
+      throw error;
     }
-    return item;
   }
   const uniformNames = [
     "rotation",
@@ -206,8 +201,13 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     "letteringLight",
     "letteringOpacity",
   ] as const;
-  let program: WebGLProgram | null = null;
-  let uniforms: Record<(typeof uniformNames)[number], WebGLUniformLocation | null>;
+  type Resources = {
+    program: WebGLProgram;
+    buffer: WebGLBuffer;
+    texture: WebGLTexture;
+    uniforms: Record<(typeof uniformNames)[number], WebGLUniformLocation | null>;
+  };
+  let resources: Resources | null = null;
   type Point = { p: [number, number, number]; n: [number, number] };
 
   const vertices: number[] = [];
@@ -283,18 +283,18 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     vertex(point, [0, 0, 1]);
   }
   const label = document.createElement("canvas");
-  label.width = ATLAS_WIDTH;
-  // Albedo, emission mask, then lettering. Neutral metal and an unlit mask
-  // keep input and rendering usable before either image finishes loading.
-  label.height = ATLAS_HEIGHT;
-  const context = label.getContext("2d");
-  if (!context) return { draw() {} };
-  const labelContext: CanvasRenderingContext2D = context;
   const layers: [HTMLImageElement | null, HTMLImageElement | null] = [null, null];
   const lettering = required(".button-label", button);
+  let atlasDirty = true;
   let paintedText = "";
   let paintedDirection: CanvasDirection = "ltr";
   function paintAtlas() {
+    if (label.width !== ATLAS_WIDTH) label.width = ATLAS_WIDTH;
+    if (label.height !== ATLAS_HEIGHT) label.height = ATLAS_HEIGHT;
+    const labelContext = label.getContext("2d");
+    if (!labelContext) throw new Error("Button atlas canvas unavailable");
+    // Neutral metal and an unlit mask keep the first frame usable before
+    // either image finishes loading.
     labelContext.clearRect(0, 0, ATLAS_WIDTH, ATLAS_HEIGHT);
     labelContext.fillStyle = "#808080";
     labelContext.fillRect(0, 0, ATLAS_WIDTH, LAYER_HEIGHT);
@@ -312,19 +312,19 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     labelContext.textBaseline = "middle";
     labelContext.fillStyle = "#fff";
     labelContext.fillText(paintedText, ATLAS_WIDTH / 2, LAYER_HEIGHT * 2.5 + 6);
+    atlasDirty = false;
   }
-  paintAtlas();
-  let atlasTexture: WebGLTexture | null = null;
-  function initialize() {
-    let vertex: WebGLShader | null = null,
+  function initialize(gl: WebGLRenderingContext): Resources | null {
+    let program: WebGLProgram | null = null,
+      vertex: WebGLShader | null = null,
       fragment: WebGLShader | null = null,
       buffer: WebGLBuffer | null = null,
       texture: WebGLTexture | null = null;
     try {
       program = gl.createProgram();
       if (!program) throw new Error("Button program allocation failed");
-      vertex = shader(gl.VERTEX_SHADER, vertexSource);
-      fragment = shader(gl.FRAGMENT_SHADER, fragmentSource);
+      vertex = shader(gl, gl.VERTEX_SHADER, vertexSource);
+      fragment = shader(gl, gl.FRAGMENT_SHADER, fragmentSource);
       gl.attachShader(program, vertex);
       gl.attachShader(program, fragment);
       gl.linkProgram(program);
@@ -347,9 +347,9 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
         gl.enableVertexAttribArray(location);
         gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset * 4);
       }
-      uniforms = Object.fromEntries(
+      const uniforms = Object.fromEntries(
         uniformNames.map((name) => [name, gl.getUniformLocation(program!, name)]),
-      ) as typeof uniforms;
+      ) as Resources["uniforms"];
       texture = gl.createTexture();
       if (!texture) throw new Error("Button texture allocation failed");
       gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -365,20 +365,20 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       gl.clearColor(0, 0, 0, 0);
 
       if (gl.getError() !== gl.NO_ERROR) throw new Error("Button graphics setup failed");
-      atlasTexture = texture;
-      return true;
+      return { program, buffer, texture, uniforms };
     } catch {
-      if (program) gl.deleteProgram(program);
+      if (program) {
+        gl.useProgram(null);
+        gl.deleteProgram(program);
+      }
       if (buffer) gl.deleteBuffer(buffer);
       if (texture) gl.deleteTexture(texture);
-      return false;
+      return null;
     } finally {
       if (vertex) gl.deleteShader(vertex);
       if (fragment) gl.deleteShader(fragment);
     }
   }
-  if (!initialize()) return { draw() {} };
-
   let state: ButtonState = {
     x: 0,
     y: 0,
@@ -392,28 +392,79 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     responseProgress: 0,
     responseColor: [0.38, 0.84, 0.8],
   };
-  let lost = false;
-  function draw(next: ButtonState = state) {
-    state = { ...next };
-    if (lost) return;
-    if (!stage.clientWidth || !stage.clientHeight) return;
-    const direction = lettering.dir === "rtl" ? "rtl" : "ltr";
-    if (paintedText !== lettering.textContent || paintedDirection !== direction) {
+  function visible() {
+    return !document.hidden && stage.clientWidth > 0 && stage.clientHeight > 0;
+  }
+  function resizeCanvas(width: number, height: number) {
+    // Shrink before growing the other dimension to avoid a larger temporary buffer.
+    if (height < canvas.height) canvas.height = height;
+    if (width !== canvas.width) canvas.width = width;
+    if (height > canvas.height) canvas.height = height;
+  }
+  function suspend() {
+    stage.classList.remove("is-rendered");
+    if (gl && resources && !gl.isContextLost()) {
+      gl.useProgram(null);
+      gl.deleteProgram(resources.program);
+      gl.deleteBuffer(resources.buffer);
+      gl.deleteTexture(resources.texture);
+    }
+    resources = null;
+    if (gl) resizeCanvas(1, 1);
+    if (label.width !== 1) label.width = 1;
+    if (label.height !== 1) label.height = 1;
+  }
+  function resume() {
+    if (!visible()) return;
+    if (!resources) {
       try {
+        gl ??= canvas.getContext("webgl", {
+          alpha: true,
+          antialias: true,
+          premultipliedAlpha: true,
+        });
+        if (!gl || gl.isContextLost()) return;
         paintAtlas();
-        gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
-        if (gl.getError() !== gl.NO_ERROR) throw new Error("Lettering upload failed");
+        resources = initialize(gl);
       } catch {
-        lost = true;
-        stage.classList.remove("is-rendered");
+        suspend();
+        return;
+      }
+      if (!resources) {
+        suspend();
         return;
       }
     }
+    draw();
+  }
+  function draw(next: ButtonState = state) {
+    state = { ...next };
+    if (!gl || !resources || !visible()) return;
+    try {
+      if (gl.isContextLost()) {
+        suspend();
+        return;
+      }
+      const direction = lettering.dir === "rtl" ? "rtl" : "ltr";
+      if (atlasDirty || paintedText !== lettering.textContent || paintedDirection !== direction) {
+        paintAtlas();
+        // The atlas keeps its dimensions when the material or lettering changes.
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, label);
+        if (gl.getError() !== gl.NO_ERROR) throw new Error("Button atlas update failed");
+      }
+      if (render(gl, resources.uniforms)) stage.classList.add("is-rendered");
+      else suspend();
+    } catch {
+      suspend();
+    }
+  }
+  function render(gl: WebGLRenderingContext, uniforms: Resources["uniforms"]) {
+    const root = document.documentElement;
+    if (!root.clientWidth || !root.clientHeight) return false;
     const bounds = stage.getBoundingClientRect();
     const scene = projectButtonScene(state, button.offsetWidth, bounds, {
-      width: document.documentElement.clientWidth,
-      height: document.documentElement.clientHeight,
+      width: root.clientWidth,
+      height: root.clientHeight,
     });
     canvas.style.left = `${scene.frame.left - bounds.left}px`;
     canvas.style.top = `${scene.frame.top - bounds.top}px`;
@@ -424,11 +475,12 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
     const pixelWidth = Math.round(width * pixelRatio),
       pixelHeight = Math.round(height * pixelRatio);
-    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-      canvas.width = pixelWidth;
-      canvas.height = pixelHeight;
-    }
-    gl.viewport(0, 0, pixelWidth, pixelHeight);
+    const resized = canvas.width !== pixelWidth || canvas.height !== pixelHeight;
+    if (resized) resizeCanvas(pixelWidth, pixelHeight);
+    // A browser under memory pressure may allocate a smaller drawing buffer.
+    const { drawingBufferWidth, drawingBufferHeight } = gl;
+    if (!drawingBufferWidth || !drawingBufferHeight) return false;
+    gl.viewport(0, 0, drawingBufferWidth, drawingBufferHeight);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     rig.style.setProperty("--lift", `${scene.lift.toFixed(3)}px`);
     gl.uniform2f(uniforms.viewport, width, height);
@@ -473,44 +525,26 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     gl.uniform1f(uniforms.scale, scene.scale);
     gl.uniform1f(uniforms.shadow, 0);
     gl.drawArrays(gl.TRIANGLES, 0, solidCount);
-    stage.classList.add("is-rendered");
+    return !gl.isContextLost() && (!resized || gl.getError() === gl.NO_ERROR);
   }
   canvas.addEventListener("webglcontextlost", (event) => {
     event.preventDefault();
-    lost = true;
-    stage.classList.remove("is-rendered");
+    suspend();
   });
-  canvas.addEventListener("webglcontextrestored", () => {
-    paintAtlas();
-    lost = !initialize();
-    if (!lost) draw(state);
-  });
+  canvas.addEventListener("webglcontextrestored", resume);
   const sources = ["/button-material.svg", "/button-glow.svg"] as const;
   for (const [index, source] of sources.entries()) {
     const image = new Image();
     image.onload = () => {
-      try {
-        layers[index as 0 | 1] = image;
-        paintAtlas();
-        // Restoration uploads the current atlas even if an image arrived while
-        // the GPU was unavailable. Either asset may also finish loading first.
-        if (lost || !atlasTexture) return;
-        gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
-        if (gl.getError() !== gl.NO_ERROR) throw new Error("Material texture upload failed");
-        draw();
-      } catch {
-        lost = true;
-        stage.classList.remove("is-rendered");
-      }
+      layers[index as 0 | 1] = image;
+      atlasDirty = true;
+      draw();
     };
     image.src = source;
   }
   // A scrolled stage has a new screen-space origin even if its pose is idle.
   window.addEventListener("scroll", () => draw(), { passive: true });
-  const renderer = { draw };
-  draw();
-  return renderer;
+  return { draw, resume, suspend };
 }
 
 export { createButtonRenderer };

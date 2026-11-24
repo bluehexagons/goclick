@@ -164,6 +164,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
   let onStageResize;
   const sounds = [];
   const hardwareSounds = [];
+  const graphics = [];
   let powered = true;
   let soundCancellations = 0;
   const runtime = frontend(
@@ -195,7 +196,13 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
       },
     },
     {
-      "button-3d": { createButtonRenderer: () => null },
+      "button-3d": {
+        createButtonRenderer: () => ({
+          draw() {},
+          resume: () => graphics.push("resume"),
+          suspend: () => graphics.push("suspend"),
+        }),
+      },
       preferences: { motionPreference: { matches: reducedMotion, addEventListener() {} } },
       sound: {
         clickSound: {
@@ -232,6 +239,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     stage,
     rig,
     document,
+    graphics,
     readout,
     controller,
     power,
@@ -878,6 +886,28 @@ test("continued pulls unplug the button, darkening it without disabling clicks",
   assert.equal(h.clicks.length, 1);
   assert.equal(h.sounds.length, before);
   assert.equal(h.power.dataset.plug, "unplugged");
+});
+
+test("graphics retry when a view opens or the tab returns to the foreground", () => {
+  const h = harness();
+  h.resizeStage();
+  h.frame(0);
+  h.resizeStage();
+  assert.deepEqual(h.graphics, ["resume"]);
+
+  h.stage.clientWidth = 0;
+  h.resizeStage();
+  h.stage.clientWidth = 680;
+  h.resizeStage();
+  h.frame(16);
+  assert.deepEqual(h.graphics, ["resume", "suspend", "resume"]);
+
+  h.document.hidden = true;
+  h.document.fire("visibilitychange");
+  h.document.hidden = false;
+  h.document.fire("visibilitychange");
+  h.frame(32);
+  assert.deepEqual(h.graphics, ["resume", "suspend", "resume", "resume"]);
 });
 
 test("the game button boots once on first appearance and again when RESET restores power", () => {

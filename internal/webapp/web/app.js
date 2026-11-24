@@ -1199,16 +1199,7 @@
   function createButtonRenderer(stage, button) {
     const canvas = required(".button-scene", stage);
     const rig = required(".button-rig", stage);
-    const maybeGL = (() => {
-      try {
-        return canvas.getContext("webgl", { alpha: true, antialias: true, premultipliedAlpha: true });
-      } catch {
-        return null;
-      }
-    })();
-    if (!maybeGL) return { draw() {
-    } };
-    const gl = maybeGL;
+    let gl = null;
     const vertexSource = `
     attribute vec3 position;
     attribute vec3 normal;
@@ -1351,16 +1342,19 @@
       gold = mix(bareFace, gold, letteringOpacity);
       gl_FragColor = vec4(gold, 1.);
     }`;
-    function shader(type, source) {
-      const item = gl.createShader(type);
+    function shader(gl2, type, source) {
+      const item = gl2.createShader(type);
       if (!item) throw new Error("Button shader allocation failed");
-      gl.shaderSource(item, source);
-      gl.compileShader(item);
-      if (!gl.getShaderParameter(item, gl.COMPILE_STATUS)) {
-        gl.deleteShader(item);
-        throw new Error("Button shader could not compile");
+      try {
+        gl2.shaderSource(item, source);
+        gl2.compileShader(item);
+        if (!gl2.getShaderParameter(item, gl2.COMPILE_STATUS))
+          throw new Error("Button shader could not compile");
+        return item;
+      } catch (error) {
+        gl2.deleteShader(item);
+        throw error;
       }
-      return item;
     }
     const uniformNames = [
       "rotation",
@@ -1387,8 +1381,7 @@
       "letteringLight",
       "letteringOpacity"
     ];
-    let program = null;
-    let uniforms;
+    let resources = null;
     const vertices = [];
     const rings = [
       { inset: 6, z: 18 },
@@ -1456,17 +1449,16 @@
       vertex(point, [0, 0, 1]);
     }
     const label = document.createElement("canvas");
-    label.width = ATLAS_WIDTH;
-    label.height = ATLAS_HEIGHT;
-    const context2 = label.getContext("2d");
-    if (!context2) return { draw() {
-    } };
-    const labelContext = context2;
     const layers = [null, null];
     const lettering = required(".button-label", button);
+    let atlasDirty = true;
     let paintedText = "";
     let paintedDirection = "ltr";
     function paintAtlas() {
+      if (label.width !== ATLAS_WIDTH) label.width = ATLAS_WIDTH;
+      if (label.height !== ATLAS_HEIGHT) label.height = ATLAS_HEIGHT;
+      const labelContext = label.getContext("2d");
+      if (!labelContext) throw new Error("Button atlas canvas unavailable");
       labelContext.clearRect(0, 0, ATLAS_WIDTH, ATLAS_HEIGHT);
       labelContext.fillStyle = "#808080";
       labelContext.fillRect(0, 0, ATLAS_WIDTH, LAYER_HEIGHT);
@@ -1483,68 +1475,67 @@
       labelContext.textBaseline = "middle";
       labelContext.fillStyle = "#fff";
       labelContext.fillText(paintedText, ATLAS_WIDTH / 2, LAYER_HEIGHT * 2.5 + 6);
+      atlasDirty = false;
     }
-    paintAtlas();
-    let atlasTexture = null;
-    function initialize() {
-      let vertex2 = null, fragment = null, buffer = null, texture = null;
+    function initialize(gl2) {
+      let program = null, vertex2 = null, fragment = null, buffer = null, texture = null;
       try {
-        program = gl.createProgram();
+        program = gl2.createProgram();
         if (!program) throw new Error("Button program allocation failed");
-        vertex2 = shader(gl.VERTEX_SHADER, vertexSource);
-        fragment = shader(gl.FRAGMENT_SHADER, fragmentSource);
-        gl.attachShader(program, vertex2);
-        gl.attachShader(program, fragment);
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+        vertex2 = shader(gl2, gl2.VERTEX_SHADER, vertexSource);
+        fragment = shader(gl2, gl2.FRAGMENT_SHADER, fragmentSource);
+        gl2.attachShader(program, vertex2);
+        gl2.attachShader(program, fragment);
+        gl2.linkProgram(program);
+        if (!gl2.getProgramParameter(program, gl2.LINK_STATUS))
           throw new Error("Button renderer could not link");
-        buffer = gl.createBuffer();
+        buffer = gl2.createBuffer();
         if (!buffer) throw new Error("Button buffer allocation failed");
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        gl.useProgram(program);
+        gl2.bindBuffer(gl2.ARRAY_BUFFER, buffer);
+        gl2.bufferData(gl2.ARRAY_BUFFER, new Float32Array(vertices), gl2.STATIC_DRAW);
+        gl2.useProgram(program);
         for (const [name, size, offset] of [
           ["position", 3, 0],
           ["normal", 3, 3],
           ["uv", 2, 6],
           ["face", 1, 8]
         ]) {
-          const location = gl.getAttribLocation(program, name);
+          const location = gl2.getAttribLocation(program, name);
           if (location < 0) throw new Error("Button attribute unavailable");
-          gl.enableVertexAttribArray(location);
-          gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset * 4);
+          gl2.enableVertexAttribArray(location);
+          gl2.vertexAttribPointer(location, size, gl2.FLOAT, false, 36, offset * 4);
         }
-        uniforms = Object.fromEntries(
-          uniformNames.map((name) => [name, gl.getUniformLocation(program, name)])
+        const uniforms = Object.fromEntries(
+          uniformNames.map((name) => [name, gl2.getUniformLocation(program, name)])
         );
-        texture = gl.createTexture();
+        texture = gl2.createTexture();
         if (!texture) throw new Error("Button texture allocation failed");
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.uniform1i(uniforms.surfaceAtlas, 0);
-        gl.enable(gl.DEPTH_TEST);
-        gl.enable(gl.CULL_FACE);
-        gl.frontFace(gl.CW);
-        gl.clearColor(0, 0, 0, 0);
-        if (gl.getError() !== gl.NO_ERROR) throw new Error("Button graphics setup failed");
-        atlasTexture = texture;
-        return true;
+        gl2.bindTexture(gl2.TEXTURE_2D, texture);
+        gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, label);
+        gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_S, gl2.CLAMP_TO_EDGE);
+        gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_T, gl2.CLAMP_TO_EDGE);
+        gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MIN_FILTER, gl2.LINEAR);
+        gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MAG_FILTER, gl2.LINEAR);
+        gl2.uniform1i(uniforms.surfaceAtlas, 0);
+        gl2.enable(gl2.DEPTH_TEST);
+        gl2.enable(gl2.CULL_FACE);
+        gl2.frontFace(gl2.CW);
+        gl2.clearColor(0, 0, 0, 0);
+        if (gl2.getError() !== gl2.NO_ERROR) throw new Error("Button graphics setup failed");
+        return { program, buffer, texture, uniforms };
       } catch {
-        if (program) gl.deleteProgram(program);
-        if (buffer) gl.deleteBuffer(buffer);
-        if (texture) gl.deleteTexture(texture);
-        return false;
+        if (program) {
+          gl2.useProgram(null);
+          gl2.deleteProgram(program);
+        }
+        if (buffer) gl2.deleteBuffer(buffer);
+        if (texture) gl2.deleteTexture(texture);
+        return null;
       } finally {
-        if (vertex2) gl.deleteShader(vertex2);
-        if (fragment) gl.deleteShader(fragment);
+        if (vertex2) gl2.deleteShader(vertex2);
+        if (fragment) gl2.deleteShader(fragment);
       }
     }
-    if (!initialize()) return { draw() {
-    } };
     let state = {
       x: 0,
       y: 0,
@@ -1558,28 +1549,77 @@
       responseProgress: 0,
       responseColor: [0.38, 0.84, 0.8]
     };
-    let lost = false;
-    function draw(next = state) {
-      state = { ...next };
-      if (lost) return;
-      if (!stage.clientWidth || !stage.clientHeight) return;
-      const direction = lettering.dir === "rtl" ? "rtl" : "ltr";
-      if (paintedText !== lettering.textContent || paintedDirection !== direction) {
+    function visible2() {
+      return !document.hidden && stage.clientWidth > 0 && stage.clientHeight > 0;
+    }
+    function resizeCanvas(width, height) {
+      if (height < canvas.height) canvas.height = height;
+      if (width !== canvas.width) canvas.width = width;
+      if (height > canvas.height) canvas.height = height;
+    }
+    function suspend2() {
+      stage.classList.remove("is-rendered");
+      if (gl && resources && !gl.isContextLost()) {
+        gl.useProgram(null);
+        gl.deleteProgram(resources.program);
+        gl.deleteBuffer(resources.buffer);
+        gl.deleteTexture(resources.texture);
+      }
+      resources = null;
+      if (gl) resizeCanvas(1, 1);
+      if (label.width !== 1) label.width = 1;
+      if (label.height !== 1) label.height = 1;
+    }
+    function resume2() {
+      if (!visible2()) return;
+      if (!resources) {
         try {
+          gl ??= canvas.getContext("webgl", {
+            alpha: true,
+            antialias: true,
+            premultipliedAlpha: true
+          });
+          if (!gl || gl.isContextLost()) return;
           paintAtlas();
-          gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
-          if (gl.getError() !== gl.NO_ERROR) throw new Error("Lettering upload failed");
+          resources = initialize(gl);
         } catch {
-          lost = true;
-          stage.classList.remove("is-rendered");
+          suspend2();
+          return;
+        }
+        if (!resources) {
+          suspend2();
           return;
         }
       }
+      draw();
+    }
+    function draw(next = state) {
+      state = { ...next };
+      if (!gl || !resources || !visible2()) return;
+      try {
+        if (gl.isContextLost()) {
+          suspend2();
+          return;
+        }
+        const direction = lettering.dir === "rtl" ? "rtl" : "ltr";
+        if (atlasDirty || paintedText !== lettering.textContent || paintedDirection !== direction) {
+          paintAtlas();
+          gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, label);
+          if (gl.getError() !== gl.NO_ERROR) throw new Error("Button atlas update failed");
+        }
+        if (render(gl, resources.uniforms)) stage.classList.add("is-rendered");
+        else suspend2();
+      } catch {
+        suspend2();
+      }
+    }
+    function render(gl2, uniforms) {
+      const root2 = document.documentElement;
+      if (!root2.clientWidth || !root2.clientHeight) return false;
       const bounds = stage.getBoundingClientRect();
       const scene = projectButtonScene(state, button.offsetWidth, bounds, {
-        width: document.documentElement.clientWidth,
-        height: document.documentElement.clientHeight
+        width: root2.clientWidth,
+        height: root2.clientHeight
       });
       canvas.style.left = `${scene.frame.left - bounds.left}px`;
       canvas.style.top = `${scene.frame.top - bounds.top}px`;
@@ -1588,89 +1628,73 @@
       const width = scene.frame.width, height = scene.frame.height;
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       const pixelWidth = Math.round(width * pixelRatio), pixelHeight = Math.round(height * pixelRatio);
-      if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-        canvas.width = pixelWidth;
-        canvas.height = pixelHeight;
-      }
-      gl.viewport(0, 0, pixelWidth, pixelHeight);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      const resized = canvas.width !== pixelWidth || canvas.height !== pixelHeight;
+      if (resized) resizeCanvas(pixelWidth, pixelHeight);
+      const { drawingBufferWidth, drawingBufferHeight } = gl2;
+      if (!drawingBufferWidth || !drawingBufferHeight) return false;
+      gl2.viewport(0, 0, drawingBufferWidth, drawingBufferHeight);
+      gl2.clear(gl2.COLOR_BUFFER_BIT | gl2.DEPTH_BUFFER_BIT);
       rig.style.setProperty("--lift", `${scene.lift.toFixed(3)}px`);
-      gl.uniform2f(uniforms.viewport, width, height);
-      gl.uniform2f(uniforms.origin, scene.originX, scene.originY);
-      gl.uniform1f(uniforms.copper, Math.max(0, Math.min(1, state.copper)));
-      gl.uniform1f(uniforms.flash, state.flash || 0);
-      gl.uniform1f(uniforms.response, state.response || 0);
-      gl.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
-      gl.uniform1f(uniforms.holdLight, state.holdLight ?? 0);
-      gl.uniform1f(uniforms.powerLight, (state.drainLight ?? 0) + (state.bootLight ?? 0));
-      gl.uniform1f(uniforms.readyLight, state.readyLight ?? 0);
-      gl.uniform3f(uniforms.responseColor, ...state.responseColor || [0.38, 0.84, 0.8]);
+      gl2.uniform2f(uniforms.viewport, width, height);
+      gl2.uniform2f(uniforms.origin, scene.originX, scene.originY);
+      gl2.uniform1f(uniforms.copper, Math.max(0, Math.min(1, state.copper)));
+      gl2.uniform1f(uniforms.flash, state.flash || 0);
+      gl2.uniform1f(uniforms.response, state.response || 0);
+      gl2.uniform1f(uniforms.responseProgress, state.responseProgress || 0);
+      gl2.uniform1f(uniforms.holdLight, state.holdLight ?? 0);
+      gl2.uniform1f(uniforms.powerLight, (state.drainLight ?? 0) + (state.bootLight ?? 0));
+      gl2.uniform1f(uniforms.readyLight, state.readyLight ?? 0);
+      gl2.uniform3f(uniforms.responseColor, ...state.responseColor || [0.38, 0.84, 0.8]);
       const letterPose = projectButtonLettering(state);
-      gl.uniform4f(
+      gl2.uniform4f(
         uniforms.letteringPose,
         letterPose.scaleX,
         letterPose.scaleY,
         letterPose.shiftY,
         letterPose.ink
       );
-      gl.uniform2f(uniforms.letteringAccent, letterPose.charge, letterPose.sheen);
-      gl.uniform1f(uniforms.letteringLight, letterPose.light);
-      gl.uniform1f(uniforms.letteringOpacity, state.labelOpacity ?? 1);
-      gl.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
-      gl.uniform3f(uniforms.translation, 0, 0, 0);
-      gl.uniform1f(uniforms.scale, 1);
-      gl.uniform1f(uniforms.shadow, 1);
-      gl.uniform1f(uniforms.recession, 0);
-      gl.uniform2f(uniforms.shadowCenter, scene.shadow.x, scene.shadow.y);
-      gl.uniform2f(uniforms.shadowSize, scene.shadow.halfWidth, scene.shadow.halfHeight);
-      gl.uniform1f(uniforms.shadowBlur, scene.shadow.blur);
-      gl.enable(gl.BLEND);
-      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.depthMask(false);
-      gl.drawArrays(gl.TRIANGLES, solidCount, 6);
-      gl.depthMask(true);
-      gl.disable(gl.BLEND);
-      gl.uniformMatrix3fv(uniforms.rotation, false, scene.rotation);
-      gl.uniform3f(uniforms.translation, scene.x, scene.y, scene.lift);
-      gl.uniform1f(uniforms.recession, scene.recession);
-      gl.uniform1f(uniforms.scale, scene.scale);
-      gl.uniform1f(uniforms.shadow, 0);
-      gl.drawArrays(gl.TRIANGLES, 0, solidCount);
-      stage.classList.add("is-rendered");
+      gl2.uniform2f(uniforms.letteringAccent, letterPose.charge, letterPose.sheen);
+      gl2.uniform1f(uniforms.letteringLight, letterPose.light);
+      gl2.uniform1f(uniforms.letteringOpacity, state.labelOpacity ?? 1);
+      gl2.uniformMatrix3fv(uniforms.rotation, false, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
+      gl2.uniform3f(uniforms.translation, 0, 0, 0);
+      gl2.uniform1f(uniforms.scale, 1);
+      gl2.uniform1f(uniforms.shadow, 1);
+      gl2.uniform1f(uniforms.recession, 0);
+      gl2.uniform2f(uniforms.shadowCenter, scene.shadow.x, scene.shadow.y);
+      gl2.uniform2f(uniforms.shadowSize, scene.shadow.halfWidth, scene.shadow.halfHeight);
+      gl2.uniform1f(uniforms.shadowBlur, scene.shadow.blur);
+      gl2.enable(gl2.BLEND);
+      gl2.blendFuncSeparate(gl2.SRC_ALPHA, gl2.ONE_MINUS_SRC_ALPHA, gl2.ONE, gl2.ONE_MINUS_SRC_ALPHA);
+      gl2.depthMask(false);
+      gl2.drawArrays(gl2.TRIANGLES, solidCount, 6);
+      gl2.depthMask(true);
+      gl2.disable(gl2.BLEND);
+      gl2.uniformMatrix3fv(uniforms.rotation, false, scene.rotation);
+      gl2.uniform3f(uniforms.translation, scene.x, scene.y, scene.lift);
+      gl2.uniform1f(uniforms.recession, scene.recession);
+      gl2.uniform1f(uniforms.scale, scene.scale);
+      gl2.uniform1f(uniforms.shadow, 0);
+      gl2.drawArrays(gl2.TRIANGLES, 0, solidCount);
+      return !gl2.isContextLost() && (!resized || gl2.getError() === gl2.NO_ERROR);
     }
     canvas.addEventListener("webglcontextlost", (event) => {
       event.preventDefault();
-      lost = true;
-      stage.classList.remove("is-rendered");
+      suspend2();
     });
-    canvas.addEventListener("webglcontextrestored", () => {
-      paintAtlas();
-      lost = !initialize();
-      if (!lost) draw(state);
-    });
+    canvas.addEventListener("webglcontextrestored", resume2);
     const sources = ["/button-material.svg", "/button-glow.svg"];
     for (const [index, source] of sources.entries()) {
       const image = new Image();
       image.onload = () => {
-        try {
-          layers[index] = image;
-          paintAtlas();
-          if (lost || !atlasTexture) return;
-          gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, label);
-          if (gl.getError() !== gl.NO_ERROR) throw new Error("Material texture upload failed");
-          draw();
-        } catch {
-          lost = true;
-          stage.classList.remove("is-rendered");
-        }
+        layers[index] = image;
+        atlasDirty = true;
+        draw();
       };
       image.src = source;
     }
     window.addEventListener("scroll", () => draw(), { passive: true });
-    const renderer = { draw };
-    draw();
-    return renderer;
+    return { draw, resume: resume2, suspend: suspend2 };
   }
 
   // frontend/sound.ts
@@ -4483,8 +4507,18 @@
       }
       target.x = target.y = 0;
       animate2();
+    }, scheduleRenderer2 = function() {
+      if (setupFrame || document.hidden || !stage.clientWidth || !stage.clientHeight) return;
+      setupFrame = requestAnimationFrame(() => {
+        setupFrame = 0;
+        if (document.hidden || !stage.clientWidth || !stage.clientHeight) return;
+        renderer ??= createButtonRenderer(stage, button);
+        renderer.resume();
+        bootIfVisible2();
+        paint2();
+      });
     };
-    readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2;
+    readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2, scheduleRenderer = scheduleRenderer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -4544,6 +4578,7 @@
     };
     const target = { ...current }, velocity = { ...current };
     let renderer = null;
+    let stageWasVisible = false;
     let setupFrame = 0, frame = 0, lastFrame = 0;
     const pointers = /* @__PURE__ */ new Map();
     let dragFromX = 0, dragFromY = 0;
@@ -4776,24 +4811,22 @@
         plugSwing.reset(current.x);
         reset2();
       } else {
+        scheduleRenderer2();
         bootIfVisible2();
         if (document.activeElement === button) animate2();
       }
     });
     new ResizeObserver(() => {
       if (buttonStaysPut2() && !pointers.size && keepParkedButtonInView2()) animate2();
-      if (!renderer && !setupFrame && stage.clientWidth && stage.clientHeight) {
-        setupFrame = requestAnimationFrame(() => {
-          setupFrame = 0;
-          if (!stage.clientWidth || !stage.clientHeight) return;
-          renderer = createButtonRenderer(stage, button);
-          bootIfVisible2();
-          paint2();
-        });
+      const visible2 = stage.clientWidth > 0 && stage.clientHeight > 0;
+      if (visible2 && (!stageWasVisible || !renderer)) {
+        scheduleRenderer2();
       } else {
+        if (!visible2) renderer?.suspend();
         bootIfVisible2();
         paint2();
       }
+      stageWasVisible = visible2;
     }).observe(stage);
     tactileButtons.set(button, { reset: reset2, respond: respond2 });
   }
@@ -4825,6 +4858,7 @@
   var activateRelease;
   var pressOutlet;
   var endPointer;
+  var scheduleRenderer;
 
   // frontend/click-feedback.ts
   var feedbackLabels = {
