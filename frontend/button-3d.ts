@@ -10,6 +10,7 @@ const ATLAS_LAYERS = 3;
 const ATLAS_HEIGHT = LAYER_HEIGHT * ATLAS_LAYERS;
 const LABEL_FONT_SIZE = 114;
 const LABEL_MAX_WIDTH = 560;
+const GRAPHICS_RETRY_DELAY = 1000;
 
 // A closed, beveled solid, rather than offset copies of the front face.
 // World units match CSS pixels; projection matches the native button's
@@ -283,16 +284,20 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     vertex(point, [0, 0, 1]);
   }
   const label = document.createElement("canvas");
+  let labelContext: CanvasRenderingContext2D | null = null;
   const layers: [HTMLImageElement | null, HTMLImageElement | null] = [null, null];
   const lettering = required(".button-label", button);
   let atlasDirty = true;
   let paintedText = "";
   let paintedDirection: CanvasDirection = "ltr";
+  function atlasLost() {
+    return labelContext?.isContextLost?.() ?? false;
+  }
   function paintAtlas() {
+    labelContext ??= label.getContext("2d");
+    if (!labelContext || atlasLost()) throw new Error("Button atlas canvas unavailable");
     if (label.width !== ATLAS_WIDTH) label.width = ATLAS_WIDTH;
     if (label.height !== ATLAS_HEIGHT) label.height = ATLAS_HEIGHT;
-    const labelContext = label.getContext("2d");
-    if (!labelContext) throw new Error("Button atlas canvas unavailable");
     // Neutral metal and an unlit mask keep the first frame usable before
     // either image finishes loading.
     labelContext.clearRect(0, 0, ATLAS_WIDTH, ATLAS_HEIGHT);
@@ -312,6 +317,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     labelContext.textBaseline = "middle";
     labelContext.fillStyle = "#fff";
     labelContext.fillText(paintedText, ATLAS_WIDTH / 2, LAYER_HEIGHT * 2.5 + 6);
+    if (atlasLost()) throw new Error("Button atlas canvas was lost during painting");
     atlasDirty = false;
   }
   function initialize(gl: WebGLRenderingContext): Resources | null {
@@ -392,6 +398,12 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     responseProgress: 0,
     responseColor: [0.38, 0.84, 0.8],
   };
+  let retryTimer = 0;
+  let canRetry = false;
+  function cancelRetry() {
+    if (retryTimer) window.clearTimeout(retryTimer);
+    retryTimer = 0;
+  }
   function visible() {
     return !document.hidden && stage.clientWidth > 0 && stage.clientHeight > 0;
   }
@@ -402,6 +414,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     if (height > canvas.height) canvas.height = height;
   }
   function suspend() {
+    cancelRetry();
     stage.classList.remove("is-rendered");
     if (gl && resources && !gl.isContextLost()) {
       gl.useProgram(null);
@@ -411,11 +424,29 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     }
     resources = null;
     if (gl) resizeCanvas(1, 1);
-    if (label.width !== 1) label.width = 1;
-    if (label.height !== 1) label.height = 1;
+    if (!atlasLost()) {
+      if (label.width !== 1) label.width = 1;
+      if (label.height !== 1) label.height = 1;
+    }
+  }
+  function graphicsFailed() {
+    suspend();
+    // A lost context needs its browser restoration event. Give other transient
+    // failures one retry per activation without retrying on every draw.
+    if (!canRetry || gl?.isContextLost() || atlasLost()) return;
+    canRetry = false;
+    retryTimer = window.setTimeout(() => {
+      retryTimer = 0;
+      rebuild();
+    }, GRAPHICS_RETRY_DELAY);
   }
   function resume() {
-    if (!visible()) return;
+    cancelRetry();
+    canRetry = true;
+    rebuild();
+  }
+  function rebuild() {
+    if (!visible() || atlasLost() || gl?.isContextLost()) return;
     if (!resources) {
       try {
         gl ??= canvas.getContext("webgl", {
@@ -423,15 +454,12 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
           antialias: true,
           premultipliedAlpha: true,
         });
-        if (!gl || gl.isContextLost()) return;
+        if (!gl) throw new Error("Button WebGL context unavailable");
         paintAtlas();
         resources = initialize(gl);
+        if (!resources) throw new Error("Button graphics initialization failed");
       } catch {
-        suspend();
-        return;
-      }
-      if (!resources) {
-        suspend();
+        graphicsFailed();
         return;
       }
     }
@@ -452,10 +480,10 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, label);
         if (gl.getError() !== gl.NO_ERROR) throw new Error("Button atlas update failed");
       }
-      if (render(gl, resources.uniforms)) stage.classList.add("is-rendered");
-      else suspend();
+      if (!render(gl, resources.uniforms)) throw new Error("Button frame unavailable");
+      stage.classList.add("is-rendered");
     } catch {
-      suspend();
+      graphicsFailed();
     }
   }
   function render(gl: WebGLRenderingContext, uniforms: Resources["uniforms"]) {
@@ -532,6 +560,12 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     suspend();
   });
   canvas.addEventListener("webglcontextrestored", resume);
+  label.addEventListener("contextrestored", () => {
+    // A previously uploaded texture survives an isolated loss of the 2D canvas.
+    if (resources) return;
+    if (visible()) resume();
+    else suspend();
+  });
   const sources = ["/button-material.svg", "/button-glow.svg"] as const;
   for (const [index, source] of sources.entries()) {
     const image = new Image();

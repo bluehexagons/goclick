@@ -38,7 +38,9 @@ WebGL allocation, shader compilation, or texture upload fails, the CSS button
 stays usable with the same material artwork and visible label. Graphics
 initialize only for a visible button. A hidden view releases its graphics
 resources. The renderer can retry when the view reopens, the tab returns to
-the foreground, or the browser restores a lost WebGL context.
+the foreground, or the browser restores a lost graphics context. After a
+setup or draw failure, the renderer can make one delayed retry while the view
+stays visible before waiting for one of those events.
 
 The engraved tracks and raised lettering are slightly shaded at rest. Mouse
 hover or keyboard focus eases that shading away to reveal the original finish.

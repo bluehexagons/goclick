@@ -7,12 +7,16 @@ function renderer(failure) {
   const allocated = new Set(),
     deleted = new Set(),
     events = new Map(),
+    atlasEvents = new Map(),
+    timers = new Map(),
     classes = new Set();
   let shaderCount = 0,
     draws = 0,
     uploads = 0,
     textureUploads = 0,
     attempts = 0,
+    timerId = 0,
+    atlasContextLost = false,
     contextLost = false;
   const images = [],
     paintedImages = [],
@@ -89,8 +93,10 @@ function renderer(failure) {
     width: 300,
     height: 150,
     getContext: () => ({
+      isContextLost: () => atlasContextLost,
       measureText: (text) => ({ width: text.length * 70 }),
       fillText(text) {
+        if (failure === "atlas-paint") atlasContextLost = true;
         paintedText.push({ text, direction: this.direction, font: this.font });
       },
       clearRect() {},
@@ -99,6 +105,7 @@ function renderer(failure) {
         paintedImages.push(image);
       },
     }),
+    addEventListener: (name, callback) => atlasEvents.set(name, callback),
   };
   const document = {
     hidden: false,
@@ -107,7 +114,15 @@ function renderer(failure) {
   };
   const runtime = frontend({
     document,
-    window: { devicePixelRatio: 1, addEventListener() {} },
+    window: {
+      devicePixelRatio: 1,
+      addEventListener() {},
+      setTimeout(callback) {
+        timers.set(++timerId, callback);
+        return timerId;
+      },
+      clearTimeout: (id) => timers.delete(id),
+    },
     Image: class {
       constructor() {
         images.push(this);
@@ -129,6 +144,17 @@ function renderer(failure) {
     uploads: () => uploads,
     textureUploads: () => textureUploads,
     attempts: () => attempts,
+    timers,
+    retry() {
+      assert.equal(timers.size, 1);
+      const [[id, callback]] = timers;
+      timers.delete(id);
+      callback();
+    },
+    restoreAtlas() {
+      atlasContextLost = false;
+      atlasEvents.get("contextrestored")();
+    },
     lose() {
       contextLost = true;
       let prevented = false;
@@ -188,6 +214,7 @@ test("context loss restores the native button, and failed GPU recovery remains u
   assert.equal(h.draws(), 2);
   h.lose();
   assert.equal(h.classes.has("is-rendered"), false);
+  assert.equal(h.timers.size, 0);
   h.view.draw();
   h.view.resume();
   assert.equal(h.draws(), 2);
@@ -198,7 +225,7 @@ test("context loss restores the native button, and failed GPU recovery remains u
   h.view.draw();
   assert.equal(h.draws(), 2);
   h.fail(undefined);
-  h.view.resume();
+  h.retry();
   assert.equal(h.classes.has("is-rendered"), true);
   assert.equal(h.draws(), 4);
 });
@@ -233,6 +260,10 @@ test("a failed asynchronous texture upload restores the CSS button", () => {
   assert.doesNotThrow(() => h.images[0].onload());
   assert.equal(h.classes.has("is-rendered"), false);
   assert.deepEqual(h.deleted, h.allocated);
+  h.fail(undefined);
+  h.retry();
+  assert.equal(h.classes.has("is-rendered"), true);
+  assert.equal(h.paintedImages.at(-1), h.images[0]);
 });
 
 test("material and glow assets can arrive in either order without losing a layer", () => {
@@ -315,4 +346,51 @@ test("drawing respects the framebuffer size the browser actually allocated", () 
   h.fail("framebuffer");
   h.view.draw();
   assert.equal(h.classes.has("is-rendered"), false);
+});
+
+test("a transient context creation failure retries in place", () => {
+  const h = renderer("context");
+  h.fail(undefined);
+  h.retry();
+  assert.equal(h.attempts(), 2);
+  assert.equal(h.classes.has("is-rendered"), true);
+});
+
+test("a persistent failure is retried only once until the view is activated again", () => {
+  const h = renderer("context");
+  h.retry();
+  for (let i = 0; i < 3; i++) h.view.draw();
+  assert.equal(h.attempts(), 2);
+  assert.equal(h.timers.size, 0);
+  assert.equal(h.classes.has("is-rendered"), false);
+  h.view.resume();
+  assert.equal(h.attempts(), 3);
+  assert.equal(h.timers.size, 1);
+});
+
+test("a pending retry leaves a hidden tab or view alone", () => {
+  const h = renderer("context");
+  h.document.hidden = true;
+  h.retry();
+  assert.equal(h.attempts(), 1);
+  h.document.hidden = false;
+  h.view.resume();
+  assert.equal(h.timers.size, 1);
+  h.view.suspend();
+  assert.equal(h.timers.size, 0);
+});
+
+test("a 2D context lost while painting cannot replace the current label with a blank atlas", () => {
+  const h = renderer();
+  h.fail("atlas-paint");
+  h.lettering.textContent = "クリック！";
+  h.view.draw();
+  assert.equal(h.uploads(), 1);
+  assert.equal(h.classes.has("is-rendered"), false);
+  assert.equal(h.timers.size, 0);
+  h.fail(undefined);
+  h.restoreAtlas();
+  assert.equal(h.paintedText.at(-1).text, h.lettering.textContent);
+  assert.equal(h.uploads(), 2);
+  assert.equal(h.classes.has("is-rendered"), true);
 });
