@@ -46,6 +46,26 @@ function harness(options = {}) {
   };
 }
 
+function indexedDBLock() {
+  const read = {};
+  const transaction = {
+    objectStore: () => ({ get: () => read }),
+    abort() {
+      this.aborted = true;
+      this.onabort();
+    },
+  };
+  const database = {
+    transaction: () => transaction,
+    close() {
+      this.closed = true;
+    },
+  };
+  const opening = { result: database };
+  const h = harness({ withoutLocks: true, indexedDB: { open: () => opening } });
+  return { ...h, opening, read, transaction, database };
+}
+
 test("local streaks use UTC day, calendar month and year boundaries", () => {
   const { game } = harness();
   const click = (time) => game.increment(new Date(time));
@@ -113,34 +133,54 @@ test("missing cross-tab coordination refuses a local write without changing the 
 
 for (const phase of ["opening the database", "waiting for the transaction"])
   test(`timing out while ${phase} cancels the IndexedDB-side save`, async () => {
-    const read = {};
-    const writeLock = {
-      objectStore: () => ({ get: () => read }),
-      abort() {
-        this.aborted = true;
-        this.onabort();
-      },
-    };
-    const database = {
-      transaction: () => writeLock,
-      close() {
-        this.closed = true;
-      },
-    };
-    const opening = { result: database };
-    const h = harness({ withoutLocks: true, indexedDB: { open: () => opening } });
+    const h = indexedDBLock();
     const saving = h.game.change(() => h.game.increment());
-    if (phase === "waiting for the transaction") opening.onsuccess();
+    if (phase === "waiting for the transaction") h.opening.onsuccess();
     h.expire();
     await assert.rejects(saving, /busy for too long/);
-    if (phase === "opening the database") opening.onsuccess();
+    if (phase === "opening the database") h.opening.onsuccess();
     else {
-      assert.equal(writeLock.aborted, true);
-      read.onsuccess();
+      assert.equal(h.transaction.aborted, true);
+      h.read.onsuccess();
     }
-    assert.equal(database.closed, true);
+    assert.equal(h.database.closed, true);
     assert.equal(h.storage.has(h.game.key), false);
   });
+
+test("an IndexedDB abort after a successful write acknowledges the saved click", async () => {
+  const h = indexedDBLock();
+  const saving = h.game.change(() => h.game.increment());
+  h.opening.onsuccess();
+  h.read.onsuccess();
+  assert.equal(h.game.read().click_count.count, 1);
+  h.transaction.abort();
+  assert.equal((await saving).click_count.count, 1);
+  assert.equal(h.database.closed, true);
+});
+
+test("an IndexedDB abort before the lock is acquired leaves the save intact", async () => {
+  const h = indexedDBLock();
+  h.game.replace({ click_count: { count: 12 } });
+  const saved = h.storage.get(h.game.key);
+  const saving = h.game.change(() => h.game.increment());
+  h.opening.onsuccess();
+  h.transaction.abort();
+  await assert.rejects(saving, /Local save coordination failed/);
+  assert.equal(h.storage.get(h.game.key), saved);
+  assert.equal(h.database.closed, true);
+});
+
+test("a write failure inside the IndexedDB lock retains the save and reports its cause", async () => {
+  const h = indexedDBLock();
+  h.game.replace({ click_count: { count: Number.MAX_SAFE_INTEGER } });
+  const saved = h.storage.get(h.game.key);
+  const saving = h.game.change(() => h.game.increment());
+  h.opening.onsuccess();
+  h.read.onsuccess();
+  await assert.rejects(saving, /Invalid local click or streak total/);
+  assert.equal(h.storage.get(h.game.key), saved);
+  assert.equal(h.database.closed, true);
+});
 
 test("older local saves seed progress from their daily streak and preserve badges across gaps", () => {
   const { game, storage } = harness();

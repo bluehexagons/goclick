@@ -914,35 +914,24 @@
         };
         opening.onsuccess = () => {
           const database = opening.result;
-          if (blocked || signal.aborted) {
-            database.close();
-            return;
-          }
-          let result;
-          let failure;
           try {
+            if (blocked || signal.aborted) return;
             const writeLock = database.transaction("locks", "readwrite");
             transaction = writeLock;
-            writeLock.oncomplete = () => {
-              database.close();
-              resolve(result);
-            };
             writeLock.onabort = () => {
-              database.close();
-              reject(failure ?? writeLock.error ?? new Error("Local save coordination failed."));
+              reject(writeLock.error ?? new Error("Local save coordination failed."));
             };
             writeLock.objectStore("locks").get(key).onsuccess = () => {
-              if (signal.aborted) return;
               try {
-                result = operation();
+                resolve(operation());
               } catch (error) {
-                failure = error;
-                writeLock.abort();
+                reject(error);
               }
             };
           } catch (error) {
-            database.close();
             reject(error);
+          } finally {
+            database.close();
           }
         };
       });

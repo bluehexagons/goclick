@@ -229,7 +229,7 @@ const localGame = (() => {
           try {
             transaction?.abort();
           } catch {
-            // A transaction that finished on its own will close via its event.
+            // The transaction may already be finishing.
           }
         },
         { once: true },
@@ -242,35 +242,26 @@ const localGame = (() => {
       };
       opening.onsuccess = () => {
         const database = opening.result;
-        if (blocked || signal.aborted) {
-          database.close();
-          return;
-        }
-        let result: T;
-        let failure: unknown;
         try {
+          if (blocked || signal.aborted) return;
           const writeLock = database.transaction("locks", "readwrite");
           transaction = writeLock;
-          writeLock.oncomplete = () => {
-            database.close();
-            resolve(result);
-          };
           writeLock.onabort = () => {
-            database.close();
-            reject(failure ?? writeLock.error ?? new Error("Local save coordination failed."));
+            reject(writeLock.error ?? new Error("Local save coordination failed."));
           };
           writeLock.objectStore("locks").get(key).onsuccess = () => {
-            if (signal.aborted) return;
             try {
-              result = operation();
+              // The operation uses localStorage. A later IndexedDB abort cannot undo it.
+              resolve(operation());
             } catch (error) {
-              failure = error;
-              writeLock.abort();
+              reject(error);
             }
           };
         } catch (error) {
-          database.close();
           reject(error);
+        } finally {
+          // Close after any queued transaction finishes and releases the lock.
+          database.close();
         }
       };
     });
