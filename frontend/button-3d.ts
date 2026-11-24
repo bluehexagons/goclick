@@ -400,6 +400,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
   };
   let retryTimer = 0;
   let canRetry = false;
+  let previousFrame: { width: number; height: number } | undefined;
   function cancelRetry() {
     if (retryTimer) window.clearTimeout(retryTimer);
     retryTimer = 0;
@@ -423,6 +424,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
       gl.deleteTexture(resources.texture);
     }
     resources = null;
+    previousFrame = undefined;
     if (gl) resizeCanvas(1, 1);
     if (!atlasLost()) {
       if (label.width !== 1) label.width = 1;
@@ -490,10 +492,14 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     const root = document.documentElement;
     if (!root.clientWidth || !root.clientHeight) return false;
     const bounds = stage.getBoundingClientRect();
-    const scene = projectButtonScene(state, button.offsetWidth, bounds, {
-      width: root.clientWidth,
-      height: root.clientHeight,
-    });
+    const scene = projectButtonScene(
+      state,
+      button.offsetWidth,
+      bounds,
+      { width: root.clientWidth, height: root.clientHeight },
+      previousFrame,
+    );
+    previousFrame = scene.frame;
     canvas.style.left = `${scene.frame.left - bounds.left}px`;
     canvas.style.top = `${scene.frame.top - bounds.top}px`;
     canvas.style.width = `${scene.frame.width}px`;

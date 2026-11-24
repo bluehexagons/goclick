@@ -101,6 +101,27 @@ test("rendering clips only at the viewport and preserves the stage's camera orig
   }
 });
 
+test("nearby drags across a framebuffer bucket boundary reuse the larger frame", () => {
+  const stage = { left: 14, top: 130, width: 292, height: 290 };
+  const viewport = { width: 320, height: 680 };
+  let frame = project({ ...idle, x: 120 }, 260, stage, viewport).frame;
+  assert.equal(frame.width, 256);
+  assert.equal(project({ ...idle, x: 140 }, 260, stage, viewport).frame.width, 192);
+  for (const x of [140, 120, 140, 120]) {
+    const scene = project({ ...idle, x }, 260, stage, viewport, frame);
+    frame = scene.frame;
+    assert.equal(frame.width, 256);
+    assert.equal(frame.left + frame.width / 2 + scene.originX, stage.left + stage.width / 2);
+    containsShadow(scene, stage, viewport);
+  }
+
+  const far = project({ ...idle, x: 225 }, 260, stage, viewport, frame);
+  assert.equal(far.frame.width, 128, "Shrink when the button needs much less space");
+  const narrowed = project(idle, 260, stage, { ...viewport, width: 160 }, frame);
+  assert.equal(narrowed.frame.width, 160, "The framebuffer still fits the viewport");
+  assert.equal(project({ ...idle, x: 120 }, 260, stage, viewport, far.frame).frame.width, 256);
+});
+
 test("perspective never amplifies screen translation, even for large tilted pressed buttons", () => {
   for (const width of [260, 420, 620])
     for (const pose of [

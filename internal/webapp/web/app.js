@@ -1112,7 +1112,12 @@
       }
     };
   }
-  function projectButtonScene(state, buttonWidth, stage, viewport) {
+  function frameExtent(span, limit, previous = 0) {
+    const bucket = 64;
+    const needed = Math.min(limit, Math.ceil((span + 32) / bucket) * bucket);
+    return previous > needed && previous - needed <= bucket ? Math.min(previous, limit) : needed;
+  }
+  function projectButtonScene(state, buttonWidth, stage, viewport, previousFrame) {
     const pose = projectButtonPose(state, buttonWidth);
     const { scale, recession, lift, cx, sx, cy, sy } = pose;
     const centerX = pose.x - sy * recession, centerY = pose.y + sx * cy * recession;
@@ -1148,8 +1153,8 @@
     const visibleTop = Math.max(0, Math.min(viewport.height - 1, originY + top - 4));
     const visibleRight = Math.min(viewport.width, Math.max(visibleLeft + 1, originX + right + 4));
     const visibleBottom = Math.min(viewport.height, Math.max(visibleTop + 1, originY + bottom + 4));
-    const width = Math.min(viewport.width, Math.ceil((visibleRight - visibleLeft + 32) / 64) * 64);
-    const height = Math.min(viewport.height, Math.ceil((visibleBottom - visibleTop + 32) / 64) * 64);
+    const width = frameExtent(visibleRight - visibleLeft, viewport.width, previousFrame?.width);
+    const height = frameExtent(visibleBottom - visibleTop, viewport.height, previousFrame?.height);
     const frame = {
       left: Math.max(0, Math.min(viewport.width - width, Math.floor((visibleLeft - 16) / 16) * 16)),
       top: Math.max(0, Math.min(viewport.height - height, Math.floor((visibleTop - 16) / 16) * 16)),
@@ -1557,6 +1562,7 @@
     };
     let retryTimer = 0;
     let canRetry = false;
+    let previousFrame;
     function cancelRetry() {
       if (retryTimer) window.clearTimeout(retryTimer);
       retryTimer = 0;
@@ -1579,6 +1585,7 @@
         gl.deleteTexture(resources.texture);
       }
       resources = null;
+      previousFrame = void 0;
       if (gl) resizeCanvas(1, 1);
       if (!atlasLost()) {
         if (label.width !== 1) label.width = 1;
@@ -1643,10 +1650,14 @@
       const root2 = document.documentElement;
       if (!root2.clientWidth || !root2.clientHeight) return false;
       const bounds = stage.getBoundingClientRect();
-      const scene = projectButtonScene(state, button.offsetWidth, bounds, {
-        width: root2.clientWidth,
-        height: root2.clientHeight
-      });
+      const scene = projectButtonScene(
+        state,
+        button.offsetWidth,
+        bounds,
+        { width: root2.clientWidth, height: root2.clientHeight },
+        previousFrame
+      );
+      previousFrame = scene.frame;
       canvas.style.left = `${scene.frame.left - bounds.left}px`;
       canvas.style.top = `${scene.frame.top - bounds.top}px`;
       canvas.style.width = `${scene.frame.width}px`;

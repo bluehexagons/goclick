@@ -249,6 +249,14 @@ export function createPlugPullTracker() {
   };
 }
 
+function frameExtent(span: number, limit: number, previous = 0) {
+  const bucket = 64;
+  const needed = Math.min(limit, Math.ceil((span + 32) / bucket) * bucket);
+  // Keep one bucket of slack before shrinking so a drag across a bucket
+  // boundary does not repeatedly reallocate the drawing buffer.
+  return previous > needed && previous - needed <= bucket ? Math.min(previous, limit) : needed;
+}
+
 // Match the native button's 850px perspective. Fit the full projected solid and
 // soft shadow; the layout stage is not a painting or dragging boundary.
 export function projectButtonScene(
@@ -256,6 +264,7 @@ export function projectButtonScene(
   buttonWidth: number,
   stage: Pick<DOMRect, "left" | "top" | "width" | "height">,
   viewport: { width: number; height: number },
+  previousFrame?: { width: number; height: number },
 ) {
   const pose = projectButtonPose(state, buttonWidth);
   const { scale, recession, lift, cx, sx, cy, sy } = pose;
@@ -297,10 +306,9 @@ export function projectButtonScene(
   const visibleTop = Math.max(0, Math.min(viewport.height - 1, originY + top - 4));
   const visibleRight = Math.min(viewport.width, Math.max(visibleLeft + 1, originX + right + 4));
   const visibleBottom = Math.min(viewport.height, Math.max(visibleTop + 1, originY + bottom + 4));
-  // Bucket the allocation so a one-pixel movement does not continually resize
-  // the GPU framebuffer. The camera offset preserves smooth movement within it.
-  const width = Math.min(viewport.width, Math.ceil((visibleRight - visibleLeft + 32) / 64) * 64);
-  const height = Math.min(viewport.height, Math.ceil((visibleBottom - visibleTop + 32) / 64) * 64);
+  // The camera offset preserves smooth movement within the allocated frame.
+  const width = frameExtent(visibleRight - visibleLeft, viewport.width, previousFrame?.width);
+  const height = frameExtent(visibleBottom - visibleTop, viewport.height, previousFrame?.height);
   const frame = {
     left: Math.max(0, Math.min(viewport.width - width, Math.floor((visibleLeft - 16) / 16) * 16)),
     top: Math.max(0, Math.min(viewport.height - height, Math.floor((visibleTop - 16) / 16) * 16)),
