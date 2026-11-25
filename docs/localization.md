@@ -19,13 +19,14 @@ The catalogs use AI-assisted and machine translations. Prioritize accurate
 actions, conditions, and recovery steps. Put long explanations in the English
 documentation and reuse wording where two controls perform the same action.
 
-The supported languages are English, Simplified Chinese, Spanish, Arabic, Hindi,
-Indonesian, Brazilian Portuguese, French, Japanese, Russian, and German. The
-selector displays circular flags alongside native language names and marks the
-current choice. Its flag and label columns align with the trigger, and each name
-retains its own language and direction. The header wraps on narrow screens.
-Chinese and Portuguese each use one written variant. Arabic uses right-to-left
-game, navigation, and dialog layout. The [Circle Flags artwork](https://github.com/HatScripts/circle-flags/tree/v2.8.0)
+The supported languages are English, Simplified Chinese, Traditional Chinese,
+Spanish, Arabic, Hindi, Bangla (Bengali), Indonesian, Brazilian Portuguese,
+French, Japanese, Russian, and German. The selector displays circular flags
+alongside native language names and marks the current choice. Its flag and
+label columns align with the trigger, and each name retains its own language
+and direction. The header wraps on narrow screens.
+Chinese is available in both scripts. Portuguese uses Brazilian wording. Arabic
+uses right-to-left game, navigation, and dialog layout. The [Circle Flags artwork](https://github.com/HatScripts/circle-flags/tree/v2.8.0)
 is served locally from [the SVG sprite](../internal/webapp/web/language-flags.svg).
 
 ## Why these languages
@@ -47,19 +48,22 @@ This first set uses broad audience estimates as a practical proxy:
   support including Hindi alongside those audiences. These are estimates with
   substantial uncertainty, not an exact human-request ranking.
 
-This is an initial coverage decision, not a claim of an exact current top eleven
-or a precise percentage of human traffic covered. Revisit it using privacy-safe
-aggregate language preferences if Go Click has representative audience evidence.
+We added Traditional Chinese to cover both Chinese scripts and Bangla for its
+large audience of connected speakers, as estimated by OBDILCI. Revisit coverage
+using privacy-safe aggregate language preferences if Go Click has representative
+audience evidence.
 Do not collect extra gameplay telemetry just to choose translations.
 
 ## Preferences and button surprises
 
 An explicit selection is stored independently of game saves in
 `goclick.language.v1`. On first use, match the browser's language preferences in
-order, falling back to English. Regional browser tags match the available base
-language. The choice applies immediately, synchronizes across tabs, and still
-works for the current visit when storage cannot be written. Changing language
-never sends an account request or changes the online/local save mode.
+order, falling back to English. Chinese browser preferences match by script,
+including Traditional Chinese for Taiwan, Hong Kong, and Macao. Other regional
+browser tags match the available base language. The choice applies immediately,
+synchronizes across tabs, and still works for the current visit when storage
+cannot be written. Changing language never sends an account request or changes
+the online/local save mode.
 
 When the button label matches the UI language, an enabled game-button activation
 rolls a 2% chance to change its visible label to another supported language.

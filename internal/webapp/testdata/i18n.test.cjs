@@ -30,10 +30,23 @@ test("language choice prefers a saved supported locale, then browser order, then
   const i = localization();
   assert.equal(i.preferredLanguage("fr", ["ar-EG"]), "fr");
   assert.equal(i.preferredLanguage("invalid", ["xx", "pt-PT", "ja"]), "pt-BR");
-  assert.equal(i.preferredLanguage(null, ["zh-TW"]), "zh-Hans");
+  assert.equal(i.preferredLanguage(null, ["bn-BD", "en"]), "bn");
+  assert.equal(i.preferredLanguage(null, ["bn-IN"]), "bn");
   assert.equal(i.preferredLanguage(null, ["de-AT"]), "de");
   assert.equal(i.preferredLanguage(null, ["xx"]), "en");
   assert.equal(i.supportedLanguage("__proto__"), undefined);
+});
+
+test("Chinese language matching respects the script and defaults bare Chinese to Simplified", () => {
+  const { preferredLanguage } = localization();
+  for (const locale of ["zh-Hant", "zh-Hant-CN", "zh-TW", "zh-HK", "zh-MO", "ZH-hant-TW"])
+    assert.equal(preferredLanguage(null, [locale]), "zh-Hant", locale);
+  for (const locale of ["zh", "zh-Hans", "zh-Hans-TW", "zh-CN", "zh-SG"])
+    assert.equal(preferredLanguage(null, [locale]), "zh-Hans", locale);
+  assert.equal(preferredLanguage("zh-Hans", ["zh-HK"]), "zh-Hans");
+  assert.equal(preferredLanguage("zh-Hant", ["zh-CN"]), "zh-Hant");
+  assert.equal(preferredLanguage(null, ["zh--TW", "bn-BD"]), "bn");
+  assert.equal(preferredLanguage(null, ["fr-CA", "zh-TW"]), "fr");
 });
 
 test("all exact badge requirements use the selected language and keep the same badge names", () => {

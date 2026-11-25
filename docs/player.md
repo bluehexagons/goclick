@@ -16,7 +16,7 @@ caching, keep the loaded page open to play while disconnected.
   preview the sound without adding a click.
 - **Motion** — Choose **Auto** to follow your device's setting, **Reduced** for
   quieter visuals, or **Full** for the full animation.
-- **Language** — Choose from eleven languages in the header. The game starts
+- **Language** — Choose from thirteen languages in the header. The game starts
   with your browser's preferred supported language. A surprise label on the
   button goes back to your chosen language on the next click.
 

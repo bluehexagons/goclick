@@ -4,9 +4,11 @@ import type { MessageKey, Messages } from "./messages.js";
 export const languages = [
   { code: "en", name: "English", dir: "ltr", flag: "gb" },
   { code: "zh-Hans", name: "简体中文", dir: "ltr", flag: "cn" },
+  { code: "zh-Hant", name: "繁體中文", dir: "ltr", flag: "tw" },
   { code: "es", name: "Español", dir: "ltr", flag: "es" },
   { code: "ar", name: "العربية", dir: "rtl", flag: "ar" },
   { code: "hi", name: "हिन्दी", dir: "ltr", flag: "in" },
+  { code: "bn", name: "বাংলা", dir: "ltr", flag: "bd" },
   { code: "id", name: "Bahasa Indonesia", dir: "ltr", flag: "id" },
   { code: "pt-BR", name: "Português", dir: "ltr", flag: "br" },
   { code: "fr", name: "Français", dir: "ltr", flag: "fr" },
@@ -28,6 +30,13 @@ export function preferredLanguage(saved: string | null, preferences: readonly st
   if (explicit) return explicit;
   for (const preference of preferences) {
     const base = preference.toLowerCase().split("-")[0];
+    if (base === "zh") {
+      try {
+        return new Intl.Locale(preference).maximize().script === "Hant" ? "zh-Hant" : "zh-Hans";
+      } catch {
+        continue;
+      }
+    }
     const match = languages.find((item) => item.code.toLowerCase().split("-")[0] === base);
     if (match) return match.code;
   }

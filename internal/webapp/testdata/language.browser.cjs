@@ -20,7 +20,8 @@ async function checkLanguage(page, baseURL) {
   const menu = page.locator("#language-menu");
   const selectedName = page.locator("#language-name");
   const codes = await menu.locator("button").evaluateAll((options) => options.map((o) => o.value));
-  ensure(codes.length === 11, "Expected eleven languages");
+  ensure(codes.length === 13, "Expected thirteen languages");
+  ensure(codes.includes("zh-Hant") && codes.includes("bn"), "Missing new language options");
   await selector.press("ArrowDown");
   ensure(
     (await menu.locator(":focus").getAttribute("value")) === "en",
