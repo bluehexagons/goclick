@@ -74,7 +74,7 @@ export function formatNumber(value: number, code = language): string {
 const unitFormats = new Map<string, Intl.NumberFormat>();
 export function formatUnit(
   value: number,
-  unit: "day" | "week" | "month" | "year" | "millisecond",
+  unit: "day" | "week" | "month" | "year" | "hour" | "minute" | "millisecond",
   code = language,
 ) {
   const key = `${code}:${unit}`;
@@ -83,7 +83,7 @@ export function formatUnit(
     formatter = new Intl.NumberFormat(code, {
       style: "unit",
       unit,
-      unitDisplay: unit === "millisecond" ? "short" : "long",
+      unitDisplay: ["hour", "minute", "millisecond"].includes(unit) ? "short" : "long",
     });
     unitFormats.set(key, formatter);
   }

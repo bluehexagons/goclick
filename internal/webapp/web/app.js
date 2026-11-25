@@ -2955,7 +2955,6 @@
     feedbackUnconfirmed: "unconfirmed",
     feedbackUnsaved: "not saved",
     feedbackCooldown: "cooldown",
-    feedbackSimulatedTime: "\u2713 {time} \xB7 sim",
     feedbackAwaitingHint: "Awaiting save \xB7 recent average {average}",
     feedbackSavedHint: "Saved \xB7 {time} \xB7 recent average {average}",
     feedbackSimulatedHint: "Simulated response \xB7 {time} \xB7 recent average {average}",
@@ -2964,7 +2963,7 @@
     timezone: "Shown in your local time zone",
     refresh: "Refresh counter",
     share: "Share",
-    shareHint: "Copy stats for sharing",
+    shareHint: "Preview stats for sharing",
     ping: "Ping",
     simPing: "Sim ping",
     pingHint: "Round-trip time of the last successful click request. The status dot indicates pending requests or a save error.",
@@ -3017,7 +3016,7 @@
     copied: "Stats copied.",
     clipboardUnavailable: "Clipboard unavailable. Select and copy the preview text.",
     statsClicks: "{label}: {count}",
-    statsStreaks: "UTC streaks: {day} \xB7 {month} \xB7 {year}",
+    statsStreaks: "UTC streaks: {day} \xB7 {week} \xB7 {month} \xB7 {year}",
     playLink: "Play: {url}"
   };
   var translations = {
@@ -3071,7 +3070,6 @@
       feedbackUnconfirmed: "\u672A\u786E\u8BA4",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
       feedbackCooldown: "\u51B7\u5374\u4E2D",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 \u6A21\u62DF",
       feedbackAwaitingHint: "\u7B49\u5F85\u4FDD\u5B58 \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
       feedbackSavedHint: "\u5DF2\u4FDD\u5B58 \xB7 {time} \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
       feedbackSimulatedHint: "\u6A21\u62DF\u54CD\u5E94 \xB7 {time} \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
@@ -3080,7 +3078,7 @@
       timezone: "\u6309\u4F60\u7684\u5F53\u5730\u65F6\u533A\u663E\u793A",
       refresh: "\u5237\u65B0\u8BA1\u6570",
       share: "\u5206\u4EAB",
-      shareHint: "\u590D\u5236\u7EDF\u8BA1\u4EE5\u5206\u4EAB",
+      shareHint: "\u9884\u89C8\u8981\u5206\u4EAB\u7684\u7EDF\u8BA1",
       ping: "\u5EF6\u8FDF",
       simPing: "\u6A21\u62DF\u5EF6\u8FDF",
       pingHint: "\u4E0A\u6B21\u6210\u529F\u70B9\u51FB\u8BF7\u6C42\u7684\u5F80\u8FD4\u65F6\u95F4\u3002\u72B6\u6001\u5706\u70B9\u8868\u793A\u5F85\u5904\u7406\u8BF7\u6C42\u6216\u4FDD\u5B58\u9519\u8BEF\u3002",
@@ -3133,7 +3131,7 @@
       copied: "\u7EDF\u8BA1\u5DF2\u590D\u5236\u3002",
       clipboardUnavailable: "\u526A\u8D34\u677F\u4E0D\u53EF\u7528\u3002\u8BF7\u9009\u62E9\u5E76\u590D\u5236\u9884\u89C8\u6587\u672C\u3002",
       statsClicks: "{label}\uFF1A{count}",
-      statsStreaks: "UTC \u8FDE\u7EED\u8BB0\u5F55\uFF1A{day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "UTC \u8FDE\u7EED\u8BB0\u5F55\uFF1A{day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "\u5F00\u59CB\u6E38\u620F\uFF1A{url}"
     },
     "zh-Hant": {
@@ -3186,7 +3184,6 @@
       feedbackUnconfirmed: "\u672A\u78BA\u8A8D",
       feedbackUnsaved: "\u672A\u5132\u5B58",
       feedbackCooldown: "\u51B7\u537B\u4E2D",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 \u6A21\u64EC",
       feedbackAwaitingHint: "\u7B49\u5F85\u5132\u5B58 \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
       feedbackSavedHint: "\u5DF2\u5132\u5B58 \xB7 {time} \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
       feedbackSimulatedHint: "\u6A21\u64EC\u56DE\u61C9 \xB7 {time} \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
@@ -3195,7 +3192,7 @@
       timezone: "\u4EE5\u4F60\u7684\u7576\u5730\u6642\u5340\u986F\u793A",
       refresh: "\u91CD\u65B0\u6574\u7406\u8A08\u6578",
       share: "\u5206\u4EAB",
-      shareHint: "\u8907\u88FD\u7D71\u8A08\u8CC7\u6599\u4EE5\u4FBF\u5206\u4EAB",
+      shareHint: "\u9810\u89BD\u8981\u5206\u4EAB\u7684\u7D71\u8A08\u8CC7\u6599",
       ping: "\u5EF6\u9072",
       simPing: "\u6A21\u64EC\u5EF6\u9072",
       pingHint: "\u4E0A\u6B21\u6210\u529F\u7684\u9EDE\u64CA\u8ACB\u6C42\u6240\u82B1\u7684\u5F80\u8FD4\u6642\u9593\u3002\u72C0\u614B\u5713\u9EDE\u6703\u986F\u793A\u662F\u5426\u6709\u5F85\u8655\u7406\u7684\u8ACB\u6C42\u6216\u5132\u5B58\u932F\u8AA4\u3002",
@@ -3248,7 +3245,7 @@
       copied: "\u5DF2\u8907\u88FD\u7D71\u8A08\u8CC7\u6599\u3002",
       clipboardUnavailable: "\u7121\u6CD5\u4F7F\u7528\u526A\u8CBC\u7C3F\u3002\u8ACB\u9078\u53D6\u4E26\u8907\u88FD\u9810\u89BD\u6587\u5B57\u3002",
       statsClicks: "{label}\uFF1A{count}",
-      statsStreaks: "UTC \u9023\u7E8C\u7D00\u9304\uFF1A{day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "UTC \u9023\u7E8C\u7D00\u9304\uFF1A{day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "\u958B\u59CB\u904A\u6232\uFF1A{url}"
     },
     bn: {
@@ -3301,7 +3298,6 @@
       feedbackUnconfirmed: "\u09A8\u09BF\u09B6\u09CD\u099A\u09BF\u09A4 \u09A8\u09AF\u09BC",
       feedbackUnsaved: "\u09B8\u09C7\u09AD \u09B9\u09AF\u09BC\u09A8\u09BF",
       feedbackCooldown: "\u09B8\u09BE\u09AE\u09AF\u09BC\u09BF\u0995 \u09AC\u09BF\u09B0\u09A4\u09BF",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 \u09B8\u09BF\u09AE\u09C1\u09B2\u09C7\u099F\u09C7\u09A1",
       feedbackAwaitingHint: "\u09B8\u09C7\u09AD\u09C7\u09B0 \u0985\u09AA\u09C7\u0995\u09CD\u09B7\u09BE\u09AF\u09BC \xB7 \u09B8\u09BE\u09AE\u09CD\u09AA\u09CD\u09B0\u09A4\u09BF\u0995 \u0997\u09A1\u09BC {average}",
       feedbackSavedHint: "\u09B8\u09C7\u09AD \u09B9\u09AF\u09BC\u09C7\u099B\u09C7 \xB7 {time} \xB7 \u09B8\u09BE\u09AE\u09CD\u09AA\u09CD\u09B0\u09A4\u09BF\u0995 \u0997\u09A1\u09BC {average}",
       feedbackSimulatedHint: "\u09B8\u09BF\u09AE\u09C1\u09B2\u09C7\u099F\u09C7\u09A1 \u09B8\u09BE\u09A1\u09BC\u09BE \xB7 {time} \xB7 \u09B8\u09BE\u09AE\u09CD\u09AA\u09CD\u09B0\u09A4\u09BF\u0995 \u0997\u09A1\u09BC {average}",
@@ -3310,7 +3306,7 @@
       timezone: "\u0986\u09AA\u09A8\u09BE\u09B0 \u09B8\u09CD\u09A5\u09BE\u09A8\u09C0\u09AF\u09BC \u09B8\u09AE\u09AF\u09BC\u09C7 \u09A6\u09C7\u0996\u09BE\u09A8\u09CB \u09B9\u09AF\u09BC\u09C7\u099B\u09C7",
       refresh: "\u0995\u09BE\u0989\u09A8\u09CD\u099F\u09BE\u09B0 \u09B0\u09BF\u09AB\u09CD\u09B0\u09C7\u09B6 \u0995\u09B0\u09C1\u09A8",
       share: "\u09B6\u09C7\u09AF\u09BC\u09BE\u09B0",
-      shareHint: "\u09B6\u09C7\u09AF\u09BC\u09BE\u09B0 \u0995\u09B0\u09BE\u09B0 \u099C\u09A8\u09CD\u09AF \u09AA\u09B0\u09BF\u09B8\u0982\u0996\u09CD\u09AF\u09BE\u09A8 \u0995\u09AA\u09BF \u0995\u09B0\u09C1\u09A8",
+      shareHint: "\u09B6\u09C7\u09AF\u09BC\u09BE\u09B0 \u0995\u09B0\u09BE\u09B0 \u0986\u0997\u09C7 \u09AA\u09B0\u09BF\u09B8\u0982\u0996\u09CD\u09AF\u09BE\u09A8 \u09A6\u09C7\u0996\u09C1\u09A8",
       ping: "\u09AA\u09BF\u0982",
       simPing: "\u09B8\u09BF\u09AE\u09C1\u09B2\u09C7\u099F\u09C7\u09A1 \u09AA\u09BF\u0982",
       pingHint: "\u09B6\u09C7\u09B7 \u09B8\u09AB\u09B2 \u0995\u09CD\u09B2\u09BF\u0995\u09C7\u09B0 \u0985\u09A8\u09C1\u09B0\u09CB\u09A7 \u09AA\u09BE\u09A0\u09BF\u09AF\u09BC\u09C7 \u09B8\u09BE\u09A1\u09BC\u09BE \u09AA\u09C7\u09A4\u09C7 \u09AF\u09A4 \u09B8\u09AE\u09AF\u09BC \u09B2\u09C7\u0997\u09C7\u099B\u09C7\u0964 \u09AC\u09BF\u09A8\u09CD\u09A6\u09C1\u099F\u09BF \u0985\u09AA\u09C7\u0995\u09CD\u09B7\u09AE\u09BE\u09A3 \u0985\u09A8\u09C1\u09B0\u09CB\u09A7 \u09AC\u09BE \u09B8\u09C7\u09AD\u09C7\u09B0 \u09A4\u09CD\u09B0\u09C1\u099F\u09BF \u09A6\u09C7\u0996\u09BE\u09AF\u09BC\u0964",
@@ -3363,7 +3359,7 @@
       copied: "\u09AA\u09B0\u09BF\u09B8\u0982\u0996\u09CD\u09AF\u09BE\u09A8 \u0995\u09AA\u09BF \u09B9\u09AF\u09BC\u09C7\u099B\u09C7\u0964",
       clipboardUnavailable: "\u0995\u09CD\u09B2\u09BF\u09AA\u09AC\u09CB\u09B0\u09CD\u09A1 \u09AC\u09CD\u09AF\u09AC\u09B9\u09BE\u09B0 \u0995\u09B0\u09BE \u09AF\u09BE\u099A\u09CD\u099B\u09C7 \u09A8\u09BE\u0964 \u09AA\u09CD\u09B0\u09BF\u09AD\u09BF\u0989\u09AF\u09BC\u09C7\u09B0 \u09B2\u09C7\u0996\u09BE \u09A8\u09BF\u09B0\u09CD\u09AC\u09BE\u099A\u09A8 \u0995\u09B0\u09C7 \u0995\u09AA\u09BF \u0995\u09B0\u09C1\u09A8\u0964",
       statsClicks: "{label}: {count}",
-      statsStreaks: "\u09A7\u09BE\u09B0\u09BE\u09AC\u09BE\u09B9\u09BF\u0995\u09A4\u09BE (UTC): {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "\u09A7\u09BE\u09B0\u09BE\u09AC\u09BE\u09B9\u09BF\u0995\u09A4\u09BE (UTC): {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "\u0996\u09C7\u09B2\u09C1\u09A8: {url}"
     },
     es: {
@@ -3416,7 +3412,6 @@
       feedbackUnconfirmed: "sin confirmar",
       feedbackUnsaved: "no guardado",
       feedbackCooldown: "pausa",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 sim.",
       feedbackAwaitingHint: "Esperando guardado \xB7 media reciente {average}",
       feedbackSavedHint: "Guardado \xB7 {time} \xB7 media reciente {average}",
       feedbackSimulatedHint: "Respuesta simulada \xB7 {time} \xB7 media reciente {average}",
@@ -3425,7 +3420,7 @@
       timezone: "Se muestra en tu zona horaria local",
       refresh: "Actualizar contador",
       share: "Compartir",
-      shareHint: "Copiar estad\xEDsticas para compartir",
+      shareHint: "Previsualizar estad\xEDsticas para compartir",
       ping: "Latencia",
       simPing: "Latencia simulada",
       pingHint: "Tiempo de ida y vuelta del \xFAltimo clic guardado. El punto de estado indica solicitudes pendientes o un error al guardar.",
@@ -3478,7 +3473,7 @@
       copied: "Estad\xEDsticas copiadas.",
       clipboardUnavailable: "Portapapeles no disponible. Selecciona y copia el texto de la vista previa.",
       statsClicks: "{label}: {count}",
-      statsStreaks: "Rachas UTC: {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "Rachas UTC: {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "Jugar: {url}"
     },
     ar: {
@@ -3531,7 +3526,6 @@
       feedbackUnconfirmed: "\u063A\u064A\u0631 \u0645\u0624\u0643\u062F\u0629",
       feedbackUnsaved: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638",
       feedbackCooldown: "\u0641\u062A\u0631\u0629 \u0627\u0646\u062A\u0638\u0627\u0631",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 \u0645\u062D\u0627\u0643\u0627\u0629",
       feedbackAwaitingHint: "\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u062D\u0641\u0638 \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average}",
       feedbackSavedHint: "\u062A\u0645 \u0627\u0644\u062D\u0641\u0638 \xB7 {time} \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average}",
       feedbackSimulatedHint: "\u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0627\u0629 \xB7 {time} \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average}",
@@ -3540,7 +3534,7 @@
       timezone: "\u064A\u064F\u0639\u0631\u0636 \u0628\u062A\u0648\u0642\u064A\u062A\u0643 \u0627\u0644\u0645\u062D\u0644\u064A",
       refresh: "\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0639\u062F\u0627\u062F",
       share: "\u0645\u0634\u0627\u0631\u0643\u0629",
-      shareHint: "\u0646\u0633\u062E \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A \u0644\u0645\u0634\u0627\u0631\u0643\u062A\u0647\u0627",
+      shareHint: "\u0645\u0639\u0627\u064A\u0646\u0629 \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A \u0642\u0628\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u0643\u0629",
       ping: "\u0632\u0645\u0646 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629",
       simPing: "\u0632\u0645\u0646 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0649",
       pingHint: "\u0645\u062F\u0629 \u0622\u062E\u0631 \u0637\u0644\u0628 \u0646\u0642\u0631\u0629 \u0646\u0627\u062C\u062D \u0630\u0647\u0627\u0628\u064B\u0627 \u0648\u0625\u064A\u0627\u0628\u064B\u0627. \u062A\u0634\u064A\u0631 \u0646\u0642\u0637\u0629 \u0627\u0644\u062D\u0627\u0644\u0629 \u0625\u0644\u0649 \u0637\u0644\u0628\u0627\u062A \u0645\u0639\u0644\u0651\u0642\u0629 \u0623\u0648 \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062D\u0641\u0638.",
@@ -3593,7 +3587,7 @@
       copied: "\u062A\u0645 \u0646\u0633\u062E \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A.",
       clipboardUnavailable: "\u0627\u0644\u062D\u0627\u0641\u0638\u0629 \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629. \u062D\u062F\u0651\u062F \u0646\u0635 \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629 \u0648\u0627\u0646\u0633\u062E\u0647.",
       statsClicks: "{label}: {count}",
-      statsStreaks: "\u0627\u0644\u0633\u0644\u0627\u0633\u0644 \u0628\u062A\u0648\u0642\u064A\u062A UTC: {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "\u0627\u0644\u0633\u0644\u0627\u0633\u0644 \u0628\u062A\u0648\u0642\u064A\u062A UTC: {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "\u0627\u0644\u0639\u0628: {url}"
     },
     hi: {
@@ -3646,7 +3640,6 @@
       feedbackUnconfirmed: "\u0905\u092A\u0941\u0937\u094D\u091F",
       feedbackUnsaved: "\u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E",
       feedbackCooldown: "\u0935\u093F\u0930\u093E\u092E",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 \u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921",
       feedbackAwaitingHint: "\u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average}",
       feedbackSavedHint: "\u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \xB7 {time} \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average}",
       feedbackSimulatedHint: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \xB7 {time} \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average}",
@@ -3655,7 +3648,7 @@
       timezone: "\u0906\u092A\u0915\u0947 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u092E\u092F \u0915\u094D\u0937\u0947\u0924\u094D\u0930 \u092E\u0947\u0902 \u0926\u093F\u0916\u093E\u092F\u093E \u0917\u092F\u093E \u0939\u0948",
       refresh: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0915\u0930\u0947\u0902",
       share: "\u0938\u093E\u091D\u093E \u0915\u0930\u0947\u0902",
-      shareHint: "\u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0906\u0901\u0915\u0921\u093C\u0947 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902",
+      shareHint: "\u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0938\u0947 \u092A\u0939\u0932\u0947 \u0906\u0901\u0915\u0921\u093C\u094B\u0902 \u0915\u093E \u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u0915\u0930\u0947\u0902",
       ping: "\u092A\u093F\u0902\u0917",
       simPing: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u093F\u0902\u0917",
       pingHint: "\u092A\u093F\u091B\u0932\u0947 \u0938\u092B\u0932 \u0915\u094D\u0932\u093F\u0915 \u0905\u0928\u0941\u0930\u094B\u0927 \u0915\u093E \u0906\u0928\u0947-\u091C\u093E\u0928\u0947 \u0915\u093E \u0938\u092E\u092F\u0964 \u0938\u094D\u0925\u093F\u0924\u093F \u092C\u093F\u0902\u0926\u0941 \u0932\u0902\u092C\u093F\u0924 \u0905\u0928\u0941\u0930\u094B\u0927 \u092F\u093E \u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u0924\u094D\u0930\u0941\u091F\u093F \u0926\u093F\u0916\u093E\u0924\u093E \u0939\u0948\u0964",
@@ -3708,7 +3701,7 @@
       copied: "\u0906\u0901\u0915\u0921\u093C\u0947 \u0915\u0949\u092A\u0940 \u0939\u094B \u0917\u090F\u0964",
       clipboardUnavailable: "\u0915\u094D\u0932\u093F\u092A\u092C\u094B\u0930\u094D\u0921 \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964 \u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u0915\u093E \u091F\u0947\u0915\u094D\u0938\u094D\u091F \u091A\u0941\u0928\u0915\u0930 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
       statsClicks: "{label}: {count}",
-      statsStreaks: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u0947 \u0915\u094D\u0930\u092E (UTC): {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u0947 \u0915\u094D\u0930\u092E (UTC): {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "\u0916\u0947\u0932\u0947\u0902: {url}"
     },
     id: {
@@ -3761,7 +3754,6 @@
       feedbackUnconfirmed: "belum terkonfirmasi",
       feedbackUnsaved: "tidak tersimpan",
       feedbackCooldown: "jeda",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 simulasi",
       feedbackAwaitingHint: "Menunggu penyimpanan \xB7 rata-rata terkini {average}",
       feedbackSavedHint: "Tersimpan \xB7 {time} \xB7 rata-rata terkini {average}",
       feedbackSimulatedHint: "Respons simulasi \xB7 {time} \xB7 rata-rata terkini {average}",
@@ -3770,7 +3762,7 @@
       timezone: "Ditampilkan dalam zona waktu lokal Anda",
       refresh: "Muat ulang penghitung",
       share: "Bagikan",
-      shareHint: "Salin statistik untuk dibagikan",
+      shareHint: "Pratinjau statistik untuk dibagikan",
       ping: "Ping",
       simPing: "Ping simulasi",
       pingHint: "Waktu dari pengiriman permintaan klik terakhir yang berhasil hingga balasannya diterima. Titik status menunjukkan permintaan tertunda atau kesalahan penyimpanan.",
@@ -3823,7 +3815,7 @@
       copied: "Statistik disalin.",
       clipboardUnavailable: "Papan klip tidak tersedia. Pilih dan salin teks pratinjau.",
       statsClicks: "{label}: {count}",
-      statsStreaks: "Rentetan UTC: {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "Rentetan UTC: {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "Main: {url}"
     },
     "pt-BR": {
@@ -3876,7 +3868,6 @@
       feedbackUnconfirmed: "n\xE3o confirmado",
       feedbackUnsaved: "n\xE3o salvo",
       feedbackCooldown: "pausa",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 sim.",
       feedbackAwaitingHint: "Aguardando salvamento \xB7 m\xE9dia recente {average}",
       feedbackSavedHint: "Salvo \xB7 {time} \xB7 m\xE9dia recente {average}",
       feedbackSimulatedHint: "Resposta simulada \xB7 {time} \xB7 m\xE9dia recente {average}",
@@ -3885,7 +3876,7 @@
       timezone: "Exibido no seu fuso hor\xE1rio local",
       refresh: "Atualizar contador",
       share: "Compartilhar",
-      shareHint: "Copiar estat\xEDsticas para compartilhar",
+      shareHint: "Pr\xE9-visualizar estat\xEDsticas para compartilhar",
       ping: "Ping",
       simPing: "Ping simulado",
       pingHint: "Tempo de ida e volta da \xFAltima solicita\xE7\xE3o de clique bem-sucedida. O ponto de status indica solicita\xE7\xF5es pendentes ou erro ao salvar.",
@@ -3938,7 +3929,7 @@
       copied: "Estat\xEDsticas copiadas.",
       clipboardUnavailable: "\xC1rea de transfer\xEAncia indispon\xEDvel. Selecione e copie o texto da pr\xE9via.",
       statsClicks: "{label}: {count}",
-      statsStreaks: "Sequ\xEAncias UTC: {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "Sequ\xEAncias UTC: {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "Jogar: {url}"
     },
     fr: {
@@ -3991,7 +3982,6 @@
       feedbackUnconfirmed: "non confirm\xE9",
       feedbackUnsaved: "non enregistr\xE9",
       feedbackCooldown: "pause",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 simul\xE9e",
       feedbackAwaitingHint: "En attente d\u2019enregistrement \xB7 moyenne r\xE9cente {average}",
       feedbackSavedHint: "Enregistr\xE9 \xB7 {time} \xB7 moyenne r\xE9cente {average}",
       feedbackSimulatedHint: "R\xE9ponse simul\xE9e \xB7 {time} \xB7 moyenne r\xE9cente {average}",
@@ -4000,7 +3990,7 @@
       timezone: "Affich\xE9 dans votre fuseau horaire local",
       refresh: "Actualiser le compteur",
       share: "Partager",
-      shareHint: "Copier les statistiques \xE0 partager",
+      shareHint: "Pr\xE9visualiser les statistiques \xE0 partager",
       ping: "Latence",
       simPing: "Latence simul\xE9e",
       pingHint: "Dur\xE9e aller-retour de la derni\xE8re requ\xEAte de clic r\xE9ussie. Le point de statut indique les requ\xEAtes en attente ou une erreur de sauvegarde.",
@@ -4053,7 +4043,7 @@
       copied: "Statistiques copi\xE9es.",
       clipboardUnavailable: "Presse-papiers indisponible. S\xE9lectionnez et copiez le texte de l\u2019aper\xE7u.",
       statsClicks: "{label} : {count}",
-      statsStreaks: "S\xE9ries UTC : {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "S\xE9ries UTC : {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "Jouer : {url}"
     },
     ja: {
@@ -4106,7 +4096,6 @@
       feedbackUnconfirmed: "\u672A\u78BA\u8A8D",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
       feedbackCooldown: "\u5F85\u6A5F\u4E2D",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 \u6A21\u64EC",
       feedbackAwaitingHint: "\u4FDD\u5B58\u5F85\u3061 \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average}",
       feedbackSavedHint: "\u4FDD\u5B58\u6E08\u307F \xB7 {time} \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average}",
       feedbackSimulatedHint: "\u6A21\u64EC\u5FDC\u7B54 \xB7 {time} \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average}",
@@ -4115,7 +4104,7 @@
       timezone: "\u304A\u4F4F\u307E\u3044\u306E\u30BF\u30A4\u30E0\u30BE\u30FC\u30F3\u3067\u8868\u793A",
       refresh: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u66F4\u65B0",
       share: "\u5171\u6709",
-      shareHint: "\u5171\u6709\u7528\u306B\u8A18\u9332\u3092\u30B3\u30D4\u30FC",
+      shareHint: "\u5171\u6709\u3059\u308B\u8A18\u9332\u3092\u30D7\u30EC\u30D3\u30E5\u30FC",
       ping: "\u5FDC\u7B54\u6642\u9593",
       simPing: "\u6A21\u64EC\u5FDC\u7B54\u6642\u9593",
       pingHint: "\u6700\u5F8C\u306B\u6210\u529F\u3057\u305F\u30AF\u30EA\u30C3\u30AF\u8981\u6C42\u306E\u5F80\u5FA9\u6642\u9593\u3002\u72B6\u614B\u3092\u793A\u3059\u70B9\u306F\u51E6\u7406\u4E2D\u306E\u8981\u6C42\u3084\u4FDD\u5B58\u30A8\u30E9\u30FC\u3092\u793A\u3057\u307E\u3059\u3002",
@@ -4168,7 +4157,7 @@
       copied: "\u8A18\u9332\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F\u3002",
       clipboardUnavailable: "\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002\u30D7\u30EC\u30D3\u30E5\u30FC\u306E\u30C6\u30AD\u30B9\u30C8\u3092\u9078\u629E\u3057\u3066\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       statsClicks: "{label}\uFF1A{count}",
-      statsStreaks: "UTC \u9023\u7D9A\u8A18\u9332\uFF1A{day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "UTC \u9023\u7D9A\u8A18\u9332\uFF1A{day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "\u30D7\u30EC\u30A4\uFF1A{url}"
     },
     ru: {
@@ -4221,7 +4210,6 @@
       feedbackUnconfirmed: "\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
       feedbackUnsaved: "\u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E",
       feedbackCooldown: "\u043F\u0430\u0443\u0437\u0430",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 \u0441\u0438\u043C.",
       feedbackAwaitingHint: "\u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average}",
       feedbackSavedHint: "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \xB7 {time} \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average}",
       feedbackSimulatedHint: "\u0421\u0438\u043C\u0443\u043B\u044F\u0446\u0438\u044F \u043E\u0442\u0432\u0435\u0442\u0430 \xB7 {time} \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average}",
@@ -4230,7 +4218,7 @@
       timezone: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E \u0432 \u0432\u0430\u0448\u0435\u043C \u0447\u0430\u0441\u043E\u0432\u043E\u043C \u043F\u043E\u044F\u0441\u0435",
       refresh: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A",
       share: "\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F",
-      shareHint: "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0443 \u0434\u043B\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
+      shareHint: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0438 \u0434\u043B\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
       ping: "\u041F\u0438\u043D\u0433",
       simPing: "\u0418\u043C\u0438\u0442\u0430\u0446\u0438\u044F \u043F\u0438\u043D\u0433\u0430",
       pingHint: "\u0412\u0440\u0435\u043C\u044F \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0433\u043E \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u043A\u043B\u0438\u043A\u0430. \u0418\u043D\u0434\u0438\u043A\u0430\u0442\u043E\u0440 \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u044F \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442 \u043E\u0436\u0438\u0434\u0430\u044E\u0449\u0438\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0438\u043B\u0438 \u043E\u0448\u0438\u0431\u043A\u0443 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F.",
@@ -4283,7 +4271,7 @@
       copied: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u0430.",
       clipboardUnavailable: "\u0411\u0443\u0444\u0435\u0440 \u043E\u0431\u043C\u0435\u043D\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D. \u0412\u044B\u0434\u0435\u043B\u0438\u0442\u0435 \u0438 \u0441\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u043F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0430.",
       statsClicks: "{label}: {count}",
-      statsStreaks: "\u0421\u0435\u0440\u0438\u0438 UTC: {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "\u0421\u0435\u0440\u0438\u0438 UTC: {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "\u0418\u0433\u0440\u0430\u0442\u044C: {url}"
     },
     de: {
@@ -4336,7 +4324,6 @@
       feedbackUnconfirmed: "unbest\xE4tigt",
       feedbackUnsaved: "nicht gespeichert",
       feedbackCooldown: "Pause",
-      feedbackSimulatedTime: "\u2713 {time} \xB7 simuliert",
       feedbackAwaitingHint: "Speichern ausstehend \xB7 Durchschnitt der letzten Messungen: {average}",
       feedbackSavedHint: "Gespeichert \xB7 {time} \xB7 Durchschnitt der letzten Messungen: {average}",
       feedbackSimulatedHint: "Simulierte Antwort \xB7 {time} \xB7 Durchschnitt der letzten Messungen: {average}",
@@ -4345,7 +4332,7 @@
       timezone: "Anzeige in deiner lokalen Zeitzone",
       refresh: "Z\xE4hler aktualisieren",
       share: "Teilen",
-      shareHint: "Statistik zum Teilen kopieren",
+      shareHint: "Statistik zum Teilen ansehen",
       ping: "Ping",
       simPing: "Simulierter Ping",
       pingHint: "Zeit zwischen der letzten erfolgreichen Klickanfrage und der Antwort des Servers. Der Statuspunkt zeigt ausstehende Anfragen oder einen Speicherfehler an.",
@@ -4398,7 +4385,7 @@
       copied: "Statistik kopiert.",
       clipboardUnavailable: "Zwischenablage nicht verf\xFCgbar. Markiere und kopiere den Vorschautext.",
       statsClicks: "{label}: {count}",
-      statsStreaks: "UTC-Serien: {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "UTC-Serien: {day} \xB7 {week} \xB7 {month} \xB7 {year}",
       playLink: "Spielen: {url}"
     }
   };
@@ -4472,7 +4459,7 @@
       formatter = new Intl.NumberFormat(code, {
         style: "unit",
         unit,
-        unitDisplay: unit === "millisecond" ? "short" : "long"
+        unitDisplay: ["hour", "minute", "millisecond"].includes(unit) ? "short" : "long"
       });
       unitFormats.set(key, formatter);
     }
@@ -5621,13 +5608,13 @@
         const average2 = formatUnit(Math.round(baseline), "millisecond");
         if (phase === "saved") {
           const time = formatUnit(Math.round(measured), "millisecond");
-          timing.textContent = simulated ? message2("feedbackSimulatedTime", { time }) : `\u2713 ${time}`;
+          timing.textContent = "";
           popup.title = message2(simulated ? "feedbackSimulatedHint" : "feedbackSavedHint", {
             time,
             average: average2
           });
         } else {
-          timing.textContent = phase === "pending" ? "\u2026" : message2(feedbackLabels[phase]);
+          timing.textContent = phase === "pending" ? "" : message2(feedbackLabels[phase]);
           popup.title = phase === "pending" || phase === "waiting" ? message2("feedbackAwaitingHint", { average: average2 }) : timing.textContent;
         }
       }
@@ -5867,6 +5854,7 @@
       lines.push(
         message2("statsStreaks", {
           day: formatUnit(counters.streak_counter_day?.count ?? 0, "day"),
+          week: formatUnit(counters.progress?.week_streak ?? 0, "week"),
           month: formatUnit(counters.streak_counter_month?.count ?? 0, "month"),
           year: formatUnit(counters.streak_counter_year?.count ?? 0, "year")
         })
@@ -5876,7 +5864,6 @@
     return lines.join("\n");
   }
   var statsShare = (() => {
-    const button = required("#share-stats");
     const status = required("#share-status");
     const dialog = required("#share-dialog");
     const text = required("#share-text");
@@ -5919,14 +5906,13 @@
       text.value = preview;
       if (changed && announcement === "copied") announce("copyChanged");
     }
-    async function copyCurrent(openDialog) {
+    async function copyCurrent() {
       if (busy || !currentStats) return;
       busy = true;
       const current = generation;
       const summary = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
       text.value = summary;
       text.lang = currentLanguage();
-      button.setAttribute("aria-busy", "true");
       copyButton.setAttribute("aria-busy", "true");
       announce(null);
       let clipboardWrite;
@@ -5935,7 +5921,6 @@
       } catch {
         clipboardWrite = Promise.reject(new Error("Clipboard unavailable"));
       }
-      if (openDialog && !dialog.open) dialog.showModal();
       try {
         await clipboardWrite;
         if (current === generation) announce(summary === text.value ? "copied" : "copyChanged");
@@ -5949,7 +5934,6 @@
       } finally {
         if (current === generation) {
           busy = false;
-          button.setAttribute("aria-busy", "false");
           copyButton.setAttribute("aria-busy", "false");
         }
       }
@@ -5965,7 +5949,7 @@
       const outside = event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
       if (outside) dialog.close();
     });
-    copyButton.addEventListener("click", () => void copyCurrent(false));
+    copyButton.addEventListener("click", copyCurrent);
     for (const option of Object.values(options)) option.addEventListener("change", updatePreview);
     return {
       reset() {
@@ -5974,15 +5958,19 @@
         currentStats = null;
         window.clearTimeout(feedbackTimer);
         window.clearTimeout(clearTimer);
-        button.setAttribute("aria-busy", "false");
         copyButton.setAttribute("aria-busy", "false");
         announce(null);
         text.value = "";
         if (dialog.open) dialog.close();
       },
-      copy(counters, local) {
+      open(counters, local) {
         currentStats = { counters, local };
-        return copyCurrent(true);
+        generation++;
+        busy = false;
+        copyButton.setAttribute("aria-busy", "false");
+        announce(null);
+        updatePreview();
+        if (!dialog.open) dialog.showModal();
       }
     };
   })();
@@ -6286,6 +6274,9 @@
   var noticeNames = required("#achievement-notice-names");
   var live = required("#achievement-announcement");
   var game = required("#game-view");
+  var nextMilestone = required("#next-click-milestone");
+  var nextMilestoneName = required("#next-click-milestone-name");
+  var nextMilestoneCount = required("#next-click-milestone-count");
   var spoilerKey = "goclick.achievements.reveal.v1";
   var filter = "all";
   var badges = [];
@@ -6417,6 +6408,17 @@
     }
     badges = next;
     badgeKey = key;
+    const milestone = badges.find(
+      ({ id, icon, earned }) => !earned && (id === "gone-click" || icon === "clicks")
+    );
+    nextMilestone.hidden = !milestone;
+    if (milestone) {
+      nextMilestoneName.textContent = milestone.name;
+      nextMilestoneCount.textContent = message2("outOf", {
+        count: formatNumber(milestone.meter.count),
+        total: formatNumber(milestone.meter.total)
+      });
+    }
     const count = badges.filter(({ earned }) => earned).length;
     required("#achievement-count").textContent = message2("outOf", {
       count: formatNumber(count),
@@ -6507,8 +6509,10 @@
       nextReset = next;
       if (!required("#achievement-view").hidden) renderProgress(shownCounters, shownLocalMode);
     }
-    const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
-    const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;
+    const remaining = [
+      ...minutesLeft >= 60 ? [formatUnit(Math.floor(minutesLeft / 60), "hour")] : [],
+      formatUnit(minutesLeft % 60, "minute")
+    ].join(" ");
     const countdown = message2("timeUntilReset", { time: remaining });
     timeLeft.textContent = compactTimeLeft.textContent = countdown;
     const fraction = elapsed / dayMilliseconds;
@@ -7286,7 +7290,7 @@
   refreshCounterButton.addEventListener("click", refreshGame);
   required("#share-stats").addEventListener("click", () => {
     if (!gameReady || signingOut || pendingClicks > 0 || counterLoad || localSaveReplacing) return;
-    return statsShare.copy(displayedCounters, localMode);
+    return statsShare.open(displayedCounters, localMode);
   });
   retryBootButton.addEventListener("click", () => boot());
   var optionsDialog = required("#options-dialog");

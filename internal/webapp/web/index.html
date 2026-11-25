@@ -467,11 +467,16 @@
           </p>
           <div class="play-layout">
             <div id="counter-card" class="counter-card">
-              <span id="counter-label" class="visually-hidden">Saved clicks</span>
               <div class="counter-total" role="group" aria-labelledby="counter-label">
+                <span id="counter-label" class="counter-label">Saved clicks</span>
                 <p id="click-count" class="counter-value" aria-live="polite">0</p>
                 <span id="pending-clicks" class="pending-count" hidden></span>
               </div>
+              <p id="next-click-milestone" class="next-click-milestone" hidden>
+                <bdi id="next-click-milestone-name" lang="en"></bdi>
+                <span aria-hidden="true"> · </span>
+                <span id="next-click-milestone-count"></span>
+              </p>
               <div class="button-stage">
                 <svg class="button-power" aria-hidden="true" focusable="false">
                   <g id="game-power-hardware">
@@ -608,7 +613,7 @@
                   id="share-stats"
                   class="counter-action-button share-stats"
                   type="button"
-                  title="Copy stats for sharing"
+                  title="Preview stats for sharing"
                   data-i18n-title="shareHint"
                   disabled
                 >

@@ -1365,8 +1365,13 @@ test("Share copies confirmed progress without account requests or private identi
   const h = await harness({ clipboard: { writeText: async (text) => copies.push(text) } });
   assert.equal(h.element("#share-stats").disabled, false);
   await h.element("#share-stats").fire("click");
+  assert.equal(copies.length, 0);
+  await h.element("#copy-share-text").fire("click");
   assert.equal(copies.length, 1);
-  assert.match(copies[0], /Go Click\nSaved clicks: 10\nUTC streaks: 0 days · 0 months · 0 years/);
+  assert.match(
+    copies[0],
+    /Go Click\nSaved clicks: 10\nUTC streaks: 0 days · 0 weeks · 0 months · 0 years/,
+  );
   assert.match(copies[0], /Play: https:\/\/goclick\.example/);
   assert.equal(copies[0].includes(player.username), false);
   assert.equal(h.element("#share-status").textContent, "Stats copied.");
@@ -1380,6 +1385,7 @@ test("Share copies confirmed progress without account requests or private identi
   save.resolve(response(counters(11)));
   await clicking;
   await h.element("#share-stats").fire("click");
+  await h.element("#copy-share-text").fire("click");
   assert.match(copies[1], /Saved clicks: 11/);
 });
 
@@ -1389,9 +1395,10 @@ test("local Share uses the displayed local save and labels its separate progress
   h.context.startLocalGame();
   await h.element("#click-button").fire("click");
   await h.element("#share-stats").fire("click");
+  await h.element("#copy-share-text").fire("click");
   assert.equal(
     copies[0],
-    "Go Click · Offline\nLocal clicks: 1\nUTC streaks: 1 day · 1 month · 1 year\nPlay: https://goclick.example",
+    "Go Click · Offline\nLocal clicks: 1\nUTC streaks: 1 day · 1 week · 1 month · 1 year\nPlay: https://goclick.example",
   );
   assert.deepEqual(h.requests, []);
 });
@@ -1409,9 +1416,10 @@ for (const clipboard of [
     await h.element("#share-stats").fire("click");
     assert.equal(h.element("#share-dialog").open, true);
     assert.match(h.element("#share-text").value, /Saved clicks: 10/);
+    await h.element("#copy-share-text").fire("click");
     assert.equal(h.element("#share-text").selected, true);
     assert.equal(h.document.activeElement, h.element("#share-text"));
-    assert.equal(h.element("#share-stats").attributes.get("aria-busy"), "false");
+    assert.equal(h.element("#copy-share-text").attributes.get("aria-busy"), "false");
     assert.notEqual(h.element("#share-status").textContent, "Stats copied.");
     h.element("#close-share").fire("click");
     assert.equal(h.element("#share-dialog").open, false);
@@ -1432,8 +1440,9 @@ test("a stale clipboard failure cannot interrupt a different mode and duplicate 
       },
     },
   });
-  const sharing = h.element("#share-stats").fire("click");
   await h.element("#share-stats").fire("click");
+  const sharing = h.element("#copy-share-text").fire("click");
+  await h.element("#copy-share-text").fire("click");
   assert.equal(requests, 1);
   h.context.startLocalGame();
   copy.resolve();
@@ -1595,6 +1604,7 @@ test("share preview and errors follow language changes without losing the curren
   const h = await harness();
   await h.element("#share-stats").fire("click");
   assert.equal(h.element("#share-dialog").open, true);
+  await h.element("#copy-share-text").fire("click");
   h.chooseLanguage("es");
   assert.match(h.element("#share-text").value, /Clics guardados: 10/);
   assert.match(h.element("#share-status").textContent, /Portapapeles/);
@@ -1620,7 +1630,8 @@ for (const change of ["language", "options"]) {
         },
       },
     });
-    const copy = h.element("#share-stats").fire("click");
+    await h.element("#share-stats").fire("click");
+    const copy = h.element("#copy-share-text").fire("click");
     if (change === "language") {
       // A second tab can change the locale while this tab has a modal open.
       h.storage.set("goclick.language.v1", "es");
@@ -1653,6 +1664,7 @@ for (const change of ["language", "options"]) {
 test("changing a previously copied preview clears its stale copied confirmation", async () => {
   const h = await harness({ clipboard: { writeText: async () => {} } });
   await h.element("#share-stats").fire("click");
+  await h.element("#copy-share-text").fire("click");
   assert.equal(h.element("#share-status").textContent, "Stats copied.");
   h.element("#include-share-link").checked = false;
   h.element("#include-share-link").fire("change");
@@ -1669,7 +1681,8 @@ test("a stale clipboard failure preserves focus on changed share options", async
         }),
     },
   });
-  const copy = h.element("#share-stats").fire("click");
+  await h.element("#share-stats").fire("click");
+  const copy = h.element("#copy-share-text").fire("click");
   const option = h.element("#include-share-clicks");
   option.focus();
   option.checked = false;

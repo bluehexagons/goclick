@@ -219,8 +219,8 @@ touching the save, and the controls are available again.
 A persisted local-mode startup skips session checks. Pressing the home button
 while signed out opens the local game and saves the first click there.
 
-Share copies the current click total, UTC streaks, and site link, then opens
-options to customize the text. Daily/weekly click totals are not included.
+Share previews the current click total, daily, weekly, monthly, and yearly UTC
+streaks, and site link. Choose which fields to include, then use **Copy text**.
 Offline summaries are labeled separately. Clipboard failures leave a selectable
 preview for manual copying. Editing the preview or changing its language
 invalidates an earlier copy confirmation, including a write still in progress.

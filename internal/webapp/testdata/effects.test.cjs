@@ -123,7 +123,8 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
   assert.equal(popup.animations.length, 0);
   first.success(50);
   assert.equal(popup.dataset.state, "fast");
-  assert.match(popup.children[1].textContent, /50 ms/);
+  assert.equal(popup.children[1].textContent, "");
+  assert.match(popup.title, /50 ms/);
   const slow = h.feedback.start(h.button, { detail: 0 });
   popup = h.layer.children.at(-1);
   assert.equal(popup.style.left, "50%");
@@ -155,7 +156,8 @@ test("reduced motion uses static acknowledgement and resets clear every pending 
   const saved = h.feedback.start(h.button, { detail: 0 }, true);
   saved.success(80);
   assert.equal(h.layer.children[0].animations.length, 0);
-  assert.match(h.layer.children[0].children[1].textContent, /sim/);
+  assert.equal(h.layer.children[0].children[1].textContent, "");
+  assert.match(h.layer.children[0].title, /sim/i);
   h.feedback.start(h.button, { detail: 0 });
   h.feedback.reset();
   assert.equal(h.timers.size, 0);
@@ -200,7 +202,8 @@ test("click feedback and tooltips follow language changes throughout the save li
   h.setLanguage("de");
   assert.equal(popup.dir, "ltr");
   assert.match(popup.title, /Gespeichert/);
-  assert.equal(popup.children[1].textContent, "✓ 80 ms");
+  assert.equal(popup.children[1].textContent, "");
+  assert.match(popup.title, /80 ms/);
   assert.equal(h.timers.size, timerCount);
   assert.equal(h.responses.length, responseCount);
   assert.equal(popup.animations.length, animationCount);
@@ -224,7 +227,7 @@ test("failure and simulated-ping feedback use translated status text and accurat
   const popup = h.layer.children.at(-1);
   local.success(250);
   assert.match(popup.title, /Réponse simulée/);
-  assert.match(popup.children[1].textContent, /simulée/);
+  assert.equal(popup.children[1].textContent, "");
   h.feedback.reset();
   h.setLanguage("ja");
   assert.equal(popup.lang, "fr"); // Removed effects no longer receive locale updates.

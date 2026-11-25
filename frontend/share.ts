@@ -43,6 +43,7 @@ export function formatShareText(
     lines.push(
       t("statsStreaks", {
         day: formatUnit(counters.streak_counter_day?.count ?? 0, "day"),
+        week: formatUnit(counters.progress?.week_streak ?? 0, "week"),
         month: formatUnit(counters.streak_counter_month?.count ?? 0, "month"),
         year: formatUnit(counters.streak_counter_year?.count ?? 0, "year"),
       }),
@@ -53,7 +54,6 @@ export function formatShareText(
 }
 
 export const statsShare = (() => {
-  const button = $<HTMLButtonElement>("#share-stats");
   const status = $("#share-status");
   const dialog = $<HTMLDialogElement>("#share-dialog");
   const text = $<HTMLTextAreaElement>("#share-text");
@@ -104,26 +104,22 @@ export const statsShare = (() => {
     if (changed && announcement === "copied") announce("copyChanged");
   }
 
-  async function copyCurrent(openDialog: boolean) {
+  async function copyCurrent() {
     if (busy || !currentStats) return;
     busy = true;
     const current = generation;
     const summary = formatShareText(currentStats.counters, currentStats.local, selectedOptions());
     text.value = summary;
     text.lang = currentLanguage();
-    button.setAttribute("aria-busy", "true");
     copyButton.setAttribute("aria-busy", "true");
     announce(null);
 
-    // Start the clipboard write during the button activation, before opening a
-    // modal can consume the browser's transient user activation.
     let clipboardWrite: Promise<void>;
     try {
       clipboardWrite = navigator.clipboard.writeText(summary);
     } catch {
       clipboardWrite = Promise.reject(new Error("Clipboard unavailable"));
     }
-    if (openDialog && !dialog.open) dialog.showModal();
 
     try {
       await clipboardWrite;
@@ -138,7 +134,6 @@ export const statsShare = (() => {
     } finally {
       if (current === generation) {
         busy = false;
-        button.setAttribute("aria-busy", "false");
         copyButton.setAttribute("aria-busy", "false");
       }
     }
@@ -160,7 +155,7 @@ export const statsShare = (() => {
       event.clientY > bounds.bottom;
     if (outside) dialog.close();
   });
-  copyButton.addEventListener("click", () => void copyCurrent(false));
+  copyButton.addEventListener("click", copyCurrent);
   for (const option of Object.values(options)) option.addEventListener("change", updatePreview);
 
   return {
@@ -170,15 +165,19 @@ export const statsShare = (() => {
       currentStats = null;
       window.clearTimeout(feedbackTimer);
       window.clearTimeout(clearTimer);
-      button.setAttribute("aria-busy", "false");
       copyButton.setAttribute("aria-busy", "false");
       announce(null);
       text.value = "";
       if (dialog.open) dialog.close();
     },
-    copy(counters: Counters, local: boolean) {
+    open(counters: Counters, local: boolean) {
       currentStats = { counters, local };
-      return copyCurrent(true);
+      generation++;
+      busy = false;
+      copyButton.setAttribute("aria-busy", "false");
+      announce(null);
+      updatePreview();
+      if (!dialog.open) dialog.showModal();
     },
   };
 })();

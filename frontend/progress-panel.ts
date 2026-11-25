@@ -1,5 +1,5 @@
 import { required as $ } from "./dom.js";
-import { currentLanguage, formatNumber, message as t } from "./i18n.js";
+import { currentLanguage, formatNumber, formatUnit, message as t } from "./i18n.js";
 import {
   dayMilliseconds,
   fortnight,
@@ -100,8 +100,10 @@ export function paintReset(force = false) {
     // reflects the dates ending on the last saved click.
     if (!$("#achievement-view").hidden) renderProgress(shownCounters, shownLocalMode);
   }
-  const formatter = new Intl.NumberFormat(currentLanguage(), { minimumIntegerDigits: 2 });
-  const remaining = `${formatter.format(Math.floor(minutesLeft / 60))}:${formatter.format(minutesLeft % 60)}`;
+  const remaining = [
+    ...(minutesLeft >= 60 ? [formatUnit(Math.floor(minutesLeft / 60), "hour")] : []),
+    formatUnit(minutesLeft % 60, "minute"),
+  ].join(" ");
   const countdown = t("timeUntilReset", { time: remaining });
   timeLeft.textContent = compactTimeLeft.textContent = countdown;
   const fraction = elapsed / dayMilliseconds;

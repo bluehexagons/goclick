@@ -24,6 +24,9 @@ const noticeTitle = $("#achievement-notice-title");
 const noticeNames = $("#achievement-notice-names");
 const live = $("#achievement-announcement");
 const game = $("#game-view");
+const nextMilestone = $("#next-click-milestone");
+const nextMilestoneName = $("#next-click-milestone-name");
+const nextMilestoneCount = $("#next-click-milestone-count");
 const spoilerKey = "goclick.achievements.reveal.v1";
 let filter: keyof typeof filters = "all";
 let badges: Badge[] = [];
@@ -177,6 +180,17 @@ export function renderAchievements(
   }
   badges = next;
   badgeKey = key;
+  const milestone = badges.find(
+    ({ id, icon, earned }) => !earned && (id === "gone-click" || icon === "clicks"),
+  );
+  nextMilestone.hidden = !milestone;
+  if (milestone) {
+    nextMilestoneName.textContent = milestone.name;
+    nextMilestoneCount.textContent = t("outOf", {
+      count: formatNumber(milestone.meter.count),
+      total: formatNumber(milestone.meter.total),
+    });
+  }
   const count = badges.filter(({ earned }) => earned).length;
   $("#achievement-count").textContent = t("outOf", {
     count: formatNumber(count),

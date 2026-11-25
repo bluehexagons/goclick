@@ -887,7 +887,7 @@ retryGameButton.addEventListener("click", refreshGame);
 refreshCounterButton.addEventListener("click", refreshGame);
 $<HTMLButtonElement>("#share-stats").addEventListener("click", () => {
   if (!gameReady || signingOut || pendingClicks > 0 || counterLoad || localSaveReplacing) return;
-  return statsShare.copy(displayedCounters, localMode);
+  return statsShare.open(displayedCounters, localMode);
 });
 retryBootButton.addEventListener("click", () => boot());
 

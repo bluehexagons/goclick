@@ -52,7 +52,6 @@ export const english = {
   feedbackUnconfirmed: "unconfirmed",
   feedbackUnsaved: "not saved",
   feedbackCooldown: "cooldown",
-  feedbackSimulatedTime: "✓ {time} · sim",
   feedbackAwaitingHint: "Awaiting save · recent average {average}",
   feedbackSavedHint: "Saved · {time} · recent average {average}",
   feedbackSimulatedHint: "Simulated response · {time} · recent average {average}",
@@ -61,7 +60,7 @@ export const english = {
   timezone: "Shown in your local time zone",
   refresh: "Refresh counter",
   share: "Share",
-  shareHint: "Copy stats for sharing",
+  shareHint: "Preview stats for sharing",
   ping: "Ping",
   simPing: "Sim ping",
   pingHint:
@@ -118,7 +117,7 @@ export const english = {
   copied: "Stats copied.",
   clipboardUnavailable: "Clipboard unavailable. Select and copy the preview text.",
   statsClicks: "{label}: {count}",
-  statsStreaks: "UTC streaks: {day} · {month} · {year}",
+  statsStreaks: "UTC streaks: {day} · {week} · {month} · {year}",
   playLink: "Play: {url}",
 };
 export type MessageKey = keyof typeof english;
@@ -174,7 +173,6 @@ export const translations = {
     feedbackUnconfirmed: "未确认",
     feedbackUnsaved: "未保存",
     feedbackCooldown: "冷却中",
-    feedbackSimulatedTime: "✓ {time} · 模拟",
     feedbackAwaitingHint: "等待保存 · 近期平均 {average}",
     feedbackSavedHint: "已保存 · {time} · 近期平均 {average}",
     feedbackSimulatedHint: "模拟响应 · {time} · 近期平均 {average}",
@@ -183,7 +181,7 @@ export const translations = {
     timezone: "按你的当地时区显示",
     refresh: "刷新计数",
     share: "分享",
-    shareHint: "复制统计以分享",
+    shareHint: "预览要分享的统计",
     ping: "延迟",
     simPing: "模拟延迟",
     pingHint: "上次成功点击请求的往返时间。状态圆点表示待处理请求或保存错误。",
@@ -237,7 +235,7 @@ export const translations = {
     copied: "统计已复制。",
     clipboardUnavailable: "剪贴板不可用。请选择并复制预览文本。",
     statsClicks: "{label}：{count}",
-    statsStreaks: "UTC 连续记录：{day} · {month} · {year}",
+    statsStreaks: "UTC 连续记录：{day} · {week} · {month} · {year}",
     playLink: "开始游戏：{url}",
   },
   "zh-Hant": {
@@ -290,7 +288,6 @@ export const translations = {
     feedbackUnconfirmed: "未確認",
     feedbackUnsaved: "未儲存",
     feedbackCooldown: "冷卻中",
-    feedbackSimulatedTime: "✓ {time} · 模擬",
     feedbackAwaitingHint: "等待儲存 · 近期平均 {average}",
     feedbackSavedHint: "已儲存 · {time} · 近期平均 {average}",
     feedbackSimulatedHint: "模擬回應 · {time} · 近期平均 {average}",
@@ -299,7 +296,7 @@ export const translations = {
     timezone: "以你的當地時區顯示",
     refresh: "重新整理計數",
     share: "分享",
-    shareHint: "複製統計資料以便分享",
+    shareHint: "預覽要分享的統計資料",
     ping: "延遲",
     simPing: "模擬延遲",
     pingHint: "上次成功的點擊請求所花的往返時間。狀態圓點會顯示是否有待處理的請求或儲存錯誤。",
@@ -353,7 +350,7 @@ export const translations = {
     copied: "已複製統計資料。",
     clipboardUnavailable: "無法使用剪貼簿。請選取並複製預覽文字。",
     statsClicks: "{label}：{count}",
-    statsStreaks: "UTC 連續紀錄：{day} · {month} · {year}",
+    statsStreaks: "UTC 連續紀錄：{day} · {week} · {month} · {year}",
     playLink: "開始遊戲：{url}",
   },
   bn: {
@@ -407,7 +404,6 @@ export const translations = {
     feedbackUnconfirmed: "নিশ্চিত নয়",
     feedbackUnsaved: "সেভ হয়নি",
     feedbackCooldown: "সাময়িক বিরতি",
-    feedbackSimulatedTime: "✓ {time} · সিমুলেটেড",
     feedbackAwaitingHint: "সেভের অপেক্ষায় · সাম্প্রতিক গড় {average}",
     feedbackSavedHint: "সেভ হয়েছে · {time} · সাম্প্রতিক গড় {average}",
     feedbackSimulatedHint: "সিমুলেটেড সাড়া · {time} · সাম্প্রতিক গড় {average}",
@@ -416,7 +412,7 @@ export const translations = {
     timezone: "আপনার স্থানীয় সময়ে দেখানো হয়েছে",
     refresh: "কাউন্টার রিফ্রেশ করুন",
     share: "শেয়ার",
-    shareHint: "শেয়ার করার জন্য পরিসংখ্যান কপি করুন",
+    shareHint: "শেয়ার করার আগে পরিসংখ্যান দেখুন",
     ping: "পিং",
     simPing: "সিমুলেটেড পিং",
     pingHint:
@@ -472,7 +468,7 @@ export const translations = {
     copied: "পরিসংখ্যান কপি হয়েছে।",
     clipboardUnavailable: "ক্লিপবোর্ড ব্যবহার করা যাচ্ছে না। প্রিভিউয়ের লেখা নির্বাচন করে কপি করুন।",
     statsClicks: "{label}: {count}",
-    statsStreaks: "ধারাবাহিকতা (UTC): {day} · {month} · {year}",
+    statsStreaks: "ধারাবাহিকতা (UTC): {day} · {week} · {month} · {year}",
     playLink: "খেলুন: {url}",
   },
   es: {
@@ -527,7 +523,6 @@ export const translations = {
     feedbackUnconfirmed: "sin confirmar",
     feedbackUnsaved: "no guardado",
     feedbackCooldown: "pausa",
-    feedbackSimulatedTime: "✓ {time} · sim.",
     feedbackAwaitingHint: "Esperando guardado · media reciente {average}",
     feedbackSavedHint: "Guardado · {time} · media reciente {average}",
     feedbackSimulatedHint: "Respuesta simulada · {time} · media reciente {average}",
@@ -536,7 +531,7 @@ export const translations = {
     timezone: "Se muestra en tu zona horaria local",
     refresh: "Actualizar contador",
     share: "Compartir",
-    shareHint: "Copiar estadísticas para compartir",
+    shareHint: "Previsualizar estadísticas para compartir",
     ping: "Latencia",
     simPing: "Latencia simulada",
     pingHint:
@@ -597,7 +592,7 @@ export const translations = {
     clipboardUnavailable:
       "Portapapeles no disponible. Selecciona y copia el texto de la vista previa.",
     statsClicks: "{label}: {count}",
-    statsStreaks: "Rachas UTC: {day} · {month} · {year}",
+    statsStreaks: "Rachas UTC: {day} · {week} · {month} · {year}",
     playLink: "Jugar: {url}",
   },
   ar: {
@@ -651,7 +646,6 @@ export const translations = {
     feedbackUnconfirmed: "غير مؤكدة",
     feedbackUnsaved: "لم تُحفظ",
     feedbackCooldown: "فترة انتظار",
-    feedbackSimulatedTime: "✓ {time} · محاكاة",
     feedbackAwaitingHint: "بانتظار الحفظ · المتوسط الأخير {average}",
     feedbackSavedHint: "تم الحفظ · {time} · المتوسط الأخير {average}",
     feedbackSimulatedHint: "استجابة محاكاة · {time} · المتوسط الأخير {average}",
@@ -660,7 +654,7 @@ export const translations = {
     timezone: "يُعرض بتوقيتك المحلي",
     refresh: "تحديث العداد",
     share: "مشاركة",
-    shareHint: "نسخ الإحصاءات لمشاركتها",
+    shareHint: "معاينة الإحصاءات قبل المشاركة",
     ping: "زمن الاستجابة",
     simPing: "زمن استجابة محاكى",
     pingHint:
@@ -715,7 +709,7 @@ export const translations = {
     copied: "تم نسخ الإحصاءات.",
     clipboardUnavailable: "الحافظة غير متاحة. حدّد نص المعاينة وانسخه.",
     statsClicks: "{label}: {count}",
-    statsStreaks: "السلاسل بتوقيت UTC: {day} · {month} · {year}",
+    statsStreaks: "السلاسل بتوقيت UTC: {day} · {week} · {month} · {year}",
     playLink: "العب: {url}",
   },
   hi: {
@@ -769,7 +763,6 @@ export const translations = {
     feedbackUnconfirmed: "अपुष्ट",
     feedbackUnsaved: "सहेजा नहीं गया",
     feedbackCooldown: "विराम",
-    feedbackSimulatedTime: "✓ {time} · सिम्युलेटेड",
     feedbackAwaitingHint: "सहेजने की प्रतीक्षा · हाल का औसत {average}",
     feedbackSavedHint: "सहेजा गया · {time} · हाल का औसत {average}",
     feedbackSimulatedHint: "सिम्युलेटेड प्रतिक्रिया · {time} · हाल का औसत {average}",
@@ -778,7 +771,7 @@ export const translations = {
     timezone: "आपके स्थानीय समय क्षेत्र में दिखाया गया है",
     refresh: "काउंटर रीफ़्रेश करें",
     share: "साझा करें",
-    shareHint: "साझा करने के लिए आँकड़े कॉपी करें",
+    shareHint: "साझा करने से पहले आँकड़ों का पूर्वावलोकन करें",
     ping: "पिंग",
     simPing: "सिम्युलेटेड पिंग",
     pingHint:
@@ -833,7 +826,7 @@ export const translations = {
     copied: "आँकड़े कॉपी हो गए।",
     clipboardUnavailable: "क्लिपबोर्ड उपलब्ध नहीं है। पूर्वावलोकन का टेक्स्ट चुनकर कॉपी करें।",
     statsClicks: "{label}: {count}",
-    statsStreaks: "लगातार खेलने के क्रम (UTC): {day} · {month} · {year}",
+    statsStreaks: "लगातार खेलने के क्रम (UTC): {day} · {week} · {month} · {year}",
     playLink: "खेलें: {url}",
   },
   id: {
@@ -888,7 +881,6 @@ export const translations = {
     feedbackUnconfirmed: "belum terkonfirmasi",
     feedbackUnsaved: "tidak tersimpan",
     feedbackCooldown: "jeda",
-    feedbackSimulatedTime: "✓ {time} · simulasi",
     feedbackAwaitingHint: "Menunggu penyimpanan · rata-rata terkini {average}",
     feedbackSavedHint: "Tersimpan · {time} · rata-rata terkini {average}",
     feedbackSimulatedHint: "Respons simulasi · {time} · rata-rata terkini {average}",
@@ -897,7 +889,7 @@ export const translations = {
     timezone: "Ditampilkan dalam zona waktu lokal Anda",
     refresh: "Muat ulang penghitung",
     share: "Bagikan",
-    shareHint: "Salin statistik untuk dibagikan",
+    shareHint: "Pratinjau statistik untuk dibagikan",
     ping: "Ping",
     simPing: "Ping simulasi",
     pingHint:
@@ -956,7 +948,7 @@ export const translations = {
     copied: "Statistik disalin.",
     clipboardUnavailable: "Papan klip tidak tersedia. Pilih dan salin teks pratinjau.",
     statsClicks: "{label}: {count}",
-    statsStreaks: "Rentetan UTC: {day} · {month} · {year}",
+    statsStreaks: "Rentetan UTC: {day} · {week} · {month} · {year}",
     playLink: "Main: {url}",
   },
   "pt-BR": {
@@ -1011,7 +1003,6 @@ export const translations = {
     feedbackUnconfirmed: "não confirmado",
     feedbackUnsaved: "não salvo",
     feedbackCooldown: "pausa",
-    feedbackSimulatedTime: "✓ {time} · sim.",
     feedbackAwaitingHint: "Aguardando salvamento · média recente {average}",
     feedbackSavedHint: "Salvo · {time} · média recente {average}",
     feedbackSimulatedHint: "Resposta simulada · {time} · média recente {average}",
@@ -1020,7 +1011,7 @@ export const translations = {
     timezone: "Exibido no seu fuso horário local",
     refresh: "Atualizar contador",
     share: "Compartilhar",
-    shareHint: "Copiar estatísticas para compartilhar",
+    shareHint: "Pré-visualizar estatísticas para compartilhar",
     ping: "Ping",
     simPing: "Ping simulado",
     pingHint:
@@ -1080,7 +1071,7 @@ export const translations = {
     clipboardUnavailable:
       "Área de transferência indisponível. Selecione e copie o texto da prévia.",
     statsClicks: "{label}: {count}",
-    statsStreaks: "Sequências UTC: {day} · {month} · {year}",
+    statsStreaks: "Sequências UTC: {day} · {week} · {month} · {year}",
     playLink: "Jogar: {url}",
   },
   fr: {
@@ -1135,7 +1126,6 @@ export const translations = {
     feedbackUnconfirmed: "non confirmé",
     feedbackUnsaved: "non enregistré",
     feedbackCooldown: "pause",
-    feedbackSimulatedTime: "✓ {time} · simulée",
     feedbackAwaitingHint: "En attente d’enregistrement · moyenne récente {average}",
     feedbackSavedHint: "Enregistré · {time} · moyenne récente {average}",
     feedbackSimulatedHint: "Réponse simulée · {time} · moyenne récente {average}",
@@ -1144,7 +1134,7 @@ export const translations = {
     timezone: "Affiché dans votre fuseau horaire local",
     refresh: "Actualiser le compteur",
     share: "Partager",
-    shareHint: "Copier les statistiques à partager",
+    shareHint: "Prévisualiser les statistiques à partager",
     ping: "Latence",
     simPing: "Latence simulée",
     pingHint:
@@ -1205,7 +1195,7 @@ export const translations = {
     clipboardUnavailable:
       "Presse-papiers indisponible. Sélectionnez et copiez le texte de l’aperçu.",
     statsClicks: "{label} : {count}",
-    statsStreaks: "Séries UTC : {day} · {month} · {year}",
+    statsStreaks: "Séries UTC : {day} · {week} · {month} · {year}",
     playLink: "Jouer : {url}",
   },
   ja: {
@@ -1259,7 +1249,6 @@ export const translations = {
     feedbackUnconfirmed: "未確認",
     feedbackUnsaved: "未保存",
     feedbackCooldown: "待機中",
-    feedbackSimulatedTime: "✓ {time} · 模擬",
     feedbackAwaitingHint: "保存待ち · 最近の平均 {average}",
     feedbackSavedHint: "保存済み · {time} · 最近の平均 {average}",
     feedbackSimulatedHint: "模擬応答 · {time} · 最近の平均 {average}",
@@ -1269,7 +1258,7 @@ export const translations = {
     timezone: "お住まいのタイムゾーンで表示",
     refresh: "カウンターを更新",
     share: "共有",
-    shareHint: "共有用に記録をコピー",
+    shareHint: "共有する記録をプレビュー",
     ping: "応答時間",
     simPing: "模擬応答時間",
     pingHint:
@@ -1330,7 +1319,7 @@ export const translations = {
     clipboardUnavailable:
       "クリップボードを利用できません。プレビューのテキストを選択してコピーしてください。",
     statsClicks: "{label}：{count}",
-    statsStreaks: "UTC 連続記録：{day} · {month} · {year}",
+    statsStreaks: "UTC 連続記録：{day} · {week} · {month} · {year}",
     playLink: "プレイ：{url}",
   },
   ru: {
@@ -1385,7 +1374,6 @@ export const translations = {
     feedbackUnconfirmed: "не подтверждено",
     feedbackUnsaved: "не сохранено",
     feedbackCooldown: "пауза",
-    feedbackSimulatedTime: "✓ {time} · сим.",
     feedbackAwaitingHint: "Ожидание сохранения · среднее за последнее время {average}",
     feedbackSavedHint: "Сохранено · {time} · среднее за последнее время {average}",
     feedbackSimulatedHint: "Симуляция ответа · {time} · среднее за последнее время {average}",
@@ -1394,7 +1382,7 @@ export const translations = {
     timezone: "Показано в вашем часовом поясе",
     refresh: "Обновить счётчик",
     share: "Поделиться",
-    shareHint: "Скопировать статистику для публикации",
+    shareHint: "Предпросмотр статистики для публикации",
     ping: "Пинг",
     simPing: "Имитация пинга",
     pingHint:
@@ -1453,7 +1441,7 @@ export const translations = {
     copied: "Статистика скопирована.",
     clipboardUnavailable: "Буфер обмена недоступен. Выделите и скопируйте текст предпросмотра.",
     statsClicks: "{label}: {count}",
-    statsStreaks: "Серии UTC: {day} · {month} · {year}",
+    statsStreaks: "Серии UTC: {day} · {week} · {month} · {year}",
     playLink: "Играть: {url}",
   },
   de: {
@@ -1507,7 +1495,6 @@ export const translations = {
     feedbackUnconfirmed: "unbestätigt",
     feedbackUnsaved: "nicht gespeichert",
     feedbackCooldown: "Pause",
-    feedbackSimulatedTime: "✓ {time} · simuliert",
     feedbackAwaitingHint: "Speichern ausstehend · Durchschnitt der letzten Messungen: {average}",
     feedbackSavedHint: "Gespeichert · {time} · Durchschnitt der letzten Messungen: {average}",
     feedbackSimulatedHint:
@@ -1517,7 +1504,7 @@ export const translations = {
     timezone: "Anzeige in deiner lokalen Zeitzone",
     refresh: "Zähler aktualisieren",
     share: "Teilen",
-    shareHint: "Statistik zum Teilen kopieren",
+    shareHint: "Statistik zum Teilen ansehen",
     ping: "Ping",
     simPing: "Simulierter Ping",
     pingHint:
@@ -1578,7 +1565,7 @@ export const translations = {
     copied: "Statistik kopiert.",
     clipboardUnavailable: "Zwischenablage nicht verfügbar. Markiere und kopiere den Vorschautext.",
     statsClicks: "{label}: {count}",
-    statsStreaks: "UTC-Serien: {day} · {month} · {year}",
+    statsStreaks: "UTC-Serien: {day} · {week} · {month} · {year}",
     playLink: "Spielen: {url}",
   },
 } satisfies Record<string, Messages>;

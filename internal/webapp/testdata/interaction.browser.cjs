@@ -52,11 +52,16 @@ module.exports = async function checkInteraction(page, baseURL) {
     };
   });
   await page.locator("#share-stats").click();
+  ensure(
+    (await page.evaluate(() => window.copiedStats)) === undefined,
+    "Opening Share must leave the clipboard alone",
+  );
+  await page.locator("#copy-share-text").click();
   await page.locator("#share-status").getByText("Stats copied.", { exact: true }).waitFor();
   const copied = await page.evaluate(() => window.copiedStats);
   ensure(
     copied ===
-      `Go Click · Offline\nLocal clicks: 2\nUTC streaks: 1 day · 1 month · 1 year\nPlay: ${origin}`,
+      `Go Click · Offline\nLocal clicks: 2\nUTC streaks: 1 day · 1 week · 1 month · 1 year\nPlay: ${origin}`,
     "Share must copy the displayed local stats",
   );
   await page.locator("#close-share").click();
@@ -67,6 +72,7 @@ module.exports = async function checkInteraction(page, baseURL) {
   });
   await page.locator("#share-stats").click();
   await page.locator("#share-dialog").waitFor({ state: "visible" });
+  await page.locator("#copy-share-text").click();
   ensure(
     await page
       .locator("#share-text")
