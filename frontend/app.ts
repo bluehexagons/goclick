@@ -8,6 +8,7 @@ import { tactileButtons } from "./button.js";
 import { clickFeedback } from "./click-feedback.js";
 import { clickSound } from "./sound.js";
 import { bindOptionPreferences } from "./option-preferences.js";
+import { offlineWorkerReady } from "./offline-worker.js";
 import { statsShare } from "./share.js";
 import { languagePicker } from "./language-picker.js";
 import {
@@ -891,6 +892,10 @@ $<HTMLButtonElement>("#share-stats").addEventListener("click", () => {
 retryBootButton.addEventListener("click", () => boot());
 
 const optionsDialog = $<HTMLDialogElement>("#options-dialog");
+let offlineCacheMessage: MessageKey = "offlineCachePreparing";
+function paintOfflineCacheStatus() {
+  if (offlineOnly) $("#offline-cache-status").textContent = t(offlineCacheMessage);
+}
 const replaceLocalConsent = $<HTMLInputElement>("#replace-local");
 const importLocal = $<HTMLInputElement>("#import-local");
 optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
@@ -1188,6 +1193,7 @@ function applyLanguage() {
   translatePage();
   paintOptionPreferencesLanguage();
   paintOptionsNotice();
+  paintOfflineCacheStatus();
   if (optionsDialog.open) updateOptions();
   paintLanguagePicker();
   document.documentElement.lang = currentLanguage();
@@ -1215,9 +1221,10 @@ window.addEventListener("storage", (event) => {
 
 boot();
 
-if (offlineOnly && "serviceWorker" in navigator) {
-  void navigator.serviceWorker.register("./service-worker.js").catch(() => {
-    // Local play still works in the loaded page if caching is unavailable.
+if (offlineOnly) {
+  void offlineWorkerReady().then((ready) => {
+    offlineCacheMessage = ready ? "offlineCacheReady" : "offlineCacheUnavailable";
+    paintOfflineCacheStatus();
   });
 }
 

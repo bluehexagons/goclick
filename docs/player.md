@@ -1,10 +1,11 @@
 # Go Click player guide
 
 [Play Go Click on GitHub Pages](https://bluehexagons.github.io/goclick/) to
-start clicking right away. Your progress is saved in your browser. Once the
-game finishes loading and caching on a connected visit, you can reopen it
-without a connection in the same browser. If your browser blocks offline
-caching, keep the loaded page open to play while disconnected.
+start clicking right away. Your progress is saved in your browser. On your
+first connected visit, open **Options** and look under **Offline play**.
+When you see **Ready to reopen offline**, you can close the tab and reopen
+the game without a connection in the same browser. If offline reopening is
+unavailable, keep the loaded tab open to play while disconnected.
 
 ## Controls and settings
 

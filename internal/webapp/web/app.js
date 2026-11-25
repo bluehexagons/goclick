@@ -2095,6 +2095,9 @@
     motionReduced: "Reduced \xB7 No motion or flashes",
     motionFull: "Full \xB7 Animations and effects",
     offlinePlayHeading: "Offline play",
+    offlineCachePreparing: "Preparing offline access\u2026",
+    offlineCacheReady: "Ready to reopen offline.",
+    offlineCacheUnavailable: "Offline reopening is unavailable. Keep this tab open to play offline.",
     playOffline: "Play offline",
     playOnline: "Play online",
     playOnlineHint: "Leaves GitHub Pages and opens clicker.bluehexagons.com.",
@@ -2156,6 +2159,9 @@
       motionReduced: "\u51CF\u5C11 \xB7 \u5173\u95ED\u52A8\u6548\u548C\u95EA\u70C1",
       motionFull: "\u5B8C\u6574 \xB7 \u542F\u7528\u52A8\u753B\u548C\u7279\u6548",
       offlinePlayHeading: "\u79BB\u7EBF\u6E38\u73A9",
+      offlineCachePreparing: "\u6B63\u5728\u51C6\u5907\u79BB\u7EBF\u8BBF\u95EE\u2026",
+      offlineCacheReady: "\u73B0\u5728\u53EF\u4EE5\u79BB\u7EBF\u91CD\u65B0\u6253\u5F00\u6E38\u620F\u3002",
+      offlineCacheUnavailable: "\u6682\u65F6\u65E0\u6CD5\u79BB\u7EBF\u91CD\u65B0\u6253\u5F00\u6E38\u620F\u3002\u8BF7\u4FDD\u6301\u6B64\u6807\u7B7E\u9875\u5F00\u542F\uFF0C\u4EE5\u4FBF\u79BB\u7EBF\u6E38\u73A9\u3002",
       playOffline: "\u79BB\u7EBF\u6E38\u73A9",
       playOnline: "\u5728\u7EBF\u6E38\u73A9",
       playOnlineHint: "\u79BB\u5F00 GitHub Pages \u5E76\u6253\u5F00 clicker.bluehexagons.com\u3002",
@@ -2216,6 +2222,9 @@
       motionReduced: "\u6E1B\u5C11 \xB7 \u95DC\u9589\u52D5\u756B\u548C\u9583\u720D",
       motionFull: "\u5B8C\u6574 \xB7 \u958B\u555F\u52D5\u756B\u548C\u7279\u6548",
       offlinePlayHeading: "\u96E2\u7DDA\u904A\u73A9",
+      offlineCachePreparing: "\u6B63\u5728\u6E96\u5099\u96E2\u7DDA\u5B58\u53D6\u2026",
+      offlineCacheReady: "\u73FE\u5728\u53EF\u4EE5\u96E2\u7DDA\u91CD\u65B0\u958B\u555F\u904A\u6232\u3002",
+      offlineCacheUnavailable: "\u76EE\u524D\u7121\u6CD5\u96E2\u7DDA\u91CD\u65B0\u958B\u555F\u904A\u6232\u3002\u8ACB\u4FDD\u6301\u6B64\u5206\u9801\u958B\u555F\uFF0C\u4EE5\u4FBF\u96E2\u7DDA\u904A\u73A9\u3002",
       playOffline: "\u96E2\u7DDA\u904A\u73A9",
       playOnline: "\u7DDA\u4E0A\u904A\u73A9",
       playOnlineHint: "\u96E2\u958B GitHub Pages \u4E26\u958B\u555F clicker.bluehexagons.com\u3002",
@@ -2276,6 +2285,9 @@
       motionReduced: "\u0995\u09AE \xB7 \u0985\u09CD\u09AF\u09BE\u09A8\u09BF\u09AE\u09C7\u09B6\u09A8 \u0993 \u099D\u09B2\u0995 \u09AC\u09A8\u09CD\u09A7",
       motionFull: "\u09AA\u09C2\u09B0\u09CD\u09A3 \xB7 \u0985\u09CD\u09AF\u09BE\u09A8\u09BF\u09AE\u09C7\u09B6\u09A8 \u0993 \u0987\u09AB\u09C7\u0995\u09CD\u099F \u099A\u09BE\u09B2\u09C1",
       offlinePlayHeading: "\u0985\u09AB\u09B2\u09BE\u0987\u09A8\u09C7 \u0996\u09C7\u09B2\u09BE",
+      offlineCachePreparing: "\u0985\u09AB\u09B2\u09BE\u0987\u09A8\u09C7 \u0996\u09CB\u09B2\u09BE\u09B0 \u09AA\u09CD\u09B0\u09B8\u09CD\u09A4\u09C1\u09A4\u09BF \u099A\u09B2\u099B\u09C7\u2026",
+      offlineCacheReady: "\u098F\u0996\u09A8 \u0985\u09AB\u09B2\u09BE\u0987\u09A8\u09C7 \u0997\u09C7\u09AE\u099F\u09BF \u0986\u09AC\u09BE\u09B0 \u0996\u09C1\u09B2\u09A4\u09C7 \u09AA\u09BE\u09B0\u09AC\u09C7\u09A8\u0964",
+      offlineCacheUnavailable: "\u0997\u09C7\u09AE\u099F\u09BF \u0985\u09AB\u09B2\u09BE\u0987\u09A8\u09C7 \u0986\u09AC\u09BE\u09B0 \u0996\u09CB\u09B2\u09BE \u09AF\u09BE\u09AC\u09C7 \u09A8\u09BE\u0964 \u0985\u09AB\u09B2\u09BE\u0987\u09A8\u09C7 \u0996\u09C7\u09B2\u09A4\u09C7 \u098F\u0987 \u099F\u09CD\u09AF\u09BE\u09AC\u099F\u09BF \u0996\u09CB\u09B2\u09BE \u09B0\u09BE\u0996\u09C1\u09A8\u0964",
       playOffline: "\u0985\u09AB\u09B2\u09BE\u0987\u09A8\u09C7 \u0996\u09C7\u09B2\u09C1\u09A8",
       playOnline: "\u0985\u09A8\u09B2\u09BE\u0987\u09A8\u09C7 \u0996\u09C7\u09B2\u09C1\u09A8",
       playOnlineHint: "GitHub Pages \u099B\u09C7\u09A1\u09BC\u09C7 clicker.bluehexagons.com \u0996\u09C1\u09B2\u09AC\u09C7\u0964",
@@ -2336,6 +2348,9 @@
       motionReduced: "Reducido \xB7 Sin movimiento ni destellos",
       motionFull: "Completo \xB7 Animaciones y efectos",
       offlinePlayHeading: "Juego sin conexi\xF3n",
+      offlineCachePreparing: "Preparando el acceso sin conexi\xF3n\u2026",
+      offlineCacheReady: "Ya puedes volver a abrir el juego sin conexi\xF3n.",
+      offlineCacheUnavailable: "No se puede volver a abrir el juego sin conexi\xF3n. Deja esta pesta\xF1a abierta para jugar sin conexi\xF3n.",
       playOffline: "Jugar sin conexi\xF3n",
       playOnline: "Jugar en l\xEDnea",
       playOnlineHint: "Sal de GitHub Pages y abre clicker.bluehexagons.com.",
@@ -2396,6 +2411,9 @@
       motionReduced: "\u0645\u062E\u0641\u0651\u0636 \xB7 \u0628\u0644\u0627 \u062D\u0631\u0643\u0629 \u0623\u0648 \u0648\u0645\u0636\u0627\u062A",
       motionFull: "\u0643\u0627\u0645\u0644 \xB7 \u0631\u0633\u0648\u0645 \u0645\u062A\u062D\u0631\u0643\u0629 \u0648\u062A\u0623\u062B\u064A\u0631\u0627\u062A",
       offlinePlayHeading: "\u0627\u0644\u0644\u0639\u0628 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644",
+      offlineCachePreparing: "\u062C\u0627\u0631\u064D \u0625\u0639\u062F\u0627\u062F \u0627\u0644\u0648\u0635\u0648\u0644 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644\u2026",
+      offlineCacheReady: "\u064A\u0645\u0643\u0646\u0643 \u0627\u0644\u0622\u0646 \u0625\u0639\u0627\u062F\u0629 \u0641\u062A\u062D \u0627\u0644\u0644\u0639\u0628\u0629 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644.",
+      offlineCacheUnavailable: "\u0625\u0639\u0627\u062F\u0629 \u0641\u062A\u062D \u0627\u0644\u0644\u0639\u0628\u0629 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644 \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629. \u0623\u0628\u0642\u0650 \u0639\u0644\u0627\u0645\u0629 \u0627\u0644\u062A\u0628\u0648\u064A\u0628 \u0647\u0630\u0647 \u0645\u0641\u062A\u0648\u062D\u0629 \u0644\u0644\u0639\u0628 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644.",
       playOffline: "\u0627\u0644\u0639\u0628 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644",
       playOnline: "\u0627\u0644\u0639\u0628 \u0639\u0628\u0631 \u0627\u0644\u0625\u0646\u062A\u0631\u0646\u062A",
       playOnlineHint: "\u064A\u063A\u0627\u062F\u0631 GitHub Pages \u0648\u064A\u0641\u062A\u062D clicker.bluehexagons.com.",
@@ -2456,6 +2474,9 @@
       motionReduced: "\u0915\u092E \xB7 \u0910\u0928\u093F\u092E\u0947\u0936\u0928 \u0914\u0930 \u091A\u092E\u0915 \u0935\u093E\u0932\u0947 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u092C\u0902\u0926",
       motionFull: "\u092A\u0942\u0930\u0940 \xB7 \u0910\u0928\u093F\u092E\u0947\u0936\u0928 \u0914\u0930 \u0907\u092B\u093C\u0947\u0915\u094D\u091F",
       offlinePlayHeading: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u0947\u0932",
+      offlineCachePreparing: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u094B\u0932\u0928\u0947 \u0915\u0940 \u0924\u0948\u092F\u093E\u0930\u0940 \u0939\u094B \u0930\u0939\u0940 \u0939\u0948\u2026",
+      offlineCacheReady: "\u0905\u092C \u0906\u092A \u0917\u0947\u092E \u0915\u094B \u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u092B\u093F\u0930 \u0938\u0947 \u0916\u094B\u0932 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964",
+      offlineCacheUnavailable: "\u0917\u0947\u092E \u0915\u094B \u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u092B\u093F\u0930 \u0938\u0947 \u0928\u0939\u0940\u0902 \u0916\u094B\u0932 \u0938\u0915\u0924\u0947\u0964 \u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u0947\u0932\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092F\u0939 \u091F\u0948\u092C \u0916\u0941\u0932\u093E \u0930\u0916\u0947\u0902\u0964",
       playOffline: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u0947\u0932\u0947\u0902",
       playOnline: "\u0911\u0928\u0932\u093E\u0907\u0928 \u0916\u0947\u0932\u0947\u0902",
       playOnlineHint: "GitHub Pages \u0938\u0947 \u092C\u093E\u0939\u0930 \u091C\u093E\u0915\u0930 clicker.bluehexagons.com \u0916\u094B\u0932\u0924\u093E \u0939\u0948\u0964",
@@ -2516,6 +2537,9 @@
       motionReduced: "Terbatas \xB7 Tanpa gerakan atau kilatan",
       motionFull: "Penuh \xB7 Animasi dan efek",
       offlinePlayHeading: "Mode luring",
+      offlineCachePreparing: "Menyiapkan akses luring\u2026",
+      offlineCacheReady: "Game kini bisa dibuka kembali tanpa internet.",
+      offlineCacheUnavailable: "Game belum bisa dibuka kembali tanpa internet. Biarkan tab ini terbuka untuk bermain luring.",
       playOffline: "Main luring",
       playOnline: "Main daring",
       playOnlineHint: "Meninggalkan GitHub Pages dan membuka clicker.bluehexagons.com.",
@@ -2576,6 +2600,9 @@
       motionReduced: "Reduzido \xB7 Sem movimento ou flashes",
       motionFull: "Completo \xB7 Anima\xE7\xF5es e efeitos",
       offlinePlayHeading: "Modo offline",
+      offlineCachePreparing: "Preparando o acesso offline\u2026",
+      offlineCacheReady: "J\xE1 d\xE1 para reabrir o jogo offline.",
+      offlineCacheUnavailable: "N\xE3o \xE9 poss\xEDvel reabrir o jogo offline. Mantenha esta aba aberta para jogar sem internet.",
       playOffline: "Jogar offline",
       playOnline: "Jogar online",
       playOnlineHint: "Sai do GitHub Pages e abre clicker.bluehexagons.com.",
@@ -2636,6 +2663,9 @@
       motionReduced: "R\xE9duites \xB7 Sans mouvement ni flash",
       motionFull: "Compl\xE8tes \xB7 Animations et effets",
       offlinePlayHeading: "Jeu hors ligne",
+      offlineCachePreparing: "Pr\xE9paration de l\u2019acc\xE8s hors connexion\u2026",
+      offlineCacheReady: "Vous pouvez rouvrir le jeu hors connexion.",
+      offlineCacheUnavailable: "La r\xE9ouverture hors connexion est indisponible. Gardez cet onglet ouvert pour jouer hors connexion.",
       playOffline: "Jouer hors ligne",
       playOnline: "Jouer en ligne",
       playOnlineHint: "Quitte GitHub Pages et ouvre clicker.bluehexagons.com.",
@@ -2696,6 +2726,9 @@
       motionReduced: "\u63A7\u3048\u3081 \xB7 \u52D5\u304D\u3068\u70B9\u6EC5\u306A\u3057",
       motionFull: "\u3059\u3079\u3066 \xB7 \u30A2\u30CB\u30E1\u30FC\u30B7\u30E7\u30F3\u3068\u52B9\u679C\u3092\u8868\u793A",
       offlinePlayHeading: "\u30AA\u30D5\u30E9\u30A4\u30F3\u30D7\u30EC\u30A4",
+      offlineCachePreparing: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u958B\u304F\u6E96\u5099\u3092\u3057\u3066\u3044\u307E\u3059\u2026",
+      offlineCacheReady: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u30B2\u30FC\u30E0\u3092\u958B\u304D\u76F4\u305B\u307E\u3059\u3002",
+      offlineCacheUnavailable: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u306F\u30B2\u30FC\u30E0\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3002\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u904A\u3076\u306B\u306F\u3053\u306E\u30BF\u30D6\u3092\u958B\u3044\u305F\u307E\u307E\u306B\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       playOffline: "\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u30D7\u30EC\u30A4",
       playOnline: "\u30AA\u30F3\u30E9\u30A4\u30F3\u3067\u30D7\u30EC\u30A4",
       playOnlineHint: "GitHub Pages \u3092\u96E2\u308C\u3066 clicker.bluehexagons.com \u3092\u958B\u304D\u307E\u3059\u3002",
@@ -2756,6 +2789,9 @@
       motionReduced: "\u041C\u0438\u043D\u0438\u043C\u0443\u043C \xB7 \u0411\u0435\u0437 \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F \u0438 \u0432\u0441\u043F\u044B\u0448\u0435\u043A",
       motionFull: "\u041F\u043E\u043B\u043D\u0430\u044F \xB7 \u0410\u043D\u0438\u043C\u0430\u0446\u0438\u044F \u0438 \u044D\u0444\u0444\u0435\u043A\u0442\u044B",
       offlinePlayHeading: "\u0418\u0433\u0440\u0430 \u043E\u0444\u043B\u0430\u0439\u043D",
+      offlineCachePreparing: "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043A \u0437\u0430\u043F\u0443\u0441\u043A\u0443 \u0431\u0435\u0437 \u0438\u043D\u0442\u0435\u0440\u043D\u0435\u0442\u0430\u2026",
+      offlineCacheReady: "\u0422\u0435\u043F\u0435\u0440\u044C \u0438\u0433\u0440\u0443 \u043C\u043E\u0436\u043D\u043E \u043E\u0442\u043A\u0440\u044B\u0442\u044C \u0441\u043D\u043E\u0432\u0430 \u0431\u0435\u0437 \u0438\u043D\u0442\u0435\u0440\u043D\u0435\u0442\u0430.",
+      offlineCacheUnavailable: "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0438\u0433\u0440\u0443 \u0437\u0430\u043D\u043E\u0432\u043E \u0431\u0435\u0437 \u0438\u043D\u0442\u0435\u0440\u043D\u0435\u0442\u0430 \u043F\u043E\u043A\u0430 \u043D\u0435\u043B\u044C\u0437\u044F. \u041E\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u044D\u0442\u0443 \u0432\u043A\u043B\u0430\u0434\u043A\u0443 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0439, \u0447\u0442\u043E\u0431\u044B \u0438\u0433\u0440\u0430\u0442\u044C \u0431\u0435\u0437 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u044F.",
       playOffline: "\u0418\u0433\u0440\u0430\u0442\u044C \u043E\u0444\u043B\u0430\u0439\u043D",
       playOnline: "\u0418\u0433\u0440\u0430\u0442\u044C \u043E\u043D\u043B\u0430\u0439\u043D",
       playOnlineHint: "\u041F\u0435\u0440\u0435\u0445\u043E\u0434 \u0441 GitHub Pages \u043D\u0430 clicker.bluehexagons.com.",
@@ -2816,6 +2852,9 @@
       motionReduced: "Reduziert \xB7 ohne Animationen und Aufblitzen",
       motionFull: "Voll \xB7 Animationen und Effekte",
       offlinePlayHeading: "Offline-Spiel",
+      offlineCachePreparing: "Offline-Zugriff wird vorbereitet\u2026",
+      offlineCacheReady: "Du kannst das Spiel jetzt offline erneut \xF6ffnen.",
+      offlineCacheUnavailable: "Offline l\xE4sst sich das Spiel derzeit nicht erneut \xF6ffnen. Lass diesen Tab offen, um offline zu spielen.",
       playOffline: "Offline spielen",
       playOnline: "Online spielen",
       playOnlineHint: "Verl\xE4sst GitHub Pages und \xF6ffnet clicker.bluehexagons.com.",
@@ -5780,6 +5819,35 @@
     };
   }
 
+  // frontend/offline-worker.ts
+  async function offlineWorkerReady() {
+    try {
+      const workers = navigator.serviceWorker;
+      if (!workers) return false;
+      const url = new URL("./service-worker.js", window.location.href).href;
+      const registering = workers.register(url);
+      if (workers.controller?.scriptURL === url) {
+        void registering.catch(() => {
+        });
+        return true;
+      }
+      const { active, waiting, installing } = await registering;
+      const worker = active ?? waiting ?? installing;
+      if (!worker) return false;
+      return new Promise((resolve) => {
+        const check = () => {
+          if (worker.state !== "activated" && worker.state !== "redundant") return;
+          worker.removeEventListener("statechange", check);
+          resolve(worker.state === "activated");
+        };
+        worker.addEventListener("statechange", check);
+        check();
+      });
+    } catch {
+      return false;
+    }
+  }
+
   // frontend/share.ts
   function currentSiteUrl() {
     if (typeof window === "undefined") return "";
@@ -7222,6 +7290,10 @@
   });
   retryBootButton.addEventListener("click", () => boot());
   var optionsDialog = required("#options-dialog");
+  var offlineCacheMessage = "offlineCachePreparing";
+  function paintOfflineCacheStatus() {
+    if (offlineOnly) required("#offline-cache-status").textContent = message2(offlineCacheMessage);
+  }
   var replaceLocalConsent = required("#replace-local");
   var importLocal = required("#import-local");
   optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
@@ -7503,6 +7575,7 @@
     translatePage();
     paintOptionPreferencesLanguage();
     paintOptionsNotice();
+    paintOfflineCacheStatus();
     if (optionsDialog.open) updateOptions();
     paintLanguagePicker();
     document.documentElement.lang = currentLanguage();
@@ -7528,8 +7601,10 @@
     if (event.key === languageStorageKey || event.key === null) setLanguage(readLanguage());
   });
   boot();
-  if (offlineOnly && "serviceWorker" in navigator) {
-    void navigator.serviceWorker.register("./service-worker.js").catch(() => {
+  if (offlineOnly) {
+    void offlineWorkerReady().then((ready) => {
+      offlineCacheMessage = ready ? "offlineCacheReady" : "offlineCacheUnavailable";
+      paintOfflineCacheStatus();
     });
   }
 })();

@@ -180,6 +180,7 @@ async function harness(options = {}) {
     window,
     navigator: {
       onLine: true,
+      serviceWorker: options.serviceWorker,
       locks: options.locks ?? {
         request: (_, options, operation) => Promise.resolve().then(operation ?? options),
       },
@@ -922,6 +923,7 @@ test("the Pages edition stays in local play and shares the project URL", async (
   assert.equal(h.element("#guest-nav").hidden, true);
   assert.equal(h.element("#user-nav").hidden, true);
   assert.equal(h.element("#local-nav").hidden, true);
+  assert.match(h.element("#offline-cache-status").textContent, /Offline reopening is unavailable/);
 
   h.element("#back-to-game").fire("click", { button: 0 });
   assert.equal(h.window.location.href, "https://goclick.example/project/");
@@ -937,6 +939,60 @@ test("the Pages edition stays in local play and shares the project URL", async (
   h.window.fire("focus");
   assert.deepEqual(h.requests, []);
   assert.equal(h.storage.get("goclick.mode"), "online");
+});
+
+test("Pages reports readiness only when the offline worker activates and localizes the status", async () => {
+  const installing = Object.assign(new EventTarget(), { state: "installing" });
+  const h = await harness({
+    offlineOnly: true,
+    url: "https://goclick.example/project/?view=achievements",
+    serviceWorker: {
+      register: async (url) => {
+        assert.equal(url, "https://goclick.example/project/service-worker.js");
+        return { installing };
+      },
+    },
+  });
+  const status = h.element("#offline-cache-status");
+  assert.equal(status.textContent, "Preparing offline access…");
+  installing.state = "installed";
+  installing.dispatchEvent(new Event("statechange"));
+  await settle();
+  assert.equal(status.textContent, "Preparing offline access…");
+  installing.state = "activated";
+  installing.dispatchEvent(new Event("statechange"));
+  await settle();
+  assert.equal(status.textContent, "Ready to reopen offline.");
+  await h.chooseLanguage("es");
+  assert.equal(status.textContent, "Ya puedes volver a abrir el juego sin conexión.");
+});
+
+test("a failed Pages cache install leaves the current tab playable", async () => {
+  const installing = Object.assign(new EventTarget(), { state: "installing" });
+  const h = await harness({
+    offlineOnly: true,
+    serviceWorker: { register: async () => ({ installing }) },
+  });
+  installing.state = "redundant";
+  installing.dispatchEvent(new Event("statechange"));
+  await settle();
+  assert.match(h.element("#offline-cache-status").textContent, /Keep this tab open/);
+  h.window.fire("offline");
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#click-count").textContent, "1");
+});
+
+test("Pages keeps its offline-ready status if a worker update fails", async () => {
+  const h = await harness({
+    offlineOnly: true,
+    serviceWorker: {
+      controller: { scriptURL: "https://goclick.example/service-worker.js" },
+      register: async () => {
+        throw new Error("Network unavailable");
+      },
+    },
+  });
+  assert.equal(h.element("#offline-cache-status").textContent, "Ready to reopen offline.");
 });
 
 test("known authentication capacity rejection does not suggest replaying an uncertain click", async () => {

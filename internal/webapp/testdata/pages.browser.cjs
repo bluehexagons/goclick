@@ -13,6 +13,8 @@ async function checkPagesOffline(page, baseURL) {
   );
   assert.equal(await page.locator("#local-nav").isVisible(), false);
   await page.locator("#options-button").click();
+  const status = page.locator("#offline-cache-status");
+  await status.filter({ hasText: /^Ready to reopen offline\.$/ }).waitFor();
   const onlineLink = page.getByRole("link", { name: "Play online" });
   assert.equal(await onlineLink.isVisible(), true);
   assert.equal(await onlineLink.getAttribute("href"), "https://clicker.bluehexagons.com/");
@@ -41,6 +43,8 @@ async function checkPagesOffline(page, baseURL) {
     await page.locator("#click-count").filter({ hasText: /^2$/ }).waitFor();
     await page.reload();
     await page.locator("#click-count").filter({ hasText: /^2$/ }).waitFor();
+    await page.locator("#options-button").click();
+    await status.filter({ hasText: /^Ready to reopen offline\.$/ }).waitFor();
   } finally {
     await page.context().setOffline(false);
   }

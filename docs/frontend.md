@@ -268,7 +268,7 @@ browser profile. Close each context when finished.
 | `interaction.browser.cjs` | `checkInteraction(page, baseURL)` | Selection, native drag prevention, gameplay dragging, clipboard/manual sharing |
 | `language.browser.cjs` | `checkLanguage(page, baseURL)` | Gameplay and Options in all supported locales at 1280/320 px, Arabic sharing, next-click label restoration, reload persistence |
 | `local-save.browser.cjs` | `checkLocalSave(page, baseURL, options)` | Concurrent writes, replacement, and reloads across two tabs |
-| `pages.browser.cjs` | `checkPagesOffline(page, baseURL)` | Reopening the Pages edition offline, achievements, and save persistence |
+| `pages.browser.cjs` | `checkPagesOffline(page, baseURL)` | Offline readiness in Options, reopening the Pages edition offline, achievements, and save persistence |
 | `renderer.browser.cjs` | Function passed to `page.evaluate` | Actual metal/engraving pixels and lettering illumination across tilts, finishes, and response progress |
 
 For example, from the repository root with an isolated Playwright `page`:

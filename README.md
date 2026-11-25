@@ -6,8 +6,8 @@ unlocking achievements.
 **[Play Go Click on GitHub Pages](https://bluehexagons.github.io/goclick/)**
 
 The Pages edition opens straight into the game and saves progress in your
-browser. After it finishes loading and caching on your first connected visit,
-you can reopen it offline in the same browser.
+browser. When **Options** shows **Ready to reopen offline**, you can close the
+tab and reopen the game without a connection in the same browser.
 
 Press **Click** with a mouse, touch, pen, Space, or Enter. Open **Achievements**
 to see your badges and streaks, or **Options** to adjust motion, enable sound,
