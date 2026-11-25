@@ -393,29 +393,25 @@ test("losing focus cancels every captured pointer without ghost clicks", () => {
   assert.ok(h.soundCancellations() > 0);
 });
 
-test("press-down starts immediately and builds depth and light across frames", () => {
+test("press-down delivers most of the strike immediately, then lets the light settle", () => {
   const h = harness(false);
   const depth = () => Number(h.rig.props.get("--press"));
   const glow = () => Number(h.rig.props.get("--glow-intensity"));
   h.pointer("pointerdown", 1);
   const initialDepth = depth();
   const initialGlow = glow();
-  assert.ok(initialDepth > 0 && initialDepth < 0.5);
-  assert.equal(h.rig.props.get("--button-pop"), "1.000");
+  assert.ok(initialDepth >= 0.7 && initialDepth < 1);
+  assert.ok(Number(h.rig.props.get("--button-pop")) < 0.975);
   const cloud = h.stage.children[0];
   assert.equal(cloud.childElementCount, 8);
   assert.ok(cloud.children.every((p) => p.animations[0].options.duration >= 520));
   assert.ok(initialGlow > 0.6);
   assert.equal(h.stage.classes.has("is-pressed"), true);
   h.frame(16);
-  const first = depth();
-  assert.ok(first > initialDepth && first < 1);
+  assert.ok(depth() > 0.95 && depth() < 1);
   h.frame(32);
-  assert.ok(depth() > first && depth() < 1);
-  assert.ok(glow() > initialGlow);
-  assert.ok(Number(h.rig.props.get("--button-pop")) < 1);
-  h.frame(64);
   assert.equal(depth(), 1);
+  assert.ok(glow() > initialGlow);
   h.frame(160);
   assert.ok(glow() < initialGlow);
   assert.equal(h.clicks.length, 0);
@@ -619,7 +615,7 @@ test("narrow stages do not constrain the gesture and cancellation returns to the
   assert.equal(h.clicks.length, 0);
 });
 
-test("a tap between frames starts returning from shallow depth and fades within 70 ms", () => {
+test("a tap between frames rebounds from the initial strike and fades within 70 ms", () => {
   const h = harness(false);
   h.pointer("pointerdown", 1);
   const initial = Number(h.rig.props.get("--press"));
@@ -701,7 +697,7 @@ test("quick taps kick harder and leave bounded sparks alive across presses", () 
   h.pointer("pointerup", 1);
   h.frame(16);
   h.frame(32);
-  assert.ok(Number(h.rig.props.get("--button-pop")) > 1.03);
+  assert.ok(Number(h.rig.props.get("--button-pop")) > 1.02);
   assert.equal(cloud.childElementCount, 20);
   assert.ok(cloud.children.slice(8).every((p) => p.animations[0].options.duration >= 850));
   const first = cloud.children[0];
@@ -1344,6 +1340,8 @@ test("a button parked outside the stage tilts around its new center, even withou
   const hovered = tilt();
   assert.ok(hovered > 5);
   h.pointer("pointerdown", 2, mouse);
+  assert.ok(Number(h.rig.props.get("--press")) >= 0.7);
+  assert.ok(Number(h.rig.props.get("--button-pop")) < 0.975);
   settle();
   assert.ok(tilt() > 4 && tilt() < hovered);
   assert.equal(h.rig.props.get("--press"), "1");

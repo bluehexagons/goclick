@@ -21,8 +21,9 @@ import { message } from "./i18n.js";
 import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
 
 // Holds never auto-score; cancelled/outside releases never activate the button.
-const PRESS_ATTACK_MS = 64;
-const PRESS_START_DEPTH = 0.22;
+const PRESS_ATTACK_MS = 24;
+const PRESS_START_DEPTH = 0.7;
+const PRESS_START_COMPRESSION = -0.033;
 const PRESS_FLASH_PEAK_MS = 30;
 const QUICK_TAP_MS = 90;
 const TAP_RELEASE_MS = 70;
@@ -583,6 +584,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     current.holdLight = 0;
     current.labelPhase = 0;
     target.pop = reducedMotion.matches ? 0 : -0.045;
+    // Give both the travel and the silhouette an immediate strike. At a steep
+    // tilt, the projected depth is constrained by contact with the surface.
+    if (!reducedMotion.matches) current.pop = Math.min(PRESS_START_COMPRESSION, current.pop);
     velocity.pop = Math.min(0, velocity.pop);
     current.flash = 0;
     setPhase("pressed");
@@ -781,9 +785,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const quick = press || releaseDuration === TAP_RELEASE_MS;
 
     if (!press && phase === "idle") {
-      velocity.pop = quick ? 0.035 : 0.022;
+      velocity.pop = quick ? 0.05 : 0.022;
     }
     if (current.powered === false) {
+      if (press) paint();
       animate();
       return;
     }

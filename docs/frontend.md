@@ -52,11 +52,11 @@ parked with cord slack. A mouse press keeps a shallower tilt at the grab point.
 On release, tilt follows the mouse relative to the moving button.
 Touch gestures preserve the stationary mouse position for when the gesture ends.
 
-Press-down starts with shallow compression, reaches full depth in 64 ms, and
-peaks in brightness mid-stroke. The face changes to copper immediately and
-raised lettering grows by 22% while held. Release rebounds from the current
-depth and returns the lettering and finish in 70 ms for taps or 110 ms for
-deliberate presses. The button stays compressed until the last finger lifts.
+Press-down delivers most of the compression immediately and reaches full depth
+in 24 ms. The highlight peaks just after the strike. The face changes to copper
+immediately and raised lettering grows by 22% while held. Release rebounds from
+the current depth and returns the lettering and finish in 70 ms for taps or
+110 ms for deliberate presses. The button stays compressed until the last finger lifts.
 Each new press interrupts the active rebound. Pointer cancellation, the mouse
 leaving the stage after release, focus loss, and hiding the page reset transient
 interaction state.

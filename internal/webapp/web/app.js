@@ -4019,8 +4019,9 @@
   }
 
   // frontend/button.ts
-  var PRESS_ATTACK_MS = 64;
-  var PRESS_START_DEPTH = 0.22;
+  var PRESS_ATTACK_MS = 24;
+  var PRESS_START_DEPTH = 0.7;
+  var PRESS_START_COMPRESSION = -0.033;
   var PRESS_FLASH_PEAK_MS = 30;
   var QUICK_TAP_MS = 90;
   var TAP_RELEASE_MS = 70;
@@ -4382,6 +4383,7 @@
       current.holdLight = 0;
       current.labelPhase = 0;
       target.pop = reducedMotion.matches ? 0 : -0.045;
+      if (!reducedMotion.matches) current.pop = Math.min(PRESS_START_COMPRESSION, current.pop);
       velocity.pop = Math.min(0, velocity.pop);
       current.flash = 0;
       setPhase2("pressed");
@@ -4530,9 +4532,10 @@
       if (reducedMotion.matches) return;
       const quick = press || releaseDuration === TAP_RELEASE_MS;
       if (!press && phase === "idle") {
-        velocity.pop = quick ? 0.035 : 0.022;
+        velocity.pop = quick ? 0.05 : 0.022;
       }
       if (current.powered === false) {
+        if (press) paint2();
         animate2();
         return;
       }
