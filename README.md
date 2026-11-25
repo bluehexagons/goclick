@@ -32,6 +32,11 @@ Options. Local clicks never upload or change account progress. The page must
 already be loaded to play; there is no service worker. Download a save before
 clearing browser data or moving to another device.
 
+[Play the offline edition on GitHub Pages](https://bluehexagons.github.io/goclick/).
+It opens directly into the game and saves progress in this browser. To move
+local progress between the Go server's site and GitHub Pages, download the save
+from Options on one site and import it on the other.
+
 The compact header language selector offers eleven game languages, remembers
 your choice, and initially follows your browser language. Gameplay, Options,
 achievement controls, and shared stats support right-to-left Arabic. The button

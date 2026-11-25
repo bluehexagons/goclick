@@ -19,11 +19,17 @@ export function formatStats(counters: Counters, local: boolean): string {
   return formatShareText(counters, local, { siteLink: false, clicks: true, streaks: true });
 }
 
+function currentSiteUrl(): string {
+  if (typeof window === "undefined") return "";
+  const url = new URL("./", window.location.href);
+  return url.pathname === "/" ? url.origin : url.href;
+}
+
 export function formatShareText(
   counters: Counters,
   local: boolean,
   options: ShareOptions,
-  siteUrl = typeof window === "undefined" ? "" : (window.location?.origin ?? ""),
+  siteUrl = currentSiteUrl(),
 ): string {
   const lines = [`Go Click${local ? ` · ${t("offline")}` : ""}`];
   if (options.clicks)

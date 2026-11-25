@@ -234,7 +234,7 @@ test("the full-surface material loads after the first usable frame into the exis
   const h = renderer();
   assert.equal(h.classes.has("is-rendered"), true);
   assert.equal(h.draws(), 2);
-  assert.equal(h.images[0].src, "/button-material.svg");
+  assert.equal(h.images[0].src, "./button-material.svg");
   h.images[0].onload();
   assert.equal(h.paintedImages[0], h.images[0]);
   assert.equal(h.uploads(), 2);
@@ -272,7 +272,7 @@ test("material and glow assets can arrive in either order without losing a layer
     [1, 0],
   ]) {
     const h = renderer();
-    assert.equal(h.images[1].src, "/button-glow.svg");
+    assert.equal(h.images[1].src, "./button-glow.svg");
     h.images[order[0]].onload();
     h.images[order[1]].onload();
     assert.deepEqual(h.paintedImages.slice(-2), h.images);

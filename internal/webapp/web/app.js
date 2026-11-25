@@ -1745,7 +1745,7 @@
       if (visible2()) resume();
       else suspend2();
     });
-    const sources = ["/button-material.svg", "/button-glow.svg"];
+    const sources = ["./button-material.svg", "./button-glow.svg"];
     for (const [index, source] of sources.entries()) {
       const image = new Image();
       image.onload = () => {
@@ -5177,7 +5177,12 @@
   })();
 
   // frontend/share.ts
-  function formatShareText(counters, local, options, siteUrl = typeof window === "undefined" ? "" : window.location?.origin ?? "") {
+  function currentSiteUrl() {
+    if (typeof window === "undefined") return "";
+    const url = new URL("./", window.location.href);
+    return url.pathname === "/" ? url.origin : url.href;
+  }
+  function formatShareText(counters, local, options, siteUrl = currentSiteUrl()) {
     const lines = [`Go Click${local ? ` \xB7 ${message2("offline")}` : ""}`];
     if (options.clicks)
       lines.push(
@@ -5312,7 +5317,7 @@
 
   // frontend/language-picker.ts
   var svgNS = "http://www.w3.org/2000/svg";
-  var flagHref = (flag) => `/language-flags.svg#${flag}`;
+  var flagHref = (flag) => `./language-flags.svg#${flag}`;
   function languagePicker() {
     const picker = required(".language-selector");
     const trigger = required("#language-setting");
@@ -5683,7 +5688,7 @@
     icon.setAttribute("viewBox", "0 0 48 48");
     icon.setAttribute("aria-hidden", "true");
     const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    use.setAttribute("href", `/achievement-icons.svg#${badge.icon}`);
+    use.setAttribute("href", `./achievement-icons.svg#${badge.icon}`);
     icon.append(use);
     const text = document.createElement("div");
     const name = document.createElement("strong");
@@ -6002,7 +6007,8 @@
       numberAnimations.get(required(`#${id}`))?.cancel();
   });
   var user = null;
-  var localMode = gameSettings.mode() === "local";
+  var offlineOnly = document.documentElement.dataset.offlineOnly !== void 0;
+  var localMode = offlineOnly || gameSettings.mode() === "local";
   var lastOnlineCounters = null;
   var displayedCounters = {};
   var lastClicks = /* @__PURE__ */ new Map();
@@ -6125,7 +6131,7 @@
     signupForm.hidden = view !== "signup";
     required("#guest-nav").hidden = player && !isGuestAchievements() || view === "loading";
     required("#user-nav").hidden = !player || localMode || !user;
-    required("#local-nav").hidden = !player || !localMode;
+    required("#local-nav").hidden = offlineOnly || !player || !localMode;
     if (changed && view !== "loading" && !motionPreference.matches) {
       const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
       viewAnimation = incoming.animate(
@@ -6208,6 +6214,8 @@
     });
   }
   function api(url, options = {}) {
+    if (offlineOnly)
+      return Promise.reject(new Error("Account requests are unavailable in this build."));
     const headers = new Headers(options.headers);
     if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
     return request(url, { ...options, headers });
@@ -6474,7 +6482,7 @@
   }
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
-      if (authenticating) return;
+      if (offlineOnly || authenticating) return;
       const view = button.dataset.view;
       if (view === "home") {
         if (user) openGame();
@@ -6867,7 +6875,7 @@
   });
   document.querySelectorAll("[data-play-local]").forEach((button) => button.addEventListener("click", () => startLocalGame()));
   required("#leave-local").addEventListener("click", async () => {
-    if (pendingClicks > 0 || localSaveReplacing || authenticating) return;
+    if (offlineOnly || pendingClicks > 0 || localSaveReplacing || authenticating) return;
     let remembered = true;
     try {
       gameSettings.setMode("online");

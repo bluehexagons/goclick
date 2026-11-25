@@ -48,7 +48,7 @@ function card(badge: Badge) {
   icon.setAttribute("viewBox", "0 0 48 48");
   icon.setAttribute("aria-hidden", "true");
   const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-  use.setAttribute("href", `/achievement-icons.svg#${badge.icon}`);
+  use.setAttribute("href", `./achievement-icons.svg#${badge.icon}`);
   icon.append(use);
 
   const text = document.createElement("div");

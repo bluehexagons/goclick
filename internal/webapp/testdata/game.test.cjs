@@ -126,11 +126,12 @@ async function harness(options = {}) {
     querySelectorAll: (selector) =>
       selector === "[data-play-local]" ? [element("#play-local")] : [],
   });
+  if (options.offlineOnly) document.documentElement.dataset.offlineOnly = "";
   const timers = new Map();
   let timerID = 0;
   const location = new URL(options.url ?? "https://goclick.example/");
-  element("#open-achievements").href = new URL("/?view=achievements", location).href;
-  element("#back-to-game").href = new URL("/", location).href;
+  element("#open-achievements").href = new URL("./?view=achievements", location).href;
+  element("#back-to-game").href = new URL("./", location).href;
   const window = Object.assign(new Element(), {
     location,
     history: {
@@ -165,6 +166,7 @@ async function harness(options = {}) {
     console,
     Headers,
     AbortController,
+    URL,
     URLSearchParams,
     FormData: class {
       get(name) {
@@ -222,7 +224,8 @@ async function harness(options = {}) {
   await settle();
   assert.equal(
     element("#click-count").textContent,
-    options.storage?.some(([key, value]) => key === "goclick.mode" && value === "local")
+    options.offlineOnly ||
+      options.storage?.some(([key, value]) => key === "goclick.mode" && value === "local")
       ? "0"
       : new Intl.NumberFormat(
           options.storage?.find(([key]) => key === "goclick.language.v1")?.[1] ?? "en",
@@ -905,6 +908,35 @@ test("the production local-mode bundle skips account requests on startup", async
   const h = await harness({ production: true, storage: [["goclick.mode", "local"]] });
   assert.equal(h.element("#local-nav").hidden, false);
   assert.deepEqual(h.startupRequests, []);
+});
+
+test("the Pages edition stays in local play and shares the project URL", async () => {
+  const h = await harness({
+    production: true,
+    offlineOnly: true,
+    url: "https://goclick.example/project/?view=achievements",
+    storage: [["goclick.mode", "online"]],
+  });
+  assert.deepEqual(h.startupRequests, []);
+  assert.equal(h.element("#achievement-view").hidden, false);
+  assert.equal(h.element("#guest-nav").hidden, true);
+  assert.equal(h.element("#user-nav").hidden, true);
+  assert.equal(h.element("#local-nav").hidden, true);
+
+  h.element("#back-to-game").fire("click", { button: 0 });
+  assert.equal(h.window.location.href, "https://goclick.example/project/");
+  assert.equal(h.element("#game-view").hidden, false);
+  h.window.fire("offline");
+  await h.element("#click-button").fire("click", { detail: 0 });
+  await h.element("#share-stats").fire("click");
+  assert.equal(h.element("#click-count").textContent, "1");
+  assert.match(h.element("#share-text").value, /https:\/\/goclick\.example\/project\/$/);
+
+  await h.element("#leave-local").fire("click");
+  h.window.fire("online");
+  h.window.fire("focus");
+  assert.deepEqual(h.requests, []);
+  assert.equal(h.storage.get("goclick.mode"), "online");
 });
 
 test("known authentication capacity rejection does not suggest replaying an uncertain click", async () => {

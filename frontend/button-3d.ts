@@ -572,7 +572,7 @@ function createButtonRenderer(stage: HTMLElement, button: HTMLButtonElement): Re
     if (visible()) resume();
     else suspend();
   });
-  const sources = ["/button-material.svg", "/button-glow.svg"] as const;
+  const sources = ["./button-material.svg", "./button-glow.svg"] as const;
   for (const [index, source] of sources.entries()) {
     const image = new Image();
     image.onload = () => {

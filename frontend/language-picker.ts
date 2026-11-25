@@ -2,7 +2,7 @@ import { required as $ } from "./dom.js";
 import { currentLanguage, languages, message, rememberLanguage } from "./i18n.js";
 
 const svgNS = "http://www.w3.org/2000/svg";
-const flagHref = (flag: string) => `/language-flags.svg#${flag}`;
+const flagHref = (flag: string) => `./language-flags.svg#${flag}`;
 
 export function languagePicker() {
   const picker = $(".language-selector");

@@ -224,6 +224,23 @@ invalidates an earlier copy confirmation, including a write still in progress.
 Gameplay labels avoid accidental selection and native dragging; form inputs,
 errors, technical help, and administrator data remain copyable.
 
+## GitHub Pages
+
+The [GitHub Pages edition](https://bluehexagons.github.io/goclick/) starts in
+local play regardless of the remembered mode. It runs without a Go server and
+keeps saves and preferences in the browser. The page needs to load over the
+network before play. Saves can be moved between sites using Options.
+
+The Pages workflow publishes each push to `main` and can also be run
+manually on that branch. To enable it in another repository, select **GitHub
+Actions** under **Settings → Pages → Build and deployment**.
+
+Run `npm ci` and `npm run build:pages` to package the static game into
+`.basaltwater/pages/`. The build checks the embedded bundles for freshness and
+recreates this output directory. Serve it with any static HTTP server at the
+root or under a directory such as `/goclick/`. Use HTTPS or a loopback origin
+for browser storage coordination and clipboard access.
+
 ## Browser regressions
 
 The optional CommonJS fixtures in `internal/webapp/testdata/` run in an existing

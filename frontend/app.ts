@@ -131,7 +131,8 @@ motionPreference.addEventListener("change", () => {
     numberAnimations.get($(`#${id}`))?.cancel();
 });
 let user: User | null = null;
-let localMode = gameSettings.mode() === "local";
+const offlineOnly = document.documentElement.dataset.offlineOnly !== undefined;
+let localMode = offlineOnly || gameSettings.mode() === "local";
 let lastOnlineCounters: Counters | null = null;
 let displayedCounters: Counters = {};
 const lastClicks = new Map<string, { time: string | null; saved: number }>();
@@ -276,7 +277,7 @@ function show(view: View) {
   signupForm.hidden = view !== "signup";
   $("#guest-nav").hidden = (player && !isGuestAchievements()) || view === "loading";
   $("#user-nav").hidden = !player || localMode || !user;
-  $("#local-nav").hidden = !player || !localMode;
+  $("#local-nav").hidden = offlineOnly || !player || !localMode;
   if (changed && view !== "loading" && !motionPreference.matches) {
     const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
     viewAnimation = incoming.animate(
@@ -380,6 +381,8 @@ function resetPasswordVisibility(container: HTMLElement) {
 }
 
 function api<T>(url: string, options: RequestInit = {}): Promise<T> {
+  if (offlineOnly)
+    return Promise.reject(new Error("Account requests are unavailable in this build."));
   const headers = new Headers(options.headers);
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   return request<T>(url, { ...options, headers });
@@ -687,7 +690,7 @@ function handleExpiredSession() {
 
 document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
-    if (authenticating) return;
+    if (offlineOnly || authenticating) return;
     const view = button.dataset.view;
     if (view === "home") {
       if (user) openGame();
@@ -1103,7 +1106,7 @@ document
   .querySelectorAll<HTMLButtonElement>("[data-play-local]")
   .forEach((button) => button.addEventListener("click", () => startLocalGame()));
 $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
-  if (pendingClicks > 0 || localSaveReplacing || authenticating) return;
+  if (offlineOnly || pendingClicks > 0 || localSaveReplacing || authenticating) return;
   let remembered = true;
   try {
     gameSettings.setMode("online");

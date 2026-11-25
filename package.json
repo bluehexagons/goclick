@@ -5,6 +5,7 @@
   "scripts": {
     "build": "npm run typecheck && node scripts/build-frontend.mjs",
     "build:check": "node scripts/build-frontend.mjs --check",
+    "build:pages": "npm run build:check && node scripts/build-pages.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --max-warnings 0 frontend scripts internal/webapp/testdata",
     "fmt": "oxfmt --write frontend scripts internal/webapp/testdata internal/webapp/web/*.html internal/webapp/web/*.css package.json tsconfig.json .oxlintrc.json .oxfmtrc.json",

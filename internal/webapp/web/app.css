@@ -20,7 +20,9 @@
 * {
   box-sizing: border-box;
 }
-[hidden] {
+[hidden],
+[data-offline-only] [data-account-feature],
+:root:not([data-offline-only]) [data-offline-feature] {
   display: none !important;
 }
 body {
@@ -29,7 +31,7 @@ body {
   overflow-x: clip;
   min-height: 100vh;
   background:
-    url("/background-grain.svg") repeat,
+    url("./background-grain.svg") repeat,
     radial-gradient(ellipse at 50% 0, #202a39, #111722 70%);
   background-blend-mode: soft-light, normal;
   -webkit-user-select: none;
@@ -921,7 +923,7 @@ select:focus,
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: url("/button-material.svg") center / 100% 100% no-repeat;
+  background: url("./button-material.svg") center / 100% 100% no-repeat;
   mix-blend-mode: soft-light;
   pointer-events: none;
 }
@@ -942,7 +944,7 @@ select:focus,
         0 0
     ),
     linear-gradient(color-mix(in srgb, #68431d var(--channel-shade), transparent) 0 0);
-  mask: url("/button-glow.svg") center / 100% 100% no-repeat;
+  mask: url("./button-glow.svg") center / 100% 100% no-repeat;
   pointer-events: none;
 }
 .button-label {
