@@ -228,8 +228,14 @@ errors, technical help, and administrator data remain copyable.
 
 The [GitHub Pages edition](https://bluehexagons.github.io/goclick/) starts in
 local play regardless of the remembered mode. It runs without a Go server and
-keeps saves and preferences in the browser. The page needs to load over the
-network before play. Saves can be moved between sites using Options.
+keeps saves and preferences in the browser. See the [player guide](player.md)
+for offline play and save transfers.
+
+Pages registers its service worker after loading. The worker precaches the
+game files listed by the Pages build and serves the game and achievements
+URLs offline. Each build revision has its own cache under the site's scope.
+Close open game tabs to let an installed update take over. The Go server
+edition does not register a service worker.
 
 The Pages workflow publishes each push to `main` and can also be run
 manually on that branch. To enable it in another repository, select **GitHub
@@ -259,6 +265,7 @@ browser profile. Close each context when finished.
 | `interaction.browser.cjs` | `checkInteraction(page, baseURL)` | Selection, native drag prevention, gameplay dragging, clipboard/manual sharing |
 | `language.browser.cjs` | `checkLanguage(page, baseURL)` | Gameplay and Options in eleven locales at 1280/320 px, Arabic sharing, next-click label restoration, reload persistence |
 | `local-save.browser.cjs` | `checkLocalSave(page, baseURL, options)` | Concurrent writes, replacement, and reloads across two tabs |
+| `pages.browser.cjs` | `checkPagesOffline(page, baseURL)` | Reopening the Pages edition offline, achievements, and save persistence |
 | `renderer.browser.cjs` | Function passed to `page.evaluate` | Actual metal/engraving pixels and lettering illumination across tilts, finishes, and response progress |
 
 For example, from the repository root with an isolated Playwright `page`:
@@ -271,6 +278,10 @@ await checkLanguage(page, "http://127.0.0.1:8080");
 Run the local-save fixture once with default options and once with
 `{ withoutWebLocks: true }` in separate contexts. It creates a second page in
 the supplied context to exercise cross-tab coordination.
+
+Run the Pages fixture against the static artifact under a directory, with a
+trailing slash in `baseURL` (for example, `http://127.0.0.1:8000/goclick/`).
+The context should allow service workers and start with an empty local save.
 
 The GPU fixture expects offline play to be visible and textures loaded. Wait
 for the first frame and asset loading to settle before evaluating it:

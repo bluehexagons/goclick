@@ -1,5 +1,7 @@
 # Game localization
 
+See the [player guide](player.md#controls-and-settings) for choosing a language.
+
 The header language selector translates the main game: account/local navigation,
 click totals, streaks, timestamps, pending/save/cooldown feedback, icon tooltips
 and accessible names, floating click feedback, control instructions, achievement

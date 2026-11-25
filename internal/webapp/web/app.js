@@ -7063,4 +7063,8 @@
     if (event.key === languageStorageKey || event.key === null) setLanguage(readLanguage());
   });
   boot();
+  if (offlineOnly && "serviceWorker" in navigator) {
+    void navigator.serviceWorker.register("./service-worker.js").catch(() => {
+    });
+  }
 })();

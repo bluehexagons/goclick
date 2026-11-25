@@ -1304,4 +1304,10 @@ window.addEventListener("storage", (event) => {
 
 boot();
 
+if (offlineOnly && "serviceWorker" in navigator) {
+  void navigator.serviceWorker.register("./service-worker.js").catch(() => {
+    // Local play still works in the loaded page if caching is unavailable.
+  });
+}
+
 export { show, setUser, openGame, refreshGame, startLocalGame };
