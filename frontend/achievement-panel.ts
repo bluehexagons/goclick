@@ -59,8 +59,8 @@ function card(badge: Badge) {
   const description = document.createElement("p");
   description.className = "achievement-description";
   const showDetail = badge.earned || spoiler.checked;
-  description.lang = showDetail ? badge.descriptionLanguage : "en";
-  description.dir = languageDirection(showDetail ? badge.descriptionLanguage : "en");
+  description.lang = showDetail ? currentLanguage() : "en";
+  description.dir = languageDirection(showDetail ? currentLanguage() : "en");
   description.textContent = showDetail ? badge.description : badge.hint;
 
   const state = document.createElement("span");
@@ -74,6 +74,7 @@ function card(badge: Badge) {
     const meter = document.createElement("progress");
     meter.max = total;
     meter.value = count;
+    meter.lang = "en";
     meter.setAttribute("aria-label", badge.name);
     const amount = document.createElement("span");
     amount.textContent = t("outOf", { count: formatNumber(count), total: formatNumber(total) });

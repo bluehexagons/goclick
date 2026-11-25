@@ -7,6 +7,7 @@ import {
   languageDirection,
   message as t,
   formatNumber,
+  formatUnit,
   onLanguageChange,
 } from "./i18n.js";
 import type { Activation, ResponseState } from "./types.js";
@@ -69,9 +70,9 @@ const clickFeedback = (() => {
             : phase === "unsaved"
               ? "×"
               : `+${formatNumber(1)}`;
-      const average = formatNumber(Math.round(baseline));
+      const average = formatUnit(Math.round(baseline), "millisecond");
       if (phase === "saved") {
-        const time = formatNumber(Math.round(measured));
+        const time = formatUnit(Math.round(measured), "millisecond");
         timing.textContent = t(simulated ? "feedbackSimulatedTime" : "feedbackSavedTime", { time });
         popup.title = t(simulated ? "feedbackSimulatedHint" : "feedbackSavedHint", {
           time,

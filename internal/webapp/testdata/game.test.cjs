@@ -1241,7 +1241,7 @@ test("a successful response without a click count is an unconfirmed save", async
   h.fetch(async () => response({ message: "OK" }));
   await h.element("#click-button").fire("click");
   assert.equal(h.element("#click-count").textContent, "10");
-  assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*Reload your counter/);
+  assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*Refresh your counter/);
   assert.equal(h.element("#retry-game-button").hidden, false);
   assert.equal(h.feedback[0].uncertain, true);
   assert.equal(h.feedback[0].ms, undefined);
@@ -1263,7 +1263,7 @@ test("a timed-out click releases pending controls without replaying an uncertain
   assert.equal(h.element("#refresh-counter").disabled, false);
   assert.equal(h.element("#click-button").disabled, false);
   assert.equal(h.element("#retry-game-button").hidden, false);
-  assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*Reload your counter/);
+  assert.match(h.element("#game-error").textContent, /Couldn’t confirm.*Refresh your counter/);
   assert.equal(h.feedback[0].uncertain, true);
   assert.equal(h.requests.length, 1);
 });

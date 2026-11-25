@@ -248,7 +248,6 @@ function show(view: View) {
   }
   currentView = view;
   const player = isPlayerView(view);
-  document.documentElement.lang = player ? currentLanguage() : "en";
   if (changed) window.scrollTo(0, 0);
   views.loading.hidden = view !== "loading";
   views.home.hidden = view !== "home";
@@ -326,7 +325,9 @@ function setConnection(milliseconds: number | null = null, state: "" | "loading"
   connectionState = state;
   window.clearTimeout(pingStateTimer);
   if (Number.isFinite(milliseconds) && milliseconds !== null) lastPing = Math.round(milliseconds);
-  $("#ping").textContent = lastPing === null ? "— ms" : `${formatNumber(lastPing)} ms`;
+  const timing = lastPing === null ? "—" : formatUnit(lastPing, "millisecond");
+  $("#ping").textContent = timing;
+  connection.title = t(localMode ? "simulatedPingHint" : "pingHint");
   const paintState = () => {
     const cooling = coolingDown();
     connection.classList.toggle("is-limited", cooling);
@@ -350,7 +351,7 @@ function setConnection(milliseconds: number | null = null, state: "" | "loading"
     connection.setAttribute(
       "aria-label",
       t("pingStatus", {
-        ping: `${t(localMode ? "simPing" : "ping")} ${$("#ping").textContent}`,
+        ping: `${t(localMode ? "simPing" : "ping")} ${timing}`,
         status,
       }),
     );
@@ -439,7 +440,7 @@ function resetClickState() {
   window.clearTimeout(pingStateTimer);
   lastPing = null;
   connectionState = "";
-  $("#ping").textContent = "— ms";
+  $("#ping").textContent = "—";
   connection.classList.remove("is-loading", "is-error", "is-limited");
   connection.setAttribute("aria-label", t("noPing"));
   tactileButtons.get(clickButton)?.reset();
@@ -908,7 +909,7 @@ async function boot(returningOnline = false) {
   show("loading");
   views.loading.setAttribute("aria-busy", "true");
   $(".loading-spinner").hidden = false;
-  $("#loading-message").textContent = "Loading counter…";
+  $("#loading-message").textContent = t("loadingCounter");
   retryBootButton.hidden = true;
   try {
     const state = await readGameState();
@@ -925,7 +926,7 @@ async function boot(returningOnline = false) {
       return;
     }
     $(".loading-spinner").hidden = true;
-    $("#loading-message").textContent = error.message;
+    $("#loading-message").textContent = t("loadError");
     retryBootButton.hidden = false;
     views.loading.setAttribute("aria-busy", "false");
     retryBootButton.focus();
@@ -951,6 +952,7 @@ function paintOptionsMessage(target: HTMLElement, key: MessageKey, detail?: stri
   target.textContent = t(key);
   if (detail) {
     const diagnostic = document.createElement("bdi");
+    diagnostic.lang = "en";
     diagnostic.textContent = detail;
     target.append(" ", diagnostic);
   }
@@ -1281,7 +1283,9 @@ function applyLanguage() {
   paintOptionsNotice();
   if (optionsDialog.open) updateOptions();
   paintLanguagePicker();
-  document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
+  document.documentElement.lang = currentLanguage();
+  if (currentView === "loading")
+    $("#loading-message").textContent = t(retryBootButton.hidden ? "loadingCounter" : "loadError");
   buttonLanguage.reset(currentLanguage());
   paintButtonLanguage(currentLanguage());
   if (isGuestAchievements()) renderGuestAchievements();

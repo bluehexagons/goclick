@@ -14,7 +14,7 @@
     <div class="shell">
       <header class="site-header">
         <div class="site-links">
-          <a draggable="false" class="brand" href="./" aria-label="Go Click home">
+          <a draggable="false" class="brand" href="./" aria-label="Go Click home" lang="en">
             <img
               draggable="false"
               class="brand-mark"
@@ -60,9 +60,23 @@
             </button>
             <div id="language-menu" role="menu" aria-labelledby="language-label" hidden></div>
           </div>
-          <nav id="guest-nav" class="nav-actions" aria-label="Account" hidden>
-            <button class="button button-quiet" type="button" data-view="login">Sign in</button>
-            <button class="button button-small" type="button" data-view="signup">
+          <nav
+            id="guest-nav"
+            class="nav-actions"
+            aria-label="Account"
+            data-i18n-aria-label="account"
+            data-game-language
+            hidden
+          >
+            <button class="button button-quiet" type="button" data-view="login" data-i18n="signIn">
+              Sign in
+            </button>
+            <button
+              class="button button-small"
+              type="button"
+              data-view="signup"
+              data-i18n="createAccount"
+            >
               Create account
             </button>
           </nav>
@@ -165,20 +179,38 @@
       </header>
 
       <main id="main-content" tabindex="-1">
-        <section id="loading-view" class="loading-view" aria-live="polite" aria-busy="true">
+        <section
+          id="loading-view"
+          class="loading-view"
+          aria-live="polite"
+          aria-busy="true"
+          data-game-language
+        >
           <span class="loading-spinner" aria-hidden="true"></span>
           <p id="loading-message">Loading counter…</p>
-          <button id="retry-boot-button" class="button button-quiet" type="button" hidden>
+          <button
+            id="retry-boot-button"
+            class="button button-quiet"
+            type="button"
+            data-i18n="tryAgain"
+            hidden
+          >
             Try again
           </button>
-          <button class="text-link" type="button" data-play-local data-account-feature>
+          <button
+            class="text-link"
+            type="button"
+            data-play-local
+            data-account-feature
+            data-i18n="playOffline"
+          >
             Play offline
           </button>
         </section>
 
-        <section id="home-view" class="home" hidden>
+        <section id="home-view" class="home" data-game-language hidden>
           <h1>Go Click</h1>
-          <p class="home-greeting">
+          <p class="home-greeting" data-i18n="homeGreeting">
             Click to play offline, or sign in to save clicks to your account.
           </p>
           <div class="button-stage">
@@ -213,19 +245,22 @@
                   class="click-button"
                   type="button"
                   data-tactile-button
-                  aria-label="Click to play offline"
+                  aria-label="Play offline"
+                  data-i18n-aria-label="playOffline"
                 >
-                  <span class="button-label">Click</span>
+                  <span class="button-label" data-i18n="click">Click</span>
                 </button>
               </div>
             </div>
           </div>
           <p class="home-signup">
-            <button class="text-link" type="button" data-view="signup">Create an account</button>
+            <button class="text-link" type="button" data-view="signup" data-i18n="createAccount">
+              Create account
+            </button>
           </p>
         </section>
 
-        <section id="auth-view" class="auth-layout" hidden>
+        <section id="auth-view" class="auth-layout" lang="en" dir="ltr" hidden>
           <button class="back-button" type="button" data-view="home">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
               <use href="./icons.svg#arrow" />
@@ -408,9 +443,9 @@
             class="button button-quiet retry-game"
             type="button"
             hidden
-            data-i18n="reload"
+            data-i18n="refresh"
           >
-            Reload counter
+            Refresh counter
           </button>
         </div>
         <section
@@ -589,11 +624,10 @@
                   aria-live="off"
                   aria-label="Ping: no click measured yet"
                   title="Round-trip time of the last successful click request. The status dot indicates pending requests or a save error."
-                  data-i18n-title="pingHint"
                 >
                   <span class="connection-dot" aria-hidden="true"></span>
                   <span class="connection-label">Ping</span>
-                  <span id="ping">— ms</span>
+                  <span id="ping">—</span>
                 </div>
               </div>
               <p id="play-status" class="play-status" role="status" hidden>
@@ -966,11 +1000,6 @@
           Press with a mouse or touch, then release on or near the button. Each finger counts
           separately. With the button focused, Space or Enter adds one click on release. Holding
           never adds extra clicks.
-        </p>
-        <p data-i18n="feedbackColors">
-          Amber means the save is pending or the response is slow. Green and blue indicate fast and
-          standard responses. Orange indicates a server cooldown. Red means the save failed or could
-          not be confirmed.
         </p>
       </details>
       <details class="technical-notes options-help" id="technical-notes">

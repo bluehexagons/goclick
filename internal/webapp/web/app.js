@@ -2102,7 +2102,6 @@
     localSaveCount: "Clicks in your local save: {count}",
     localSaveUnavailable: "Local save unavailable.",
     controlsTitle: "Controls",
-    feedbackColors: "Amber means the save is pending or the response is slow. Green and blue indicate fast and standard responses. Orange indicates a server cooldown. Red means the save failed or could not be confirmed.",
     technicalNotes: "Game & storage notes (English)",
     sourceCode: "Source code",
     settingsVisit: "Applied for this visit. Browser storage is unavailable.",
@@ -2164,7 +2163,6 @@
       localSaveCount: "\u672C\u5730\u5B58\u6863\u7684\u70B9\u51FB\u6570\uFF1A{count}",
       localSaveUnavailable: "\u672C\u5730\u5B58\u6863\u4E0D\u53EF\u7528\u3002",
       controlsTitle: "\u64CD\u4F5C\u8BF4\u660E",
-      feedbackColors: "\u7425\u73C0\u8272\u8868\u793A\u7B49\u5F85\u4FDD\u5B58\u6216\u54CD\u5E94\u8F83\u6162\u3002\u7EFF\u8272\u8868\u793A\u54CD\u5E94\u5FEB\uFF0C\u84DD\u8272\u8868\u793A\u54CD\u5E94\u6B63\u5E38\u3002\u6A59\u8272\u8868\u793A\u670D\u52A1\u5668\u5904\u4E8E\u51B7\u5374\u671F\u3002\u7EA2\u8272\u8868\u793A\u4FDD\u5B58\u5931\u8D25\u6216\u672A\u786E\u8BA4\u3002",
       technicalNotes: "\u6E38\u620F\u548C\u5B58\u6863\u8BF4\u660E\uFF08\u82F1\u8BED\uFF09",
       sourceCode: "\u6E90\u4EE3\u7801",
       settingsVisit: "\u6D4F\u89C8\u5668\u5B58\u50A8\u4E0D\u53EF\u7528\u3002\u8BBE\u7F6E\u4EC5\u5728\u672C\u6B21\u8BBF\u95EE\u4E2D\u751F\u6548\u3002",
@@ -2225,7 +2223,6 @@
       localSaveCount: "Clics en tu partida local: {count}",
       localSaveUnavailable: "La partida local no est\xE1 disponible.",
       controlsTitle: "Controles",
-      feedbackColors: "El \xE1mbar indica un guardado pendiente o una respuesta lenta. El verde indica una respuesta r\xE1pida y el azul, una normal. El naranja indica una pausa temporal del servidor. El rojo indica que el guardado fall\xF3 o no se pudo confirmar.",
       technicalNotes: "Notas sobre el juego y el guardado (en ingl\xE9s)",
       sourceCode: "C\xF3digo fuente",
       settingsVisit: "Aplicado durante esta visita. El almacenamiento del navegador no est\xE1 disponible.",
@@ -2286,7 +2283,6 @@
       localSaveCount: "\u0627\u0644\u0646\u0642\u0631\u0627\u062A \u0641\u064A \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A: {count}",
       localSaveUnavailable: "\u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A \u063A\u064A\u0631 \u0645\u062A\u0627\u062D.",
       controlsTitle: "\u0639\u0646\u0627\u0635\u0631 \u0627\u0644\u062A\u062D\u0643\u0651\u0645",
-      feedbackColors: "\u064A\u0634\u064A\u0631 \u0627\u0644\u0644\u0648\u0646 \u0627\u0644\u0643\u0647\u0631\u0645\u0627\u0646\u064A \u0625\u0644\u0649 \u062D\u0641\u0638 \u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631 \u0623\u0648 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0628\u0637\u064A\u0626\u0629. \u064A\u0634\u064A\u0631 \u0627\u0644\u0623\u062E\u0636\u0631 \u0625\u0644\u0649 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0633\u0631\u064A\u0639\u0629\u060C \u0648\u0627\u0644\u0623\u0632\u0631\u0642 \u0625\u0644\u0649 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0639\u0627\u062F\u064A\u0629. \u064A\u0634\u064A\u0631 \u0627\u0644\u0628\u0631\u062A\u0642\u0627\u0644\u064A \u0625\u0644\u0649 \u062A\u0648\u0642\u0641 \u0645\u0624\u0642\u062A \u0628\u0633\u0628\u0628 \u062D\u062F\u0651 \u0627\u0644\u062E\u0627\u062F\u0645. \u064A\u0639\u0646\u064A \u0627\u0644\u0623\u062D\u0645\u0631 \u0623\u0646 \u0627\u0644\u062D\u0641\u0638 \u0641\u0634\u0644 \u0623\u0648 \u062A\u0639\u0630\u0651\u0631 \u062A\u0623\u0643\u064A\u062F\u0647.",
       technicalNotes: "\u0645\u0644\u0627\u062D\u0638\u0627\u062A \u0639\u0646 \u0627\u0644\u0644\u0639\u0628\u0629 \u0648\u0627\u0644\u062D\u0641\u0638 (\u0628\u0627\u0644\u0625\u0646\u062C\u0644\u064A\u0632\u064A\u0629)",
       sourceCode: "\u0627\u0644\u0634\u064A\u0641\u0631\u0629 \u0627\u0644\u0645\u0635\u062F\u0631\u064A\u0629",
       settingsVisit: "\u0637\u064F\u0628\u0651\u0642 \u0627\u0644\u0625\u0639\u062F\u0627\u062F \u0644\u0647\u0630\u0647 \u0627\u0644\u0632\u064A\u0627\u0631\u0629. \u0645\u0633\u0627\u062D\u0629 \u062A\u062E\u0632\u064A\u0646 \u0627\u0644\u0645\u062A\u0635\u0641\u062D \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629.",
@@ -2347,7 +2343,6 @@
       localSaveCount: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u092E\u0947\u0902 \u0915\u094D\u0932\u093F\u0915: {count}",
       localSaveUnavailable: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964",
       controlsTitle: "\u0915\u0902\u091F\u094D\u0930\u094B\u0932",
-      feedbackColors: "\u0910\u0902\u092C\u0930 \u0930\u0902\u0917 \u092C\u0924\u093E\u0924\u093E \u0939\u0948 \u0915\u093F \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u091C\u093E \u0930\u0939\u093E \u0939\u0948 \u092F\u093E \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \u0927\u0940\u092E\u0940 \u0939\u0948\u0964 \u0939\u0930\u093E \u0930\u0902\u0917 \u0924\u0947\u091C\u093C \u0914\u0930 \u0928\u0940\u0932\u093E \u0938\u093E\u092E\u093E\u0928\u094D\u092F \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \u0926\u093F\u0916\u093E\u0924\u093E \u0939\u0948\u0964 \u0928\u093E\u0930\u0902\u0917\u0940 \u0915\u093E \u092E\u0924\u0932\u092C \u0939\u0948 \u0915\u093F \u0938\u0930\u094D\u0935\u0930 \u0928\u0947 \u0915\u0941\u091B \u0926\u0947\u0930 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0930\u094B\u0915 \u0926\u093F\u090F \u0939\u0948\u0902\u0964 \u0932\u093E\u0932 \u0915\u093E \u092E\u0924\u0932\u092C \u0939\u0948 \u0915\u093F \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E \u092F\u093E \u0909\u0938\u0915\u0940 \u092A\u0941\u0937\u094D\u091F\u093F \u0928\u0939\u0940\u0902 \u0939\u094B \u0938\u0915\u0940\u0964",
       technicalNotes: "\u0917\u0947\u092E \u0914\u0930 \u0938\u0947\u0935 \u0915\u0940 \u091C\u093E\u0928\u0915\u093E\u0930\u0940 (\u0905\u0902\u0917\u094D\u0930\u0947\u091C\u093C\u0940 \u092E\u0947\u0902)",
       sourceCode: "\u0938\u094B\u0930\u094D\u0938 \u0915\u094B\u0921",
       settingsVisit: "\u0938\u0947\u091F\u093F\u0902\u0917 \u0907\u0938 \u092C\u093E\u0930 \u0915\u0947 \u0932\u093F\u090F \u0932\u093E\u0917\u0942 \u0939\u0948\u0964 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u0915\u093E \u0938\u094D\u091F\u094B\u0930\u0947\u091C \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964",
@@ -2394,7 +2389,7 @@
       playOnline: "Main daring",
       playOnlineHint: "Meninggalkan GitHub Pages dan membuka clicker.bluehexagons.com.",
       downloadSave: "Unduh simpanan",
-      simulatedPingLabel: "Latensi simulasi",
+      simulatedPingLabel: "Ping simulasi",
       simulatedPingHint: "Menunda umpan balik saat luring. Klik langsung disimpan.",
       instant: "Seketika",
       approximatePing: "Sekitar {time}",
@@ -2408,7 +2403,6 @@
       localSaveCount: "Klik dalam simpanan lokal Anda: {count}",
       localSaveUnavailable: "Simpanan lokal tidak tersedia.",
       controlsTitle: "Kontrol",
-      feedbackColors: "Kuning ambar berarti penyimpanan masih tertunda atau responsnya lambat. Hijau menandakan respons cepat dan biru menandakan respons normal. Oranye menandakan jeda sementara dari server. Merah berarti penyimpanan gagal atau tidak dapat dikonfirmasi.",
       technicalNotes: "Catatan permainan dan penyimpanan (bahasa Inggris)",
       sourceCode: "Kode sumber",
       settingsVisit: "Berlaku untuk kunjungan ini. Penyimpanan peramban tidak tersedia.",
@@ -2455,7 +2449,7 @@
       playOnline: "Jogar online",
       playOnlineHint: "Sai do GitHub Pages e abre clicker.bluehexagons.com.",
       downloadSave: "Baixar save",
-      simulatedPingLabel: "Lat\xEAncia simulada",
+      simulatedPingLabel: "Ping simulado",
       simulatedPingHint: "Atrasa a resposta no modo offline. Os cliques s\xE3o salvos na hora.",
       instant: "Instant\xE2nea",
       approximatePing: "Cerca de {time}",
@@ -2469,7 +2463,6 @@
       localSaveCount: "Cliques no seu save local: {count}",
       localSaveUnavailable: "O save local est\xE1 indispon\xEDvel.",
       controlsTitle: "Controles",
-      feedbackColors: "\xC2mbar indica que o clique ainda est\xE1 sendo salvo ou que a resposta foi lenta. Verde indica uma resposta r\xE1pida e azul, uma normal. Laranja indica uma pausa tempor\xE1ria do servidor. Vermelho indica que o salvamento falhou ou n\xE3o p\xF4de ser confirmado.",
       technicalNotes: "Notas sobre o jogo e o armazenamento (em ingl\xEAs)",
       sourceCode: "C\xF3digo-fonte",
       settingsVisit: "Aplicado nesta visita. O armazenamento do navegador est\xE1 indispon\xEDvel.",
@@ -2530,7 +2523,6 @@
       localSaveCount: "Clics dans votre sauvegarde locale : {count}",
       localSaveUnavailable: "La sauvegarde locale est indisponible.",
       controlsTitle: "Commandes",
-      feedbackColors: "L\u2019ambre indique un enregistrement en attente ou une r\xE9ponse lente. Le vert indique une r\xE9ponse rapide et le bleu, une r\xE9ponse normale. L\u2019orange indique une pause impos\xE9e par le serveur. Le rouge indique que l\u2019enregistrement a \xE9chou\xE9 ou n\u2019a pas pu \xEAtre confirm\xE9.",
       technicalNotes: "Notes sur le jeu et le stockage (en anglais)",
       sourceCode: "Code source",
       settingsVisit: "Appliqu\xE9 pour cette visite. Le stockage du navigateur est indisponible.",
@@ -2577,7 +2569,7 @@
       playOnline: "\u30AA\u30F3\u30E9\u30A4\u30F3\u3067\u30D7\u30EC\u30A4",
       playOnlineHint: "GitHub Pages \u3092\u96E2\u308C\u3066 clicker.bluehexagons.com \u3092\u958B\u304D\u307E\u3059\u3002",
       downloadSave: "\u30BB\u30FC\u30D6\u30C7\u30FC\u30BF\u3092\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9",
-      simulatedPingLabel: "\u7591\u4F3C\u9045\u5EF6",
+      simulatedPingLabel: "\u6A21\u64EC\u5FDC\u7B54\u6642\u9593",
       simulatedPingHint: "\u30AA\u30D5\u30E9\u30A4\u30F3\u6642\u306E\u53CD\u5FDC\u3092\u9045\u3089\u305B\u307E\u3059\u3002\u30AF\u30EA\u30C3\u30AF\u306F\u3059\u3050\u306B\u4FDD\u5B58\u3055\u308C\u307E\u3059\u3002",
       instant: "\u5373\u6642",
       approximatePing: "\u7D04 {time}",
@@ -2591,7 +2583,6 @@
       localSaveCount: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u306E\u30AF\u30EA\u30C3\u30AF\u6570\uFF1A{count}",
       localSaveUnavailable: "\u30ED\u30FC\u30AB\u30EB\u30BB\u30FC\u30D6\u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002",
       controlsTitle: "\u64CD\u4F5C\u65B9\u6CD5",
-      feedbackColors: "\u7425\u73C0\u8272\u306F\u4FDD\u5B58\u5F85\u3061\u3001\u307E\u305F\u306F\u5FDC\u7B54\u304C\u9045\u3044\u3053\u3068\u3092\u793A\u3057\u307E\u3059\u3002\u7DD1\u306F\u901F\u3044\u5FDC\u7B54\u3001\u9752\u306F\u901A\u5E38\u306E\u5FDC\u7B54\u3067\u3059\u3002\u30AA\u30EC\u30F3\u30B8\u306F\u30B5\u30FC\u30D0\u30FC\u306B\u3088\u308B\u4E00\u6642\u505C\u6B62\u3067\u3059\u3002\u8D64\u306F\u4FDD\u5B58\u306B\u5931\u6557\u3057\u305F\u304B\u3001\u4FDD\u5B58\u3092\u78BA\u8A8D\u3067\u304D\u306A\u304B\u3063\u305F\u3053\u3068\u3092\u793A\u3057\u307E\u3059\u3002",
       technicalNotes: "\u30B2\u30FC\u30E0\u3068\u4FDD\u5B58\u306B\u3064\u3044\u3066\uFF08\u82F1\u8A9E\uFF09",
       sourceCode: "\u30BD\u30FC\u30B9\u30B3\u30FC\u30C9",
       settingsVisit: "\u4ECA\u56DE\u306E\u307F\u9069\u7528\u3057\u307E\u3057\u305F\u3002\u30D6\u30E9\u30A6\u30B6\u30FC\u306E\u4FDD\u5B58\u9818\u57DF\u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002",
@@ -2638,7 +2629,7 @@
       playOnline: "\u0418\u0433\u0440\u0430\u0442\u044C \u043E\u043D\u043B\u0430\u0439\u043D",
       playOnlineHint: "\u041F\u0435\u0440\u0435\u0445\u043E\u0434 \u0441 GitHub Pages \u043D\u0430 clicker.bluehexagons.com.",
       downloadSave: "\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435",
-      simulatedPingLabel: "\u0418\u043C\u0438\u0442\u0430\u0446\u0438\u044F \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0438",
+      simulatedPingLabel: "\u0418\u043C\u0438\u0442\u0430\u0446\u0438\u044F \u043F\u0438\u043D\u0433\u0430",
       simulatedPingHint: "\u0417\u0430\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442 \u043E\u0442\u043A\u043B\u0438\u043A \u0432 \u043E\u0444\u043B\u0430\u0439\u043D-\u0440\u0435\u0436\u0438\u043C\u0435. \u041A\u043B\u0438\u043A\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F \u0441\u0440\u0430\u0437\u0443.",
       instant: "\u041C\u0433\u043D\u043E\u0432\u0435\u043D\u043D\u043E",
       approximatePing: "\u041E\u043A\u043E\u043B\u043E {time}",
@@ -2652,7 +2643,6 @@
       localSaveCount: "\u041A\u043B\u0438\u043A\u0438 \u0432 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u043C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0438: {count}",
       localSaveUnavailable: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E.",
       controlsTitle: "\u0423\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435",
-      feedbackColors: "\u042F\u043D\u0442\u0430\u0440\u043D\u044B\u0439 \u0446\u0432\u0435\u0442 \u043E\u0437\u043D\u0430\u0447\u0430\u0435\u0442, \u0447\u0442\u043E \u043A\u043B\u0438\u043A \u0435\u0449\u0451 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u0438\u043B\u0438 \u043E\u0442\u043A\u043B\u0438\u043A \u0431\u044B\u043B \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u044B\u043C. \u0417\u0435\u043B\u0451\u043D\u044B\u0439 \u0446\u0432\u0435\u0442 \u043E\u0437\u043D\u0430\u0447\u0430\u0435\u0442 \u0431\u044B\u0441\u0442\u0440\u044B\u0439 \u043E\u0442\u043A\u043B\u0438\u043A, \u0430 \u0441\u0438\u043D\u0438\u0439 \u2014 \u043E\u0431\u044B\u0447\u043D\u044B\u0439. \u041E\u0440\u0430\u043D\u0436\u0435\u0432\u044B\u0439 \u0446\u0432\u0435\u0442 \u043E\u0437\u043D\u0430\u0447\u0430\u0435\u0442 \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u0443\u044E \u043F\u0430\u0443\u0437\u0443 \u043D\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435. \u041A\u0440\u0430\u0441\u043D\u044B\u0439 \u0446\u0432\u0435\u0442 \u043E\u0437\u043D\u0430\u0447\u0430\u0435\u0442, \u0447\u0442\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043A\u043B\u0438\u043A \u0438\u043B\u0438 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C.",
       technicalNotes: "\u041E\u0431 \u0438\u0433\u0440\u0435 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0438 (\u043D\u0430 \u0430\u043D\u0433\u043B\u0438\u0439\u0441\u043A\u043E\u043C)",
       sourceCode: "\u0418\u0441\u0445\u043E\u0434\u043D\u044B\u0439 \u043A\u043E\u0434",
       settingsVisit: "\u041F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u043E \u0442\u043E\u043B\u044C\u043A\u043E \u0432 \u044D\u0442\u043E\u0442 \u0440\u0430\u0437. \u0425\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E.",
@@ -2699,7 +2689,7 @@
       playOnline: "Online spielen",
       playOnlineHint: "Verl\xE4sst GitHub Pages und \xF6ffnet clicker.bluehexagons.com.",
       downloadSave: "Spielstand herunterladen",
-      simulatedPingLabel: "Simulierte Latenz",
+      simulatedPingLabel: "Simulierter Ping",
       simulatedPingHint: "Verz\xF6gert die R\xFCckmeldung im Offline-Modus. Klicks werden sofort gespeichert.",
       instant: "Sofort",
       approximatePing: "Etwa {time}",
@@ -2713,7 +2703,6 @@
       localSaveCount: "Klicks im lokalen Spielstand: {count}",
       localSaveUnavailable: "Der lokale Spielstand ist nicht verf\xFCgbar.",
       controlsTitle: "Bedienung",
-      feedbackColors: "Bernsteinfarben bedeutet, dass die Speicherung aussteht oder die Antwort langsam ist. Gr\xFCn steht f\xFCr eine schnelle Antwort, Blau f\xFCr eine normale. Orange zeigt eine vor\xFCbergehende Pause durch den Server an. Rot bedeutet, dass die Speicherung fehlgeschlagen ist oder sich nicht best\xE4tigen lie\xDF.",
       technicalNotes: "Hinweise zu Spiel und Speicherung (Englisch)",
       sourceCode: "Quellcode",
       settingsVisit: "F\xFCr diesen Besuch \xFCbernommen. Der Browserspeicher ist nicht verf\xFCgbar.",
@@ -2758,9 +2747,16 @@
     achievements: "Achievements",
     offlineAchievements: "Offline achievements",
     weekRule: "One saved click counts for the week, Monday through Sunday (UTC).",
-    firstClick: "First click",
-    clickMilestone: "{count} clicks",
-    consecutive: "{duration} in a row",
+    firstClick: "Save your first click.",
+    clickMilestone: "{count} clicks in total.",
+    consecutive: "{duration} in a row with a click in each (UTC).",
+    dayClickGoal: "{count} clicks in one UTC day.",
+    weekClickGoal: "{count} clicks in one UTC week (Monday\u2013Sunday).",
+    monthClickGoal: "{count} clicks in one UTC calendar month.",
+    distinctHoursGoal: "Click in {count} different UTC hours on the same day.",
+    distinctDaysGoal: "Click on {count} different UTC days. Gaps are allowed.",
+    distinctMonthsGoal: "Click in {count} different UTC calendar months. Gaps are allowed.",
+    otherAchievementsGoal: "Earn {count} other achievements.",
     earned: "Earned",
     locked: "Locked",
     allAchievements: "All",
@@ -2788,11 +2784,11 @@
     feedbackUnconfirmed: "unconfirmed",
     feedbackUnsaved: "not saved",
     feedbackCooldown: "cooldown",
-    feedbackSavedTime: "\u2713 {time} ms",
-    feedbackSimulatedTime: "\u2713 {time} ms \xB7 sim",
-    feedbackAwaitingHint: "Awaiting save \xB7 recent average {average} ms",
-    feedbackSavedHint: "Saved \xB7 {time} ms \xB7 recent average {average} ms",
-    feedbackSimulatedHint: "Simulated response \xB7 {time} ms \xB7 recent average {average} ms",
+    feedbackSavedTime: "\u2713 {time}",
+    feedbackSimulatedTime: "\u2713 {time} \xB7 sim",
+    feedbackAwaitingHint: "Awaiting save \xB7 recent average {average}",
+    feedbackSavedHint: "Saved \xB7 {time} \xB7 recent average {average}",
+    feedbackSimulatedHint: "Simulated response \xB7 {time} \xB7 recent average {average}",
     copyChanged: "Preview changed. Copy again to share the updated text.",
     lastClick: "Last click {time}",
     timezone: "Shown in your local time zone",
@@ -2819,6 +2815,11 @@
     offline: "Offline",
     backOnline: "Back online",
     signOut: "Sign out",
+    homeGreeting: "Click to play offline, or sign in to save clicks to your account.",
+    signIn: "Sign in",
+    createAccount: "Create account",
+    loadingCounter: "Loading counter\u2026",
+    tryAgain: "Try again",
     admin: "Admin",
     options: "Options",
     sound: "Sound effects",
@@ -2826,10 +2827,9 @@
     soundOff: "Sound off \xB7 Turn on sound effects",
     motion: "Turn on motion effects",
     motionHint: "Reduced motion is on. Turn on motion effects.",
-    reload: "Reload counter",
     controls: "Press with a mouse or touch, then release on or near the button. Each finger counts separately. With the button focused, Space or Enter adds one click on release. Holding never adds extra clicks.",
-    loadError: "Couldn\u2019t load your counter. Try reloading it.",
-    unconfirmedClick: "Couldn\u2019t confirm your click. Reload your counter to check whether it saved.",
+    loadError: "Couldn\u2019t load your counter. Try refreshing it.",
+    unconfirmedClick: "Couldn\u2019t confirm your click. Refresh your counter to check whether it was saved.",
     unsavedClick: "Your click wasn\u2019t saved. Check your connection and try again.",
     localLoadError: "Couldn\u2019t load your local save. Open Options to import a copy or restart the local save.",
     localClickError: "Your local click wasn\u2019t saved. Browser storage may be full or unavailable.",
@@ -2863,9 +2863,16 @@
       achievements: "\u6210\u5C31",
       offlineAchievements: "\u79BB\u7EBF\u6210\u5C31",
       weekRule: "\u6BCF\u5468\u4ECE\u5468\u4E00\u5230\u5468\u65E5\uFF08UTC\uFF09\uFF0C\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\u5373\u7B97\u6D3B\u8DC3\u4E00\u5468\u3002",
-      firstClick: "\u9996\u6B21\u70B9\u51FB",
-      clickMilestone: "\u70B9\u51FB {count} \u6B21",
-      consecutive: "\u8FDE\u7EED {duration}",
+      firstClick: "\u4FDD\u5B58\u7B2C\u4E00\u6B21\u70B9\u51FB\u3002",
+      clickMilestone: "\u7D2F\u8BA1\u70B9\u51FB {count} \u6B21\u3002",
+      consecutive: "\u8FDE\u7EED {duration} \u5185\uFF0C\u6BCF\u4E2A\u5468\u671F\u81F3\u5C11\u70B9\u51FB\u4E00\u6B21\uFF08UTC\uFF09\u3002",
+      dayClickGoal: "\u5728\u540C\u4E00\u4E2A UTC \u65E5\u5185\u70B9\u51FB {count} \u6B21\u3002",
+      weekClickGoal: "\u5728\u540C\u4E00\u4E2A UTC \u5468\u5185\u70B9\u51FB {count} \u6B21\uFF08\u5468\u4E00\u81F3\u5468\u65E5\uFF09\u3002",
+      monthClickGoal: "\u5728\u540C\u4E00\u4E2A UTC \u81EA\u7136\u6708\u5185\u70B9\u51FB {count} \u6B21\u3002",
+      distinctHoursGoal: "\u5728\u540C\u4E00\u4E2A UTC \u65E5\u5185\u7684 {count} \u4E2A\u4E0D\u540C\u5C0F\u65F6\u91CC\u5404\u70B9\u51FB\u4E00\u6B21\u3002",
+      distinctDaysGoal: "\u5728 {count} \u4E2A\u4E0D\u540C\u7684 UTC \u65E5\u91CC\u5404\u70B9\u51FB\u4E00\u6B21\uFF0C\u53EF\u4EE5\u4E0D\u8FDE\u7EED\u3002",
+      distinctMonthsGoal: "\u5728 {count} \u4E2A\u4E0D\u540C\u7684 UTC \u81EA\u7136\u6708\u91CC\u5404\u70B9\u51FB\u4E00\u6B21\uFF0C\u53EF\u4EE5\u4E0D\u8FDE\u7EED\u3002",
+      otherAchievementsGoal: "\u83B7\u5F97\u5176\u4ED6 {count} \u9879\u6210\u5C31\u3002",
       earned: "\u5DF2\u83B7\u5F97",
       locked: "\u672A\u89E3\u9501",
       allAchievements: "\u5168\u90E8",
@@ -2893,11 +2900,11 @@
       feedbackUnconfirmed: "\u672A\u786E\u8BA4",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
       feedbackCooldown: "\u51B7\u5374\u4E2D",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u6A21\u62DF",
-      feedbackAwaitingHint: "\u7B49\u5F85\u4FDD\u5B58 \xB7 \u8FD1\u671F\u5E73\u5747 {average} ms",
-      feedbackSavedHint: "\u5DF2\u4FDD\u5B58 \xB7 {time} ms \xB7 \u8FD1\u671F\u5E73\u5747 {average} ms",
-      feedbackSimulatedHint: "\u6A21\u62DF\u54CD\u5E94 \xB7 {time} ms \xB7 \u8FD1\u671F\u5E73\u5747 {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 \u6A21\u62DF",
+      feedbackAwaitingHint: "\u7B49\u5F85\u4FDD\u5B58 \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
+      feedbackSavedHint: "\u5DF2\u4FDD\u5B58 \xB7 {time} \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
+      feedbackSimulatedHint: "\u6A21\u62DF\u54CD\u5E94 \xB7 {time} \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
       copyChanged: "\u9884\u89C8\u5DF2\u66F4\u6539\u3002\u8BF7\u518D\u6B21\u590D\u5236\u4EE5\u5206\u4EAB\u66F4\u65B0\u540E\u7684\u6587\u672C\u3002",
       lastClick: "\u4E0A\u6B21\u70B9\u51FB\uFF1A{time}",
       timezone: "\u6309\u60A8\u7684\u672C\u5730\u65F6\u533A\u663E\u793A",
@@ -2924,6 +2931,11 @@
       offline: "\u79BB\u7EBF",
       backOnline: "\u8FD4\u56DE\u5728\u7EBF\u6A21\u5F0F",
       signOut: "\u9000\u51FA\u767B\u5F55",
+      homeGreeting: "\u70B9\u51FB\u5373\u53EF\u79BB\u7EBF\u6E38\u73A9\uFF0C\u767B\u5F55\u540E\u53EF\u5C06\u70B9\u51FB\u8BB0\u5F55\u4FDD\u5B58\u5230\u8D26\u53F7\u3002",
+      signIn: "\u767B\u5F55",
+      createAccount: "\u521B\u5EFA\u8D26\u53F7",
+      loadingCounter: "\u6B63\u5728\u52A0\u8F7D\u8BA1\u6570\u5668\u2026",
+      tryAgain: "\u91CD\u8BD5",
       admin: "\u7BA1\u7406",
       options: "\u9009\u9879",
       sound: "\u97F3\u6548",
@@ -2931,10 +2943,9 @@
       soundOff: "\u97F3\u6548\u5DF2\u5173\u95ED \xB7 \u5F00\u542F\u97F3\u6548",
       motion: "\u5F00\u542F\u52A8\u753B\u6548\u679C",
       motionHint: "\u5DF2\u5F00\u542F\u51CF\u5C11\u52A8\u6001\u6548\u679C\u3002\u70B9\u51FB\u5F00\u542F\u52A8\u753B\u3002",
-      reload: "\u91CD\u65B0\u52A0\u8F7D\u8BA1\u6570",
       controls: "\u7528\u9F20\u6807\u6216\u89E6\u6478\u6309\u4E0B\uFF0C\u7136\u540E\u5728\u6309\u94AE\u4E0A\u6216\u9644\u8FD1\u677E\u5F00\u3002\u6BCF\u6839\u624B\u6307\u5355\u72EC\u8BA1\u6570\u3002\u6309\u94AE\u83B7\u5F97\u7126\u70B9\u65F6\uFF0C\u677E\u5F00\u7A7A\u683C\u952E\u6216\u56DE\u8F66\u952E\u53EF\u8BB0\u5F55\u4E00\u6B21\u70B9\u51FB\u3002\u6309\u4F4F\u4E0D\u4F1A\u589E\u52A0\u989D\u5916\u70B9\u51FB\u3002",
-      loadError: "\u65E0\u6CD5\u52A0\u8F7D\u8BA1\u6570\uFF0C\u8BF7\u91CD\u8BD5\u3002",
-      unconfirmedClick: "\u65E0\u6CD5\u786E\u8BA4\u70B9\u51FB\u3002\u8BF7\u91CD\u65B0\u52A0\u8F7D\u8BA1\u6570\u4EE5\u68C0\u67E5\u662F\u5426\u5DF2\u4FDD\u5B58\u3002",
+      loadError: "\u65E0\u6CD5\u52A0\u8F7D\u8BA1\u6570\u5668\u3002\u8BF7\u5C1D\u8BD5\u5237\u65B0\u3002",
+      unconfirmedClick: "\u65E0\u6CD5\u786E\u8BA4\u8FD9\u6B21\u70B9\u51FB\u3002\u8BF7\u5237\u65B0\u8BA1\u6570\u5668\uFF0C\u67E5\u770B\u70B9\u51FB\u662F\u5426\u5DF2\u4FDD\u5B58\u3002",
       unsavedClick: "\u70B9\u51FB\u672A\u4FDD\u5B58\u3002\u8BF7\u68C0\u67E5\u7F51\u7EDC\u540E\u91CD\u8BD5\u3002",
       localLoadError: "\u65E0\u6CD5\u52A0\u8F7D\u672C\u5730\u5B58\u6863\u3002\u8BF7\u5728\u9009\u9879\u4E2D\u5BFC\u5165\u526F\u672C\u6216\u91CD\u65B0\u5F00\u59CB\u3002",
       localClickError: "\u672C\u5730\u70B9\u51FB\u672A\u4FDD\u5B58\u3002\u6D4F\u89C8\u5668\u5B58\u50A8\u53EF\u80FD\u5DF2\u6EE1\u6216\u4E0D\u53EF\u7528\u3002",
@@ -2967,9 +2978,16 @@
       achievements: "Logros",
       offlineAchievements: "Logros sin conexi\xF3n",
       weekRule: "Un clic guardado cuenta para la semana, de lunes a domingo (UTC).",
-      firstClick: "Primer clic",
-      clickMilestone: "{count} clics",
-      consecutive: "{duration} seguidos",
+      firstClick: "Guarda tu primer clic.",
+      clickMilestone: "{count} clics en total.",
+      consecutive: "{duration} sin interrupci\xF3n, con un clic en cada per\xEDodo (UTC).",
+      dayClickGoal: "{count} clics en un mismo d\xEDa UTC.",
+      weekClickGoal: "{count} clics en una misma semana UTC (de lunes a domingo).",
+      monthClickGoal: "{count} clics en un mismo mes calendario UTC.",
+      distinctHoursGoal: "Haz clic en {count} horas distintas del mismo d\xEDa UTC.",
+      distinctDaysGoal: "Haz clic en {count} d\xEDas distintos seg\xFAn UTC. Pueden ser no consecutivos.",
+      distinctMonthsGoal: "Haz clic en {count} meses calendario distintos seg\xFAn UTC. Pueden ser no consecutivos.",
+      otherAchievementsGoal: "Consigue otros {count} logros.",
       earned: "Conseguido",
       locked: "Bloqueado",
       allAchievements: "Todos",
@@ -2997,11 +3015,11 @@
       feedbackUnconfirmed: "sin confirmar",
       feedbackUnsaved: "no guardado",
       feedbackCooldown: "pausa",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 sim.",
-      feedbackAwaitingHint: "Esperando guardado \xB7 media reciente {average} ms",
-      feedbackSavedHint: "Guardado \xB7 {time} ms \xB7 media reciente {average} ms",
-      feedbackSimulatedHint: "Respuesta simulada \xB7 {time} ms \xB7 media reciente {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 sim.",
+      feedbackAwaitingHint: "Esperando guardado \xB7 media reciente {average}",
+      feedbackSavedHint: "Guardado \xB7 {time} \xB7 media reciente {average}",
+      feedbackSimulatedHint: "Respuesta simulada \xB7 {time} \xB7 media reciente {average}",
       copyChanged: "La vista previa cambi\xF3. Copia de nuevo para compartir el texto actualizado.",
       lastClick: "\xDAltimo clic: {time}",
       timezone: "Se muestra en tu zona horaria local",
@@ -3028,6 +3046,11 @@
       offline: "Sin conexi\xF3n",
       backOnline: "Volver al modo en l\xEDnea",
       signOut: "Cerrar sesi\xF3n",
+      homeGreeting: "Haz clic para jugar sin conexi\xF3n o inicia sesi\xF3n para guardar tus clics en tu cuenta.",
+      signIn: "Iniciar sesi\xF3n",
+      createAccount: "Crear cuenta",
+      loadingCounter: "Cargando contador\u2026",
+      tryAgain: "Volver a intentar",
       admin: "Administraci\xF3n",
       options: "Opciones",
       sound: "Efectos de sonido",
@@ -3035,10 +3058,9 @@
       soundOff: "Sonido desactivado \xB7 Activar efectos de sonido",
       motion: "Activar efectos de movimiento",
       motionHint: "El movimiento reducido est\xE1 activado. Activar efectos de movimiento.",
-      reload: "Recargar contador",
       controls: "Pulsa con el rat\xF3n o el dedo y suelta sobre el bot\xF3n o cerca de \xE9l. Cada dedo cuenta por separado. Con el bot\xF3n enfocado, suelta Espacio o Intro para registrar un clic. Mantener pulsado no a\xF1ade clics.",
-      loadError: "No se pudo cargar el contador. Intenta recargarlo.",
-      unconfirmedClick: "No se pudo confirmar el clic. Recarga el contador para comprobar si se guard\xF3.",
+      loadError: "No se pudo cargar el contador. Intenta actualizarlo.",
+      unconfirmedClick: "No se pudo confirmar tu clic. Actualiza el contador para comprobar si se guard\xF3.",
       unsavedClick: "Tu clic no se guard\xF3. Comprueba tu conexi\xF3n e int\xE9ntalo de nuevo.",
       localLoadError: "No se pudo cargar el guardado local. Abre Opciones para importar una copia o reiniciarlo.",
       localClickError: "Tu clic local no se guard\xF3. El almacenamiento del navegador puede estar lleno o no disponible.",
@@ -3071,9 +3093,16 @@
       achievements: "\u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A",
       offlineAchievements: "\u0627\u0644\u0625\u0646\u062C\u0627\u0632\u0627\u062A \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644",
       weekRule: "\u062A\u0643\u0641\u064A \u0646\u0642\u0631\u0629 \u0645\u062D\u0641\u0648\u0638\u0629 \u0648\u0627\u062D\u062F\u0629 \u0644\u0627\u062D\u062A\u0633\u0627\u0628 \u0627\u0644\u0623\u0633\u0628\u0648\u0639\u060C \u0645\u0646 \u0627\u0644\u0627\u062B\u0646\u064A\u0646 \u0625\u0644\u0649 \u0627\u0644\u0623\u062D\u062F (UTC).",
-      firstClick: "\u0623\u0648\u0644 \u0646\u0642\u0631\u0629",
-      clickMilestone: "\u0639\u062F\u062F \u0627\u0644\u0646\u0642\u0631\u0627\u062A: {count}",
-      consecutive: "\u0645\u062A\u062A\u0627\u0644\u064A\u0629: {duration}",
+      firstClick: "\u0627\u062D\u0641\u0638 \u0646\u0642\u0631\u062A\u0643 \u0627\u0644\u0623\u0648\u0644\u0649.",
+      clickMilestone: "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0646\u0642\u0631\u0627\u062A {count}.",
+      consecutive: "\u0627\u0646\u0642\u0631 \u0645\u0631\u0629 \u0641\u064A \u0643\u0644 \u0641\u062A\u0631\u0629 \u0639\u0644\u0649 \u0645\u062F\u0649 {duration} \u062F\u0648\u0646 \u0627\u0646\u0642\u0637\u0627\u0639 \u0628\u062A\u0648\u0642\u064A\u062A UTC.",
+      dayClickGoal: "{count} \u0646\u0642\u0631\u0629 \u0641\u064A \u064A\u0648\u0645 \u0648\u0627\u062D\u062F \u0628\u062A\u0648\u0642\u064A\u062A UTC.",
+      weekClickGoal: "{count} \u0646\u0642\u0631\u0629 \u0641\u064A \u0623\u0633\u0628\u0648\u0639 \u0648\u0627\u062D\u062F \u0628\u062A\u0648\u0642\u064A\u062A UTC (\u0645\u0646 \u0627\u0644\u0627\u062B\u0646\u064A\u0646 \u0625\u0644\u0649 \u0627\u0644\u0623\u062D\u062F).",
+      monthClickGoal: "{count} \u0646\u0642\u0631\u0629 \u0641\u064A \u0634\u0647\u0631 \u062A\u0642\u0648\u064A\u0645\u064A \u0648\u0627\u062D\u062F \u0628\u062A\u0648\u0642\u064A\u062A UTC.",
+      distinctHoursGoal: "\u0627\u0646\u0642\u0631 \u0641\u064A {count} \u0633\u0627\u0639\u0627\u062A \u0645\u062E\u062A\u0644\u0641\u0629 \u0645\u0646 \u0627\u0644\u064A\u0648\u0645 \u0646\u0641\u0633\u0647 \u0628\u062A\u0648\u0642\u064A\u062A UTC.",
+      distinctDaysGoal: "\u0627\u0646\u0642\u0631 \u0641\u064A {count} \u0623\u064A\u0627\u0645 \u0645\u062E\u062A\u0644\u0641\u0629 \u0628\u062A\u0648\u0642\u064A\u062A UTC. \u064A\u0645\u0643\u0646 \u0623\u0646 \u062A\u0643\u0648\u0646 \u063A\u064A\u0631 \u0645\u062A\u062A\u0627\u0644\u064A\u0629.",
+      distinctMonthsGoal: "\u0627\u0646\u0642\u0631 \u0641\u064A {count} \u0623\u0634\u0647\u0631 \u062A\u0642\u0648\u064A\u0645\u064A\u0629 \u0645\u062E\u062A\u0644\u0641\u0629 \u0628\u062A\u0648\u0642\u064A\u062A UTC. \u064A\u0645\u0643\u0646 \u0623\u0646 \u062A\u0643\u0648\u0646 \u063A\u064A\u0631 \u0645\u062A\u062A\u0627\u0644\u064A\u0629.",
+      otherAchievementsGoal: "\u062D\u0642\u0642 {count} \u0625\u0646\u062C\u0627\u0632\u0627\u062A \u0623\u062E\u0631\u0649.",
       earned: "\u062A\u0645 \u062A\u062D\u0642\u064A\u0642\u0647",
       locked: "\u0645\u0642\u0641\u0644",
       allAchievements: "\u0627\u0644\u0643\u0644",
@@ -3101,11 +3130,11 @@
       feedbackUnconfirmed: "\u063A\u064A\u0631 \u0645\u0624\u0643\u062F\u0629",
       feedbackUnsaved: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638",
       feedbackCooldown: "\u0641\u062A\u0631\u0629 \u0627\u0646\u062A\u0638\u0627\u0631",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u0645\u062D\u0627\u0643\u0627\u0629",
-      feedbackAwaitingHint: "\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u062D\u0641\u0638 \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average} ms",
-      feedbackSavedHint: "\u062A\u0645 \u0627\u0644\u062D\u0641\u0638 \xB7 {time} ms \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average} ms",
-      feedbackSimulatedHint: "\u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0627\u0629 \xB7 {time} ms \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 \u0645\u062D\u0627\u0643\u0627\u0629",
+      feedbackAwaitingHint: "\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u062D\u0641\u0638 \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average}",
+      feedbackSavedHint: "\u062A\u0645 \u0627\u0644\u062D\u0641\u0638 \xB7 {time} \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average}",
+      feedbackSimulatedHint: "\u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0627\u0629 \xB7 {time} \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average}",
       copyChanged: "\u062A\u063A\u064A\u0651\u0631\u062A \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629. \u0627\u0646\u0633\u062E \u0645\u062C\u062F\u062F\u064B\u0627 \u0644\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0646\u0635 \u0627\u0644\u0645\u062D\u062F\u0651\u062B.",
       lastClick: "\u0622\u062E\u0631 \u0646\u0642\u0631\u0629: {time}",
       timezone: "\u064A\u064F\u0639\u0631\u0636 \u0628\u062A\u0648\u0642\u064A\u062A\u0643 \u0627\u0644\u0645\u062D\u0644\u064A",
@@ -3132,6 +3161,11 @@
       offline: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644",
       backOnline: "\u0627\u0644\u0639\u0648\u062F\u0629 \u0644\u0644\u0627\u062A\u0635\u0627\u0644",
       signOut: "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C",
+      homeGreeting: "\u0627\u0646\u0642\u0631 \u0644\u0644\u0639\u0628 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644\u060C \u0623\u0648 \u0633\u062C\u0651\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0644\u062D\u0641\u0638 \u0646\u0642\u0631\u0627\u062A\u0643 \u0641\u064A \u062D\u0633\u0627\u0628\u0643.",
+      signIn: "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644",
+      createAccount: "\u0625\u0646\u0634\u0627\u0621 \u062D\u0633\u0627\u0628",
+      loadingCounter: "\u062C\u0627\u0631\u064D \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F\u2026",
+      tryAgain: "\u062D\u0627\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627",
       admin: "\u0627\u0644\u0625\u062F\u0627\u0631\u0629",
       options: "\u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A",
       sound: "\u0627\u0644\u0645\u0624\u062B\u0631\u0627\u062A \u0627\u0644\u0635\u0648\u062A\u064A\u0629",
@@ -3139,10 +3173,9 @@
       soundOff: "\u0627\u0644\u0635\u0648\u062A \u0645\u062A\u0648\u0642\u0641 \xB7 \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0645\u0624\u062B\u0631\u0627\u062A \u0627\u0644\u0635\u0648\u062A\u064A\u0629",
       motion: "\u062A\u0641\u0639\u064A\u0644 \u062A\u0623\u062B\u064A\u0631\u0627\u062A \u0627\u0644\u062D\u0631\u0643\u0629",
       motionHint: "\u062A\u0642\u0644\u064A\u0644 \u0627\u0644\u062D\u0631\u0643\u0629 \u0645\u0641\u0639\u0651\u0644. \u062A\u0641\u0639\u064A\u0644 \u062A\u0623\u062B\u064A\u0631\u0627\u062A \u0627\u0644\u062D\u0631\u0643\u0629.",
-      reload: "\u0625\u0639\u0627\u062F\u0629 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F",
       controls: "\u0627\u0636\u063A\u0637 \u0628\u0627\u0644\u0641\u0623\u0631\u0629 \u0623\u0648 \u0628\u0627\u0644\u0644\u0645\u0633\u060C \u062B\u0645 \u0623\u0641\u0644\u062A \u0641\u0648\u0642 \u0627\u0644\u0632\u0631 \u0623\u0648 \u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u0647. \u064A\u064F\u062D\u0633\u0628 \u0643\u0644 \u0625\u0635\u0628\u0639 \u0639\u0644\u0649 \u062D\u062F\u0629. \u0639\u0646\u062F\u0645\u0627 \u064A\u0643\u0648\u0646 \u0627\u0644\u0632\u0631 \u0645\u0648\u0636\u0639 \u0627\u0644\u062A\u0631\u0643\u064A\u0632\u060C \u0623\u0641\u0644\u062A \u0645\u0641\u062A\u0627\u062D \u0627\u0644\u0645\u0633\u0627\u0641\u0629 \u0623\u0648 Enter \u0644\u0625\u0636\u0627\u0641\u0629 \u0646\u0642\u0631\u0629 \u0648\u0627\u062D\u062F\u0629. \u0644\u0627 \u064A\u0636\u064A\u0641 \u0627\u0644\u0636\u063A\u0637 \u0627\u0644\u0645\u0637\u0648\u0651\u0644 \u0646\u0642\u0631\u0627\u062A.",
-      loadError: "\u062A\u0639\u0630\u0651\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F. \u062D\u0627\u0648\u0644 \u0625\u0639\u0627\u062F\u0629 \u062A\u062D\u0645\u064A\u0644\u0647.",
-      unconfirmedClick: "\u062A\u0639\u0630\u0651\u0631 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0646\u0642\u0631\u0629. \u0623\u0639\u062F \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F \u0644\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u062D\u0641\u0638\u0647\u0627.",
+      loadError: "\u062A\u0639\u0630\u0651\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0639\u062F\u0627\u062F. \u062D\u0627\u0648\u0644 \u062A\u062D\u062F\u064A\u062B\u0647.",
+      unconfirmedClick: "\u062A\u0639\u0630\u0651\u0631 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0646\u0642\u0631\u0629. \u062D\u062F\u0651\u062B \u0627\u0644\u0639\u062F\u0627\u062F \u0644\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u062D\u0641\u0638\u0647\u0627.",
       unsavedClick: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638 \u0627\u0644\u0646\u0642\u0631\u0629. \u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u062A\u0635\u0627\u0644\u0643 \u0648\u062D\u0627\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627.",
       localLoadError: "\u062A\u0639\u0630\u0651\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u062D\u0641\u0638 \u0627\u0644\u0645\u062D\u0644\u064A. \u0627\u0641\u062A\u062D \u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A \u0644\u0627\u0633\u062A\u064A\u0631\u0627\u062F \u0646\u0633\u062E\u0629 \u0623\u0648 \u0628\u062F\u0621 \u062D\u0641\u0638 \u062C\u062F\u064A\u062F.",
       localClickError: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638 \u0627\u0644\u0646\u0642\u0631\u0629 \u0645\u062D\u0644\u064A\u064B\u0627. \u0642\u062F \u062A\u0643\u0648\u0646 \u0645\u0633\u0627\u062D\u0629 \u0627\u0644\u0645\u062A\u0635\u0641\u062D \u0645\u0645\u062A\u0644\u0626\u0629 \u0623\u0648 \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629.",
@@ -3175,9 +3208,16 @@
       achievements: "\u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901",
       offlineAchievements: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901",
       weekRule: "\u0938\u094B\u092E\u0935\u093E\u0930 \u0938\u0947 \u0930\u0935\u093F\u0935\u093E\u0930 (UTC) \u0915\u0947 \u092C\u0940\u091A \u090F\u0915 \u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \u0915\u094D\u0932\u093F\u0915 \u0909\u0938 \u0938\u092A\u094D\u0924\u093E\u0939 \u0915\u0947 \u0932\u093F\u090F \u0915\u093E\u092B\u093C\u0940 \u0939\u0948\u0964",
-      firstClick: "\u092A\u0939\u0932\u093E \u0915\u094D\u0932\u093F\u0915",
-      clickMilestone: "{count} \u0915\u094D\u0932\u093F\u0915",
-      consecutive: "\u0932\u0917\u093E\u0924\u093E\u0930 {duration}",
+      firstClick: "\u0905\u092A\u0928\u093E \u092A\u0939\u0932\u093E \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u0947\u0902\u0964",
+      clickMilestone: "\u0915\u0941\u0932 {count} \u0915\u094D\u0932\u093F\u0915\u0964",
+      consecutive: "\u0932\u0917\u093E\u0924\u093E\u0930 {duration} \u0924\u0915 \u0939\u0930 \u0905\u0935\u0927\u093F \u092E\u0947\u0902 \u0915\u092E \u0938\u0947 \u0915\u092E \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902 (UTC)\u0964",
+      dayClickGoal: "\u090F\u0915 \u0939\u0940 UTC \u0926\u093F\u0928 \u092E\u0947\u0902 {count} \u0915\u094D\u0932\u093F\u0915\u0964",
+      weekClickGoal: "\u090F\u0915 \u0939\u0940 UTC \u0939\u092B\u093C\u094D\u0924\u0947 \u092E\u0947\u0902 {count} \u0915\u094D\u0932\u093F\u0915 (\u0938\u094B\u092E\u0935\u093E\u0930 \u0938\u0947 \u0930\u0935\u093F\u0935\u093E\u0930)\u0964",
+      monthClickGoal: "UTC \u0915\u0947 \u0939\u093F\u0938\u093E\u092C \u0938\u0947 \u090F\u0915 \u0939\u0940 \u0915\u0948\u0932\u0947\u0902\u0921\u0930 \u092E\u0939\u0940\u0928\u0947 \u092E\u0947\u0902 {count} \u0915\u094D\u0932\u093F\u0915\u0964",
+      distinctHoursGoal: "\u090F\u0915 \u0939\u0940 UTC \u0926\u093F\u0928 \u092E\u0947\u0902 {count} \u0905\u0932\u0917-\u0905\u0932\u0917 \u0918\u0902\u091F\u094B\u0902 \u092E\u0947\u0902 \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902\u0964",
+      distinctDaysGoal: "{count} \u0905\u0932\u0917-\u0905\u0932\u0917 UTC \u0926\u093F\u0928\u094B\u0902 \u092E\u0947\u0902 \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902\u0964 \u092C\u0940\u091A \u092E\u0947\u0902 \u0905\u0902\u0924\u0930 \u0939\u094B \u0938\u0915\u0924\u093E \u0939\u0948\u0964",
+      distinctMonthsGoal: "UTC \u0915\u0947 \u0939\u093F\u0938\u093E\u092C \u0938\u0947 {count} \u0905\u0932\u0917-\u0905\u0932\u0917 \u0915\u0948\u0932\u0947\u0902\u0921\u0930 \u092E\u0939\u0940\u0928\u094B\u0902 \u092E\u0947\u0902 \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902\u0964 \u092C\u0940\u091A \u092E\u0947\u0902 \u0905\u0902\u0924\u0930 \u0939\u094B \u0938\u0915\u0924\u093E \u0939\u0948\u0964",
+      otherAchievementsGoal: "{count} \u0905\u0928\u094D\u092F \u0909\u092A\u0932\u092C\u094D\u0927\u093F\u092F\u093E\u0901 \u0939\u093E\u0938\u093F\u0932 \u0915\u0930\u0947\u0902\u0964",
       earned: "\u092A\u094D\u0930\u093E\u092A\u094D\u0924",
       locked: "\u0932\u0949\u0915 \u0939\u0948",
       allAchievements: "\u0938\u092D\u0940",
@@ -3205,11 +3245,11 @@
       feedbackUnconfirmed: "\u0905\u092A\u0941\u0937\u094D\u091F",
       feedbackUnsaved: "\u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E",
       feedbackCooldown: "\u0935\u093F\u0930\u093E\u092E",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921",
-      feedbackAwaitingHint: "\u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average} ms",
-      feedbackSavedHint: "\u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \xB7 {time} ms \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average} ms",
-      feedbackSimulatedHint: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \xB7 {time} ms \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 \u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921",
+      feedbackAwaitingHint: "\u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average}",
+      feedbackSavedHint: "\u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \xB7 {time} \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average}",
+      feedbackSimulatedHint: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u094D\u0930\u0924\u093F\u0915\u094D\u0930\u093F\u092F\u093E \xB7 {time} \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average}",
       copyChanged: "\u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u092C\u0926\u0932 \u0917\u092F\u093E \u0939\u0948\u0964 \u0928\u092F\u093E \u091F\u0947\u0915\u094D\u0938\u094D\u091F \u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092B\u093F\u0930 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
       lastClick: "\u092A\u093F\u091B\u0932\u093E \u0915\u094D\u0932\u093F\u0915: {time}",
       timezone: "\u0906\u092A\u0915\u0947 \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u092E\u092F \u0915\u094D\u0937\u0947\u0924\u094D\u0930 \u092E\u0947\u0902 \u0926\u093F\u0916\u093E\u092F\u093E \u0917\u092F\u093E \u0939\u0948",
@@ -3229,13 +3269,18 @@
       pending: "+{count} \u0932\u0902\u092C\u093F\u0924",
       cooldown: "\u0935\u093F\u0930\u093E\u092E \u091C\u093E\u0930\u0940",
       seconds: "{count} \u0938\u0947\u0915\u0902\u0921",
-      streaks: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u093E \u0915\u094D\u0930\u092E",
-      streakLabel: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0915\u094D\u0932\u093F\u0915 \u0915\u0947 \u0915\u094D\u0930\u092E",
+      streaks: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u0947 \u0915\u094D\u0930\u092E",
+      streakLabel: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u0947 \u0915\u094D\u0930\u092E",
       networkNotice: "\u0906\u092A \u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0939\u0948\u0902\u0964 \u0915\u094D\u0932\u093F\u0915 \u0930\u0941\u0915\u0947 \u0939\u0941\u090F \u0939\u0948\u0902\u0964 \u0926\u094B\u092C\u093E\u0930\u093E \u091C\u0941\u0921\u093C\u0928\u0947 \u092A\u0930 \u0938\u0939\u0947\u091C\u0940 \u0917\u0908 \u092A\u094D\u0930\u0917\u0924\u093F \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0939\u094B\u0917\u0940\u0964",
       playingOffline: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u0947\u0932 \u091C\u093E\u0930\u0940 \u0939\u0948\u0964",
       offline: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928",
       backOnline: "\u0911\u0928\u0932\u093E\u0907\u0928 \u0932\u094C\u091F\u0947\u0902",
       signOut: "\u0938\u093E\u0907\u0928 \u0906\u0909\u091F \u0915\u0930\u0947\u0902",
+      homeGreeting: "\u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0916\u0947\u0932\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902, \u092F\u093E \u0905\u092A\u0928\u0947 \u0916\u093E\u0924\u0947 \u092E\u0947\u0902 \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0938\u093E\u0907\u0928 \u0907\u0928 \u0915\u0930\u0947\u0902\u0964",
+      signIn: "\u0938\u093E\u0907\u0928 \u0907\u0928 \u0915\u0930\u0947\u0902",
+      createAccount: "\u0916\u093E\u0924\u093E \u092C\u0928\u093E\u090F\u0901",
+      loadingCounter: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0932\u094B\u0921 \u0939\u094B \u0930\u0939\u093E \u0939\u0948\u2026",
+      tryAgain: "\u092B\u093F\u0930 \u0915\u094B\u0936\u093F\u0936 \u0915\u0930\u0947\u0902",
       admin: "\u0935\u094D\u092F\u0935\u0938\u094D\u0925\u093E\u092A\u0928",
       options: "\u0935\u093F\u0915\u0932\u094D\u092A",
       sound: "\u0927\u094D\u0935\u0928\u093F \u092A\u094D\u0930\u092D\u093E\u0935",
@@ -3243,10 +3288,9 @@
       soundOff: "\u0927\u094D\u0935\u0928\u093F \u092C\u0902\u0926 \xB7 \u0927\u094D\u0935\u0928\u093F \u092A\u094D\u0930\u092D\u093E\u0935 \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902",
       motion: "\u092E\u094B\u0936\u0928 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902",
       motionHint: "\u0915\u092E \u0917\u0924\u093F \u091A\u093E\u0932\u0942 \u0939\u0948\u0964 \u092E\u094B\u0936\u0928 \u0907\u092B\u093C\u0947\u0915\u094D\u091F \u091A\u093E\u0932\u0942 \u0915\u0930\u0947\u0902\u0964",
-      reload: "\u0915\u093E\u0909\u0902\u091F\u0930 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902",
       controls: "\u092E\u093E\u0909\u0938 \u092F\u093E \u0938\u094D\u092A\u0930\u094D\u0936 \u0938\u0947 \u0926\u092C\u093E\u090F\u0901, \u092B\u093F\u0930 \u092C\u091F\u0928 \u092A\u0930 \u092F\u093E \u0909\u0938\u0915\u0947 \u092A\u093E\u0938 \u091B\u094B\u0921\u093C\u0947\u0902\u0964 \u0939\u0930 \u0909\u0901\u0917\u0932\u0940 \u0905\u0932\u0917 \u0917\u093F\u0928\u0940 \u091C\u093E\u0924\u0940 \u0939\u0948\u0964 \u092C\u091F\u0928 \u092A\u0930 \u092B\u093C\u094B\u0915\u0938 \u0939\u094B\u0928\u0947 \u092A\u0930 \u0938\u094D\u092A\u0947\u0938 \u092F\u093E \u090F\u0902\u091F\u0930 \u091B\u094B\u0921\u093C\u0928\u0947 \u0938\u0947 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u091C\u0941\u0921\u093C\u0924\u093E \u0939\u0948\u0964 \u0926\u092C\u093E\u090F \u0930\u0916\u0928\u0947 \u0938\u0947 \u0905\u0924\u093F\u0930\u093F\u0915\u094D\u0924 \u0915\u094D\u0932\u093F\u0915 \u0928\u0939\u0940\u0902 \u091C\u0941\u0921\u093C\u0924\u0947\u0964",
-      loadError: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0932\u094B\u0921 \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902\u0964",
-      unconfirmedClick: "\u0915\u094D\u0932\u093F\u0915 \u0915\u0940 \u092A\u0941\u0937\u094D\u091F\u093F \u0928\u0939\u0940\u0902 \u0939\u0941\u0908\u0964 \u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \u092F\u093E \u0928\u0939\u0940\u0902, \u091C\u093E\u0901\u091A\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u093E\u0909\u0902\u091F\u0930 \u092B\u093F\u0930 \u0938\u0947 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902\u0964",
+      loadError: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0932\u094B\u0921 \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964 \u0909\u0938\u0947 \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0915\u0930\u0915\u0947 \u0926\u0947\u0916\u0947\u0902\u0964",
+      unconfirmedClick: "\u0915\u094D\u0932\u093F\u0915 \u0915\u0940 \u092A\u0941\u0937\u094D\u091F\u093F \u0928\u0939\u0940\u0902 \u0939\u0941\u0908\u0964 \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \u092F\u093E \u0928\u0939\u0940\u0902, \u092F\u0939 \u0926\u0947\u0916\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0915\u093E\u0909\u0902\u091F\u0930 \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0915\u0930\u0947\u0902\u0964",
       unsavedClick: "\u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E\u0964 \u0915\u0928\u0947\u0915\u094D\u0936\u0928 \u091C\u093E\u0901\u091A\u0947\u0902 \u0914\u0930 \u092B\u093F\u0930 \u0915\u094B\u0936\u093F\u0936 \u0915\u0930\u0947\u0902\u0964",
       localLoadError: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0932\u094B\u0921 \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964 \u0935\u093F\u0915\u0932\u094D\u092A \u0916\u094B\u0932\u0915\u0930 \u092A\u094D\u0930\u0924\u093F \u0906\u092F\u093E\u0924 \u0915\u0930\u0947\u0902 \u092F\u093E \u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0938\u0947\u0935 \u0926\u094B\u092C\u093E\u0930\u093E \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902\u0964",
       localClickError: "\u0938\u094D\u0925\u093E\u0928\u0940\u092F \u0915\u094D\u0932\u093F\u0915 \u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E\u0964 \u092C\u094D\u0930\u093E\u0909\u091C\u093C\u0930 \u0938\u094D\u091F\u094B\u0930\u0947\u091C \u092D\u0930\u093E \u092F\u093E \u0905\u0928\u0941\u092A\u0932\u092C\u094D\u0927 \u0939\u094B \u0938\u0915\u0924\u093E \u0939\u0948\u0964",
@@ -3264,7 +3308,7 @@
       copied: "\u0906\u0901\u0915\u0921\u093C\u0947 \u0915\u0949\u092A\u0940 \u0939\u094B \u0917\u090F\u0964",
       clipboardUnavailable: "\u0915\u094D\u0932\u093F\u092A\u092C\u094B\u0930\u094D\u0921 \u0909\u092A\u0932\u092C\u094D\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948\u0964 \u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u0915\u093E \u091F\u0947\u0915\u094D\u0938\u094D\u091F \u091A\u0941\u0928\u0915\u0930 \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964",
       statsClicks: "{label}: {count}",
-      statsStreaks: "UTC \u0915\u094D\u0930\u092E: {day} \xB7 {month} \xB7 {year}",
+      statsStreaks: "\u0932\u0917\u093E\u0924\u093E\u0930 \u0916\u0947\u0932\u0928\u0947 \u0915\u0947 \u0915\u094D\u0930\u092E (UTC): {day} \xB7 {month} \xB7 {year}",
       playLink: "\u0916\u0947\u0932\u0947\u0902: {url}"
     },
     id: {
@@ -3279,9 +3323,16 @@
       achievements: "Pencapaian",
       offlineAchievements: "Pencapaian luring",
       weekRule: "Satu klik tersimpan sudah cukup untuk satu minggu, Senin sampai Minggu (UTC).",
-      firstClick: "Klik pertama",
-      clickMilestone: "{count} klik",
-      consecutive: "{duration} berturut-turut",
+      firstClick: "Simpan klik pertama Anda.",
+      clickMilestone: "Total {count} klik.",
+      consecutive: "{duration} berturut-turut dengan satu klik pada tiap periode (UTC).",
+      dayClickGoal: "{count} klik dalam satu hari UTC.",
+      weekClickGoal: "{count} klik dalam satu minggu UTC (Senin\u2013Minggu).",
+      monthClickGoal: "{count} klik dalam satu bulan kalender UTC.",
+      distinctHoursGoal: "Klik pada {count} jam berbeda dalam satu hari UTC.",
+      distinctDaysGoal: "Klik pada {count} hari UTC yang berbeda. Hari tersebut boleh berjeda.",
+      distinctMonthsGoal: "Klik pada {count} bulan kalender UTC yang berbeda. Bulan tersebut boleh berjeda.",
+      otherAchievementsGoal: "Raih {count} pencapaian lain.",
       earned: "Diraih",
       locked: "Terkunci",
       allAchievements: "Semua",
@@ -3309,11 +3360,11 @@
       feedbackUnconfirmed: "belum terkonfirmasi",
       feedbackUnsaved: "tidak tersimpan",
       feedbackCooldown: "jeda",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 simulasi",
-      feedbackAwaitingHint: "Menunggu penyimpanan \xB7 rata-rata terkini {average} ms",
-      feedbackSavedHint: "Tersimpan \xB7 {time} ms \xB7 rata-rata terkini {average} ms",
-      feedbackSimulatedHint: "Respons simulasi \xB7 {time} ms \xB7 rata-rata terkini {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 simulasi",
+      feedbackAwaitingHint: "Menunggu penyimpanan \xB7 rata-rata terkini {average}",
+      feedbackSavedHint: "Tersimpan \xB7 {time} \xB7 rata-rata terkini {average}",
+      feedbackSimulatedHint: "Respons simulasi \xB7 {time} \xB7 rata-rata terkini {average}",
       copyChanged: "Pratinjau berubah. Salin lagi untuk membagikan teks terbaru.",
       lastClick: "Klik terakhir: {time}",
       timezone: "Ditampilkan dalam zona waktu lokal Anda",
@@ -3340,6 +3391,11 @@
       offline: "Luring",
       backOnline: "Kembali daring",
       signOut: "Keluar",
+      homeGreeting: "Klik untuk bermain luring, atau masuk untuk menyimpan klik ke akun Anda.",
+      signIn: "Masuk",
+      createAccount: "Buat akun",
+      loadingCounter: "Memuat penghitung\u2026",
+      tryAgain: "Coba lagi",
       admin: "Admin",
       options: "Opsi",
       sound: "Efek suara",
@@ -3347,10 +3403,9 @@
       soundOff: "Suara nonaktif \xB7 Aktifkan efek suara",
       motion: "Aktifkan efek gerakan",
       motionHint: "Gerakan terbatas aktif. Aktifkan efek gerakan.",
-      reload: "Muat ulang penghitung",
       controls: "Tekan dengan tetikus atau sentuhan, lalu lepaskan di atas atau dekat tombol. Setiap jari dihitung terpisah. Saat tombol terfokus, lepas Spasi atau Enter untuk menambah satu klik. Menahan tidak menambah klik.",
       loadError: "Penghitung tidak dapat dimuat. Coba muat ulang.",
-      unconfirmedClick: "Klik tidak dapat dikonfirmasi. Muat ulang penghitung untuk memeriksa apakah tersimpan.",
+      unconfirmedClick: "Klik belum terkonfirmasi. Muat ulang penghitung untuk memeriksa apakah klik sudah tersimpan.",
       unsavedClick: "Klik Anda tidak tersimpan. Periksa koneksi dan coba lagi.",
       localLoadError: "Simpanan lokal tidak dapat dimuat. Buka Opsi untuk mengimpor salinan atau memulai ulang.",
       localClickError: "Klik lokal tidak tersimpan. Penyimpanan peramban mungkin penuh atau tidak tersedia.",
@@ -3383,9 +3438,16 @@
       achievements: "Conquistas",
       offlineAchievements: "Conquistas offline",
       weekRule: "Um clique salvo conta para a semana, de segunda a domingo (UTC).",
-      firstClick: "Primeiro clique",
-      clickMilestone: "{count} cliques",
-      consecutive: "{duration} seguidos",
+      firstClick: "Salve seu primeiro clique.",
+      clickMilestone: "{count} cliques no total.",
+      consecutive: "{duration} em sequ\xEAncia, com um clique por per\xEDodo (UTC).",
+      dayClickGoal: "{count} cliques em um \xFAnico dia UTC.",
+      weekClickGoal: "{count} cliques em uma \xFAnica semana UTC (de segunda a domingo).",
+      monthClickGoal: "{count} cliques em um \xFAnico m\xEAs do calend\xE1rio UTC.",
+      distinctHoursGoal: "Clique em {count} horas distintas do mesmo dia UTC.",
+      distinctDaysGoal: "Clique em {count} dias distintos em UTC. Eles podem ter intervalos.",
+      distinctMonthsGoal: "Clique em {count} meses distintos do calend\xE1rio UTC. Eles podem ter intervalos.",
+      otherAchievementsGoal: "Desbloqueie outras {count} conquistas.",
       earned: "Conquistado",
       locked: "Bloqueado",
       allAchievements: "Todas",
@@ -3413,11 +3475,11 @@
       feedbackUnconfirmed: "n\xE3o confirmado",
       feedbackUnsaved: "n\xE3o salvo",
       feedbackCooldown: "pausa",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 sim.",
-      feedbackAwaitingHint: "Aguardando salvamento \xB7 m\xE9dia recente {average} ms",
-      feedbackSavedHint: "Salvo \xB7 {time} ms \xB7 m\xE9dia recente {average} ms",
-      feedbackSimulatedHint: "Resposta simulada \xB7 {time} ms \xB7 m\xE9dia recente {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 sim.",
+      feedbackAwaitingHint: "Aguardando salvamento \xB7 m\xE9dia recente {average}",
+      feedbackSavedHint: "Salvo \xB7 {time} \xB7 m\xE9dia recente {average}",
+      feedbackSimulatedHint: "Resposta simulada \xB7 {time} \xB7 m\xE9dia recente {average}",
       copyChanged: "A pr\xE9via mudou. Copie novamente para compartilhar o texto atualizado.",
       lastClick: "\xDAltimo clique: {time}",
       timezone: "Exibido no seu fuso hor\xE1rio local",
@@ -3444,6 +3506,11 @@
       offline: "Offline",
       backOnline: "Voltar ao modo online",
       signOut: "Sair",
+      homeGreeting: "Clique para jogar offline ou entre para salvar seus cliques na conta.",
+      signIn: "Entrar",
+      createAccount: "Criar conta",
+      loadingCounter: "Carregando contador\u2026",
+      tryAgain: "Tentar novamente",
       admin: "Administra\xE7\xE3o",
       options: "Op\xE7\xF5es",
       sound: "Efeitos sonoros",
@@ -3451,10 +3518,9 @@
       soundOff: "Som desativado \xB7 Ativar efeitos sonoros",
       motion: "Ativar efeitos de movimento",
       motionHint: "Movimento reduzido ativado. Ativar efeitos de movimento.",
-      reload: "Recarregar contador",
       controls: "Pressione com o mouse ou toque e solte sobre o bot\xE3o ou perto dele. Cada dedo conta separadamente. Com o bot\xE3o em foco, solte Espa\xE7o ou Enter para adicionar um clique. Segurar n\xE3o adiciona cliques.",
-      loadError: "N\xE3o foi poss\xEDvel carregar o contador. Tente recarregar.",
-      unconfirmedClick: "N\xE3o foi poss\xEDvel confirmar seu clique. Recarregue o contador para verificar se foi salvo.",
+      loadError: "N\xE3o foi poss\xEDvel carregar o contador. Tente atualiz\xE1-lo.",
+      unconfirmedClick: "N\xE3o foi poss\xEDvel confirmar seu clique. Atualize o contador para verificar se ele foi salvo.",
       unsavedClick: "Seu clique n\xE3o foi salvo. Verifique sua conex\xE3o e tente novamente.",
       localLoadError: "N\xE3o foi poss\xEDvel carregar o save local. Abra Op\xE7\xF5es para importar uma c\xF3pia ou reiniciar.",
       localClickError: "Seu clique local n\xE3o foi salvo. O armazenamento do navegador pode estar cheio ou indispon\xEDvel.",
@@ -3487,9 +3553,16 @@
       achievements: "Succ\xE8s",
       offlineAchievements: "Succ\xE8s hors ligne",
       weekRule: "Un clic enregistr\xE9 compte pour la semaine, du lundi au dimanche (UTC).",
-      firstClick: "Premier clic",
-      clickMilestone: "Clics : {count}",
-      consecutive: "{duration} de suite",
+      firstClick: "Enregistrez votre premier clic.",
+      clickMilestone: "{count} clics au total.",
+      consecutive: "{duration} de suite avec un clic \xE0 chaque p\xE9riode (UTC).",
+      dayClickGoal: "{count} clics au cours d\u2019une m\xEAme journ\xE9e UTC.",
+      weekClickGoal: "{count} clics au cours d\u2019une m\xEAme semaine UTC (du lundi au dimanche).",
+      monthClickGoal: "{count} clics au cours d\u2019un m\xEAme mois civil UTC.",
+      distinctHoursGoal: "Cliquez \xE0 {count} heures diff\xE9rentes au cours d\u2019une m\xEAme journ\xE9e UTC.",
+      distinctDaysGoal: "Cliquez lors de {count} journ\xE9es UTC diff\xE9rentes, m\xEAme non cons\xE9cutives.",
+      distinctMonthsGoal: "Cliquez au cours de {count} mois civils UTC diff\xE9rents, m\xEAme non cons\xE9cutifs.",
+      otherAchievementsGoal: "Obtenez {count} autres succ\xE8s.",
       earned: "Obtenu",
       locked: "Verrouill\xE9",
       allAchievements: "Tous",
@@ -3517,11 +3590,11 @@
       feedbackUnconfirmed: "non confirm\xE9",
       feedbackUnsaved: "non enregistr\xE9",
       feedbackCooldown: "pause",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 simul\xE9e",
-      feedbackAwaitingHint: "En attente d\u2019enregistrement \xB7 moyenne r\xE9cente {average} ms",
-      feedbackSavedHint: "Enregistr\xE9 \xB7 {time} ms \xB7 moyenne r\xE9cente {average} ms",
-      feedbackSimulatedHint: "R\xE9ponse simul\xE9e \xB7 {time} ms \xB7 moyenne r\xE9cente {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 simul\xE9e",
+      feedbackAwaitingHint: "En attente d\u2019enregistrement \xB7 moyenne r\xE9cente {average}",
+      feedbackSavedHint: "Enregistr\xE9 \xB7 {time} \xB7 moyenne r\xE9cente {average}",
+      feedbackSimulatedHint: "R\xE9ponse simul\xE9e \xB7 {time} \xB7 moyenne r\xE9cente {average}",
       copyChanged: "L\u2019aper\xE7u a chang\xE9. Copiez \xE0 nouveau pour partager le texte actualis\xE9.",
       lastClick: "Dernier clic : {time}",
       timezone: "Affich\xE9 dans votre fuseau horaire local",
@@ -3548,6 +3621,11 @@
       offline: "Hors ligne",
       backOnline: "Revenir en ligne",
       signOut: "Se d\xE9connecter",
+      homeGreeting: "Cliquez pour jouer hors ligne ou connectez-vous pour enregistrer vos clics sur votre compte.",
+      signIn: "Se connecter",
+      createAccount: "Cr\xE9er un compte",
+      loadingCounter: "Chargement du compteur\u2026",
+      tryAgain: "R\xE9essayer",
       admin: "Administration",
       options: "Options",
       sound: "Effets sonores",
@@ -3555,10 +3633,9 @@
       soundOff: "Son d\xE9sactiv\xE9 \xB7 Activer les effets sonores",
       motion: "Activer les effets de mouvement",
       motionHint: "Les animations sont r\xE9duites. Activer les effets de mouvement.",
-      reload: "Recharger le compteur",
       controls: "Appuyez avec la souris ou le doigt, puis rel\xE2chez sur le bouton ou \xE0 proximit\xE9. Chaque doigt compte s\xE9par\xE9ment. Lorsque le bouton a le focus, rel\xE2chez Espace ou Entr\xE9e pour ajouter un clic. Maintenir le bouton enfonc\xE9 n\u2019ajoute pas de clics.",
-      loadError: "Impossible de charger le compteur. R\xE9essayez.",
-      unconfirmedClick: "Impossible de confirmer le clic. Rechargez le compteur pour v\xE9rifier son enregistrement.",
+      loadError: "Impossible de charger le compteur. Essayez de l\u2019actualiser.",
+      unconfirmedClick: "Impossible de confirmer votre clic. Actualisez le compteur pour v\xE9rifier s\u2019il a \xE9t\xE9 enregistr\xE9.",
       unsavedClick: "Votre clic n\u2019a pas \xE9t\xE9 enregistr\xE9. V\xE9rifiez votre connexion et r\xE9essayez.",
       localLoadError: "Impossible de charger la sauvegarde locale. Ouvrez Options pour importer une copie ou recommencer.",
       localClickError: "Votre clic local n\u2019a pas \xE9t\xE9 enregistr\xE9. Le stockage du navigateur est peut-\xEAtre plein ou indisponible.",
@@ -3591,9 +3668,16 @@
       achievements: "\u5B9F\u7E3E",
       offlineAchievements: "\u30AA\u30D5\u30E9\u30A4\u30F3\u306E\u5B9F\u7E3E",
       weekRule: "\u6708\u66DC\u304B\u3089\u65E5\u66DC\u307E\u3067\uFF08UTC\uFF09\u306B1\u56DE\u30AF\u30EA\u30C3\u30AF\u3092\u4FDD\u5B58\u3059\u308B\u3068\u3001\u305D\u306E\u9031\u304C\u8A18\u9332\u3055\u308C\u307E\u3059\u3002",
-      firstClick: "\u521D\u30AF\u30EA\u30C3\u30AF",
-      clickMilestone: "{count}\u30AF\u30EA\u30C3\u30AF",
-      consecutive: "{duration}\u9023\u7D9A",
+      firstClick: "\u6700\u521D\u306E\u30AF\u30EA\u30C3\u30AF\u3092\u4FDD\u5B58\u3059\u308B\u3002",
+      clickMilestone: "\u5408\u8A08 {count} \u56DE\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3002",
+      consecutive: "{duration} \u9023\u7D9A\u3067\u3001\u5404\u671F\u9593\u306B\u5C11\u306A\u304F\u3068\u3082 1 \u56DE\u30AF\u30EA\u30C3\u30AF\u3059\u308B\uFF08UTC\uFF09\u3002",
+      dayClickGoal: "UTC \u306E\u540C\u3058\u65E5\u306B {count} \u56DE\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3002",
+      weekClickGoal: "UTC \u306E\u540C\u3058\u9031\uFF08\u6708\u66DC\u304B\u3089\u65E5\u66DC\uFF09\u306B {count} \u56DE\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3002",
+      monthClickGoal: "UTC \u306E\u540C\u3058\u66A6\u6708\u306B {count} \u56DE\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3002",
+      distinctHoursGoal: "UTC \u306E\u540C\u3058\u65E5\u306E\u3046\u3061\u3001\u7570\u306A\u308B {count} \u3064\u306E\u6642\u9593\u5E2F\u3067\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3002",
+      distinctDaysGoal: "UTC \u3067\u7570\u306A\u308B {count} \u65E5\u306B\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3002\u9023\u7D9A\u3057\u3066\u3044\u306A\u304F\u3066\u3082\u53EF\u3002",
+      distinctMonthsGoal: "UTC \u3067\u7570\u306A\u308B {count} \u3064\u306E\u66A6\u6708\u306B\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3002\u9023\u7D9A\u3057\u3066\u3044\u306A\u304F\u3066\u3082\u53EF\u3002",
+      otherAchievementsGoal: "\u307B\u304B\u306E\u5B9F\u7E3E\u3092 {count} \u500B\u7372\u5F97\u3059\u308B\u3002",
       earned: "\u7372\u5F97\u6E08\u307F",
       locked: "\u672A\u7372\u5F97",
       allAchievements: "\u3059\u3079\u3066",
@@ -3621,11 +3705,11 @@
       feedbackUnconfirmed: "\u672A\u78BA\u8A8D",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
       feedbackCooldown: "\u5F85\u6A5F\u4E2D",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u6A21\u64EC",
-      feedbackAwaitingHint: "\u4FDD\u5B58\u5F85\u3061 \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average} ms",
-      feedbackSavedHint: "\u4FDD\u5B58\u6E08\u307F \xB7 {time} ms \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average} ms",
-      feedbackSimulatedHint: "\u6A21\u64EC\u5FDC\u7B54 \xB7 {time} ms \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 \u6A21\u64EC",
+      feedbackAwaitingHint: "\u4FDD\u5B58\u5F85\u3061 \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average}",
+      feedbackSavedHint: "\u4FDD\u5B58\u6E08\u307F \xB7 {time} \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average}",
+      feedbackSimulatedHint: "\u6A21\u64EC\u5FDC\u7B54 \xB7 {time} \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average}",
       copyChanged: "\u30D7\u30EC\u30D3\u30E5\u30FC\u304C\u5909\u308F\u308A\u307E\u3057\u305F\u3002\u66F4\u65B0\u3055\u308C\u305F\u30C6\u30AD\u30B9\u30C8\u3092\u5171\u6709\u3059\u308B\u306B\u306F\u3001\u3082\u3046\u4E00\u5EA6\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       lastClick: "\u6700\u5F8C\u306E\u30AF\u30EA\u30C3\u30AF\uFF1A{time}",
       timezone: "\u304A\u4F4F\u307E\u3044\u306E\u30BF\u30A4\u30E0\u30BE\u30FC\u30F3\u3067\u8868\u793A",
@@ -3652,6 +3736,11 @@
       offline: "\u30AA\u30D5\u30E9\u30A4\u30F3",
       backOnline: "\u30AA\u30F3\u30E9\u30A4\u30F3\u306B\u623B\u308B",
       signOut: "\u30ED\u30B0\u30A2\u30A6\u30C8",
+      homeGreeting: "\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3068\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u904A\u3079\u307E\u3059\u3002\u30A2\u30AB\u30A6\u30F3\u30C8\u306B\u30AF\u30EA\u30C3\u30AF\u3092\u4FDD\u5B58\u3059\u308B\u306B\u306F\u30ED\u30B0\u30A4\u30F3\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      signIn: "\u30ED\u30B0\u30A4\u30F3",
+      createAccount: "\u30A2\u30AB\u30A6\u30F3\u30C8\u3092\u4F5C\u6210",
+      loadingCounter: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026",
+      tryAgain: "\u518D\u8A66\u884C",
       admin: "\u7BA1\u7406",
       options: "\u8A2D\u5B9A",
       sound: "\u52B9\u679C\u97F3",
@@ -3659,10 +3748,9 @@
       soundOff: "\u52B9\u679C\u97F3\u30AA\u30D5 \xB7 \u52B9\u679C\u97F3\u3092\u30AA\u30F3\u306B\u3059\u308B",
       motion: "\u52D5\u304D\u306E\u52B9\u679C\u3092\u6709\u52B9\u306B\u3059\u308B",
       motionHint: "\u52D5\u304D\u3092\u6291\u3048\u308B\u8A2D\u5B9A\u3067\u3059\u3002\u52D5\u304D\u306E\u52B9\u679C\u3092\u6709\u52B9\u306B\u3057\u307E\u3059\u3002",
-      reload: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u518D\u8AAD\u307F\u8FBC\u307F",
       controls: "\u30DE\u30A6\u30B9\u3084\u30BF\u30C3\u30C1\u3067\u62BC\u3057\u3001\u30DC\u30BF\u30F3\u306E\u4E0A\u304B\u8FD1\u304F\u3067\u96E2\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u6307\u3054\u3068\u306B\u6570\u3048\u307E\u3059\u3002\u30DC\u30BF\u30F3\u306B\u30D5\u30A9\u30FC\u30AB\u30B9\u304C\u3042\u308B\u3068\u304D\u306F\u3001\u30B9\u30DA\u30FC\u30B9\u30AD\u30FC\u307E\u305F\u306F Enter \u30AD\u30FC\u3092\u96E2\u3059\u30681\u30AF\u30EA\u30C3\u30AF\u52A0\u7B97\u3055\u308C\u307E\u3059\u3002\u9577\u62BC\u3057\u3057\u3066\u3082\u5897\u3048\u307E\u305B\u3093\u3002",
-      loadError: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      unconfirmedClick: "\u30AF\u30EA\u30C3\u30AF\u3092\u78BA\u8A8D\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u4FDD\u5B58\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      loadError: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u66F4\u65B0\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      unconfirmedClick: "\u30AF\u30EA\u30C3\u30AF\u3092\u78BA\u8A8D\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u66F4\u65B0\u3057\u3066\u3001\u30AF\u30EA\u30C3\u30AF\u304C\u4FDD\u5B58\u3055\u308C\u305F\u304B\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       unsavedClick: "\u30AF\u30EA\u30C3\u30AF\u306F\u4FDD\u5B58\u3055\u308C\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u63A5\u7D9A\u3092\u78BA\u8A8D\u3057\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       localLoadError: "\u30ED\u30FC\u30AB\u30EB\u4FDD\u5B58\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u8A2D\u5B9A\u3067\u30B3\u30D4\u30FC\u3092\u30A4\u30F3\u30DD\u30FC\u30C8\u3059\u308B\u304B\u3001\u4FDD\u5B58\u3092\u30EA\u30BB\u30C3\u30C8\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       localClickError: "\u30ED\u30FC\u30AB\u30EB\u30AF\u30EA\u30C3\u30AF\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u30D6\u30E9\u30A6\u30B6\u30FC\u306E\u4FDD\u5B58\u9818\u57DF\u304C\u3044\u3063\u3071\u3044\u304B\u3001\u5229\u7528\u3067\u304D\u306A\u3044\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\u3002",
@@ -3695,9 +3783,16 @@
       achievements: "\u0414\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F",
       offlineAchievements: "\u041E\u0444\u043B\u0430\u0439\u043D-\u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F",
       weekRule: "\u041E\u0434\u0438\u043D \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043A\u043B\u0438\u043A \u0437\u0430\u0441\u0447\u0438\u0442\u044B\u0432\u0430\u0435\u0442 \u043D\u0435\u0434\u0435\u043B\u044E \u0441 \u043F\u043E\u043D\u0435\u0434\u0435\u043B\u044C\u043D\u0438\u043A\u0430 \u043F\u043E \u0432\u043E\u0441\u043A\u0440\u0435\u0441\u0435\u043D\u044C\u0435 (UTC).",
-      firstClick: "\u041F\u0435\u0440\u0432\u044B\u0439 \u043A\u043B\u0438\u043A",
-      clickMilestone: "\u041A\u043B\u0438\u043A\u0438: {count}",
-      consecutive: "{duration} \u043F\u043E\u0434\u0440\u044F\u0434",
+      firstClick: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0441\u0432\u043E\u0439 \u043F\u0435\u0440\u0432\u044B\u0439 \u043A\u043B\u0438\u043A.",
+      clickMilestone: "\u0412\u0441\u0435\u0433\u043E {count} \u043A\u043B\u0438\u043A\u043E\u0432.",
+      consecutive: "{duration} \u043F\u043E\u0434\u0440\u044F\u0434, \u0445\u043E\u0442\u044F \u0431\u044B \u043F\u043E \u043A\u043B\u0438\u043A\u0443 \u0437\u0430 \u043A\u0430\u0436\u0434\u044B\u0439 \u043F\u0435\u0440\u0438\u043E\u0434 \u043F\u043E UTC.",
+      dayClickGoal: "{count} \u043A\u043B\u0438\u043A\u043E\u0432 \u0437\u0430 \u043E\u0434\u043D\u0438 \u0441\u0443\u0442\u043A\u0438 \u043F\u043E UTC.",
+      weekClickGoal: "{count} \u043A\u043B\u0438\u043A\u043E\u0432 \u0437\u0430 \u043E\u0434\u043D\u0443 \u043D\u0435\u0434\u0435\u043B\u044E \u043F\u043E UTC (\u0441 \u043F\u043E\u043D\u0435\u0434\u0435\u043B\u044C\u043D\u0438\u043A\u0430 \u043F\u043E \u0432\u043E\u0441\u043A\u0440\u0435\u0441\u0435\u043D\u044C\u0435).",
+      monthClickGoal: "{count} \u043A\u043B\u0438\u043A\u043E\u0432 \u0437\u0430 \u043E\u0434\u0438\u043D \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u043D\u044B\u0439 \u043C\u0435\u0441\u044F\u0446 \u043F\u043E UTC.",
+      distinctHoursGoal: "\u0421\u0434\u0435\u043B\u0430\u0439\u0442\u0435 \u043F\u043E \u043A\u043B\u0438\u043A\u0443 \u0432 {count} \u0440\u0430\u0437\u043D\u044B\u0445 \u0447\u0430\u0441\u0430\u0445 \u043E\u0434\u043D\u0438\u0445 \u0441\u0443\u0442\u043E\u043A \u043F\u043E UTC.",
+      distinctDaysGoal: "\u0421\u0434\u0435\u043B\u0430\u0439\u0442\u0435 \u043F\u043E \u043A\u043B\u0438\u043A\u0443 \u0432 {count} \u0440\u0430\u0437\u043D\u044B\u0445 \u0434\u043D\u044F\u0445 \u043F\u043E UTC. \u0414\u043D\u0438 \u043C\u043E\u0433\u0443\u0442 \u0438\u0434\u0442\u0438 \u043D\u0435 \u043F\u043E\u0434\u0440\u044F\u0434.",
+      distinctMonthsGoal: "\u0421\u0434\u0435\u043B\u0430\u0439\u0442\u0435 \u043F\u043E \u043A\u043B\u0438\u043A\u0443 \u0432 {count} \u0440\u0430\u0437\u043D\u044B\u0445 \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u043D\u044B\u0445 \u043C\u0435\u0441\u044F\u0446\u0430\u0445 \u043F\u043E UTC. \u041C\u0435\u0441\u044F\u0446\u044B \u043C\u043E\u0433\u0443\u0442 \u0438\u0434\u0442\u0438 \u043D\u0435 \u043F\u043E\u0434\u0440\u044F\u0434.",
+      otherAchievementsGoal: "\u041F\u043E\u043B\u0443\u0447\u0438\u0442\u0435 {count} \u0434\u0440\u0443\u0433\u0438\u0445 \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0439.",
       earned: "\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u043E",
       locked: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E",
       allAchievements: "\u0412\u0441\u0435",
@@ -3725,11 +3820,11 @@
       feedbackUnconfirmed: "\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
       feedbackUnsaved: "\u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E",
       feedbackCooldown: "\u043F\u0430\u0443\u0437\u0430",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 \u0441\u0438\u043C.",
-      feedbackAwaitingHint: "\u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average} \u043C\u0441",
-      feedbackSavedHint: "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \xB7 {time} \u043C\u0441 \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average} \u043C\u0441",
-      feedbackSimulatedHint: "\u0421\u0438\u043C\u0443\u043B\u044F\u0446\u0438\u044F \u043E\u0442\u0432\u0435\u0442\u0430 \xB7 {time} \u043C\u0441 \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average} \u043C\u0441",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 \u0441\u0438\u043C.",
+      feedbackAwaitingHint: "\u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average}",
+      feedbackSavedHint: "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \xB7 {time} \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average}",
+      feedbackSimulatedHint: "\u0421\u0438\u043C\u0443\u043B\u044F\u0446\u0438\u044F \u043E\u0442\u0432\u0435\u0442\u0430 \xB7 {time} \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average}",
       copyChanged: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0438\u0437\u043C\u0435\u043D\u0438\u043B\u0441\u044F. \u0421\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043D\u043E\u0432\u043E \u043F\u0435\u0440\u0435\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u043E\u0439.",
       lastClick: "\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043A\u043B\u0438\u043A: {time}",
       timezone: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E \u0432 \u0432\u0430\u0448\u0435\u043C \u0447\u0430\u0441\u043E\u0432\u043E\u043C \u043F\u043E\u044F\u0441\u0435",
@@ -3737,7 +3832,7 @@
       share: "\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F",
       shareHint: "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0443 \u0434\u043B\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
       ping: "\u041F\u0438\u043D\u0433",
-      simPing: "\u0421\u0438\u043C\u0443\u043B\u044F\u0446\u0438\u044F \u043F\u0438\u043D\u0433\u0430",
+      simPing: "\u0418\u043C\u0438\u0442\u0430\u0446\u0438\u044F \u043F\u0438\u043D\u0433\u0430",
       pingHint: "\u0412\u0440\u0435\u043C\u044F \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0433\u043E \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u043A\u043B\u0438\u043A\u0430. \u0418\u043D\u0434\u0438\u043A\u0430\u0442\u043E\u0440 \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u044F \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442 \u043E\u0436\u0438\u0434\u0430\u044E\u0449\u0438\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0438\u043B\u0438 \u043E\u0448\u0438\u0431\u043A\u0443 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F.",
       pingStatus: "{ping}. {status}.",
       noPing: "\u041F\u0438\u043D\u0433: \u043A\u043B\u0438\u043A\u043E\u0432 \u0435\u0449\u0451 \u043D\u0435 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u043E",
@@ -3756,6 +3851,11 @@
       offline: "\u041E\u0444\u043B\u0430\u0439\u043D",
       backOnline: "\u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043E\u043D\u043B\u0430\u0439\u043D",
       signOut: "\u0412\u044B\u0439\u0442\u0438",
+      homeGreeting: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0438\u0433\u0440\u0430\u0442\u044C \u043E\u0444\u043B\u0430\u0439\u043D, \u0438\u043B\u0438 \u0432\u043E\u0439\u0434\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0442\u044C \u043A\u043B\u0438\u043A\u0438 \u0432 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0435.",
+      signIn: "\u0412\u043E\u0439\u0442\u0438",
+      createAccount: "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u0430\u043A\u043A\u0430\u0443\u043D\u0442",
+      loadingCounter: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0441\u0447\u0451\u0442\u0447\u0438\u043A\u0430\u2026",
+      tryAgain: "\u041F\u043E\u043F\u0440\u043E\u0431\u043E\u0432\u0430\u0442\u044C \u0435\u0449\u0451 \u0440\u0430\u0437",
       admin: "\u0423\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435",
       options: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438",
       sound: "\u0417\u0432\u0443\u043A\u043E\u0432\u044B\u0435 \u044D\u0444\u0444\u0435\u043A\u0442\u044B",
@@ -3763,10 +3863,9 @@
       soundOff: "\u0417\u0432\u0443\u043A \u0432\u044B\u043A\u043B\u044E\u0447\u0435\u043D \xB7 \u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0437\u0432\u0443\u043A\u043E\u0432\u044B\u0435 \u044D\u0444\u0444\u0435\u043A\u0442\u044B",
       motion: "\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0444\u0444\u0435\u043A\u0442\u044B \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F",
       motionHint: "\u0414\u0432\u0438\u0436\u0435\u043D\u0438\u0435 \u0443\u043C\u0435\u043D\u044C\u0448\u0435\u043D\u043E. \u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0444\u0444\u0435\u043A\u0442\u044B \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u044F.",
-      reload: "\u041F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A",
       controls: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u043C\u044B\u0448\u044C\u044E \u0438\u043B\u0438 \u043F\u0430\u043B\u044C\u0446\u0435\u043C \u0438 \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043D\u0430 \u043A\u043D\u043E\u043F\u043A\u0435 \u0438\u043B\u0438 \u0440\u044F\u0434\u043E\u043C \u0441 \u043D\u0435\u0439. \u041A\u0430\u0436\u0434\u044B\u0439 \u043F\u0430\u043B\u0435\u0446 \u0443\u0447\u0438\u0442\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E. \u041A\u043E\u0433\u0434\u0430 \u043A\u043D\u043E\u043F\u043A\u0430 \u0432 \u0444\u043E\u043A\u0443\u0441\u0435, \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043F\u0440\u043E\u0431\u0435\u043B \u0438\u043B\u0438 Enter, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0434\u0438\u043D \u043A\u043B\u0438\u043A. \u0423\u0434\u0435\u0440\u0436\u0430\u043D\u0438\u0435 \u043D\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0435\u0442 \u043A\u043B\u0438\u043A\u043E\u0432.",
-      loadError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.",
-      unconfirmedClick: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u043A\u043B\u0438\u043A. \u041F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0441\u0447\u0451\u0442\u0447\u0438\u043A, \u0447\u0442\u043E\u0431\u044B \u043F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435.",
+      loadError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0433\u043E \u043E\u0431\u043D\u043E\u0432\u0438\u0442\u044C.",
+      unconfirmedClick: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u043A\u043B\u0438\u043A. \u041E\u0431\u043D\u043E\u0432\u0438\u0442\u0435 \u0441\u0447\u0451\u0442\u0447\u0438\u043A, \u0447\u0442\u043E\u0431\u044B \u043F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C, \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u043B\u0441\u044F \u043B\u0438 \u043A\u043B\u0438\u043A.",
       unsavedClick: "\u041A\u043B\u0438\u043A \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435 \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
       localLoadError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u043C\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u043A\u043E\u043F\u0438\u044E \u0438\u043B\u0438 \u043D\u0430\u0447\u0430\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E.",
       localClickError: "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u043A\u043B\u0438\u043A \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u0425\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043C\u043E\u0436\u0435\u0442 \u0431\u044B\u0442\u044C \u0437\u0430\u043F\u043E\u043B\u043D\u0435\u043D\u043E \u0438\u043B\u0438 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E.",
@@ -3799,9 +3898,16 @@
       achievements: "Erfolge",
       offlineAchievements: "Offline-Erfolge",
       weekRule: "Ein gespeicherter Klick z\xE4hlt f\xFCr die Woche von Montag bis Sonntag (UTC).",
-      firstClick: "Erster Klick",
-      clickMilestone: "{count} Klicks",
-      consecutive: "{duration} in Folge",
+      firstClick: "Speichere deinen ersten Klick.",
+      clickMilestone: "Insgesamt {count} Klicks.",
+      consecutive: "{duration} in Folge mit je einem Klick pro Zeitraum (UTC).",
+      dayClickGoal: "{count} Klicks an einem einzigen UTC-Tag.",
+      weekClickGoal: "{count} Klicks in einer einzigen UTC-Woche (Montag bis Sonntag).",
+      monthClickGoal: "{count} Klicks in einem einzigen UTC-Kalendermonat.",
+      distinctHoursGoal: "Klicke in {count} verschiedenen Stunden desselben UTC-Tags.",
+      distinctDaysGoal: "Klicke an {count} verschiedenen UTC-Tagen. Pausen sind erlaubt.",
+      distinctMonthsGoal: "Klicke in {count} verschiedenen UTC-Kalendermonaten. Pausen sind erlaubt.",
+      otherAchievementsGoal: "Schalte {count} andere Erfolge frei.",
       earned: "Erreicht",
       locked: "Gesperrt",
       allAchievements: "Alle",
@@ -3829,11 +3935,11 @@
       feedbackUnconfirmed: "unbest\xE4tigt",
       feedbackUnsaved: "nicht gespeichert",
       feedbackCooldown: "Pause",
-      feedbackSavedTime: "\u2713 {time} ms",
-      feedbackSimulatedTime: "\u2713 {time} ms \xB7 simuliert",
-      feedbackAwaitingHint: "Warten auf Speicherung \xB7 letzter Durchschnitt {average} ms",
-      feedbackSavedHint: "Gespeichert \xB7 {time} ms \xB7 letzter Durchschnitt {average} ms",
-      feedbackSimulatedHint: "Simulierte Antwort \xB7 {time} ms \xB7 letzter Durchschnitt {average} ms",
+      feedbackSavedTime: "\u2713 {time}",
+      feedbackSimulatedTime: "\u2713 {time} \xB7 simuliert",
+      feedbackAwaitingHint: "Warten auf Speicherung \xB7 letzter Durchschnitt {average}",
+      feedbackSavedHint: "Gespeichert \xB7 {time} \xB7 letzter Durchschnitt {average}",
+      feedbackSimulatedHint: "Simulierte Antwort \xB7 {time} \xB7 letzter Durchschnitt {average}",
       copyChanged: "Die Vorschau wurde ge\xE4ndert. Kopiere den aktualisierten Text erneut zum Teilen.",
       lastClick: "Letzter Klick: {time}",
       timezone: "Anzeige in deiner lokalen Zeitzone",
@@ -3860,6 +3966,11 @@
       offline: "Offline",
       backOnline: "Zur\xFCck zum Onlinespiel",
       signOut: "Abmelden",
+      homeGreeting: "Klicke, um offline zu spielen, oder melde dich an, um deine Klicks im Konto zu speichern.",
+      signIn: "Anmelden",
+      createAccount: "Konto erstellen",
+      loadingCounter: "Z\xE4hler wird geladen\u2026",
+      tryAgain: "Erneut versuchen",
       admin: "Verwaltung",
       options: "Optionen",
       sound: "Soundeffekte",
@@ -3867,10 +3978,9 @@
       soundOff: "Ton aus \xB7 Soundeffekte einschalten",
       motion: "Bewegungseffekte aktivieren",
       motionHint: "Reduzierte Bewegung ist aktiv. Bewegungseffekte aktivieren.",
-      reload: "Z\xE4hler neu laden",
       controls: "Dr\xFCcke mit Maus oder Finger und lass auf der Schaltfl\xE4che oder in ihrer N\xE4he los. Jeder Finger z\xE4hlt einzeln. Wenn die Schaltfl\xE4che den Fokus hat, lass Leertaste oder Enter los, um einen Klick hinzuzuf\xFCgen. Halten erzeugt keine weiteren Klicks.",
-      loadError: "Der Z\xE4hler konnte nicht geladen werden. Lade ihn erneut.",
-      unconfirmedClick: "Der Klick konnte nicht best\xE4tigt werden. Lade den Z\xE4hler neu, um die Speicherung zu pr\xFCfen.",
+      loadError: "Der Z\xE4hler konnte nicht geladen werden. Versuche, ihn zu aktualisieren.",
+      unconfirmedClick: "Dein Klick konnte nicht best\xE4tigt werden. Aktualisiere den Z\xE4hler, um zu pr\xFCfen, ob der Klick gespeichert wurde.",
       unsavedClick: "Dein Klick wurde nicht gespeichert. Pr\xFCfe deine Verbindung und versuche es erneut.",
       localLoadError: "Der lokale Spielstand konnte nicht geladen werden. \xD6ffne die Optionen, um eine Kopie zu importieren oder neu zu beginnen.",
       localClickError: "Dein lokaler Klick wurde nicht gespeichert. Der Browserspeicher ist m\xF6glicherweise voll oder nicht verf\xFCgbar.",
@@ -5099,9 +5209,9 @@
         popup.lang = currentLanguage();
         popup.dir = languageDirection();
         score.textContent = phase === "limited" ? "\u2026" : phase === "unconfirmed" ? "?" : phase === "unsaved" ? "\xD7" : `+${formatNumber(1)}`;
-        const average2 = formatNumber(Math.round(baseline));
+        const average2 = formatUnit(Math.round(baseline), "millisecond");
         if (phase === "saved") {
-          const time = formatNumber(Math.round(measured));
+          const time = formatUnit(Math.round(measured), "millisecond");
           timing.textContent = message2(simulated ? "feedbackSimulatedTime" : "feedbackSavedTime", { time });
           popup.title = message2(simulated ? "feedbackSimulatedHint" : "feedbackSavedHint", {
             time,
@@ -5463,17 +5573,35 @@
   }
 
   // frontend/achievements.ts
+  function formatRequirements(language2) {
+    const count = (key, value) => message2(key, { count: formatNumber(value, language2) }, language2);
+    const consecutive = (value, unit) => message2("consecutive", { duration: formatUnit(value, unit, language2) }, language2);
+    return {
+      first: message2("firstClick", {}, language2),
+      sentence: count("clickMilestone", 25),
+      paragraph: count("clickMilestone", 100),
+      essay: count("clickMilestone", 500),
+      threeDays: consecutive(3, "day"),
+      sevenDays: consecutive(7, "day"),
+      twoWeeks: consecutive(2, "week"),
+      fourWeeks: consecutive(4, "week"),
+      busyDay: count("dayClickGoal", 100),
+      briskPace: count("weekClickGoal", 1e3),
+      highScore: count("monthClickGoal", 5e3),
+      threeVisits: count("distinctHoursGoal", 3),
+      returningClicker: count("distinctDaysGoal", 10),
+      welcomeBack: count("distinctMonthsGoal", 3),
+      recursion: count("otherAchievementsGoal", 10)
+    };
+  }
   var translatedRequirements = /* @__PURE__ */ new Map();
   function requirements(language2) {
-    if (!translatedRequirements.has(language2)) {
-      translatedRequirements.set(language2, [
-        message2("firstClick"),
-        ...[25, 100, 500].map((count) => message2("clickMilestone", { count: formatNumber(count) })),
-        ...[3, 7].map((count) => message2("consecutive", { duration: formatUnit(count, "day") })),
-        ...[2, 4].map((count) => message2("consecutive", { duration: formatUnit(count, "week") }))
-      ]);
+    let localized = translatedRequirements.get(language2);
+    if (!localized) {
+      localized = formatRequirements(language2);
+      translatedRequirements.set(language2, localized);
     }
-    return translatedRequirements.get(language2);
+    return localized;
   }
   function badgesFor(data, progress, local) {
     const accountBadges = new Set(data.earned_badges);
@@ -5489,15 +5617,14 @@
     if (sameDay) {
       for (let bits = calendar.hours; bits; bits >>>= 1) hours += bits & 1;
     }
-    const localized = language2 === "en" ? [] : requirements(language2);
-    function badge(id, icon, name, hint, description, earnedOffline, translation, current, total) {
+    const localized = requirements(language2);
+    function badge(id, icon, name, hint, description, earnedOffline, current, total) {
       const earned2 = local ? earnedOffline : accountBadges.has(id);
       return {
         icon,
         name,
         hint,
-        description: translation ?? description,
-        descriptionLanguage: translation ? language2 : "en",
+        description,
         earned: earned2,
         meter: current !== void 0 && total !== void 0 ? { count: earned2 ? total : Math.min(total, current), total } : void 0
       };
@@ -5508,9 +5635,8 @@
         "medal",
         "Gone Click",
         "An early milestone.",
-        "Saved you a click.",
+        localized.first,
         clicks >= 1,
-        localized[0],
         clicks,
         1
       ),
@@ -5519,9 +5645,8 @@
         "clicks",
         "Sentence",
         "A few clicks in.",
-        "Save 25 clicks in total.",
+        localized.sentence,
         clicks >= 25,
-        localized[1],
         clicks,
         25
       ),
@@ -5530,9 +5655,8 @@
         "clicks",
         "Paragraph",
         "The clicks add up.",
-        "Save 100 clicks in total.",
+        localized.paragraph,
         clicks >= 100,
-        localized[2],
         clicks,
         100
       ),
@@ -5541,9 +5665,8 @@
         "clicks",
         "Essay",
         "No time limit.",
-        "Save 500 clicks in total.",
+        localized.essay,
         clicks >= 500,
-        localized[3],
         clicks,
         500
       ),
@@ -5552,9 +5675,8 @@
         "calendar",
         "Clicks for Days",
         "A short run of consecutive days.",
-        "Save a click on 3 consecutive UTC days.",
+        localized.threeDays,
         progress.best_day_streak >= 3,
-        localized[4],
         progress.best_day_streak,
         3
       ),
@@ -5563,9 +5685,8 @@
         "calendar",
         "One-Week Streak",
         "A longer daily streak.",
-        "Save a click on 7 consecutive UTC days.",
+        localized.sevenDays,
         progress.best_day_streak >= 7,
-        localized[5],
         progress.best_day_streak,
         7
       ),
@@ -5574,9 +5695,8 @@
         "calendar",
         "Good to See You Again",
         "Check in again next week.",
-        "Save a click in 2 consecutive UTC weeks.",
+        localized.twoWeeks,
         progress.best_week_streak >= 2,
-        localized[6],
         progress.best_week_streak,
         2
       ),
@@ -5585,9 +5705,8 @@
         "calendar",
         "Double Fortnight",
         "A longer weekly streak.",
-        "Save a click in 4 consecutive UTC weeks.",
+        localized.fourWeeks,
         progress.best_week_streak >= 4,
-        localized[7],
         progress.best_week_streak,
         4
       ),
@@ -5596,9 +5715,8 @@
         "pace",
         "Busy Day",
         "Clicks within one UTC day.",
-        "Save 100 clicks in one UTC day.",
+        localized.busyDay,
         Boolean(calendar.earned & century),
-        void 0,
         sameDay ? calendar.day_clicks : 0,
         100
       ),
@@ -5607,9 +5725,8 @@
         "pace",
         "Brisk Pace",
         "Clicks within one UTC week.",
-        "Save 1,000 clicks in one Monday\u2013Sunday UTC week.",
+        localized.briskPace,
         Boolean(calendar.earned & fourDigits),
-        void 0,
         sameWeek ? calendar.week_clicks : 0,
         1e3
       ),
@@ -5618,9 +5735,8 @@
         "pace",
         "High Score",
         "Clicks within one UTC month.",
-        "Save 5,000 clicks in one UTC calendar month.",
+        localized.highScore,
         Boolean(calendar.earned & fiveGrand),
-        void 0,
         sameMonth ? calendar.month_clicks : 0,
         5e3
       ),
@@ -5629,9 +5745,8 @@
         "pace",
         "Three Visits",
         "Different times on the same day.",
-        "Save a click in 3 different UTC hours on the same day.",
+        localized.threeVisits,
         Boolean(calendar.earned & threeVisits),
-        void 0,
         hours,
         3
       ),
@@ -5640,9 +5755,8 @@
         "calendar",
         "Returning Clicker",
         "The days can be spread out.",
-        "Save a click on 10 different UTC days, with gaps allowed.",
+        localized.returningClicker,
         calendar.active_days >= 10,
-        void 0,
         calendar.active_days,
         10
       ),
@@ -5651,9 +5765,8 @@
         "calendar",
         "Welcome Back",
         "An occasional visit is enough.",
-        "Save a click in 3 different UTC calendar months, with gaps allowed.",
+        localized.welcomeBack,
         calendar.active_months >= 3,
-        void 0,
         calendar.active_months,
         3
       )
@@ -5665,9 +5778,8 @@
         "medal",
         "Recursion",
         "Achievements count toward this one.",
-        "Earn 10 other achievements.",
+        localized.recursion,
         earned >= 10,
-        void 0,
         earned,
         10
       )
@@ -5720,8 +5832,8 @@
     const description = document.createElement("p");
     description.className = "achievement-description";
     const showDetail = badge.earned || spoiler.checked;
-    description.lang = showDetail ? badge.descriptionLanguage : "en";
-    description.dir = languageDirection(showDetail ? badge.descriptionLanguage : "en");
+    description.lang = showDetail ? currentLanguage() : "en";
+    description.dir = languageDirection(showDetail ? currentLanguage() : "en");
     description.textContent = showDetail ? badge.description : badge.hint;
     const state = document.createElement("span");
     state.className = "achievement-state";
@@ -5734,6 +5846,7 @@
       const meter = document.createElement("progress");
       meter.max = total;
       meter.value = count;
+      meter.lang = "en";
       meter.setAttribute("aria-label", badge.name);
       const amount = document.createElement("span");
       amount.textContent = message2("outOf", { count: formatNumber(count), total: formatNumber(total) });
@@ -6124,7 +6237,6 @@
     }
     currentView = view;
     const player = isPlayerView(view);
-    document.documentElement.lang = player ? currentLanguage() : "en";
     if (changed) window.scrollTo(0, 0);
     views.loading.hidden = view !== "loading";
     views.home.hidden = view !== "home";
@@ -6196,7 +6308,9 @@
     connectionState = state;
     window.clearTimeout(pingStateTimer);
     if (Number.isFinite(milliseconds) && milliseconds !== null) lastPing = Math.round(milliseconds);
-    required("#ping").textContent = lastPing === null ? "\u2014 ms" : `${formatNumber(lastPing)} ms`;
+    const timing = lastPing === null ? "\u2014" : formatUnit(lastPing, "millisecond");
+    required("#ping").textContent = timing;
+    connection.title = message2(localMode ? "simulatedPingHint" : "pingHint");
     const paintState = () => {
       const cooling = coolingDown();
       connection.classList.toggle("is-limited", cooling);
@@ -6212,7 +6326,7 @@
       connection.setAttribute(
         "aria-label",
         message2("pingStatus", {
-          ping: `${message2(localMode ? "simPing" : "ping")} ${required("#ping").textContent}`,
+          ping: `${message2(localMode ? "simPing" : "ping")} ${timing}`,
           status
         })
       );
@@ -6288,7 +6402,7 @@
     window.clearTimeout(pingStateTimer);
     lastPing = null;
     connectionState = "";
-    required("#ping").textContent = "\u2014 ms";
+    required("#ping").textContent = "\u2014";
     connection.classList.remove("is-loading", "is-error", "is-limited");
     connection.setAttribute("aria-label", message2("noPing"));
     tactileButtons.get(clickButton)?.reset();
@@ -6708,7 +6822,7 @@
     show("loading");
     views.loading.setAttribute("aria-busy", "true");
     required(".loading-spinner").hidden = false;
-    required("#loading-message").textContent = "Loading counter\u2026";
+    required("#loading-message").textContent = message2("loadingCounter");
     retryBootButton.hidden = true;
     try {
       const state = await readGameState();
@@ -6725,7 +6839,7 @@
         return;
       }
       required(".loading-spinner").hidden = true;
-      required("#loading-message").textContent = error.message;
+      required("#loading-message").textContent = message2("loadError");
       retryBootButton.hidden = false;
       views.loading.setAttribute("aria-busy", "false");
       retryBootButton.focus();
@@ -6749,6 +6863,7 @@
     target.textContent = message2(key);
     if (detail) {
       const diagnostic = document.createElement("bdi");
+      diagnostic.lang = "en";
       diagnostic.textContent = detail;
       target.append(" ", diagnostic);
     }
@@ -7064,7 +7179,9 @@
     paintOptionsNotice();
     if (optionsDialog.open) updateOptions();
     paintLanguagePicker();
-    document.documentElement.lang = isPlayerView() ? currentLanguage() : "en";
+    document.documentElement.lang = currentLanguage();
+    if (currentView === "loading")
+      required("#loading-message").textContent = message2(retryBootButton.hidden ? "loadingCounter" : "loadError");
     buttonLanguage.reset(currentLanguage());
     paintButtonLanguage(currentLanguage());
     if (isGuestAchievements()) renderGuestAchievements();

@@ -15,8 +15,6 @@ async function checkLanguage(page, baseURL) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(baseURL);
   await page.locator("#home-view").waitFor({ state: "visible" });
-  await page.locator("#guest-click-button").click();
-  await page.locator("#game-view").waitFor({ state: "visible" });
   requests.length = 0;
   const selector = page.locator("#language-setting");
   const menu = page.locator("#language-menu");
@@ -61,6 +59,16 @@ async function checkLanguage(page, baseURL) {
   await selector.click();
   await page.locator(".site-header").click({ position: { x: 1, y: 1 } });
   ensure(await menu.isHidden(), "Clicking outside did not close the menu");
+  ensure(
+    await page.locator("#guest-nav").getByRole("button", { name: "Se connecter" }).isVisible(),
+    "Signed-out navigation lost the selected language",
+  );
+  ensure(
+    (await page.locator("#auth-view").getAttribute("lang")) === "en",
+    "English account forms are missing their language",
+  );
+  await page.getByRole("button", { name: "Jouer hors ligne" }).click();
+  await page.locator("#game-view").waitFor({ state: "visible" });
 
   async function choose(code) {
     await selector.click();
@@ -242,6 +250,16 @@ async function checkLanguage(page, baseURL) {
   ensure(
     await achievements.getByRole("checkbox", { name: "إظهار شروط الإنجازات المقفلة" }).isVisible(),
     "Achievement checkbox is missing its translated name",
+  );
+  await achievements.getByRole("checkbox", { name: "إظهار شروط الإنجازات المقفلة" }).check();
+  ensure(
+    await achievements
+      .locator(".achievement-description")
+      .evaluateAll(
+        (requirements) =>
+          requirements.length === 15 && requirements.every((rule) => rule.lang === "ar"),
+      ),
+    "One or more exact requirements reverted to English",
   );
   ensure(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

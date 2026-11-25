@@ -30,8 +30,6 @@ export const englishOptions = {
   localSaveCount: "Clicks in your local save: {count}",
   localSaveUnavailable: "Local save unavailable.",
   controlsTitle: "Controls",
-  feedbackColors:
-    "Amber means the save is pending or the response is slow. Green and blue indicate fast and standard responses. Orange indicates a server cooldown. Red means the save failed or could not be confirmed.",
   technicalNotes: "Game & storage notes (English)",
   sourceCode: "Source code",
   settingsVisit: "Applied for this visit. Browser storage is unavailable.",
@@ -95,8 +93,6 @@ export const optionsTranslations = {
     localSaveCount: "本地存档的点击数：{count}",
     localSaveUnavailable: "本地存档不可用。",
     controlsTitle: "操作说明",
-    feedbackColors:
-      "琥珀色表示等待保存或响应较慢。绿色表示响应快，蓝色表示响应正常。橙色表示服务器处于冷却期。红色表示保存失败或未确认。",
     technicalNotes: "游戏和存档说明（英语）",
     sourceCode: "源代码",
     settingsVisit: "浏览器存储不可用。设置仅在本次访问中生效。",
@@ -158,8 +154,6 @@ export const optionsTranslations = {
     localSaveCount: "Clics en tu partida local: {count}",
     localSaveUnavailable: "La partida local no está disponible.",
     controlsTitle: "Controles",
-    feedbackColors:
-      "El ámbar indica un guardado pendiente o una respuesta lenta. El verde indica una respuesta rápida y el azul, una normal. El naranja indica una pausa temporal del servidor. El rojo indica que el guardado falló o no se pudo confirmar.",
     technicalNotes: "Notas sobre el juego y el guardado (en inglés)",
     sourceCode: "Código fuente",
     settingsVisit:
@@ -223,8 +217,6 @@ export const optionsTranslations = {
     localSaveCount: "النقرات في الحفظ المحلي: {count}",
     localSaveUnavailable: "الحفظ المحلي غير متاح.",
     controlsTitle: "عناصر التحكّم",
-    feedbackColors:
-      "يشير اللون الكهرماني إلى حفظ قيد الانتظار أو استجابة بطيئة. يشير الأخضر إلى استجابة سريعة، والأزرق إلى استجابة عادية. يشير البرتقالي إلى توقف مؤقت بسبب حدّ الخادم. يعني الأحمر أن الحفظ فشل أو تعذّر تأكيده.",
     technicalNotes: "ملاحظات عن اللعبة والحفظ (بالإنجليزية)",
     sourceCode: "الشيفرة المصدرية",
     settingsVisit: "طُبّق الإعداد لهذه الزيارة. مساحة تخزين المتصفح غير متاحة.",
@@ -285,8 +277,6 @@ export const optionsTranslations = {
     localSaveCount: "स्थानीय सेव में क्लिक: {count}",
     localSaveUnavailable: "स्थानीय सेव उपलब्ध नहीं है।",
     controlsTitle: "कंट्रोल",
-    feedbackColors:
-      "ऐंबर रंग बताता है कि क्लिक सहेजा जा रहा है या प्रतिक्रिया धीमी है। हरा रंग तेज़ और नीला सामान्य प्रतिक्रिया दिखाता है। नारंगी का मतलब है कि सर्वर ने कुछ देर के लिए क्लिक रोक दिए हैं। लाल का मतलब है कि क्लिक सहेजा नहीं गया या उसकी पुष्टि नहीं हो सकी।",
     technicalNotes: "गेम और सेव की जानकारी (अंग्रेज़ी में)",
     sourceCode: "सोर्स कोड",
     settingsVisit: "सेटिंग इस बार के लिए लागू है। ब्राउज़र का स्टोरेज उपलब्ध नहीं है।",
@@ -333,7 +323,7 @@ export const optionsTranslations = {
     playOnline: "Main daring",
     playOnlineHint: "Meninggalkan GitHub Pages dan membuka clicker.bluehexagons.com.",
     downloadSave: "Unduh simpanan",
-    simulatedPingLabel: "Latensi simulasi",
+    simulatedPingLabel: "Ping simulasi",
     simulatedPingHint: "Menunda umpan balik saat luring. Klik langsung disimpan.",
     instant: "Seketika",
     approximatePing: "Sekitar {time}",
@@ -347,8 +337,6 @@ export const optionsTranslations = {
     localSaveCount: "Klik dalam simpanan lokal Anda: {count}",
     localSaveUnavailable: "Simpanan lokal tidak tersedia.",
     controlsTitle: "Kontrol",
-    feedbackColors:
-      "Kuning ambar berarti penyimpanan masih tertunda atau responsnya lambat. Hijau menandakan respons cepat dan biru menandakan respons normal. Oranye menandakan jeda sementara dari server. Merah berarti penyimpanan gagal atau tidak dapat dikonfirmasi.",
     technicalNotes: "Catatan permainan dan penyimpanan (bahasa Inggris)",
     sourceCode: "Kode sumber",
     settingsVisit: "Berlaku untuk kunjungan ini. Penyimpanan peramban tidak tersedia.",
@@ -396,7 +384,7 @@ export const optionsTranslations = {
     playOnline: "Jogar online",
     playOnlineHint: "Sai do GitHub Pages e abre clicker.bluehexagons.com.",
     downloadSave: "Baixar save",
-    simulatedPingLabel: "Latência simulada",
+    simulatedPingLabel: "Ping simulado",
     simulatedPingHint: "Atrasa a resposta no modo offline. Os cliques são salvos na hora.",
     instant: "Instantânea",
     approximatePing: "Cerca de {time}",
@@ -410,8 +398,6 @@ export const optionsTranslations = {
     localSaveCount: "Cliques no seu save local: {count}",
     localSaveUnavailable: "O save local está indisponível.",
     controlsTitle: "Controles",
-    feedbackColors:
-      "Âmbar indica que o clique ainda está sendo salvo ou que a resposta foi lenta. Verde indica uma resposta rápida e azul, uma normal. Laranja indica uma pausa temporária do servidor. Vermelho indica que o salvamento falhou ou não pôde ser confirmado.",
     technicalNotes: "Notas sobre o jogo e o armazenamento (em inglês)",
     sourceCode: "Código-fonte",
     settingsVisit: "Aplicado nesta visita. O armazenamento do navegador está indisponível.",
@@ -476,8 +462,6 @@ export const optionsTranslations = {
     localSaveCount: "Clics dans votre sauvegarde locale : {count}",
     localSaveUnavailable: "La sauvegarde locale est indisponible.",
     controlsTitle: "Commandes",
-    feedbackColors:
-      "L’ambre indique un enregistrement en attente ou une réponse lente. Le vert indique une réponse rapide et le bleu, une réponse normale. L’orange indique une pause imposée par le serveur. Le rouge indique que l’enregistrement a échoué ou n’a pas pu être confirmé.",
     technicalNotes: "Notes sur le jeu et le stockage (en anglais)",
     sourceCode: "Code source",
     settingsVisit: "Appliqué pour cette visite. Le stockage du navigateur est indisponible.",
@@ -526,7 +510,7 @@ export const optionsTranslations = {
     playOnline: "オンラインでプレイ",
     playOnlineHint: "GitHub Pages を離れて clicker.bluehexagons.com を開きます。",
     downloadSave: "セーブデータをダウンロード",
-    simulatedPingLabel: "疑似遅延",
+    simulatedPingLabel: "模擬応答時間",
     simulatedPingHint: "オフライン時の反応を遅らせます。クリックはすぐに保存されます。",
     instant: "即時",
     approximatePing: "約 {time}",
@@ -540,8 +524,6 @@ export const optionsTranslations = {
     localSaveCount: "ローカルセーブのクリック数：{count}",
     localSaveUnavailable: "ローカルセーブを利用できません。",
     controlsTitle: "操作方法",
-    feedbackColors:
-      "琥珀色は保存待ち、または応答が遅いことを示します。緑は速い応答、青は通常の応答です。オレンジはサーバーによる一時停止です。赤は保存に失敗したか、保存を確認できなかったことを示します。",
     technicalNotes: "ゲームと保存について（英語）",
     sourceCode: "ソースコード",
     settingsVisit: "今回のみ適用しました。ブラウザーの保存領域を利用できません。",
@@ -588,7 +570,7 @@ export const optionsTranslations = {
     playOnline: "Играть онлайн",
     playOnlineHint: "Переход с GitHub Pages на clicker.bluehexagons.com.",
     downloadSave: "Скачать сохранение",
-    simulatedPingLabel: "Имитация задержки",
+    simulatedPingLabel: "Имитация пинга",
     simulatedPingHint: "Задерживает отклик в офлайн-режиме. Клики сохраняются сразу.",
     instant: "Мгновенно",
     approximatePing: "Около {time}",
@@ -603,8 +585,6 @@ export const optionsTranslations = {
     localSaveCount: "Клики в локальном сохранении: {count}",
     localSaveUnavailable: "Локальное сохранение недоступно.",
     controlsTitle: "Управление",
-    feedbackColors:
-      "Янтарный цвет означает, что клик ещё сохраняется или отклик был медленным. Зелёный цвет означает быстрый отклик, а синий — обычный. Оранжевый цвет означает временную паузу на сервере. Красный цвет означает, что сохранить клик или подтвердить сохранение не удалось.",
     technicalNotes: "Об игре и сохранении (на английском)",
     sourceCode: "Исходный код",
     settingsVisit: "Применено только в этот раз. Хранилище браузера недоступно.",
@@ -653,7 +633,7 @@ export const optionsTranslations = {
     playOnline: "Online spielen",
     playOnlineHint: "Verlässt GitHub Pages und öffnet clicker.bluehexagons.com.",
     downloadSave: "Spielstand herunterladen",
-    simulatedPingLabel: "Simulierte Latenz",
+    simulatedPingLabel: "Simulierter Ping",
     simulatedPingHint:
       "Verzögert die Rückmeldung im Offline-Modus. Klicks werden sofort gespeichert.",
     instant: "Sofort",
@@ -669,8 +649,6 @@ export const optionsTranslations = {
     localSaveCount: "Klicks im lokalen Spielstand: {count}",
     localSaveUnavailable: "Der lokale Spielstand ist nicht verfügbar.",
     controlsTitle: "Bedienung",
-    feedbackColors:
-      "Bernsteinfarben bedeutet, dass die Speicherung aussteht oder die Antwort langsam ist. Grün steht für eine schnelle Antwort, Blau für eine normale. Orange zeigt eine vorübergehende Pause durch den Server an. Rot bedeutet, dass die Speicherung fehlgeschlagen ist oder sich nicht bestätigen ließ.",
     technicalNotes: "Hinweise zu Spiel und Speicherung (Englisch)",
     sourceCode: "Quellcode",
     settingsVisit: "Für diesen Besuch übernommen. Der Browserspeicher ist nicht verfügbar.",

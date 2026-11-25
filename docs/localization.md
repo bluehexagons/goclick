@@ -2,21 +2,22 @@
 
 See the [player guide](player.md#controls-and-settings) for choosing a language.
 
-The header language selector translates the main game: account/local navigation,
-click totals, streaks, timestamps, pending/save/cooldown feedback, icon tooltips
-and accessible names, floating click feedback, control instructions, achievement
-filters and unlock messages, and the Share dialog and copied text. Options
-translates audio profiles and descriptions, motion settings, local save tools
-and status messages, volume percentages, and simulated ping choices. Pending
-and lingering feedback follows language changes without replaying animations
-or save acknowledgements. Local ping feedback explicitly identifies simulated
-timings. If the share preview changes
-during a clipboard write or after a successful copy, the dialog asks for another
-copy rather than claiming the updated text is already on the clipboard.
-The landing page, sign-in/signup forms, detailed game and storage notes,
-administration, achievement names and hints, and some badge requirements are in
-English. English technical notes and badge text carry their own language and
-direction.
+## What we translate
+
+Keep all supported languages usable for starting the game, playing, saving,
+and understanding progress. Translate the home screen and navigation, gameplay
+feedback, control labels and accessible names, short recovery instructions,
+Options and local save tools, exact achievement requirements, and share text.
+Use the browser's locale formatting for numbers, dates, and units.
+
+Keep sign-in and account creation forms, administration, detailed game and
+storage notes, raw diagnostics, and achievement names and playful hints in
+English. Badge names and hints carry their own language and direction. The
+short action or status beside English details stays in the selected language.
+
+The catalogs use AI-assisted and machine translations. Prioritize accurate
+actions, conditions, and recovery steps. Put long explanations in the English
+documentation and reuse wording where two controls perform the same action.
 
 The supported languages are English, Simplified Chinese, Spanish, Arabic, Hindi,
 Indonesian, Brazilian Portuguese, French, Japanese, Russian, and German. The
@@ -79,9 +80,12 @@ when motion is reduced. The canvas fits long text inside the button face.
 - `frontend/messages.ts` and `frontend/option-messages.ts` define English messages
   and complete, type-checked catalogs per language. Keep matching interpolation
   fields in every translation.
-  Translate complete messages; avoid concatenating grammatical fragments. Use
-  `Intl` for numbers, dates and grammatical units. Initial translations should
-  receive native-speaker review as the language set develops.
+  Translate complete messages and avoid concatenating grammatical fragments.
+  Use `Intl` for numbers, dates, and grammatical units. Review translated
+  labels together with the instructions that name them. Check terms for local
+  saves, simulated ping, refresh, and streaks across screens. For machine
+  translations, review against the behavior and check meaning with a second
+  pass before accepting the text.
 - `frontend/i18n.ts` owns locale matching, persistence helpers, formatting and
   change listeners. Add language codes, native names, directions and flag symbol
   IDs to its registry. `frontend/language-picker.ts` renders the header menu.

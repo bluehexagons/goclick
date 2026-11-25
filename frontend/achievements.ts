@@ -1,5 +1,6 @@
 import { currentLanguage, formatNumber, formatUnit, message as t } from "./i18n.js";
 import type { Language } from "./i18n.js";
+import type { MessageKey } from "./messages.js";
 import type { ClickProgress, Counters } from "./types.js";
 
 import {
@@ -20,21 +21,40 @@ export interface Badge {
   name: string;
   description: string;
   earned: boolean;
-  descriptionLanguage: Language;
   meter?: { count: number; total: number };
 }
 
-const translatedRequirements = new Map<Language, string[]>();
+function formatRequirements(language: Language) {
+  const count = (key: MessageKey, value: number) =>
+    t(key, { count: formatNumber(value, language) }, language);
+  const consecutive = (value: number, unit: "day" | "week") =>
+    t("consecutive", { duration: formatUnit(value, unit, language) }, language);
+  return {
+    first: t("firstClick", {}, language),
+    sentence: count("clickMilestone", 25),
+    paragraph: count("clickMilestone", 100),
+    essay: count("clickMilestone", 500),
+    threeDays: consecutive(3, "day"),
+    sevenDays: consecutive(7, "day"),
+    twoWeeks: consecutive(2, "week"),
+    fourWeeks: consecutive(4, "week"),
+    busyDay: count("dayClickGoal", 100),
+    briskPace: count("weekClickGoal", 1000),
+    highScore: count("monthClickGoal", 5000),
+    threeVisits: count("distinctHoursGoal", 3),
+    returningClicker: count("distinctDaysGoal", 10),
+    welcomeBack: count("distinctMonthsGoal", 3),
+    recursion: count("otherAchievementsGoal", 10),
+  };
+}
+const translatedRequirements = new Map<Language, ReturnType<typeof formatRequirements>>();
 function requirements(language: Language) {
-  if (!translatedRequirements.has(language)) {
-    translatedRequirements.set(language, [
-      t("firstClick"),
-      ...[25, 100, 500].map((count) => t("clickMilestone", { count: formatNumber(count) })),
-      ...[3, 7].map((count) => t("consecutive", { duration: formatUnit(count, "day") })),
-      ...[2, 4].map((count) => t("consecutive", { duration: formatUnit(count, "week") })),
-    ]);
+  let localized = translatedRequirements.get(language);
+  if (!localized) {
+    localized = formatRequirements(language);
+    translatedRequirements.set(language, localized);
   }
-  return translatedRequirements.get(language)!;
+  return localized;
 }
 
 export function badgesFor(data: Counters, progress: ClickProgress, local: boolean): Badge[] {
@@ -53,7 +73,7 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
   if (sameDay) {
     for (let bits = calendar.hours; bits; bits >>>= 1) hours += bits & 1;
   }
-  const localized = language === "en" ? [] : requirements(language);
+  const localized = requirements(language);
   function badge(
     id: string,
     icon: BadgeIcon,
@@ -61,7 +81,6 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
     hint: string,
     description: string,
     earnedOffline: boolean,
-    translation?: string,
     current?: number,
     total?: number,
   ): Badge {
@@ -70,8 +89,7 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       icon,
       name,
       hint,
-      description: translation ?? description,
-      descriptionLanguage: translation ? language : "en",
+      description,
       earned,
       meter:
         current !== undefined && total !== undefined
@@ -85,9 +103,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "medal",
       "Gone Click",
       "An early milestone.",
-      "Saved you a click.",
+      localized.first,
       clicks >= 1,
-      localized[0],
       clicks,
       1,
     ),
@@ -96,9 +113,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "clicks",
       "Sentence",
       "A few clicks in.",
-      "Save 25 clicks in total.",
+      localized.sentence,
       clicks >= 25,
-      localized[1],
       clicks,
       25,
     ),
@@ -107,9 +123,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "clicks",
       "Paragraph",
       "The clicks add up.",
-      "Save 100 clicks in total.",
+      localized.paragraph,
       clicks >= 100,
-      localized[2],
       clicks,
       100,
     ),
@@ -118,9 +133,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "clicks",
       "Essay",
       "No time limit.",
-      "Save 500 clicks in total.",
+      localized.essay,
       clicks >= 500,
-      localized[3],
       clicks,
       500,
     ),
@@ -129,9 +143,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "Clicks for Days",
       "A short run of consecutive days.",
-      "Save a click on 3 consecutive UTC days.",
+      localized.threeDays,
       progress.best_day_streak >= 3,
-      localized[4],
       progress.best_day_streak,
       3,
     ),
@@ -140,9 +153,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "One-Week Streak",
       "A longer daily streak.",
-      "Save a click on 7 consecutive UTC days.",
+      localized.sevenDays,
       progress.best_day_streak >= 7,
-      localized[5],
       progress.best_day_streak,
       7,
     ),
@@ -151,9 +163,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "Good to See You Again",
       "Check in again next week.",
-      "Save a click in 2 consecutive UTC weeks.",
+      localized.twoWeeks,
       progress.best_week_streak >= 2,
-      localized[6],
       progress.best_week_streak,
       2,
     ),
@@ -162,9 +173,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "Double Fortnight",
       "A longer weekly streak.",
-      "Save a click in 4 consecutive UTC weeks.",
+      localized.fourWeeks,
       progress.best_week_streak >= 4,
-      localized[7],
       progress.best_week_streak,
       4,
     ),
@@ -173,9 +183,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "pace",
       "Busy Day",
       "Clicks within one UTC day.",
-      "Save 100 clicks in one UTC day.",
+      localized.busyDay,
       Boolean(calendar.earned & century),
-      undefined,
       sameDay ? calendar.day_clicks : 0,
       100,
     ),
@@ -184,9 +193,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "pace",
       "Brisk Pace",
       "Clicks within one UTC week.",
-      "Save 1,000 clicks in one Monday–Sunday UTC week.",
+      localized.briskPace,
       Boolean(calendar.earned & fourDigits),
-      undefined,
       sameWeek ? calendar.week_clicks : 0,
       1000,
     ),
@@ -195,9 +203,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "pace",
       "High Score",
       "Clicks within one UTC month.",
-      "Save 5,000 clicks in one UTC calendar month.",
+      localized.highScore,
       Boolean(calendar.earned & fiveGrand),
-      undefined,
       sameMonth ? calendar.month_clicks : 0,
       5000,
     ),
@@ -206,9 +213,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "pace",
       "Three Visits",
       "Different times on the same day.",
-      "Save a click in 3 different UTC hours on the same day.",
+      localized.threeVisits,
       Boolean(calendar.earned & threeVisits),
-      undefined,
       hours,
       3,
     ),
@@ -217,9 +223,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "Returning Clicker",
       "The days can be spread out.",
-      "Save a click on 10 different UTC days, with gaps allowed.",
+      localized.returningClicker,
       calendar.active_days >= 10,
-      undefined,
       calendar.active_days,
       10,
     ),
@@ -228,9 +233,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "Welcome Back",
       "An occasional visit is enough.",
-      "Save a click in 3 different UTC calendar months, with gaps allowed.",
+      localized.welcomeBack,
       calendar.active_months >= 3,
-      undefined,
       calendar.active_months,
       3,
     ),
@@ -242,9 +246,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "medal",
       "Recursion",
       "Achievements count toward this one.",
-      "Earn 10 other achievements.",
+      localized.recursion,
       earned >= 10,
-      undefined,
       earned,
       10,
     ),

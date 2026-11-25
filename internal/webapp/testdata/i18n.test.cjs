@@ -36,6 +36,30 @@ test("language choice prefers a saved supported locale, then browser order, then
   assert.equal(i.supportedLanguage("__proto__"), undefined);
 });
 
+test("all exact badge requirements use the selected language and keep the same badge names", () => {
+  const runtime = frontend({});
+  const { setLanguage, languages } = runtime.load("i18n");
+  const { badgesFor } = runtime.load("achievements");
+  const progress = { week_streak: 0, best_day_streak: 0, best_week_streak: 0, recent_days: 0 };
+  const englishBadges = badgesFor({}, progress, true);
+  for (const { code } of languages.slice(1)) {
+    setLanguage(code);
+    const badges = badgesFor({}, progress, true);
+    assert.deepEqual(
+      badges.map((badge) => badge.name),
+      englishBadges.map((badge) => badge.name),
+    );
+    for (const [index, badge] of badges.entries()) {
+      assert.notEqual(
+        badge.description,
+        englishBadges[index].description,
+        `${code} · ${badge.name}`,
+      );
+      assert.doesNotMatch(badge.description, /\{\w+\}/);
+    }
+  }
+});
+
 test("storage failure still applies the language and invalid stored content uses the browser", () => {
   const i = localization({
     navigator: { languages: ["ar-EG"] },
