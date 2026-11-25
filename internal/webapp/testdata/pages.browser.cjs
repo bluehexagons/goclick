@@ -12,6 +12,11 @@ async function checkPagesOffline(page, baseURL) {
       new URL("service-worker.js", location.href).href,
   );
   assert.equal(await page.locator("#local-nav").isVisible(), false);
+  await page.locator("#options-button").click();
+  const onlineLink = page.getByRole("link", { name: "Play online" });
+  assert.equal(await onlineLink.isVisible(), true);
+  assert.equal(await onlineLink.getAttribute("href"), "https://clicker.bluehexagons.com/");
+  await page.locator("#close-options").click();
   await page.locator("#click-button").press("Space");
   await page.locator("#click-count").filter({ hasText: /^1$/ }).waitFor();
   await page.goto("about:blank");

@@ -26,11 +26,14 @@ appear separately until they are confirmed.
 
 ## Saves and accounts
 
-On GitHub Pages, the game always uses your local save. On a Go Click server,
-sign in for account progress across devices, or press **Click** while signed
-out to start a local game. You can also choose **Play offline** in **Options**
-and use **Back online** in the header to return to the server. Local play on a
-Go server needs the page to stay loaded while you're disconnected.
+On GitHub Pages, the game always uses your local save. Choose **Play online**
+in **Options** to open the [online edition](https://clicker.bluehexagons.com/).
+Sign in there to keep account progress across devices.
+
+On a Go Click server, press **Click** while signed out or choose **Play
+offline** in **Options** to start a local game. Use **Back online** in the
+header to return to the server. Local play on a Go server needs the page to
+stay loaded while you're disconnected.
 
 Your local save and account progress are separate. Switching back online keeps
 your local save in the browser. Local clicks never upload to your account.
