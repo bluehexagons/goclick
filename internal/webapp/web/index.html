@@ -514,9 +514,9 @@
                 <button
                   class="plug-control"
                   type="button"
-                  title="Slack cord"
+                  title="Loosen cord"
                   data-i18n-title="cordSlack"
-                  aria-label="Slack cord"
+                  aria-label="Loosen cord"
                   data-i18n-aria-label="cordSlack"
                   aria-pressed="false"
                   hidden
@@ -659,7 +659,7 @@
                       id="streak-reset-button"
                       class="streak-reset-button"
                       type="button"
-                      aria-label="Next streak day"
+                      aria-label="Next UTC day"
                       data-i18n-aria-label="nextDay"
                       aria-controls="streak-reset-details"
                       aria-describedby="streak-reset-utc streak-reset-left streak-reset-local"
@@ -705,7 +705,7 @@
                   </article>
                 </div>
                 <div id="streak-reset-details" class="streak-reset-details" hidden>
-                  <strong data-i18n="nextDay">Next streak day</strong>
+                  <strong data-i18n="nextDay">Next UTC day</strong>
                   <p class="streak-reset-timing">
                     <span id="streak-reset-utc" class="progress-utc" dir="ltr">00:00 UTC</span>
                     <span id="streak-reset-left"></span>
@@ -777,13 +777,13 @@
               <div id="activity-days" class="activity-days" aria-hidden="true"></div>
               <p class="progress-caption" id="activity-count"></p>
               <p class="progress-caption" data-i18n="activityNote">
-                Based on the 14 days ending with your last click. Consecutive days earn bonus
-                points.
+                Counts the 14 days through your last saved click. Clicking on consecutive days earns
+                bonus points.
               </p>
             </section>
             <section class="progress-section day-reset" aria-labelledby="day-reset-label">
               <div class="progress-heading">
-                <h2 id="day-reset-label" data-i18n="nextDay">Next streak day</h2>
+                <h2 id="day-reset-label" data-i18n="nextDay">Next UTC day</h2>
                 <span class="progress-utc" dir="ltr">00:00 UTC</span>
               </div>
               <progress

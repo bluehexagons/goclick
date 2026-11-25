@@ -1166,9 +1166,18 @@ test("an invalid import explains the failure and leaves the local save intact", 
   assert.equal(consent.checked, false);
   assert.equal(fileInput.disabled, false);
 
+  const maximumSize = 1024 * 1024;
+  consent.checked = true;
+  fileInput.files = [
+    { size: maximumSize + 1, text: async () => assert.fail("Oversized file read") },
+  ];
+  await fileInput.fire("change");
+  assert.match(h.element("#options-status").textContent, /no larger than 1 MiB/);
+  assert.equal(h.storage.get("goclick.local.v1"), saved);
+
   const replacement = JSON.parse(saved);
   replacement.counters.click_count.count = 31;
-  const text = JSON.stringify(replacement);
+  const text = JSON.stringify(replacement).padEnd(maximumSize);
   consent.checked = true;
   fileInput.files = [{ size: text.length, text: async () => text }];
   await fileInput.fire("change");

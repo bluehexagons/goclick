@@ -51,7 +51,11 @@ function requirement(goal: Goal, target: number, language: Language) {
   if (goal === "firstClick") description = t(goal, {}, language);
   else if (goal === "dayStreak" || goal === "weekStreak") {
     const duration = formatUnit(target, goal === "dayStreak" ? "day" : "week", language);
-    description = t("consecutive", { duration }, language);
+    description = t(
+      goal === "dayStreak" ? "consecutiveDays" : "consecutiveWeeks",
+      { duration },
+      language,
+    );
   } else {
     description = t(goal, { count: formatNumber(target, language) }, language);
   }

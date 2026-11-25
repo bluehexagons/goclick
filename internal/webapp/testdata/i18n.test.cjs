@@ -55,6 +55,14 @@ test("all exact badge requirements use the selected language and keep the same b
   const { badgesFor } = runtime.load("achievements");
   const progress = { week_streak: 0, best_day_streak: 0, best_week_streak: 0, recent_days: 0 };
   const englishBadges = badgesFor({}, progress, true);
+  assert.equal(
+    englishBadges.find(({ id }) => id === "clicks-for-days").description,
+    "3 days in a row (UTC). Click at least once each day.",
+  );
+  assert.equal(
+    englishBadges.find(({ id }) => id === "good-to-see-you-again").description,
+    "2 weeks in a row (UTC). Click at least once each week.",
+  );
   for (const { code } of languages.slice(1)) {
     setLanguage(code);
     const badges = badgesFor({}, progress, true);
