@@ -134,6 +134,10 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     hidden: false,
     documentElement: new Element(),
     hasFocus: () => true,
+    elementFromPoint(x, y) {
+      const rect = button.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom ? button : null;
+    },
     querySelector: (selector) => (selector === ".game-readout" ? readout : null),
     querySelectorAll: () => [button],
     createElement: () => new Element(),
@@ -369,23 +373,38 @@ test("losing focus cancels every captured pointer without ghost clicks", () => {
   assert.ok(h.soundCancellations() > 0);
 });
 
-test("press-down compresses immediately before any animation frame or saved click", () => {
+test("press-down starts immediately and builds depth and light across frames", () => {
   const h = harness(false);
+  const depth = () => Number(h.rig.props.get("--press"));
+  const glow = () => Number(h.rig.props.get("--glow-intensity"));
   h.pointer("pointerdown", 1);
-  assert.equal(h.rig.props.get("--press"), "1");
-  assert.equal(h.rig.props.get("--button-pop"), "0.955");
+  const initialDepth = depth();
+  const initialGlow = glow();
+  assert.ok(initialDepth > 0 && initialDepth < 0.5);
+  assert.equal(h.rig.props.get("--button-pop"), "1.000");
   const cloud = h.stage.children[0];
   assert.equal(cloud.childElementCount, 8);
   assert.ok(cloud.children.every((p) => p.animations[0].options.duration >= 520));
-  assert.ok(parseFloat(h.rig.props.get("--glow-intensity")) > 0.8);
+  assert.ok(initialGlow > 0.6);
   assert.equal(h.stage.classes.has("is-pressed"), true);
+  h.frame(16);
+  const first = depth();
+  assert.ok(first > initialDepth && first < 1);
+  h.frame(32);
+  assert.ok(depth() > first && depth() < 1);
+  assert.ok(glow() > initialGlow);
+  assert.ok(Number(h.rig.props.get("--button-pop")) < 1);
+  h.frame(64);
+  assert.equal(depth(), 1);
+  h.frame(160);
+  assert.ok(glow() < initialGlow);
   assert.equal(h.clicks.length, 0);
 });
 
 test("mouse hover eases into the copper press and returns with the release", () => {
   const h = harness(false);
   const light = () => Number(h.rig.props.get("--ready-light") || 0);
-  const mouse = { pointerType: "mouse" };
+  const mouse = { pointerType: "mouse", clientX: 230, clientY: 172 };
   h.pointer("pointerenter", 1);
   assert.equal(h.hasFrame(), false, "touch must not start hover");
   h.pointer("pointerenter", 1, mouse);
@@ -534,16 +553,18 @@ test("narrow stages do not constrain the gesture and cancellation returns to the
   assert.equal(h.clicks.length, 0);
 });
 
-test("a tap between frames releases depth immediately and fades copper within 70 ms", () => {
+test("a tap between frames starts returning from shallow depth and fades within 70 ms", () => {
   const h = harness(false);
   h.pointer("pointerdown", 1);
+  const initial = Number(h.rig.props.get("--press"));
   h.setTime(8);
   h.pointer("pointerup", 1);
-  assert.equal(h.rig.props.get("--press"), "0");
+  assert.equal(Number(h.rig.props.get("--press")), initial);
   assert.equal(h.stage.classes.has("is-pressed"), false);
   assert.equal(h.rig.props.get("--copper"), "0.720");
   assert.equal(h.clicks.length, 1);
   h.frame(43);
+  assert.ok(Number(h.rig.props.get("--press")) < initial);
   assert.ok(parseFloat(h.rig.props.get("--copper")) < 0.2);
   h.frame(78);
   assert.equal(h.rig.props.get("--copper"), "0.000");
@@ -557,7 +578,7 @@ test("a new press immediately replaces the previous tap's return to gold", () =>
   h.frame(30);
   h.setTime(35);
   h.pointer("pointerdown", 2);
-  assert.equal(h.rig.props.get("--press"), "1");
+  assert.ok(Number(h.rig.props.get("--press")) < 1);
   assert.equal(h.rig.props.get("--copper"), "1.000");
   h.frame(90);
   assert.equal(h.rig.props.get("--copper"), "1.000");
@@ -565,20 +586,24 @@ test("a new press immediately replaces the previous tap's return to gold", () =>
   h.setTime(95);
   h.pointer("pointerup", 2);
   assert.equal(h.clicks.length, 2);
+  h.frame(165);
   assert.equal(h.rig.props.get("--press"), "0");
 });
 
-test("held keys release depth immediately with a slightly longer material fade", () => {
+test("held keys release from full depth with a slightly longer return", () => {
   const h = harness(false);
   h.button.fire("keydown", { key: "Enter" });
+  h.frame(64);
   h.setTime(500);
   h.button.fire("keyup", { key: "Enter" });
-  assert.equal(h.rig.props.get("--press"), "0");
+  assert.equal(h.rig.props.get("--press"), "1");
   assert.equal(h.clicks.length, 1);
   h.frame(570);
+  assert.ok(Number(h.rig.props.get("--press")) < 0.25);
   assert.ok(parseFloat(h.rig.props.get("--copper")) > 0);
   h.frame(610);
   assert.equal(h.rig.props.get("--copper"), "0.000");
+  assert.equal(h.rig.props.get("--press"), "0");
 });
 
 test("cancelled, reduced-motion, and simulated activations never impose a hold", () => {
@@ -595,9 +620,10 @@ test("cancelled, reduced-motion, and simulated activations never impose a hold",
   assert.equal(reduced.rig.props.get("--press"), "0");
   const simulated = harness(false);
   simulated.button.click();
-  assert.equal(simulated.rig.props.get("--press"), "0");
   assert.equal(simulated.stage.classes.has("is-pressed"), false);
   assert.equal(simulated.clicks.length, 1);
+  simulated.frame(70);
+  assert.equal(simulated.rig.props.get("--press"), "0");
 });
 
 test("quick taps kick harder and leave bounded sparks alive across presses", () => {
@@ -607,7 +633,9 @@ test("quick taps kick harder and leave bounded sparks alive across presses", () 
   assert.equal(cloud.childElementCount, 8);
   assert.ok(cloud.children.every((p) => p.animations[0].options.duration < 780));
   h.pointer("pointerup", 1);
-  assert.ok(parseFloat(h.rig.props.get("--button-pop")) >= 1.06);
+  h.frame(16);
+  h.frame(32);
+  assert.ok(Number(h.rig.props.get("--button-pop")) > 1.03);
   assert.equal(cloud.childElementCount, 20);
   assert.ok(cloud.children.slice(8).every((p) => p.animations[0].options.duration >= 850));
   const first = cloud.children[0];
@@ -704,31 +732,38 @@ test("held mouse and touch drags trail their screen destination without overshoo
     }
 });
 
-test("grabbing an offset button keeps its position and stays level through drag and release", () => {
+test("an offset mouse grip keeps its tilt and release follows the mouse without another move", () => {
   const h = harness(false);
-  const tilt = () => [h.rig.props.get("--tilt-x"), h.rig.props.get("--tilt-y")];
-  const level = ["0.000deg", "0.000deg"];
+  const tilt = () => ["--tilt-x", "--tilt-y"].map((key) => parseFloat(h.rig.props.get(key)));
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 320, clientY: 200 });
   for (let i = 1; i <= 90; i++) h.frame(i * 16);
-  assert.ok(tilt().every((angle) => Math.abs(parseFloat(angle)) > 1));
+  const hover = tilt();
+  assert.ok(hover[0] < -1 && hover[1] > 1);
   const before = h.position();
   h.pointer("pointerdown", 1, { pointerType: "mouse", clientX: 320, clientY: 200 });
-  assert.deepEqual(tilt(), level);
+  assert.deepEqual(tilt(), hover);
   for (let i = 91; i <= 120; i++) h.frame(i * 16);
   assert.ok(Math.abs(h.position().x - before.x) < 0.003);
   assert.ok(Math.abs(h.position().y - before.y) < 0.003);
+  const held = tilt();
+  assert.ok(hover[0] < held[0] && held[0] < -1);
+  assert.ok(hover[1] > held[1] && held[1] > 1);
   h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 340, clientY: 210 });
   for (let i = 121; i <= 180; i++) {
     h.frame(i * 16);
     assert.ok(h.position().x - before.x <= 20.003);
     assert.ok(h.position().y - before.y <= 10.003);
-    assert.deepEqual(tilt(), level);
+    assert.ok(tilt().every((angle, axis) => Math.abs(angle - held[axis]) < 0.005));
   }
   assert.ok(Math.abs(h.position().x - before.x - 20) < 0.003);
   h.setTime(180 * 16);
   h.pointer("pointerup", 1, { pointerType: "mouse", clientX: 340, clientY: 210 });
-  h.frame(181 * 16);
-  assert.deepEqual(tilt(), level);
+  for (let i = 181; i <= 260; i++) h.frame(i * 16);
+  const released = tilt();
+  assert.ok(released[0] < hover[0] && released[1] > hover[1]);
+  h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 340, clientY: 210 });
+  h.frame(261 * 16);
+  assert.deepEqual(tilt(), released);
   assert.equal(h.clicks.length, 1);
 });
 
@@ -1190,6 +1225,74 @@ test("the plug can reconnect after a drop, and losing focus cancels the wait", (
       assert.equal(h.position().y, 0);
     }
   }
+});
+
+test("a button parked outside the stage tilts around its new center, even without power", () => {
+  const h = harness(false, true);
+  const bounds = h.button.getBoundingClientRect();
+  h.button.getBoundingClientRect = () => {
+    const { x, y } = h.position();
+    return {
+      ...bounds,
+      left: bounds.left + x,
+      right: bounds.right + x,
+      top: bounds.top + y,
+      bottom: bounds.bottom + y,
+    };
+  };
+  let time = 0;
+  const settle = () => {
+    for (let i = 0; i < 60; i++) {
+      time += 16;
+      h.setTime(time);
+      h.frame(time);
+    }
+  };
+  h.pointer("pointerdown", 1, { clientX: 230, clientY: 172 });
+  for (const [x, y] of [
+    [190, 0],
+    [-190, 0],
+    [0, -190],
+    [0, 190],
+    [220, 0],
+    [0, -220],
+    [220, 0],
+  ])
+    h.stage.fire("pointermove", {
+      pointerId: 1,
+      pointerType: "touch",
+      clientX: 230 + x,
+      clientY: 172 + y,
+    });
+  settle();
+  h.pointer("pointerup", 1, { clientX: 450, clientY: 172 });
+  settle();
+  assert.equal(h.power.dataset.plug, "unplugged");
+  const parked = h.position();
+  assert.ok(Math.abs(parked.x - 220) < 0.003);
+
+  const tilt = () => parseFloat(h.rig.props.get("--tilt-y"));
+  const mouse = { pointerType: "mouse", clientX: 500, clientY: 172 };
+  h.pointer("pointerenter", 2, mouse);
+  settle();
+  const hovered = tilt();
+  assert.ok(hovered > 5);
+  h.pointer("pointerdown", 2, mouse);
+  settle();
+  assert.ok(tilt() > 4 && tilt() < hovered);
+  assert.equal(h.rig.props.get("--press"), "1");
+  assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
+
+  // Release over the opposite side with no intervening move.
+  h.pointer("pointerup", 2, { ...mouse, clientX: 400 });
+  settle();
+  assert.ok(tilt() < -5);
+  assert.equal(h.rig.props.get("--press"), "0");
+  assert.ok(Math.abs(h.position().x - parked.x) < 0.003);
+  assert.equal(h.clicks.length, 2);
+  h.pointer("pointerleave", 2, mouse);
+  settle();
+  assert.equal(tilt(), 0);
 });
 
 test("slack keeps the button parked after reconnecting and tension restores the return", () => {

@@ -20,8 +20,10 @@ import { powerBootDuration, powerBootLighting } from "./power-sequence.js";
 import { message } from "./i18n.js";
 import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
 
-// Press and release depth are immediate; dragging and rebound use springs.
 // Holds never auto-score; cancelled/outside releases never activate the button.
+const PRESS_ATTACK_MS = 64;
+const PRESS_START_DEPTH = 0.22;
+const PRESS_FLASH_PEAK_MS = 30;
 const QUICK_TAP_MS = 90;
 const TAP_RELEASE_MS = 70;
 const HOLD_RELEASE_MS = 110;
@@ -118,10 +120,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     coastFromY = 0;
   let activeKey: string | null = null;
   let mouseOver = false;
+  let hoverPoint: { x: number; y: number } | null = null;
   let readiness = 0;
   let activatingRelease = false;
   let pressedAt = 0,
+    pressFrom = 0,
     releasedAt: number | null = null,
+    releaseDepth = 0,
     releaseCopper = 0,
     releaseDuration = TAP_RELEASE_MS,
     holdTimer = 0,
@@ -229,7 +234,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     } else {
       bootStartedAt = null;
       drainStartedAt = reducedMotion.matches ? null : time;
-      releasedAt = null;
+      releaseCopper = 0;
       current.copper = current.flash = current.holdLight = current.labelCharge = 0;
       clearResponse();
       effects.replaceChildren();
@@ -441,6 +446,32 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     readiness += (ready - readiness) * (1 - Math.exp(-0.28 * dt));
     if (Math.abs(ready - readiness) > 0.005) moving = true;
     else readiness = ready;
+    current.flash *= Math.pow(0.68, dt);
+    if (phase !== "idle" && !reducedMotion.matches) {
+      const elapsed = Math.max(0, time - pressedAt);
+      const progress = clamp(elapsed / PRESS_ATTACK_MS, 0, 1);
+      current.press = 1 - (1 - pressFrom) * (1 - progress) ** 2;
+      if (progress < 1) moving = true;
+      if (current.powered !== false) {
+        current.labelPhase = elapsed / 1000;
+        if (gameButton) current.holdLight = holdLighting(elapsed);
+        // Sweep the highlight to its peak as the face sinks, then let it fade.
+        const rise = clamp(elapsed / PRESS_FLASH_PEAK_MS, 0, 1);
+        const fall = clamp((elapsed - PRESS_FLASH_PEAK_MS) / 100, 0, 1);
+        current.flash = Math.max(current.flash, (0.45 + 0.5 * rise) * (1 - fall) ** 2);
+        moving = true;
+      }
+    }
+    if (releasedAt !== null) {
+      const progress = clamp((time - releasedAt) / releaseDuration, 0, 1);
+      const returnAmount = (1 - progress) ** 2;
+      current.press = releaseDepth * returnAmount;
+      current.copper = releaseCopper * returnAmount;
+      current.labelCharge = releaseCopper ? returnAmount : 0;
+      if (progress < 1) moving = true;
+      else releasedAt = null;
+    }
+    aimTilt();
     for (const key of keys) {
       const coasting = time < coastUntil && (key === "x" || key === "y");
       const from = key === "x" ? coastFromX : coastFromY;
@@ -466,21 +497,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         velocity[key] = 0;
       }
     }
-    if (releasedAt !== null) {
-      const progress = clamp((time - releasedAt) / releaseDuration, 0, 1);
-      const returnAmount = Math.pow(1 - progress, 2);
-      current.copper = releaseCopper * returnAmount;
-      current.labelCharge = returnAmount;
-      if (progress < 1) moving = true;
-      else releasedAt = null;
-    }
-    if (current.press && !reducedMotion.matches && current.powered !== false) {
-      const elapsed = time - pressedAt;
-      current.labelPhase = elapsed / 1000;
-      if (gameButton) current.holdLight = holdLighting(elapsed);
-      moving = true;
-    }
-    current.flash *= Math.pow(0.68, dt);
     if (current.flash > 0.005) moving = true;
     else current.flash = 0;
     if (responseStarted !== null) {
@@ -559,14 +575,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     coastUntil = 0;
     pressedAt = performance.now();
     releasedAt = null;
-    current.press = 1;
+    pressFrom = Math.max(PRESS_START_DEPTH, current.press);
+    current.press = reducedMotion.matches ? 1 : pressFrom;
     current.copper = current.powered === false ? 0 : 1;
     current.labelCharge = reducedMotion.matches ? 0 : current.copper;
     current.holdLight = 0;
     current.labelPhase = 0;
     target.pop = reducedMotion.matches ? 0 : -0.045;
-    current.pop = target.pop;
-    velocity.pop = 0;
+    velocity.pop = Math.min(0, velocity.pop);
     current.flash = 0;
     setPhase("pressed");
     if (reducedMotion.matches) {
@@ -577,14 +593,40 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     scheduleHoldBeat();
   }
   function aimHover(event: PointerEvent) {
-    const rect = stage.getBoundingClientRect();
-    const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), -1, 1);
-    const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), -1, 1);
-    target.rx = -y * 16;
-    target.ry = x * 22;
-    target.x = x * 4;
-    target.y = y * 4;
+    const { clientX: x, clientY: y } = event;
+    if (buttonStaysPut()) {
+      hoverPoint = mouseOver ? { x, y } : null;
+    } else {
+      const rect = stage.getBoundingClientRect();
+      if (rect.width && rect.height) {
+        const nx = ((x - rect.left) / rect.width) * 2 - 1;
+        const ny = ((y - rect.top) / rect.height) * 2 - 1;
+        const near = mouseOver || (Math.abs(nx) <= 1 && Math.abs(ny) <= 1);
+        hoverPoint = near ? { x, y } : null;
+        if (near && !reducedMotion.matches) {
+          target.x = clamp(nx, -1, 1) * 4;
+          target.y = clamp(ny, -1, 1) * 4;
+        }
+      }
+    }
     animate();
+  }
+  function aimTilt() {
+    target.rx = target.ry = 0;
+    if (!hoverPoint || reducedMotion.matches) return;
+    const rect = stage.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    // Use the drag destination while grabbed so tracking lag cannot twist the
+    // grip. Otherwise follow the moving face, including while it springs home.
+    const center = pointers.size ? target : current;
+    const parked = buttonStaysPut();
+    const x = hoverPoint.x - (rect.left + rect.width / 2 + center.x);
+    const y = hoverPoint.y - (rect.top + rect.height / 2 + center.y);
+    const halfWidth = (parked ? button.offsetWidth : rect.width) / 2;
+    const halfHeight = (parked ? button.offsetHeight : rect.height) / 2;
+    const tilt = 1 - 0.28 * current.press;
+    target.rx = -clamp(y / halfHeight, -1, 1) * 16 * tilt;
+    target.ry = clamp(x / halfWidth, -1, 1) * 22 * tilt;
   }
   function release(cancelled = false) {
     plugPulls.endPull();
@@ -595,9 +637,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     current.holdLight = 0;
     const wasPressed = phase !== "idle";
     const quick = performance.now() - pressedAt < QUICK_TAP_MS;
-    current.press = 0;
+    releaseDepth = wasPressed && !cancelled && !reducedMotion.matches ? current.press : 0;
+    current.press = releaseDepth;
     if (cancelled) current.labelCharge = 0;
-    target.pop = current.pop = velocity.pop = 0;
+    target.pop = 0;
+    if (!releaseDepth) current.pop = velocity.pop = 0;
     // Even a tap between frames gets a brief copper trace, without holding the
     // button down. A new press replaces this fade synchronously.
     releaseDuration = quick ? TAP_RELEASE_MS : HOLD_RELEASE_MS;
@@ -608,7 +652,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
           : 1
         : 0;
     current.copper = releaseCopper;
-    releasedAt = releaseCopper ? performance.now() : null;
+    releasedAt = releaseDepth ? performance.now() : null;
     current.flash = 0;
     setPhase("idle");
     paint();
@@ -639,6 +683,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     release(cancelled);
     releasedAt = null;
     coastUntil = 0;
+    hoverPoint = null;
     current.copper = 0;
     // Reset also interrupts an in-progress release after the pointer leaves.
     // Its lettering must return to rest when that release clock is cancelled.
@@ -720,14 +765,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const quick = press || releaseDuration === TAP_RELEASE_MS;
 
     if (!press) {
-      current.pop = Math.max(current.pop, quick ? 0.065 : 0.04);
       velocity.pop = quick ? 0.035 : 0.022;
     }
     if (current.powered === false) {
       animate();
       return;
     }
-    current.flash = press ? 0.72 : quick ? 0.85 : 0.55;
+    current.flash = press ? 0.45 : quick ? 0.85 : 0.55;
     paint();
     animate();
     // Small round sparks survive successive presses. Recolor the recent cloud
@@ -867,6 +911,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (button.disabled) return;
     const point = pointers.get(event.pointerId);
     if (point) {
+      if (event.pointerType === "mouse") hoverPoint = { x: event.clientX, y: event.clientY };
       const now = performance.now(),
         elapsed = now - point.movedAt;
       const dt = clamp(elapsed, 8, 50);
@@ -876,31 +921,24 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       point.x = event.clientX;
       point.y = event.clientY;
       aimPointers(true);
-    } else if (
-      !pointers.size &&
-      !buttonStaysPut() &&
-      activeKey === null &&
-      event.pointerType === "mouse"
-    )
-      aimHover(event);
+    } else if (!pointers.size && event.pointerType === "mouse") aimHover(event);
   });
   stage.addEventListener("pointerleave", () => {
-    if (
-      !pointers.size &&
-      !buttonStaysPut() &&
-      activeKey === null &&
-      performance.now() >= coastUntil
-    )
-      reset(false);
+    if (pointers.size) return;
+    hoverPoint = null;
+    if (activeKey === null && !buttonStaysPut() && performance.now() >= coastUntil) reset(false);
+    else animate();
   });
   button.addEventListener("pointerenter", (event) => {
     if (event.pointerType !== "mouse") return;
     mouseOver = true;
-    animate();
+    if (!pointers.size && !button.disabled) aimHover(event);
+    else animate();
   });
   button.addEventListener("pointerleave", (event) => {
     if (event.pointerType !== "mouse") return;
     mouseOver = false;
+    if (!pointers.size && buttonStaysPut()) hoverPoint = null;
     animate();
   });
   button.addEventListener("pointerdown", (event) => {
@@ -927,8 +965,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (pointers.size === 1) {
       dragFromX = target.x = current.x;
       dragFromY = target.y = current.y;
-      current.rx = target.rx = velocity.rx = 0;
-      current.ry = target.ry = velocity.ry = 0;
+      hoverPoint = event.pointerType === "mouse" ? { x: event.clientX, y: event.clientY } : null;
       velocity.x = velocity.y = 0;
       begin();
     } else if (gameButton) clickSound.play("press");
@@ -952,7 +989,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       event.clientY >= 0 &&
       event.clientY < window.innerHeight;
     const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
-    if (event.pointerType === "mouse" && (cancelled || !inside)) mouseOver = false;
+    const mouseRelease = event.pointerType === "mouse" && !cancelled && inViewport;
+    if (event.pointerType === "mouse") {
+      mouseOver =
+        mouseRelease && document.elementFromPoint(event.clientX, event.clientY) === button;
+      hoverPoint = null;
+    }
     const point = pointers.get(event.pointerId)!;
     // A cancelled finger can be independent of another one still holding the
     // button. Neither cancellation nor an outside release may replay its press
@@ -969,7 +1011,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       release(cancelled || !inside);
     } else aimPointers();
     if (!cancelled && inside && !button.disabled) activateRelease(event);
-    if (pointers.size || buttonStaysPut()) return;
+    if (pointers.size) return;
+    if (buttonStaysPut()) {
+      if (mouseRelease) aimHover(event);
+      return;
+    }
     if (
       !cancelled &&
       inside &&
@@ -985,7 +1031,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       velocity.y = clamp(point.vy * 10, -14, 14);
     }
     target.x = target.y = 0;
-    animate();
+    if (mouseRelease) aimHover(event);
+    else animate();
   }
   button.addEventListener("pointerup", (event) => endPointer(event));
   button.addEventListener("pointercancel", (event) => endPointer(event, true));
