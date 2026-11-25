@@ -4391,33 +4391,34 @@
       } else burst2(true);
       holdTimer = window.setTimeout(() => setPhase2("held"), 180);
       scheduleHoldBeat2();
-    }, aimHover2 = function(event) {
-      const { clientX: x, clientY: y } = event;
-      if (buttonStaysPut2()) {
-        hoverPoint = mouseOver ? { x, y } : null;
-      } else {
+    }, aimHover2 = function() {
+      if (hoverPoint && !button.disabled && !buttonStaysPut2() && !reducedMotion.matches) {
         const rect = stage.getBoundingClientRect();
         if (rect.width && rect.height) {
-          const nx = (x - rect.left) / rect.width * 2 - 1;
-          const ny = (y - rect.top) / rect.height * 2 - 1;
+          const nx = (hoverPoint.x - rect.left) / rect.width * 2 - 1;
+          const ny = (hoverPoint.y - rect.top) / rect.height * 2 - 1;
           const near = mouseOver || Math.abs(nx) <= 1 && Math.abs(ny) <= 1;
-          hoverPoint = near ? { x, y } : null;
-          if (near && !reducedMotion.matches) {
-            target.x = clamp(nx, -1, 1) * 4;
-            target.y = clamp(ny, -1, 1) * 4;
-          }
+          target.x = near ? clamp(nx, -1, 1) * 4 : 0;
+          target.y = near ? clamp(ny, -1, 1) * 4 : 0;
         }
       }
       animate2();
+    }, refreshHover2 = function() {
+      mouseOver = hoverPoint !== null && document.elementFromPoint(hoverPoint.x, hoverPoint.y) === button;
+      aimHover2();
     }, aimTilt2 = function() {
       target.rx = target.ry = 0;
-      if (!hoverPoint || reducedMotion.matches) return;
+      if (button.disabled || reducedMotion.matches) return;
+      const point = pointers.size ? mouseGrip === null ? null : pointers.get(mouseGrip) : hoverPoint;
+      if (!point) return;
       const rect = stage.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      const center = pointers.size ? target : current;
       const parked = buttonStaysPut2();
-      const x = hoverPoint.x - (rect.left + rect.width / 2 + center.x);
-      const y = hoverPoint.y - (rect.top + rect.height / 2 + center.y);
+      if (!pointers.size && !mouseOver && (parked || point.x < rect.left || point.x > rect.right || point.y < rect.top || point.y > rect.bottom))
+        return;
+      const center = pointers.size ? target : current;
+      const x = point.x - (rect.left + rect.width / 2 + center.x);
+      const y = point.y - (rect.top + rect.height / 2 + center.y);
       const halfWidth = (parked ? button.offsetWidth : rect.width) / 2;
       const halfHeight = (parked ? button.offsetHeight : rect.height) / 2;
       const tilt = 1 - 0.28 * current.press;
@@ -4464,11 +4465,11 @@
       clearResponse2();
       const captured = [...pointers.keys()];
       pointers.clear();
+      mouseGrip = null;
       for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
       release2(cancelled);
       releasedAt = null;
       coastUntil = 0;
-      hoverPoint = null;
       current.copper = 0;
       current.labelCharge = 0;
       current.labelPhase = 0;
@@ -4528,7 +4529,7 @@
     }, burst2 = function(press = false) {
       if (reducedMotion.matches) return;
       const quick = press || releaseDuration === TAP_RELEASE_MS;
-      if (!press) {
+      if (!press && phase === "idle") {
         velocity.pop = quick ? 0.035 : 0.022;
       }
       if (current.powered === false) {
@@ -4606,10 +4607,10 @@
       const near = (dx, dy) => event.clientX >= rect.left + dx - slop && event.clientX <= rect.right + dx + slop && event.clientY >= rect.top + dy - slop && event.clientY <= rect.bottom + dy + slop;
       const inViewport = event.clientX >= 0 && event.clientX < window.innerWidth && event.clientY >= 0 && event.clientY < window.innerHeight;
       const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
-      const mouseRelease = event.pointerType === "mouse" && !cancelled && inViewport;
-      if (event.pointerType === "mouse") {
-        mouseOver = mouseRelease && document.elementFromPoint(event.clientX, event.clientY) === button;
-        hoverPoint = null;
+      if (event.pointerId === mouseGrip) {
+        mouseGrip = null;
+        hoverPoint = !cancelled && inViewport ? { x: event.clientX, y: event.clientY } : null;
+        if (!hoverPoint) mouseOver = false;
       }
       const point = pointers.get(event.pointerId);
       if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
@@ -4626,7 +4627,7 @@
       if (!cancelled && inside && !button.disabled) activateRelease2(event);
       if (pointers.size) return;
       if (buttonStaysPut2()) {
-        if (mouseRelease) aimHover2(event);
+        refreshHover2();
         return;
       }
       if (!cancelled && inside && !reducedMotion.matches && performance.now() - point.movedAt < 70 && Math.hypot(event.clientX - point.startX, event.clientY - point.startY) >= 14 && Math.hypot(point.vx, point.vy) >= 0.12) {
@@ -4637,8 +4638,7 @@
         velocity.y = clamp(point.vy * 10, -14, 14);
       }
       target.x = target.y = 0;
-      if (mouseRelease) aimHover2(event);
-      else animate2();
+      refreshHover2();
     }, scheduleRenderer2 = function() {
       if (setupFrame || document.hidden || !stage.clientWidth || !stage.clientHeight) return;
       setupFrame = requestAnimationFrame(() => {
@@ -4650,7 +4650,7 @@
         paint2();
       });
     };
-    readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, aimTilt = aimTilt2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2, scheduleRenderer = scheduleRenderer2;
+    readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, refreshHover = refreshHover2, aimTilt = aimTilt2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2, scheduleRenderer = scheduleRenderer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -4718,6 +4718,7 @@
     let coastUntil = 0;
     let coastFromX = 0, coastFromY = 0;
     let activeKey = null;
+    let mouseGrip = null;
     let mouseOver = false;
     let hoverPoint = null;
     let readiness = 0;
@@ -4784,10 +4785,10 @@
       plugControl.addEventListener("lostpointercapture", cancelTap);
     }
     stage.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "mouse") hoverPoint = { x: event.clientX, y: event.clientY };
       if (button.disabled) return;
       const point = pointers.get(event.pointerId);
       if (point) {
-        if (event.pointerType === "mouse") hoverPoint = { x: event.clientX, y: event.clientY };
         const now = performance.now(), elapsed = now - point.movedAt;
         const dt = clamp(elapsed, 8, 50);
         point.vx = elapsed > 80 ? 0 : point.vx * 0.35 + (event.clientX - point.x) / dt * 0.65;
@@ -4796,24 +4797,30 @@
         point.x = event.clientX;
         point.y = event.clientY;
         aimPointers2(true);
-      } else if (!pointers.size && event.pointerType === "mouse") aimHover2(event);
+      } else if (!pointers.size && event.pointerType === "mouse") aimHover2();
     });
-    stage.addEventListener("pointerleave", () => {
-      if (pointers.size) return;
+    stage.addEventListener("pointerleave", (event) => {
+      if (event.pointerType !== "mouse" || mouseGrip !== null) return;
       hoverPoint = null;
-      if (activeKey === null && !buttonStaysPut2() && performance.now() >= coastUntil) reset2(false);
-      else animate2();
+      if (!pointers.size && !buttonStaysPut2()) {
+        target.x = target.y = 0;
+        if (activeKey === null && performance.now() >= coastUntil) {
+          reset2(false);
+          return;
+        }
+      }
+      animate2();
     });
     button.addEventListener("pointerenter", (event) => {
       if (event.pointerType !== "mouse") return;
+      hoverPoint = { x: event.clientX, y: event.clientY };
       mouseOver = true;
-      if (!pointers.size && !button.disabled) aimHover2(event);
+      if (!pointers.size && !button.disabled) aimHover2();
       else animate2();
     });
     button.addEventListener("pointerleave", (event) => {
       if (event.pointerType !== "mouse") return;
       mouseOver = false;
-      if (!pointers.size && buttonStaysPut2()) hoverPoint = null;
       animate2();
     });
     button.addEventListener("pointerdown", (event) => {
@@ -4832,10 +4839,13 @@
         vy: 0,
         movedAt: performance.now()
       });
+      if (event.pointerType === "mouse") {
+        mouseGrip = event.pointerId;
+        hoverPoint = { x: event.clientX, y: event.clientY };
+      }
       if (pointers.size === 1) {
         dragFromX = target.x = current.x;
         dragFromY = target.y = current.y;
-        hoverPoint = event.pointerType === "mouse" ? { x: event.clientX, y: event.clientY } : null;
         velocity.x = velocity.y = 0;
         begin2();
       } else if (gameButton) clickSound.play("press");
@@ -4889,7 +4899,7 @@
       if (button.disabled) reset2();
       else {
         if (plugState === "unplugged") paint2();
-        animate2();
+        refreshHover2();
       }
     }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
     new MutationObserver(() => {
@@ -4923,22 +4933,25 @@
       if (reducedMotion.matches) {
         for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
         effects.replaceChildren();
-      }
+      } else refreshHover2();
     });
     window.addEventListener("focus", () => {
       if (document.activeElement === button) animate2();
     });
     window.addEventListener("blur", () => {
+      hoverPoint = null;
       mouseOver = false;
       reset2();
     });
     window.addEventListener("resize", () => {
       if (buttonStaysPut2()) keepParkedButtonInView2();
       reset2();
+      refreshHover2();
     });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         labelChangedAt = null;
+        hoverPoint = null;
         mouseOver = false;
         plugStartedAt = null;
         drainStartedAt = null;
@@ -4984,6 +4997,7 @@
   var scheduleHoldBeat;
   var begin;
   var aimHover;
+  var refreshHover;
   var aimTilt;
   var release;
   var keepParkedButtonInView;

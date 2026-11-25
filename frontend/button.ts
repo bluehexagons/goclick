@@ -119,6 +119,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let coastFromX = 0,
     coastFromY = 0;
   let activeKey: string | null = null;
+  let mouseGrip: number | null = null;
   let mouseOver = false;
   let hoverPoint: { x: number; y: number } | null = null;
   let readiness = 0;
@@ -592,36 +593,51 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     holdTimer = window.setTimeout(() => setPhase("held"), 180);
     scheduleHoldBeat();
   }
-  function aimHover(event: PointerEvent) {
-    const { clientX: x, clientY: y } = event;
-    if (buttonStaysPut()) {
-      hoverPoint = mouseOver ? { x, y } : null;
-    } else {
+  function aimHover() {
+    if (hoverPoint && !button.disabled && !buttonStaysPut() && !reducedMotion.matches) {
       const rect = stage.getBoundingClientRect();
       if (rect.width && rect.height) {
-        const nx = ((x - rect.left) / rect.width) * 2 - 1;
-        const ny = ((y - rect.top) / rect.height) * 2 - 1;
+        const nx = ((hoverPoint.x - rect.left) / rect.width) * 2 - 1;
+        const ny = ((hoverPoint.y - rect.top) / rect.height) * 2 - 1;
         const near = mouseOver || (Math.abs(nx) <= 1 && Math.abs(ny) <= 1);
-        hoverPoint = near ? { x, y } : null;
-        if (near && !reducedMotion.matches) {
-          target.x = clamp(nx, -1, 1) * 4;
-          target.y = clamp(ny, -1, 1) * 4;
-        }
+        target.x = near ? clamp(nx, -1, 1) * 4 : 0;
+        target.y = near ? clamp(ny, -1, 1) * 4 : 0;
       }
     }
     animate();
   }
+  function refreshHover() {
+    mouseOver =
+      hoverPoint !== null && document.elementFromPoint(hoverPoint.x, hoverPoint.y) === button;
+    aimHover();
+  }
   function aimTilt() {
     target.rx = target.ry = 0;
-    if (!hoverPoint || reducedMotion.matches) return;
+    if (button.disabled || reducedMotion.matches) return;
+    const point = pointers.size
+      ? mouseGrip === null
+        ? null
+        : pointers.get(mouseGrip)
+      : hoverPoint;
+    if (!point) return;
     const rect = stage.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
+    const parked = buttonStaysPut();
+    if (
+      !pointers.size &&
+      !mouseOver &&
+      (parked ||
+        point.x < rect.left ||
+        point.x > rect.right ||
+        point.y < rect.top ||
+        point.y > rect.bottom)
+    )
+      return;
     // Use the drag destination while grabbed so tracking lag cannot twist the
     // grip. Otherwise follow the moving face, including while it springs home.
     const center = pointers.size ? target : current;
-    const parked = buttonStaysPut();
-    const x = hoverPoint.x - (rect.left + rect.width / 2 + center.x);
-    const y = hoverPoint.y - (rect.top + rect.height / 2 + center.y);
+    const x = point.x - (rect.left + rect.width / 2 + center.x);
+    const y = point.y - (rect.top + rect.height / 2 + center.y);
     const halfWidth = (parked ? button.offsetWidth : rect.width) / 2;
     const halfHeight = (parked ? button.offsetHeight : rect.height) / 2;
     const tilt = 1 - 0.28 * current.press;
@@ -679,11 +695,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     clearResponse();
     const captured = [...pointers.keys()];
     pointers.clear();
+    mouseGrip = null;
     for (const id of captured) if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
     release(cancelled);
     releasedAt = null;
     coastUntil = 0;
-    hoverPoint = null;
     current.copper = 0;
     // Reset also interrupts an in-progress release after the pointer leaves.
     // Its lettering must return to rest when that release clock is cancelled.
@@ -764,7 +780,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (reducedMotion.matches) return;
     const quick = press || releaseDuration === TAP_RELEASE_MS;
 
-    if (!press) {
+    if (!press && phase === "idle") {
       velocity.pop = quick ? 0.035 : 0.022;
     }
     if (current.powered === false) {
@@ -908,10 +924,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     plugControl.addEventListener("lostpointercapture", cancelTap);
   }
   stage.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "mouse") hoverPoint = { x: event.clientX, y: event.clientY };
     if (button.disabled) return;
     const point = pointers.get(event.pointerId);
     if (point) {
-      if (event.pointerType === "mouse") hoverPoint = { x: event.clientX, y: event.clientY };
       const now = performance.now(),
         elapsed = now - point.movedAt;
       const dt = clamp(elapsed, 8, 50);
@@ -921,24 +937,30 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       point.x = event.clientX;
       point.y = event.clientY;
       aimPointers(true);
-    } else if (!pointers.size && event.pointerType === "mouse") aimHover(event);
+    } else if (!pointers.size && event.pointerType === "mouse") aimHover();
   });
-  stage.addEventListener("pointerleave", () => {
-    if (pointers.size) return;
+  stage.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "mouse" || mouseGrip !== null) return;
     hoverPoint = null;
-    if (activeKey === null && !buttonStaysPut() && performance.now() >= coastUntil) reset(false);
-    else animate();
+    if (!pointers.size && !buttonStaysPut()) {
+      target.x = target.y = 0;
+      if (activeKey === null && performance.now() >= coastUntil) {
+        reset(false);
+        return;
+      }
+    }
+    animate();
   });
   button.addEventListener("pointerenter", (event) => {
     if (event.pointerType !== "mouse") return;
+    hoverPoint = { x: event.clientX, y: event.clientY };
     mouseOver = true;
-    if (!pointers.size && !button.disabled) aimHover(event);
+    if (!pointers.size && !button.disabled) aimHover();
     else animate();
   });
   button.addEventListener("pointerleave", (event) => {
     if (event.pointerType !== "mouse") return;
     mouseOver = false;
-    if (!pointers.size && buttonStaysPut()) hoverPoint = null;
     animate();
   });
   button.addEventListener("pointerdown", (event) => {
@@ -962,10 +984,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       vy: 0,
       movedAt: performance.now(),
     });
+    if (event.pointerType === "mouse") {
+      mouseGrip = event.pointerId;
+      hoverPoint = { x: event.clientX, y: event.clientY };
+    }
     if (pointers.size === 1) {
       dragFromX = target.x = current.x;
       dragFromY = target.y = current.y;
-      hoverPoint = event.pointerType === "mouse" ? { x: event.clientX, y: event.clientY } : null;
       velocity.x = velocity.y = 0;
       begin();
     } else if (gameButton) clickSound.play("press");
@@ -989,11 +1014,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       event.clientY >= 0 &&
       event.clientY < window.innerHeight;
     const inside = inViewport && (near(0, 0) || near(target.x - current.x, target.y - current.y));
-    const mouseRelease = event.pointerType === "mouse" && !cancelled && inViewport;
-    if (event.pointerType === "mouse") {
-      mouseOver =
-        mouseRelease && document.elementFromPoint(event.clientX, event.clientY) === button;
-      hoverPoint = null;
+    if (event.pointerId === mouseGrip) {
+      mouseGrip = null;
+      hoverPoint = !cancelled && inViewport ? { x: event.clientX, y: event.clientY } : null;
+      if (!hoverPoint) mouseOver = false;
     }
     const point = pointers.get(event.pointerId)!;
     // A cancelled finger can be independent of another one still holding the
@@ -1013,7 +1037,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (!cancelled && inside && !button.disabled) activateRelease(event);
     if (pointers.size) return;
     if (buttonStaysPut()) {
-      if (mouseRelease) aimHover(event);
+      refreshHover();
       return;
     }
     if (
@@ -1031,8 +1055,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       velocity.y = clamp(point.vy * 10, -14, 14);
     }
     target.x = target.y = 0;
-    if (mouseRelease) aimHover(event);
-    else animate();
+    refreshHover();
   }
   button.addEventListener("pointerup", (event) => endPointer(event));
   button.addEventListener("pointercancel", (event) => endPointer(event, true));
@@ -1081,7 +1104,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (button.disabled) reset();
     else {
       if (plugState === "unplugged") paint();
-      animate();
+      refreshHover();
     }
   }).observe(button, { attributes: true, attributeFilter: ["disabled"] });
   // Focus can stay on the button as input switches between mouse and keyboard.
@@ -1120,22 +1143,25 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (reducedMotion.matches) {
       for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
       effects.replaceChildren();
-    }
+    } else refreshHover();
   });
   window.addEventListener("focus", () => {
     if (document.activeElement === button) animate();
   });
   window.addEventListener("blur", () => {
+    hoverPoint = null;
     mouseOver = false;
     reset();
   });
   window.addEventListener("resize", () => {
     if (buttonStaysPut()) keepParkedButtonInView();
     reset();
+    refreshHover();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       labelChangedAt = null;
+      hoverPoint = null;
       mouseOver = false;
       plugStartedAt = null;
       drainStartedAt = null;

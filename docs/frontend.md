@@ -50,14 +50,16 @@ fades to full opacity over 180 ms. Reduced motion skips the fade.
 The button tilts toward the mouse, including after it has been unplugged or
 parked with cord slack. A mouse press keeps a shallower tilt at the grab point.
 On release, tilt follows the mouse relative to the moving button.
+Touch gestures preserve the stationary mouse position for when the gesture ends.
 
 Press-down starts with shallow compression, reaches full depth in 64 ms, and
 peaks in brightness mid-stroke. The face changes to copper immediately and
 raised lettering grows by 22% while held. Release rebounds from the current
 depth and returns the lettering and finish in 70 ms for taps or 110 ms for
-deliberate presses. Each new press interrupts the active rebound.
-Pointer cancellation, leaving the stage after release,
-focus loss, and hiding the page reset transient interaction state.
+deliberate presses. The button stays compressed until the last finger lifts.
+Each new press interrupts the active rebound. Pointer cancellation, the mouse
+leaving the stage after release, focus loss, and hiding the page reset transient
+interaction state.
 
 Mouse, touch, pen, Space, and Enter score once on release. Pointer releases have a small tolerance around the
 button and its drag destination.

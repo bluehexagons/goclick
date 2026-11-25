@@ -320,6 +320,26 @@ test("independent fingers each activate once and preserve their release coordina
   assert.deepEqual(h.sounds, ["press", "press", "release", "release"]);
 });
 
+test("a second finger can release without rebounding the held button", () => {
+  const h = harness(false);
+  h.pointer("pointerdown", 1);
+  h.pointer("pointerdown", 2);
+  for (let time = 16; time <= 640; time += 16) h.frame(time);
+  const compression = h.rig.props.get("--button-pop");
+  assert.equal(compression, "0.955");
+  h.setTime(640);
+  h.pointer("pointerup", 2);
+  assert.equal(h.clicks.length, 1);
+  h.frame(656);
+  assert.equal(h.rig.props.get("--button-pop"), compression);
+  assert.equal(h.rig.props.get("--press"), "1");
+  h.setTime(656);
+  h.pointer("pointerup", 1);
+  h.frame(672);
+  assert.ok(Number(h.rig.props.get("--button-pop")) > Number(compression));
+  assert.equal(h.clicks.length, 2);
+});
+
 test("cancelling one finger keeps the other held; outside releases never count", () => {
   const h = harness();
   h.pointer("pointerdown", 1);
@@ -435,6 +455,52 @@ test("mouse hover eases into the copper press and returns with the release", () 
   assert.ok(light() > 0 && light() < 1);
   for (let time = 562; time <= 900; time += 16) h.frame(time);
   assert.equal(light(), 0);
+});
+
+test("a stationary mouse regains its tilt after touch release and temporary disabling", () => {
+  const h = harness(false);
+  let time = 0;
+  const settle = () => {
+    for (let i = 0; i < 60; i++) {
+      time += 16;
+      h.setTime(time);
+      h.frame(time);
+    }
+  };
+  const tilt = () => parseFloat(h.rig.props.get("--tilt-y"));
+  const mouse = { pointerType: "mouse", clientX: 310, clientY: 170 };
+  h.pointer("pointerenter", 1, mouse);
+  settle();
+  const hovered = tilt();
+  assert.ok(hovered > 4);
+
+  h.pointer("pointerdown", 2);
+  settle();
+  assert.equal(tilt(), 0);
+  h.pointer("pointerup", 2);
+  h.stage.fire("pointerleave", { pointerType: "touch" });
+  settle();
+  assert.ok(Math.abs(tilt() - hovered) < 0.01);
+
+  h.pointer("pointerdown", 1, mouse);
+  h.pointer("pointerdown", 2);
+  h.pointer("pointerup", 1, mouse);
+  settle();
+  assert.equal(tilt(), 0);
+  h.pointer("pointerup", 2);
+  settle();
+  assert.ok(Math.abs(tilt() - hovered) < 0.01);
+
+  h.setDisabled(true);
+  settle();
+  assert.equal(tilt(), 0);
+  h.setDisabled(false);
+  settle();
+  assert.ok(Math.abs(tilt() - hovered) < 0.01);
+  h.stage.fire("pointerleave", { pointerType: "mouse" });
+  settle();
+  assert.equal(tilt(), 0);
+  assert.equal(h.clicks.length, 3);
 });
 
 test("keyboard focus and mouse hover give a static cue with reduced motion", () => {
@@ -817,7 +883,7 @@ test("leaving the stage during a release resets the lettering instead of freezin
   h.setTime(20);
   h.pointer("pointerup", 1, { pointerType: "mouse" });
   assert.ok(parseFloat(h.rig.props.get("--label-scale-x")) > 1.2);
-  h.stage.fire("pointerleave");
+  h.stage.fire("pointerleave", { pointerType: "mouse" });
   h.frame(200);
   assert.equal(h.rig.props.get("--label-scale-x"), "1.000");
   assert.equal(h.rig.props.get("--label-charge"), "0.000");
