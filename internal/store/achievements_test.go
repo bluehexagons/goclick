@@ -3,27 +3,32 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"os"
 	"slices"
 	"testing"
 	"time"
 )
 
-func TestAccountBadgeIDsUseDurableProgress(t *testing.T) {
-	counters := Counters{
-		Clicks:       500,
-		Progress:     ClickProgress{BestDayStreak: 7, BestWeekStreak: 4},
-		Achievements: ClickAchievements{Earned: century},
+func TestAccountBadgeIDsMatchOfflineFixtures(t *testing.T) {
+	raw, err := os.ReadFile("testdata/achievement-badges.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := counters.EarnedBadgeIDs(); len(got) != 9 || !slices.Contains(got, "busy-day") {
-		t.Fatalf("nine earned badges, including a past period badge, expected: %v", got)
+	var fixtures []struct {
+		Counters
+		Name   string
+		Earned []string
 	}
-	counters.Achievements.ActiveDays = 10
-	want := []string{
-		"gone-click", "sentence", "paragraph", "essay", "clicks-for-days", "one-week-streak",
-		"good-to-see-you-again", "double-fortnight", "busy-day", "returning-clicker", "recursion",
+	if err := json.Unmarshal(raw, &fixtures); err != nil {
+		t.Fatal(err)
 	}
-	if got := counters.EarnedBadgeIDs(); !slices.Equal(got, want) {
-		t.Fatalf("earned badges = %v, want %v", got, want)
+	for _, fixture := range fixtures {
+		t.Run(fixture.Name, func(t *testing.T) {
+			if got := fixture.EarnedBadgeIDs(); !slices.Equal(got, fixture.Earned) {
+				t.Fatalf("earned badges = %v, want %v", got, fixture.Earned)
+			}
+		})
 	}
 }
 

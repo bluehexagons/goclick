@@ -1,0 +1,88 @@
+[
+  {
+    "name": "before the first click",
+    "earned": []
+  },
+  {
+    "name": "first click",
+    "clicks": 1,
+    "earned": ["gone-click"]
+  },
+  {
+    "name": "below the next click and streak milestones",
+    "clicks": 24,
+    "progress": { "best_day_streak": 2, "best_week_streak": 1 },
+    "earned": ["gone-click"]
+  },
+  {
+    "name": "first click, day and week milestones",
+    "clicks": 25,
+    "progress": { "best_day_streak": 3, "best_week_streak": 2 },
+    "earned": ["gone-click", "sentence", "clicks-for-days", "good-to-see-you-again"]
+  },
+  {
+    "name": "hundredth click with day and week streaks just below their next targets",
+    "clicks": 100,
+    "progress": { "best_day_streak": 6, "best_week_streak": 3 },
+    "earned": ["gone-click", "sentence", "paragraph", "clicks-for-days", "good-to-see-you-again"]
+  },
+  {
+    "name": "nine badges with a completed day from an earlier period",
+    "clicks": 500,
+    "progress": { "best_day_streak": 7, "best_week_streak": 4 },
+    "achievements": { "active_days": 9, "active_months": 2, "earned": 1 },
+    "earned": [
+      "gone-click",
+      "sentence",
+      "paragraph",
+      "essay",
+      "clicks-for-days",
+      "one-week-streak",
+      "good-to-see-you-again",
+      "double-fortnight",
+      "busy-day"
+    ]
+  },
+  {
+    "name": "ten other badges unlock Recursion",
+    "clicks": 500,
+    "progress": { "best_day_streak": 7, "best_week_streak": 4 },
+    "achievements": { "active_days": 10, "active_months": 2, "earned": 1 },
+    "earned": [
+      "gone-click",
+      "sentence",
+      "paragraph",
+      "essay",
+      "clicks-for-days",
+      "one-week-streak",
+      "good-to-see-you-again",
+      "double-fortnight",
+      "busy-day",
+      "returning-clicker",
+      "recursion"
+    ]
+  },
+  {
+    "name": "all badges with completed periods preserved after rollover",
+    "clicks": 5000,
+    "progress": { "best_day_streak": 7, "best_week_streak": 4 },
+    "achievements": { "active_days": 10, "active_months": 3, "earned": 15 },
+    "earned": [
+      "gone-click",
+      "sentence",
+      "paragraph",
+      "essay",
+      "clicks-for-days",
+      "one-week-streak",
+      "good-to-see-you-again",
+      "double-fortnight",
+      "busy-day",
+      "brisk-pace",
+      "high-score",
+      "three-visits",
+      "returning-clicker",
+      "welcome-back",
+      "recursion"
+    ]
+  }
+]

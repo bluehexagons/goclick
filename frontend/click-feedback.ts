@@ -73,7 +73,7 @@ const clickFeedback = (() => {
       const average = formatUnit(Math.round(baseline), "millisecond");
       if (phase === "saved") {
         const time = formatUnit(Math.round(measured), "millisecond");
-        timing.textContent = t(simulated ? "feedbackSimulatedTime" : "feedbackSavedTime", { time });
+        timing.textContent = simulated ? t("feedbackSimulatedTime", { time }) : `✓ ${time}`;
         popup.title = t(simulated ? "feedbackSimulatedHint" : "feedbackSavedHint", {
           time,
           average,

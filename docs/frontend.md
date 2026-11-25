@@ -16,8 +16,9 @@ pick up changes in an already running binary.
 | Shared solid projection and lettering pose | `frontend/button-geometry.ts` |
 | WebGL solid, lighting, and texture atlas | `frontend/button-3d.ts` |
 | Language preferences, formatting, and messages | `frontend/i18n.ts`, `frontend/messages.ts`, `frontend/option-messages.ts` |
-| Motion and local-save options | `frontend/preferences.ts`, `frontend/app.ts` |
-| Local save coordination | `frontend/local-game.ts` |
+| Sound, motion, and simulated ping preferences | `frontend/option-preferences.ts`, `frontend/preferences.ts` |
+| Save and play mode coordination | `frontend/app.ts`, `frontend/local-game.ts` |
+| Achievement rules and display | `frontend/achievements.ts`, `frontend/progress.ts`, `frontend/achievement-panel.ts` |
 | Floating click feedback | `frontend/click-feedback.ts` |
 | Procedural press, release, and response audio | `frontend/sound.ts` |
 | Sound profiles, synthesis recipes, and variation curves | `frontend/sound-design.ts` |
@@ -29,6 +30,8 @@ with esbuild. Test builds compile isolated modules from the same source.
 `npm run check` covers types, lint, formatting, bundle freshness, and unit
 regressions without installing a browser. Generated `app.js` and `admin.js` are
 tracked release content; commit them alongside their TypeScript changes.
+The browser and Go tests use `internal/store/testdata/achievement-badges.json`
+to check that local and account play award the same achievement IDs.
 
 ## Interaction and appearance
 

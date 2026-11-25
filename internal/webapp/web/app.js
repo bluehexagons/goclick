@@ -657,6 +657,9 @@
   function utcWeek(day) {
     return Math.floor((day + 3) / 7);
   }
+  function sameUtcMonth(first, second) {
+    return first.getUTCFullYear() === second.getUTCFullYear() && first.getUTCMonth() === second.getUTCMonth();
+  }
   function seedProgress(time, dailyStreak) {
     if (!time) return { ...emptyProgress, best_day_streak: dailyStreak };
     const last = utcDay(Date.parse(time));
@@ -710,6 +713,19 @@
   var fourDigits = 2;
   var fiveGrand = 4;
   var threeVisits = 8;
+  var calendarBadgeTargets = {
+    day_clicks: 100,
+    week_clicks: 1e3,
+    month_clicks: 5e3,
+    active_days: 10,
+    active_months: 3
+  };
+  var distinctHoursTarget = 3;
+  function countSetBits(mask) {
+    let count = 0;
+    for (let bits = mask; bits; bits &= bits - 1) count++;
+    return count;
+  }
   var emptyClickAchievements = {
     day_clicks: 0,
     week_clicks: 0,
@@ -729,7 +745,7 @@
   ];
 
   // frontend/local-game.ts
-  var localGame = /* @__PURE__ */ (() => {
+  var localGame = (() => {
     const key = "goclick.local.v1";
     const coordinationTimeout = 1e4;
     const kinds = counterKinds;
@@ -769,13 +785,9 @@
       return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
     }
     const achievementLimits = {
-      day_clicks: 100,
-      week_clicks: 1e3,
-      month_clicks: 5e3,
+      ...calendarBadgeTargets,
       hours: 16777215,
-      active_days: 10,
-      active_months: 3,
-      earned: 15
+      earned: century | fourDigits | fiveGrand | threeVisits
     };
     function validateAchievements(value, hasTime) {
       if (!isRecord(value)) throw new Error("Invalid local achievement progress.");
@@ -793,8 +805,8 @@
     function seedAchievements(time, days, months) {
       const activity = {
         ...emptyClickAchievements,
-        active_days: Math.min(10, days),
-        active_months: Math.min(3, months)
+        active_days: Math.min(calendarBadgeTargets.active_days, days),
+        active_months: Math.min(calendarBadgeTargets.active_months, months)
       };
       if (!time) return activity;
       const seeded = advanceAchievements(emptyClickAchievements, null, time);
@@ -807,20 +819,19 @@
       const before = previous ? new Date(previous) : null;
       const day = utcDay(now.getTime());
       const previousDay = before ? utcDay(before.getTime()) : NaN;
-      const sameMonth = before && before.getUTCFullYear() === now.getUTCFullYear() && before.getUTCMonth() === now.getUTCMonth();
-      const dayClicks = day === previousDay ? Math.min(100, a.day_clicks + 1) : 1;
-      const weekClicks = utcWeek(day) === utcWeek(previousDay) ? Math.min(1e3, a.week_clicks + 1) : 1;
-      const monthClicks = sameMonth ? Math.min(5e3, a.month_clicks + 1) : 1;
+      const sameMonth = before !== null && sameUtcMonth(before, now);
+      const dayClicks = day === previousDay ? Math.min(calendarBadgeTargets.day_clicks, a.day_clicks + 1) : 1;
+      const weekClicks = utcWeek(day) === utcWeek(previousDay) ? Math.min(calendarBadgeTargets.week_clicks, a.week_clicks + 1) : 1;
+      const monthClicks = sameMonth ? Math.min(calendarBadgeTargets.month_clicks, a.month_clicks + 1) : 1;
       const hours = (day === previousDay ? a.hours : 0) | 1 << now.getUTCHours();
-      const twoOrMore = hours & hours - 1;
       return {
         day_clicks: dayClicks,
         week_clicks: weekClicks,
         month_clicks: monthClicks,
         hours,
-        active_days: Math.min(10, a.active_days + Number(day !== previousDay)),
-        active_months: Math.min(3, a.active_months + Number(!sameMonth)),
-        earned: a.earned | (dayClicks === 100 ? century : 0) | (weekClicks === 1e3 ? fourDigits : 0) | (monthClicks === 5e3 ? fiveGrand : 0) | (twoOrMore & twoOrMore - 1 ? threeVisits : 0)
+        active_days: Math.min(calendarBadgeTargets.active_days, a.active_days + Number(day !== previousDay)),
+        active_months: Math.min(calendarBadgeTargets.active_months, a.active_months + Number(!sameMonth)),
+        earned: a.earned | (dayClicks === calendarBadgeTargets.day_clicks ? century : 0) | (weekClicks === calendarBadgeTargets.week_clicks ? fourDigits : 0) | (monthClicks === calendarBadgeTargets.month_clicks ? fiveGrand : 0) | (countSetBits(hours) >= distinctHoursTarget ? threeVisits : 0)
       };
     }
     function decode(raw) {
@@ -2784,7 +2795,6 @@
     feedbackUnconfirmed: "unconfirmed",
     feedbackUnsaved: "not saved",
     feedbackCooldown: "cooldown",
-    feedbackSavedTime: "\u2713 {time}",
     feedbackSimulatedTime: "\u2713 {time} \xB7 sim",
     feedbackAwaitingHint: "Awaiting save \xB7 recent average {average}",
     feedbackSavedHint: "Saved \xB7 {time} \xB7 recent average {average}",
@@ -2900,7 +2910,6 @@
       feedbackUnconfirmed: "\u672A\u786E\u8BA4",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
       feedbackCooldown: "\u51B7\u5374\u4E2D",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 \u6A21\u62DF",
       feedbackAwaitingHint: "\u7B49\u5F85\u4FDD\u5B58 \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
       feedbackSavedHint: "\u5DF2\u4FDD\u5B58 \xB7 {time} \xB7 \u8FD1\u671F\u5E73\u5747 {average}",
@@ -3015,7 +3024,6 @@
       feedbackUnconfirmed: "sin confirmar",
       feedbackUnsaved: "no guardado",
       feedbackCooldown: "pausa",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 sim.",
       feedbackAwaitingHint: "Esperando guardado \xB7 media reciente {average}",
       feedbackSavedHint: "Guardado \xB7 {time} \xB7 media reciente {average}",
@@ -3130,7 +3138,6 @@
       feedbackUnconfirmed: "\u063A\u064A\u0631 \u0645\u0624\u0643\u062F\u0629",
       feedbackUnsaved: "\u0644\u0645 \u062A\u064F\u062D\u0641\u0638",
       feedbackCooldown: "\u0641\u062A\u0631\u0629 \u0627\u0646\u062A\u0638\u0627\u0631",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 \u0645\u062D\u0627\u0643\u0627\u0629",
       feedbackAwaitingHint: "\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u062D\u0641\u0638 \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average}",
       feedbackSavedHint: "\u062A\u0645 \u0627\u0644\u062D\u0641\u0638 \xB7 {time} \xB7 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u0623\u062E\u064A\u0631 {average}",
@@ -3245,7 +3252,6 @@
       feedbackUnconfirmed: "\u0905\u092A\u0941\u0937\u094D\u091F",
       feedbackUnsaved: "\u0938\u0939\u0947\u091C\u093E \u0928\u0939\u0940\u0902 \u0917\u092F\u093E",
       feedbackCooldown: "\u0935\u093F\u0930\u093E\u092E",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 \u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921",
       feedbackAwaitingHint: "\u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u092A\u094D\u0930\u0924\u0940\u0915\u094D\u0937\u093E \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average}",
       feedbackSavedHint: "\u0938\u0939\u0947\u091C\u093E \u0917\u092F\u093E \xB7 {time} \xB7 \u0939\u093E\u0932 \u0915\u093E \u0914\u0938\u0924 {average}",
@@ -3360,7 +3366,6 @@
       feedbackUnconfirmed: "belum terkonfirmasi",
       feedbackUnsaved: "tidak tersimpan",
       feedbackCooldown: "jeda",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 simulasi",
       feedbackAwaitingHint: "Menunggu penyimpanan \xB7 rata-rata terkini {average}",
       feedbackSavedHint: "Tersimpan \xB7 {time} \xB7 rata-rata terkini {average}",
@@ -3475,7 +3480,6 @@
       feedbackUnconfirmed: "n\xE3o confirmado",
       feedbackUnsaved: "n\xE3o salvo",
       feedbackCooldown: "pausa",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 sim.",
       feedbackAwaitingHint: "Aguardando salvamento \xB7 m\xE9dia recente {average}",
       feedbackSavedHint: "Salvo \xB7 {time} \xB7 m\xE9dia recente {average}",
@@ -3590,7 +3594,6 @@
       feedbackUnconfirmed: "non confirm\xE9",
       feedbackUnsaved: "non enregistr\xE9",
       feedbackCooldown: "pause",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 simul\xE9e",
       feedbackAwaitingHint: "En attente d\u2019enregistrement \xB7 moyenne r\xE9cente {average}",
       feedbackSavedHint: "Enregistr\xE9 \xB7 {time} \xB7 moyenne r\xE9cente {average}",
@@ -3705,7 +3708,6 @@
       feedbackUnconfirmed: "\u672A\u78BA\u8A8D",
       feedbackUnsaved: "\u672A\u4FDD\u5B58",
       feedbackCooldown: "\u5F85\u6A5F\u4E2D",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 \u6A21\u64EC",
       feedbackAwaitingHint: "\u4FDD\u5B58\u5F85\u3061 \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average}",
       feedbackSavedHint: "\u4FDD\u5B58\u6E08\u307F \xB7 {time} \xB7 \u6700\u8FD1\u306E\u5E73\u5747 {average}",
@@ -3820,7 +3822,6 @@
       feedbackUnconfirmed: "\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
       feedbackUnsaved: "\u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E",
       feedbackCooldown: "\u043F\u0430\u0443\u0437\u0430",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 \u0441\u0438\u043C.",
       feedbackAwaitingHint: "\u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average}",
       feedbackSavedHint: "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \xB7 {time} \xB7 \u0441\u0440\u0435\u0434\u043D\u0435\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0432\u0440\u0435\u043C\u044F {average}",
@@ -3935,7 +3936,6 @@
       feedbackUnconfirmed: "unbest\xE4tigt",
       feedbackUnsaved: "nicht gespeichert",
       feedbackCooldown: "Pause",
-      feedbackSavedTime: "\u2713 {time}",
       feedbackSimulatedTime: "\u2713 {time} \xB7 simuliert",
       feedbackAwaitingHint: "Warten auf Speicherung \xB7 letzter Durchschnitt {average}",
       feedbackSavedHint: "Gespeichert \xB7 {time} \xB7 letzter Durchschnitt {average}",
@@ -5212,7 +5212,7 @@
         const average2 = formatUnit(Math.round(baseline), "millisecond");
         if (phase === "saved") {
           const time = formatUnit(Math.round(measured), "millisecond");
-          timing.textContent = message2(simulated ? "feedbackSimulatedTime" : "feedbackSavedTime", { time });
+          timing.textContent = simulated ? message2("feedbackSimulatedTime", { time }) : `\u2713 ${time}`;
           popup.title = message2(simulated ? "feedbackSimulatedHint" : "feedbackSavedHint", {
             time,
             average: average2
@@ -5307,6 +5307,105 @@
       }
     };
   })();
+
+  // frontend/option-preferences.ts
+  function bindOptionPreferences(saveOption2) {
+    const motionSetting = required("#motion-setting");
+    const simulatedPingSetting = required("#simulated-ping");
+    const soundToggle = required("#sound-toggle");
+    const soundEnabled = required("#sound-enabled");
+    const soundVolumeSetting = required("#sound-volume");
+    const soundVolumeValue = required("#sound-volume-value");
+    const soundReverbSetting = required("#sound-reverb");
+    const soundProfileSetting = required("#sound-profile");
+    const soundProfileDescription = required("#sound-profile-description");
+    const soundPreview = required("#preview-sound");
+    const profileOptions = soundProfiles.map((profile2) => {
+      const option = document.createElement("option");
+      option.value = profile2.id;
+      soundProfileSetting.append(option);
+      return { option, name: profile2.name };
+    });
+    function paintSoundVolume(percent) {
+      const text = formatPercent(percent / 100);
+      soundVolumeValue.textContent = text;
+      soundVolumeSetting.setAttribute("aria-valuetext", text);
+    }
+    function updateSoundOptions() {
+      const { sound: enabled2, soundProfile, soundVolume, soundReverb } = gameSettings.value;
+      clickSound.setProfile(soundProfile);
+      clickSound.setVolume(soundVolume / 100);
+      clickSound.setReverb(soundReverb);
+      clickSound.setEnabled(enabled2);
+      soundEnabled.checked = enabled2;
+      soundVolumeSetting.value = String(soundVolume);
+      paintSoundVolume(soundVolume);
+      soundReverbSetting.checked = soundReverb;
+      soundProfileSetting.value = soundProfile;
+      soundPreview.disabled = !enabled2;
+      soundProfileDescription.textContent = message2(
+        soundProfiles.find((profile2) => profile2.id === soundProfile).description
+      );
+      soundToggle.setAttribute("aria-pressed", String(enabled2));
+      soundToggle.setAttribute("aria-label", message2("sound"));
+      soundToggle.title = message2(enabled2 ? "soundOn" : "soundOff");
+      soundToggle.lang = currentLanguage();
+    }
+    gameSettings.onChange(updateSoundOptions);
+    updateSoundOptions();
+    soundToggle.addEventListener("click", () => {
+      try {
+        gameSettings.update({ sound: !gameSettings.value.sound });
+      } catch {
+      }
+      if (gameSettings.value.sound) clickSound.prepare();
+    });
+    function paintOptionLabels() {
+      for (const { option, name } of profileOptions) option.textContent = message2(name);
+      for (const option of simulatedPingSetting.querySelectorAll("[data-ping]"))
+        option.textContent = message2("approximatePing", {
+          time: formatUnit(Number(option.value), "millisecond")
+        });
+    }
+    function updatePlayOptions() {
+      const { motion: motion2, simulatedPing } = gameSettings.value;
+      motionSetting.value = motion2;
+      simulatedPingSetting.value = String(simulatedPing);
+    }
+    gameSettings.onChange(updatePlayOptions);
+    updatePlayOptions();
+    soundEnabled.addEventListener("change", () => {
+      saveOption2({ sound: soundEnabled.checked });
+      if (gameSettings.value.sound) clickSound.prepare();
+    });
+    soundVolumeSetting.addEventListener("input", () => {
+      paintSoundVolume(soundVolumeSetting.valueAsNumber);
+      clickSound.setVolume(soundVolumeSetting.valueAsNumber / 100);
+    });
+    soundVolumeSetting.addEventListener("change", () => {
+      saveOption2({ soundVolume: soundVolumeSetting.valueAsNumber });
+    });
+    soundReverbSetting.addEventListener("change", () => {
+      saveOption2({ soundReverb: soundReverbSetting.checked });
+    });
+    soundProfileSetting.addEventListener("change", () => {
+      const profile2 = soundProfileSetting.value;
+      if (isSoundProfile(profile2)) saveOption2({ soundProfile: profile2 });
+    });
+    soundPreview.addEventListener("click", () => clickSound.preview());
+    motionSetting.addEventListener("change", () => {
+      const motion2 = motionSetting.value;
+      if (motion2 === "auto" || motion2 === "on" || motion2 === "off") saveOption2({ motion: motion2 });
+    });
+    simulatedPingSetting.addEventListener("change", () => {
+      const simulatedPing = Number(simulatedPingSetting.value);
+      if (isSimulatedPing(simulatedPing)) saveOption2({ simulatedPing });
+    });
+    return () => {
+      paintOptionLabels();
+      updateSoundOptions();
+    };
+  }
 
   // frontend/share.ts
   function currentSiteUrl() {
@@ -5573,35 +5672,21 @@
   }
 
   // frontend/achievements.ts
-  function formatRequirements(language2) {
-    const count = (key, value) => message2(key, { count: formatNumber(value, language2) }, language2);
-    const consecutive = (value, unit) => message2("consecutive", { duration: formatUnit(value, unit, language2) }, language2);
-    return {
-      first: message2("firstClick", {}, language2),
-      sentence: count("clickMilestone", 25),
-      paragraph: count("clickMilestone", 100),
-      essay: count("clickMilestone", 500),
-      threeDays: consecutive(3, "day"),
-      sevenDays: consecutive(7, "day"),
-      twoWeeks: consecutive(2, "week"),
-      fourWeeks: consecutive(4, "week"),
-      busyDay: count("dayClickGoal", 100),
-      briskPace: count("weekClickGoal", 1e3),
-      highScore: count("monthClickGoal", 5e3),
-      threeVisits: count("distinctHoursGoal", 3),
-      returningClicker: count("distinctDaysGoal", 10),
-      welcomeBack: count("distinctMonthsGoal", 3),
-      recursion: count("otherAchievementsGoal", 10)
-    };
-  }
   var translatedRequirements = /* @__PURE__ */ new Map();
-  function requirements(language2) {
-    let localized = translatedRequirements.get(language2);
-    if (!localized) {
-      localized = formatRequirements(language2);
-      translatedRequirements.set(language2, localized);
+  function requirement(goal, target, language2) {
+    const key = `${language2}:${goal}:${target}`;
+    const cached = translatedRequirements.get(key);
+    if (cached !== void 0) return cached;
+    let description;
+    if (goal === "firstClick") description = message2(goal, {}, language2);
+    else if (goal === "dayStreak" || goal === "weekStreak") {
+      const duration = formatUnit(target, goal === "dayStreak" ? "day" : "week", language2);
+      description = message2("consecutive", { duration }, language2);
+    } else {
+      description = message2(goal, { count: formatNumber(target, language2) }, language2);
     }
-    return localized;
+    translatedRequirements.set(key, description);
+    return description;
   }
   function badgesFor(data, progress, local) {
     const accountBadges = new Set(data.earned_badges);
@@ -5612,71 +5697,31 @@
     const now = Date.now();
     const sameDay = utcDay(last) === utcDay(now);
     const sameWeek = utcWeek(utcDay(last)) === utcWeek(utcDay(now));
-    const sameMonth = Number.isFinite(last) && new Date(last).toISOString().slice(0, 7) === new Date(now).toISOString().slice(0, 7);
-    let hours = 0;
-    if (sameDay) {
-      for (let bits = calendar.hours; bits; bits >>>= 1) hours += bits & 1;
-    }
-    const localized = requirements(language2);
-    function badge(id, icon, name, hint, description, earnedOffline, current, total) {
+    const sameMonth = sameUtcMonth(new Date(last), new Date(now));
+    const hours = sameDay ? countSetBits(calendar.hours) : 0;
+    function badge(id, icon, name, hint, goal, current, target, earnedOffline = current >= target) {
       const earned2 = local ? earnedOffline : accountBadges.has(id);
       return {
+        id,
         icon,
         name,
         hint,
-        description,
+        description: requirement(goal, target, language2),
         earned: earned2,
-        meter: current !== void 0 && total !== void 0 ? { count: earned2 ? total : Math.min(total, current), total } : void 0
+        meter: { count: earned2 ? target : Math.min(target, current), total: target }
       };
     }
     const badges2 = [
-      badge(
-        "gone-click",
-        "medal",
-        "Gone Click",
-        "An early milestone.",
-        localized.first,
-        clicks >= 1,
-        clicks,
-        1
-      ),
-      badge(
-        "sentence",
-        "clicks",
-        "Sentence",
-        "A few clicks in.",
-        localized.sentence,
-        clicks >= 25,
-        clicks,
-        25
-      ),
-      badge(
-        "paragraph",
-        "clicks",
-        "Paragraph",
-        "The clicks add up.",
-        localized.paragraph,
-        clicks >= 100,
-        clicks,
-        100
-      ),
-      badge(
-        "essay",
-        "clicks",
-        "Essay",
-        "No time limit.",
-        localized.essay,
-        clicks >= 500,
-        clicks,
-        500
-      ),
+      badge("gone-click", "medal", "Gone Click", "An early milestone.", "firstClick", clicks, 1),
+      badge("sentence", "clicks", "Sentence", "A few clicks in.", "clickMilestone", clicks, 25),
+      badge("paragraph", "clicks", "Paragraph", "The clicks add up.", "clickMilestone", clicks, 100),
+      badge("essay", "clicks", "Essay", "No time limit.", "clickMilestone", clicks, 500),
       badge(
         "clicks-for-days",
         "calendar",
         "Clicks for Days",
         "A short run of consecutive days.",
-        localized.threeDays,
-        progress.best_day_streak >= 3,
+        "dayStreak",
         progress.best_day_streak,
         3
       ),
@@ -5685,8 +5730,7 @@
         "calendar",
         "One-Week Streak",
         "A longer daily streak.",
-        localized.sevenDays,
-        progress.best_day_streak >= 7,
+        "dayStreak",
         progress.best_day_streak,
         7
       ),
@@ -5695,8 +5739,7 @@
         "calendar",
         "Good to See You Again",
         "Check in again next week.",
-        localized.twoWeeks,
-        progress.best_week_streak >= 2,
+        "weekStreak",
         progress.best_week_streak,
         2
       ),
@@ -5705,8 +5748,7 @@
         "calendar",
         "Double Fortnight",
         "A longer weekly streak.",
-        localized.fourWeeks,
-        progress.best_week_streak >= 4,
+        "weekStreak",
         progress.best_week_streak,
         4
       ),
@@ -5715,60 +5757,58 @@
         "pace",
         "Busy Day",
         "Clicks within one UTC day.",
-        localized.busyDay,
-        Boolean(calendar.earned & century),
+        "dayClickGoal",
         sameDay ? calendar.day_clicks : 0,
-        100
+        calendarBadgeTargets.day_clicks,
+        Boolean(calendar.earned & century)
       ),
       badge(
         "brisk-pace",
         "pace",
         "Brisk Pace",
         "Clicks within one UTC week.",
-        localized.briskPace,
-        Boolean(calendar.earned & fourDigits),
+        "weekClickGoal",
         sameWeek ? calendar.week_clicks : 0,
-        1e3
+        calendarBadgeTargets.week_clicks,
+        Boolean(calendar.earned & fourDigits)
       ),
       badge(
         "high-score",
         "pace",
         "High Score",
         "Clicks within one UTC month.",
-        localized.highScore,
-        Boolean(calendar.earned & fiveGrand),
+        "monthClickGoal",
         sameMonth ? calendar.month_clicks : 0,
-        5e3
+        calendarBadgeTargets.month_clicks,
+        Boolean(calendar.earned & fiveGrand)
       ),
       badge(
         "three-visits",
         "pace",
         "Three Visits",
         "Different times on the same day.",
-        localized.threeVisits,
-        Boolean(calendar.earned & threeVisits),
+        "distinctHoursGoal",
         hours,
-        3
+        distinctHoursTarget,
+        Boolean(calendar.earned & threeVisits)
       ),
       badge(
         "returning-clicker",
         "calendar",
         "Returning Clicker",
         "The days can be spread out.",
-        localized.returningClicker,
-        calendar.active_days >= 10,
+        "distinctDaysGoal",
         calendar.active_days,
-        10
+        calendarBadgeTargets.active_days
       ),
       badge(
         "welcome-back",
         "calendar",
         "Welcome Back",
         "An occasional visit is enough.",
-        localized.welcomeBack,
-        calendar.active_months >= 3,
+        "distinctMonthsGoal",
         calendar.active_months,
-        3
+        calendarBadgeTargets.active_months
       )
     ];
     const earned = badges2.filter((entry) => entry.earned).length;
@@ -5778,8 +5818,7 @@
         "medal",
         "Recursion",
         "Achievements count toward this one.",
-        localized.recursion,
-        earned >= 10,
+        "otherAchievementsGoal",
         earned,
         10
       )
@@ -5839,7 +5878,7 @@
     state.className = "achievement-state";
     state.textContent = message2(badge.earned ? "earned" : "locked");
     text.append(name, description);
-    if (showDetail && badge.meter) {
+    if (showDetail) {
       const { count, total } = badge.meter;
       const row = document.createElement("div");
       row.className = "achievement-card-progress";
@@ -5924,7 +5963,7 @@
   }
   function renderAchievements(data, progress, local, announce) {
     const next = badgesFor(data, progress, local);
-    const key = `${currentLanguage()}:${next.map(({ earned, meter: meter2 }) => `${Number(earned)}-${meter2?.count ?? ""}`).join(",")}`;
+    const key = `${currentLanguage()}:${next.map(({ earned, meter: meter2 }) => `${Number(earned)}-${meter2.count}`).join(",")}`;
     if (key === badgeKey) return;
     if (announce && badges.length) {
       queueNotice(
@@ -6073,53 +6112,6 @@
   var retryBootButton = required("#retry-boot-button");
   var refreshCounterButton = required("#refresh-counter");
   var motionShortcut = required("#motion-shortcut");
-  var soundToggle = required("#sound-toggle");
-  var soundEnabled = required("#sound-enabled");
-  var soundVolumeSetting = required("#sound-volume");
-  var soundVolumeValue = required("#sound-volume-value");
-  var soundReverbSetting = required("#sound-reverb");
-  var soundProfileSetting = required("#sound-profile");
-  var soundPreview = required("#preview-sound");
-  var profileOptions = soundProfiles.map((profile2) => {
-    const option = document.createElement("option");
-    option.value = profile2.id;
-    soundProfileSetting.append(option);
-    return { option, name: profile2.name };
-  });
-  function paintSoundVolume(percent) {
-    const text = formatPercent(percent / 100);
-    soundVolumeValue.textContent = text;
-    soundVolumeSetting.setAttribute("aria-valuetext", text);
-  }
-  function updateSoundOptions() {
-    const { sound: enabled2, soundProfile, soundVolume, soundReverb } = gameSettings.value;
-    clickSound.setProfile(soundProfile);
-    clickSound.setVolume(soundVolume / 100);
-    clickSound.setReverb(soundReverb);
-    clickSound.setEnabled(enabled2);
-    soundEnabled.checked = enabled2;
-    soundVolumeSetting.value = String(soundVolume);
-    paintSoundVolume(soundVolume);
-    soundReverbSetting.checked = soundReverb;
-    soundProfileSetting.value = soundProfile;
-    soundPreview.disabled = !enabled2;
-    required("#sound-profile-description").textContent = message2(
-      soundProfiles.find((profile2) => profile2.id === soundProfile).description
-    );
-    soundToggle.setAttribute("aria-pressed", String(enabled2));
-    soundToggle.setAttribute("aria-label", message2("sound"));
-    soundToggle.title = message2(enabled2 ? "soundOn" : "soundOff");
-    soundToggle.lang = currentLanguage();
-  }
-  gameSettings.onChange(updateSoundOptions);
-  updateSoundOptions();
-  soundToggle.addEventListener("click", () => {
-    try {
-      gameSettings.update({ sound: !gameSettings.value.sound });
-    } catch {
-    }
-    if (gameSettings.value.sound) clickSound.prepare();
-  });
   var connection = required("#connection");
   var pendingIndicator = required("#pending-clicks");
   var currentView = "";
@@ -6853,8 +6845,6 @@
   });
   retryBootButton.addEventListener("click", () => boot());
   var optionsDialog = required("#options-dialog");
-  var motionSetting = required("#motion-setting");
-  var simulatedPingSetting = required("#simulated-ping");
   var replaceLocalConsent = required("#replace-local");
   var importLocal = required("#import-local");
   optionsDialog.addEventListener("close", () => clickSound.cancelPreview());
@@ -6880,20 +6870,6 @@
     currentOptionsNotice = key ? { key, error, detail } : null;
     paintOptionsNotice();
   }
-  function paintOptionLabels() {
-    for (const { option, name } of profileOptions) option.textContent = message2(name);
-    for (const option of simulatedPingSetting.querySelectorAll("[data-ping]"))
-      option.textContent = message2("approximatePing", {
-        time: formatUnit(Number(option.value), "millisecond")
-      });
-  }
-  function updatePlayOptions() {
-    const { motion: motion2, simulatedPing } = gameSettings.value;
-    motionSetting.value = motion2;
-    simulatedPingSetting.value = String(simulatedPing);
-  }
-  gameSettings.onChange(updatePlayOptions);
-  updatePlayOptions();
   function updateOptions() {
     required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
     const name = user?.username;
@@ -6924,38 +6900,12 @@
       optionsNotice("settingsVisit", true);
     }
   }
-  soundEnabled.addEventListener("change", () => {
-    saveOption({ sound: soundEnabled.checked });
-    if (gameSettings.value.sound) clickSound.prepare();
-  });
-  soundVolumeSetting.addEventListener("input", () => {
-    paintSoundVolume(soundVolumeSetting.valueAsNumber);
-    clickSound.setVolume(soundVolumeSetting.valueAsNumber / 100);
-  });
-  soundVolumeSetting.addEventListener("change", () => {
-    saveOption({ soundVolume: soundVolumeSetting.valueAsNumber });
-  });
-  soundReverbSetting.addEventListener("change", () => {
-    saveOption({ soundReverb: soundReverbSetting.checked });
-  });
-  soundProfileSetting.addEventListener("change", () => {
-    const profile2 = soundProfileSetting.value;
-    if (isSoundProfile(profile2)) saveOption({ soundProfile: profile2 });
-  });
-  soundPreview.addEventListener("click", () => clickSound.preview());
-  motionSetting.addEventListener("change", () => {
-    const motion2 = motionSetting.value;
-    if (motion2 === "auto" || motion2 === "on" || motion2 === "off") saveOption({ motion: motion2 });
-  });
+  var paintOptionPreferencesLanguage = bindOptionPreferences(saveOption);
   motionShortcut.addEventListener("click", () => {
     try {
       gameSettings.update({ motion: "off" });
     } catch {
     }
-  });
-  simulatedPingSetting.addEventListener("change", () => {
-    const simulatedPing = Number(simulatedPingSetting.value);
-    if (isSimulatedPing(simulatedPing)) saveOption({ simulatedPing });
   });
   function openLocalGame(data) {
     show(pageFromLocation());
@@ -7174,8 +7124,7 @@
   var paintLanguagePicker = languagePicker();
   function applyLanguage() {
     translatePage();
-    paintOptionLabels();
-    updateSoundOptions();
+    paintOptionPreferencesLanguage();
     paintOptionsNotice();
     if (optionsDialog.open) updateOptions();
     paintLanguagePicker();

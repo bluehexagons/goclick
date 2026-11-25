@@ -3,8 +3,31 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { frontend } = require("./frontend.cjs");
+const badgeFixtures = require("../../store/testdata/achievement-badges.json");
 
-const { fortnightActivity, utcReset } = frontend().load("progress");
+const { load } = frontend();
+const { badgesFor } = load("achievements");
+const { emptyClickAchievements, emptyProgress, fortnightActivity, utcReset } = load("progress");
+
+for (const { name, clicks, progress, achievements, earned } of badgeFixtures) {
+  test(`offline badge unlocks: ${name}`, () => {
+    const badges = badgesFor(
+      {
+        click_count: { count: clicks ?? 0 },
+        achievements: { ...emptyClickAchievements, ...achievements },
+      },
+      { ...emptyProgress, ...progress },
+      true,
+    );
+    assert.deepEqual(
+      Array.from(
+        badges.filter((badge) => badge.earned),
+        (badge) => badge.id,
+      ),
+      earned,
+    );
+  });
+}
 
 test("the activity score rewards adjacent days even with gaps and reserves 100 for 14 active days", () => {
   assert.equal(fortnightActivity(0).score, 0);

@@ -19,6 +19,13 @@ export function utcWeek(day: number) {
   return Math.floor((day + 3) / 7);
 }
 
+export function sameUtcMonth(first: Date, second: Date) {
+  return (
+    first.getUTCFullYear() === second.getUTCFullYear() &&
+    first.getUTCMonth() === second.getUTCMonth()
+  );
+}
+
 export function seedProgress(time: string | null | undefined, dailyStreak: number): ClickProgress {
   if (!time) return { ...emptyProgress, best_day_streak: dailyStreak };
   const last = utcDay(Date.parse(time));
@@ -85,6 +92,21 @@ export const century = 1;
 export const fourDigits = 2;
 export const fiveGrand = 4;
 export const threeVisits = 8;
+
+export const calendarBadgeTargets = {
+  day_clicks: 100,
+  week_clicks: 1000,
+  month_clicks: 5000,
+  active_days: 10,
+  active_months: 3,
+} as const;
+export const distinctHoursTarget = 3;
+
+export function countSetBits(mask: number) {
+  let count = 0;
+  for (let bits = mask; bits; bits &= bits - 1) count++;
+  return count;
+}
 
 export const emptyClickAchievements: ClickAchievements = {
   day_clicks: 0,

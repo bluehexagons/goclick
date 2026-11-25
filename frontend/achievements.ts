@@ -1,13 +1,16 @@
 import { currentLanguage, formatNumber, formatUnit, message as t } from "./i18n.js";
 import type { Language } from "./i18n.js";
-import type { MessageKey } from "./messages.js";
 import type { ClickProgress, Counters } from "./types.js";
 
 import {
+  calendarBadgeTargets as targets,
   century,
+  countSetBits,
+  distinctHoursTarget,
   emptyClickAchievements,
   fiveGrand,
   fourDigits,
+  sameUtcMonth,
   threeVisits,
   utcDay,
   utcWeek,
@@ -16,45 +19,44 @@ import {
 export type BadgeIcon = "medal" | "clicks" | "calendar" | "pace";
 
 export interface Badge {
+  id: string;
   icon: BadgeIcon;
   hint: string;
   name: string;
   description: string;
   earned: boolean;
-  meter?: { count: number; total: number };
+  meter: { count: number; total: number };
 }
 
-function formatRequirements(language: Language) {
-  const count = (key: MessageKey, value: number) =>
-    t(key, { count: formatNumber(value, language) }, language);
-  const consecutive = (value: number, unit: "day" | "week") =>
-    t("consecutive", { duration: formatUnit(value, unit, language) }, language);
-  return {
-    first: t("firstClick", {}, language),
-    sentence: count("clickMilestone", 25),
-    paragraph: count("clickMilestone", 100),
-    essay: count("clickMilestone", 500),
-    threeDays: consecutive(3, "day"),
-    sevenDays: consecutive(7, "day"),
-    twoWeeks: consecutive(2, "week"),
-    fourWeeks: consecutive(4, "week"),
-    busyDay: count("dayClickGoal", 100),
-    briskPace: count("weekClickGoal", 1000),
-    highScore: count("monthClickGoal", 5000),
-    threeVisits: count("distinctHoursGoal", 3),
-    returningClicker: count("distinctDaysGoal", 10),
-    welcomeBack: count("distinctMonthsGoal", 3),
-    recursion: count("otherAchievementsGoal", 10),
-  };
-}
-const translatedRequirements = new Map<Language, ReturnType<typeof formatRequirements>>();
-function requirements(language: Language) {
-  let localized = translatedRequirements.get(language);
-  if (!localized) {
-    localized = formatRequirements(language);
-    translatedRequirements.set(language, localized);
+type Goal =
+  | "firstClick"
+  | "clickMilestone"
+  | "dayStreak"
+  | "weekStreak"
+  | "dayClickGoal"
+  | "weekClickGoal"
+  | "monthClickGoal"
+  | "distinctHoursGoal"
+  | "distinctDaysGoal"
+  | "distinctMonthsGoal"
+  | "otherAchievementsGoal";
+
+const translatedRequirements = new Map<string, string>();
+function requirement(goal: Goal, target: number, language: Language) {
+  const key = `${language}:${goal}:${target}`;
+  const cached = translatedRequirements.get(key);
+  if (cached !== undefined) return cached;
+
+  let description: string;
+  if (goal === "firstClick") description = t(goal, {}, language);
+  else if (goal === "dayStreak" || goal === "weekStreak") {
+    const duration = formatUnit(target, goal === "dayStreak" ? "day" : "week", language);
+    description = t("consecutive", { duration }, language);
+  } else {
+    description = t(goal, { count: formatNumber(target, language) }, language);
   }
-  return localized;
+  translatedRequirements.set(key, description);
+  return description;
 }
 
 export function badgesFor(data: Counters, progress: ClickProgress, local: boolean): Badge[] {
@@ -66,85 +68,41 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
   const now = Date.now();
   const sameDay = utcDay(last) === utcDay(now);
   const sameWeek = utcWeek(utcDay(last)) === utcWeek(utcDay(now));
-  const sameMonth =
-    Number.isFinite(last) &&
-    new Date(last).toISOString().slice(0, 7) === new Date(now).toISOString().slice(0, 7);
-  let hours = 0;
-  if (sameDay) {
-    for (let bits = calendar.hours; bits; bits >>>= 1) hours += bits & 1;
-  }
-  const localized = requirements(language);
+  const sameMonth = sameUtcMonth(new Date(last), new Date(now));
+  const hours = sameDay ? countSetBits(calendar.hours) : 0;
+
   function badge(
     id: string,
     icon: BadgeIcon,
     name: string,
     hint: string,
-    description: string,
-    earnedOffline: boolean,
-    current?: number,
-    total?: number,
+    goal: Goal,
+    current: number,
+    target: number,
+    earnedOffline = current >= target,
   ): Badge {
     const earned = local ? earnedOffline : accountBadges.has(id);
     return {
+      id,
       icon,
       name,
       hint,
-      description,
+      description: requirement(goal, target, language),
       earned,
-      meter:
-        current !== undefined && total !== undefined
-          ? { count: earned ? total : Math.min(total, current), total }
-          : undefined,
+      meter: { count: earned ? target : Math.min(target, current), total: target },
     };
   }
   const badges = [
-    badge(
-      "gone-click",
-      "medal",
-      "Gone Click",
-      "An early milestone.",
-      localized.first,
-      clicks >= 1,
-      clicks,
-      1,
-    ),
-    badge(
-      "sentence",
-      "clicks",
-      "Sentence",
-      "A few clicks in.",
-      localized.sentence,
-      clicks >= 25,
-      clicks,
-      25,
-    ),
-    badge(
-      "paragraph",
-      "clicks",
-      "Paragraph",
-      "The clicks add up.",
-      localized.paragraph,
-      clicks >= 100,
-      clicks,
-      100,
-    ),
-    badge(
-      "essay",
-      "clicks",
-      "Essay",
-      "No time limit.",
-      localized.essay,
-      clicks >= 500,
-      clicks,
-      500,
-    ),
+    badge("gone-click", "medal", "Gone Click", "An early milestone.", "firstClick", clicks, 1),
+    badge("sentence", "clicks", "Sentence", "A few clicks in.", "clickMilestone", clicks, 25),
+    badge("paragraph", "clicks", "Paragraph", "The clicks add up.", "clickMilestone", clicks, 100),
+    badge("essay", "clicks", "Essay", "No time limit.", "clickMilestone", clicks, 500),
     badge(
       "clicks-for-days",
       "calendar",
       "Clicks for Days",
       "A short run of consecutive days.",
-      localized.threeDays,
-      progress.best_day_streak >= 3,
+      "dayStreak",
       progress.best_day_streak,
       3,
     ),
@@ -153,8 +111,7 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "One-Week Streak",
       "A longer daily streak.",
-      localized.sevenDays,
-      progress.best_day_streak >= 7,
+      "dayStreak",
       progress.best_day_streak,
       7,
     ),
@@ -163,8 +120,7 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "Good to See You Again",
       "Check in again next week.",
-      localized.twoWeeks,
-      progress.best_week_streak >= 2,
+      "weekStreak",
       progress.best_week_streak,
       2,
     ),
@@ -173,8 +129,7 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "calendar",
       "Double Fortnight",
       "A longer weekly streak.",
-      localized.fourWeeks,
-      progress.best_week_streak >= 4,
+      "weekStreak",
       progress.best_week_streak,
       4,
     ),
@@ -183,60 +138,58 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "pace",
       "Busy Day",
       "Clicks within one UTC day.",
-      localized.busyDay,
-      Boolean(calendar.earned & century),
+      "dayClickGoal",
       sameDay ? calendar.day_clicks : 0,
-      100,
+      targets.day_clicks,
+      Boolean(calendar.earned & century),
     ),
     badge(
       "brisk-pace",
       "pace",
       "Brisk Pace",
       "Clicks within one UTC week.",
-      localized.briskPace,
-      Boolean(calendar.earned & fourDigits),
+      "weekClickGoal",
       sameWeek ? calendar.week_clicks : 0,
-      1000,
+      targets.week_clicks,
+      Boolean(calendar.earned & fourDigits),
     ),
     badge(
       "high-score",
       "pace",
       "High Score",
       "Clicks within one UTC month.",
-      localized.highScore,
-      Boolean(calendar.earned & fiveGrand),
+      "monthClickGoal",
       sameMonth ? calendar.month_clicks : 0,
-      5000,
+      targets.month_clicks,
+      Boolean(calendar.earned & fiveGrand),
     ),
     badge(
       "three-visits",
       "pace",
       "Three Visits",
       "Different times on the same day.",
-      localized.threeVisits,
-      Boolean(calendar.earned & threeVisits),
+      "distinctHoursGoal",
       hours,
-      3,
+      distinctHoursTarget,
+      Boolean(calendar.earned & threeVisits),
     ),
     badge(
       "returning-clicker",
       "calendar",
       "Returning Clicker",
       "The days can be spread out.",
-      localized.returningClicker,
-      calendar.active_days >= 10,
+      "distinctDaysGoal",
       calendar.active_days,
-      10,
+      targets.active_days,
     ),
     badge(
       "welcome-back",
       "calendar",
       "Welcome Back",
       "An occasional visit is enough.",
-      localized.welcomeBack,
-      calendar.active_months >= 3,
+      "distinctMonthsGoal",
       calendar.active_months,
-      3,
+      targets.active_months,
     ),
   ];
   const earned = badges.filter((entry) => entry.earned).length;
@@ -246,8 +199,7 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "medal",
       "Recursion",
       "Achievements count toward this one.",
-      localized.recursion,
-      earned >= 10,
+      "otherAchievementsGoal",
       earned,
       10,
     ),

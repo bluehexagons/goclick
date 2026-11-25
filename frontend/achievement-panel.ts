@@ -67,7 +67,7 @@ function card(badge: Badge) {
   state.className = "achievement-state";
   state.textContent = t(badge.earned ? "earned" : "locked");
   text.append(name, description);
-  if (showDetail && badge.meter) {
+  if (showDetail) {
     const { count, total } = badge.meter;
     const row = document.createElement("div");
     row.className = "achievement-card-progress";
@@ -167,7 +167,7 @@ export function renderAchievements(
 ) {
   const next = badgesFor(data, progress, local);
   const key = `${currentLanguage()}:${next
-    .map(({ earned, meter }) => `${Number(earned)}-${meter?.count ?? ""}`)
+    .map(({ earned, meter }) => `${Number(earned)}-${meter.count}`)
     .join(",")}`;
   if (key === badgeKey) return;
   if (announce && badges.length) {

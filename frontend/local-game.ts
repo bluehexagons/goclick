@@ -1,7 +1,21 @@
 import { isRecord } from "./dom.js";
-import { advanceProgress, fortnightMask, seedProgress, utcDay, utcWeek } from "./progress.js";
+import {
+  advanceProgress,
+  calendarBadgeTargets as targets,
+  century,
+  countSetBits,
+  distinctHoursTarget,
+  emptyClickAchievements,
+  fiveGrand,
+  fortnightMask,
+  fourDigits,
+  sameUtcMonth,
+  seedProgress,
+  threeVisits,
+  utcDay,
+  utcWeek,
+} from "./progress.js";
 import { counterKinds } from "./types.js";
-import { century, emptyClickAchievements, fiveGrand, fourDigits, threeVisits } from "./progress.js";
 import type { ClickAchievements, ClickProgress, Counters } from "./types.js";
 
 // One local slot, intentionally unrelated to authentication or the account API.
@@ -71,13 +85,9 @@ const localGame = (() => {
     return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
   }
   const achievementLimits = {
-    day_clicks: 100,
-    week_clicks: 1000,
-    month_clicks: 5000,
+    ...targets,
     hours: 0xffffff,
-    active_days: 10,
-    active_months: 3,
-    earned: 15,
+    earned: century | fourDigits | fiveGrand | threeVisits,
   };
   function validateAchievements(value: unknown, hasTime: boolean): ClickAchievements {
     if (!isRecord(value)) throw new Error("Invalid local achievement progress.");
@@ -95,8 +105,8 @@ const localGame = (() => {
   function seedAchievements(time: string | null | undefined, days: number, months: number) {
     const activity = {
       ...emptyClickAchievements,
-      active_days: Math.min(10, days),
-      active_months: Math.min(3, months),
+      active_days: Math.min(targets.active_days, days),
+      active_months: Math.min(targets.active_months, months),
     };
     if (!time) return activity;
     const seeded = advanceAchievements(emptyClickAchievements, null, time);
@@ -113,29 +123,25 @@ const localGame = (() => {
     const before = previous ? new Date(previous) : null;
     const day = utcDay(now.getTime());
     const previousDay = before ? utcDay(before.getTime()) : NaN;
-    const sameMonth =
-      before &&
-      before.getUTCFullYear() === now.getUTCFullYear() &&
-      before.getUTCMonth() === now.getUTCMonth();
-    const dayClicks = day === previousDay ? Math.min(100, a.day_clicks + 1) : 1;
+    const sameMonth = before !== null && sameUtcMonth(before, now);
+    const dayClicks = day === previousDay ? Math.min(targets.day_clicks, a.day_clicks + 1) : 1;
     const weekClicks =
-      utcWeek(day) === utcWeek(previousDay) ? Math.min(1000, a.week_clicks + 1) : 1;
-    const monthClicks = sameMonth ? Math.min(5000, a.month_clicks + 1) : 1;
+      utcWeek(day) === utcWeek(previousDay) ? Math.min(targets.week_clicks, a.week_clicks + 1) : 1;
+    const monthClicks = sameMonth ? Math.min(targets.month_clicks, a.month_clicks + 1) : 1;
     const hours = (day === previousDay ? a.hours : 0) | (1 << now.getUTCHours());
-    const twoOrMore = hours & (hours - 1);
     return {
       day_clicks: dayClicks,
       week_clicks: weekClicks,
       month_clicks: monthClicks,
       hours,
-      active_days: Math.min(10, a.active_days + Number(day !== previousDay)),
-      active_months: Math.min(3, a.active_months + Number(!sameMonth)),
+      active_days: Math.min(targets.active_days, a.active_days + Number(day !== previousDay)),
+      active_months: Math.min(targets.active_months, a.active_months + Number(!sameMonth)),
       earned:
         a.earned |
-        (dayClicks === 100 ? century : 0) |
-        (weekClicks === 1000 ? fourDigits : 0) |
-        (monthClicks === 5000 ? fiveGrand : 0) |
-        (twoOrMore & (twoOrMore - 1) ? threeVisits : 0),
+        (dayClicks === targets.day_clicks ? century : 0) |
+        (weekClicks === targets.week_clicks ? fourDigits : 0) |
+        (monthClicks === targets.month_clicks ? fiveGrand : 0) |
+        (countSetBits(hours) >= distinctHoursTarget ? threeVisits : 0),
     };
   }
   function decode(raw: string) {
