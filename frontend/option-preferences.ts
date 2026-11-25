@@ -28,6 +28,15 @@ export function bindOptionPreferences(
     soundVolumeValue.textContent = text;
     soundVolumeSetting.setAttribute("aria-valuetext", text);
   }
+  function paintSoundLabels() {
+    paintSoundVolume(soundVolumeSetting.valueAsNumber);
+    soundProfileDescription.textContent = t(
+      soundProfiles.find((profile) => profile.id === soundProfileSetting.value)!.description,
+    );
+    soundToggle.setAttribute("aria-label", t("sound"));
+    soundToggle.title = t(soundEnabled.checked ? "soundOn" : "soundOff");
+    soundToggle.lang = currentLanguage();
+  }
   function updateSoundOptions() {
     const { sound: enabled, soundProfile, soundVolume, soundReverb } = gameSettings.value;
     clickSound.setProfile(soundProfile);
@@ -36,17 +45,11 @@ export function bindOptionPreferences(
     clickSound.setEnabled(enabled);
     soundEnabled.checked = enabled;
     soundVolumeSetting.value = String(soundVolume);
-    paintSoundVolume(soundVolume);
     soundReverbSetting.checked = soundReverb;
     soundProfileSetting.value = soundProfile;
     soundPreview.disabled = !enabled;
-    soundProfileDescription.textContent = t(
-      soundProfiles.find((profile) => profile.id === soundProfile)!.description,
-    );
     soundToggle.setAttribute("aria-pressed", String(enabled));
-    soundToggle.setAttribute("aria-label", t("sound"));
-    soundToggle.title = t(enabled ? "soundOn" : "soundOff");
-    soundToggle.lang = currentLanguage();
+    paintSoundLabels();
   }
   gameSettings.onChange(updateSoundOptions);
   updateSoundOptions();
@@ -106,6 +109,6 @@ export function bindOptionPreferences(
 
   return () => {
     paintOptionLabels();
-    updateSoundOptions();
+    paintSoundLabels();
   };
 }

@@ -5331,6 +5331,15 @@
       soundVolumeValue.textContent = text;
       soundVolumeSetting.setAttribute("aria-valuetext", text);
     }
+    function paintSoundLabels() {
+      paintSoundVolume(soundVolumeSetting.valueAsNumber);
+      soundProfileDescription.textContent = message2(
+        soundProfiles.find((profile2) => profile2.id === soundProfileSetting.value).description
+      );
+      soundToggle.setAttribute("aria-label", message2("sound"));
+      soundToggle.title = message2(soundEnabled.checked ? "soundOn" : "soundOff");
+      soundToggle.lang = currentLanguage();
+    }
     function updateSoundOptions() {
       const { sound: enabled2, soundProfile, soundVolume, soundReverb } = gameSettings.value;
       clickSound.setProfile(soundProfile);
@@ -5339,17 +5348,11 @@
       clickSound.setEnabled(enabled2);
       soundEnabled.checked = enabled2;
       soundVolumeSetting.value = String(soundVolume);
-      paintSoundVolume(soundVolume);
       soundReverbSetting.checked = soundReverb;
       soundProfileSetting.value = soundProfile;
       soundPreview.disabled = !enabled2;
-      soundProfileDescription.textContent = message2(
-        soundProfiles.find((profile2) => profile2.id === soundProfile).description
-      );
       soundToggle.setAttribute("aria-pressed", String(enabled2));
-      soundToggle.setAttribute("aria-label", message2("sound"));
-      soundToggle.title = message2(enabled2 ? "soundOn" : "soundOff");
-      soundToggle.lang = currentLanguage();
+      paintSoundLabels();
     }
     gameSettings.onChange(updateSoundOptions);
     updateSoundOptions();
@@ -5403,7 +5406,7 @@
     });
     return () => {
       paintOptionLabels();
-      updateSoundOptions();
+      paintSoundLabels();
     };
   }
 
@@ -7028,7 +7031,7 @@
     }
     return true;
   }
-  async function replaceLocalSave(operation, completion) {
+  async function replaceLocalSave(operation, completion, failure = "localReplacedFailed") {
     if (!canReplaceLocalSave()) return;
     localSaveReplacing = true;
     replaceLocalConsent.checked = false;
@@ -7044,7 +7047,7 @@
       updateOptions();
       optionsNotice(completion);
     } catch (caught) {
-      optionsNotice("localReplacedFailed", true, requestError(caught).message);
+      optionsNotice(failure, true, requestError(caught).message);
     } finally {
       localSaveReplacing = false;
       updateGameControls();
@@ -7071,11 +7074,11 @@
       optionsNotice("saveTooLarge", true);
       return;
     }
-    try {
-      await replaceLocalSave(async () => localGame.decode(await file.text()), "localImported");
-    } catch (caught) {
-      optionsNotice("importFailed", true, requestError(caught).message);
-    }
+    await replaceLocalSave(
+      async () => localGame.decode(await file.text()),
+      "localImported",
+      "importFailed"
+    );
   });
   required("#download-local").addEventListener("click", async () => {
     try {

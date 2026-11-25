@@ -16,9 +16,13 @@ async function checkPagesOffline(page, baseURL) {
   const onlineLink = page.getByRole("link", { name: "Play online" });
   assert.equal(await onlineLink.isVisible(), true);
   assert.equal(await onlineLink.getAttribute("href"), "https://clicker.bluehexagons.com/");
+  const warning = "Leaves GitHub Pages and opens clicker.bluehexagons.com.";
+  assert.equal(await onlineLink.getAttribute("title"), warning);
   assert.equal(
-    await onlineLink.getAttribute("title"),
-    "Leaves GitHub Pages and opens clicker.bluehexagons.com.",
+    await onlineLink.evaluate((link) =>
+      document.getElementById(link.getAttribute("aria-describedby"))?.textContent.trim(),
+    ),
+    warning,
   );
   await page.locator("#close-options").click();
   await page.locator("#click-button").press("Space");

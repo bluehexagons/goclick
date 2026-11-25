@@ -1149,6 +1149,33 @@ test("a failed local replacement releases the controls without erasing the saved
   assert.match(h.element("#options-status").textContent, /was not replaced/);
 });
 
+test("an invalid import explains the failure and leaves the local save intact", async () => {
+  const h = await harness({ offlineOnly: true });
+  await h.element("#click-button").fire("click");
+  const saved = h.storage.get("goclick.local.v1");
+  const fileInput = h.element("#import-local");
+  const consent = h.element("#replace-local");
+  h.element("#options-button").fire("click");
+  consent.checked = true;
+  fileInput.files = [{ size: 2, text: async () => "{}" }];
+  await fileInput.fire("change");
+  assert.match(h.element("#options-status").textContent, /Couldn’t import this local save/);
+  assert.match(h.element("#options-status").children.at(-1).textContent, /version 1/);
+  assert.equal(h.storage.get("goclick.local.v1"), saved);
+  assert.equal(h.element("#click-count").textContent, "1");
+  assert.equal(consent.checked, false);
+  assert.equal(fileInput.disabled, false);
+
+  const replacement = JSON.parse(saved);
+  replacement.counters.click_count.count = 31;
+  const text = JSON.stringify(replacement);
+  consent.checked = true;
+  fileInput.files = [{ size: text.length, text: async () => text }];
+  await fileInput.fire("change");
+  assert.equal(h.element("#options-status").textContent, "Local save imported.");
+  assert.equal(h.element("#click-count").textContent, "31");
+});
+
 test("an older simulated response cannot hide a more recent local save failure", async () => {
   const h = await harness({ storage: [["goclick.mode", "local"]] });
   await h.element("#click-button").fire("click");
@@ -1463,7 +1490,7 @@ test("saved game language applies on boot and cross-tab updates do not make acco
   assert.deepEqual(h.requests, []);
 });
 
-test("an open Options dialog translates sound and save feedback without resetting preferences", async () => {
+test("an open Options dialog translates sound and save feedback without resetting the volume slider", async () => {
   const h = await harness({
     storage: [
       ["goclick.settings.v1", '{"soundProfile":"clunk","soundVolume":37,"soundReverb":false}'],
@@ -1474,23 +1501,28 @@ test("an open Options dialog translates sound and save feedback without resettin
   const notice = h.element("#options-status");
   assert.match(notice.textContent, /Allow replacing/);
   const settings = h.storage.get("goclick.settings.v1");
+  const volume = h.element("#sound-volume");
+  assert.equal(volume.value, "37");
+  volume.value = "62";
+  volume.fire("input");
 
   h.storage.set("goclick.language.v1", "ar");
   h.window.fire("storage", { key: "goclick.language.v1" });
   const profile = h.element("#sound-profile");
-  const volume = h.element("#sound-volume");
-  const percent = new Intl.NumberFormat("ar", { style: "percent" }).format(0.37);
+  const percent = new Intl.NumberFormat("ar", { style: "percent" }).format(0.62);
   assert.equal(h.element("#options-dialog").open, true);
   assert.match(notice.textContent, /السماح/);
   assert.equal(notice.classList.contains("notice-error"), true);
   assert.equal(profile.value, "clunk");
   assert.notEqual(profile.children.find((option) => option.value === "clunk").textContent, "Clunk");
   assert.notEqual(h.element("#sound-profile-description").textContent, "A low, muffled thud.");
-  assert.equal(volume.value, "37");
+  assert.equal(volume.value, "62");
   assert.equal(volume.attributes.get("aria-valuetext"), percent);
   assert.equal(h.element("#sound-volume-value").textContent, percent);
   assert.equal(h.element("#sound-reverb").checked, false);
   assert.equal(h.storage.get("goclick.settings.v1"), settings);
+  volume.fire("change");
+  assert.equal(JSON.parse(h.storage.get("goclick.settings.v1")).soundVolume, 62);
   assert.deepEqual(h.requests, []);
 });
 

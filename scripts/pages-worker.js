@@ -41,5 +41,10 @@ self.addEventListener("fetch", (event) => {
     url = indexURL;
   }
   if (!assetURLs.has(url)) return;
-  event.respondWith(caches.match(url, { cacheName }).then((cached) => cached ?? fetch(request)));
+  event.respondWith(
+    caches
+      .match(url, { cacheName })
+      .catch(() => undefined)
+      .then((cached) => cached ?? fetch(request)),
+  );
 });

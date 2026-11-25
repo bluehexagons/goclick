@@ -1087,6 +1087,7 @@ function canReplaceLocalSave() {
 async function replaceLocalSave(
   operation: () => Counters | Promise<Counters>,
   completion: MessageKey,
+  failure: MessageKey = "localReplacedFailed",
 ) {
   if (!canReplaceLocalSave()) return;
   localSaveReplacing = true;
@@ -1103,7 +1104,7 @@ async function replaceLocalSave(
     updateOptions();
     optionsNotice(completion);
   } catch (caught) {
-    optionsNotice("localReplacedFailed", true, requestError(caught).message);
+    optionsNotice(failure, true, requestError(caught).message);
   } finally {
     localSaveReplacing = false;
     updateGameControls();
@@ -1129,11 +1130,11 @@ importLocal.addEventListener("change", async () => {
     optionsNotice("saveTooLarge", true);
     return;
   }
-  try {
-    await replaceLocalSave(async () => localGame.decode(await file.text()), "localImported");
-  } catch (caught) {
-    optionsNotice("importFailed", true, requestError(caught).message);
-  }
+  await replaceLocalSave(
+    async () => localGame.decode(await file.text()),
+    "localImported",
+    "importFailed",
+  );
 });
 $<HTMLButtonElement>("#download-local").addEventListener("click", async () => {
   try {
