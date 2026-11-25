@@ -48,7 +48,9 @@ Reduced motion changes the shading immediately.
 When the label changes language, the new lettering appears immediately and
 fades to full opacity over 180 ms. Reduced motion skips the fade.
 The button tilts toward the mouse, including after it has been unplugged or
-parked with cord slack. A mouse press keeps a shallower tilt at the grab point.
+parked with cord slack. A parked button uses its level footprint for hover
+so a stationary cursor near an edge keeps the same tilt.
+A mouse press keeps a shallower tilt at the grab point.
 On release, tilt follows the mouse relative to the moving button.
 Touch gestures preserve the stationary mouse position for when the gesture ends.
 

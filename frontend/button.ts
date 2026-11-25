@@ -142,7 +142,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     return Number(
       !button.disabled &&
         !document.hidden &&
-        (mouseOver ||
+        ((buttonStaysPut() ? isOverParkedButton() : mouseOver) ||
           (document.activeElement === button &&
             document.documentElement.dataset.focusInput === "keyboard" &&
             document.hasFocus())),
@@ -156,6 +156,15 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
 
   function buttonStaysPut() {
     return plugState === "unplugged" || cordSlack;
+  }
+
+  function isOverParkedButton(rect = stage.getBoundingClientRect()) {
+    if (!hoverPoint || !rect.width || !rect.height) return false;
+    // The face can rotate away from the cursor. Use its level footprint so
+    // crossing a transformed edge cannot turn the tilt itself on and off.
+    const x = hoverPoint.x - (rect.left + rect.width / 2 + current.x);
+    const y = hoverPoint.y - (rect.top + rect.height / 2 + current.y);
+    return Math.abs(x) <= button.offsetWidth / 2 && Math.abs(y) <= button.offsetHeight / 2;
   }
 
   function cordSlackAmount(time: number) {
@@ -627,16 +636,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const rect = stage.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const parked = buttonStaysPut();
-    if (
-      !pointers.size &&
-      !mouseOver &&
-      (parked ||
-        point.x < rect.left ||
-        point.x > rect.right ||
-        point.y < rect.top ||
-        point.y > rect.bottom)
-    )
-      return;
+    if (!pointers.size) {
+      const overStage =
+        point.x >= rect.left &&
+        point.x <= rect.right &&
+        point.y >= rect.top &&
+        point.y <= rect.bottom;
+      if (parked ? !isOverParkedButton(rect) : !mouseOver && !overStage) return;
+    }
     // Use the drag destination while grabbed so tracking lag cannot twist the
     // grip. Otherwise follow the moving face, including while it springs home.
     const center = pointers.size ? target : current;
@@ -927,11 +934,28 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     };
     plugControl.addEventListener("pointercancel", cancelTap);
     plugControl.addEventListener("lostpointercapture", cancelTap);
+    // A parked button can extend outside its stage. Keep tracking the mouse
+    // when the moving face loses the native hit, including across that edge.
+    window.addEventListener("pointermove", (event) => {
+      if (event.pointerType !== "mouse" || !buttonStaysPut() || pointers.size) return;
+      const rect = stage.getBoundingClientRect();
+      const wasOver = isOverParkedButton(rect);
+      hoverPoint = { x: event.clientX, y: event.clientY };
+      if (!button.disabled && (wasOver || isOverParkedButton(rect))) animate();
+    });
+    document.documentElement.addEventListener("pointerleave", (event) => {
+      if (event.pointerType !== "mouse" || !buttonStaysPut() || mouseGrip !== null) return;
+      hoverPoint = null;
+      mouseOver = false;
+      animate();
+    });
   }
   stage.addEventListener("pointermove", (event) => {
-    if (event.pointerType === "mouse") hoverPoint = { x: event.clientX, y: event.clientY };
-    if (button.disabled) return;
     const point = pointers.get(event.pointerId);
+    const stageHover = event.pointerType === "mouse" && !buttonStaysPut();
+    if (stageHover || (point && event.pointerType === "mouse"))
+      hoverPoint = { x: event.clientX, y: event.clientY };
+    if (button.disabled) return;
     if (point) {
       const now = performance.now(),
         elapsed = now - point.movedAt;
@@ -942,12 +966,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       point.x = event.clientX;
       point.y = event.clientY;
       aimPointers(true);
-    } else if (!pointers.size && event.pointerType === "mouse") aimHover();
+    } else if (!pointers.size && stageHover) aimHover();
   });
   stage.addEventListener("pointerleave", (event) => {
-    if (event.pointerType !== "mouse" || mouseGrip !== null) return;
+    if (event.pointerType !== "mouse" || mouseGrip !== null || buttonStaysPut()) return;
     hoverPoint = null;
-    if (!pointers.size && !buttonStaysPut()) {
+    if (!pointers.size) {
       target.x = target.y = 0;
       if (activeKey === null && performance.now() >= coastUntil) {
         reset(false);
@@ -966,7 +990,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   button.addEventListener("pointerleave", (event) => {
     if (event.pointerType !== "mouse") return;
     mouseOver = false;
-    animate();
+    if (!buttonStaysPut()) animate();
   });
   button.addEventListener("pointerdown", (event) => {
     if (gameButton && event.pointerType === "mouse" && event.button === 1) event.preventDefault();

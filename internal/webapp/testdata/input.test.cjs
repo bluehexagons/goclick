@@ -1354,7 +1354,25 @@ test("a button parked outside the stage tilts around its new center, even withou
   assert.equal(h.rig.props.get("--press"), "0");
   assert.ok(Math.abs(h.position().x - parked.x) < 0.003);
   assert.equal(h.clicks.length, 2);
-  h.pointer("pointerleave", 2, mouse);
+
+  const edge = { ...mouse, clientX: 578 };
+  h.window.fire("pointermove", edge);
+  settle();
+  const edgeTilt = tilt();
+  assert.ok(edgeTilt > 20);
+  h.pointer("pointerleave", 2, edge);
+  h.stage.fire("pointerleave", edge);
+  settle();
+  assert.equal(tilt(), edgeTilt);
+  assert.equal(h.rig.props.get("--ready-light"), "1.000");
+
+  h.window.fire("pointermove", { ...edge, clientX: 586 });
+  settle();
+  assert.equal(tilt(), 0);
+  h.window.fire("pointermove", edge);
+  settle();
+  assert.equal(tilt(), edgeTilt);
+  h.document.documentElement.fire("pointerleave", edge);
   settle();
   assert.equal(tilt(), 0);
 });
