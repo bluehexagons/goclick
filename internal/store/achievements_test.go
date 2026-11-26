@@ -77,7 +77,7 @@ func TestSchemaSixAchievementBackfillAndRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := old.Exec(`DROP TABLE click_achievements; PRAGMA user_version=6`); err != nil {
+	if _, err := old.Exec(`DROP TABLE button_achievements; DROP TABLE click_achievements; PRAGMA user_version=6`); err != nil {
 		old.Close()
 		t.Fatal(err)
 	}
@@ -105,5 +105,59 @@ func TestSchemaSixAchievementBackfillAndRestore(t *testing.T) {
 	clicked, err := db.Increment(ctx, user.ID, now.AddDate(0, 0, 1))
 	if err != nil || clicked.Achievements.Earned != read.Achievements.Earned || clicked.Achievements.ActiveDays != 2 {
 		t.Fatalf("click after backfill: %+v, %v", clicked.Achievements, err)
+	}
+}
+
+func TestButtonAchievementsSurviveNativeBackupRestore(t *testing.T) {
+	db, user := adminFixture(t)
+	ctx := context.Background()
+	now := time.Date(2026, 1, 5, 5, 2, 0, 0, time.UTC)
+	for range 2 {
+		got, err := db.RecordButtonAchievement(ctx, user.ID, ReconnectedPlug)
+		if err != nil || got != ReconnectedPlug {
+			t.Fatalf("record reconnect = %d, %v", got, err)
+		}
+	}
+	before, err := db.CurrentCounters(ctx, user.ID)
+	if err != nil || before.Exists || !slices.Equal(before.EarnedBadgeIDs(), []string{"live-wire"}) {
+		t.Fatalf("badge before playing = %+v, %v", before, err)
+	}
+	clicked, err := db.IncrementWithCordMode(ctx, user.ID, now, true)
+	if err != nil || clicked.Clicks != 1 || clicked.ButtonAchievements != ReconnectedPlug|SlackCordClick {
+		t.Fatalf("save slack-cord click = %+v, %v", clicked, err)
+	}
+	snapshot, err := db.Backup(ctx, t.TempDir(), "hardware")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.RecordButtonAchievement(ctx, user.ID, ResetOutlet); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Restore(ctx, snapshot, t.TempDir(), user, now); err != nil {
+		t.Fatal(err)
+	}
+	after, err := db.CurrentCounters(ctx, user.ID)
+	if err != nil || after.Clicks != 1 ||
+		!slices.Equal(after.EarnedBadgeIDs(), []string{"gone-click", "live-wire", "hanging-loose"}) {
+		t.Fatalf("restored button achievements = %+v, %v", after, err)
+	}
+
+	old, err := sql.Open("sqlite", snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := old.Exec(`DROP TABLE button_achievements; PRAGMA user_version=7`); err != nil {
+		old.Close()
+		t.Fatal(err)
+	}
+	if err := old.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Restore(ctx, snapshot, t.TempDir(), user, now); err != nil {
+		t.Fatal(err)
+	}
+	after, err = db.CurrentCounters(ctx, user.ID)
+	if err != nil || after.Clicks != 1 || after.ButtonAchievements != 0 {
+		t.Fatalf("schema 7 restore with no button achievements = %+v, %v", after, err)
 	}
 }

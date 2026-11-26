@@ -61,6 +61,12 @@ export const english = {
   refresh: "Refresh counter",
   share: "Share",
   shareHint: "Preview stats for sharing",
+  reconnectPlugGoal:
+    "Pull the button away in different directions until the plug comes free, then guide it back into a socket.",
+  slackCordGoal: "With the plug disconnected, tap it to slacken the cord, then save a click.",
+  resetOutletGoal:
+    "Use TEST on the outlet, then use RESET. Keyboard players can Tab from Click to the outlet.",
+  buttonAchievementError: "Couldn’t save the button achievement. Try the interaction again.",
   ping: "Ping",
   simPing: "Sim ping",
   pingHint:
@@ -182,6 +188,10 @@ export const translations = {
     refresh: "刷新计数",
     share: "分享",
     shareHint: "预览要分享的统计",
+    reconnectPlugGoal: "向不同方向拉动按钮，直到插头脱落，再将它插回插座。",
+    slackCordGoal: "拔下插头后，点按插头让电线放松，然后完成一次有效点击。",
+    resetOutletGoal: "先使用插座上的 TEST，再使用 RESET。键盘玩家可在点击按钮上按 Tab 前往插座。",
+    buttonAchievementError: "无法保存按钮成就。请重试该操作。",
     ping: "延迟",
     simPing: "模拟延迟",
     pingHint: "上次成功点击请求的往返时间。状态圆点表示待处理请求或保存错误。",
@@ -297,6 +307,11 @@ export const translations = {
     refresh: "重新整理計數",
     share: "分享",
     shareHint: "預覽要分享的統計資料",
+    reconnectPlugGoal: "向不同方向拉動按鈕，直到插頭脫落，再將它插回插座。",
+    slackCordGoal: "拔下插頭後，點按插頭讓電線放鬆，然後儲存一次點擊。",
+    resetOutletGoal:
+      "先使用插座上的 TEST，再使用 RESET。使用鍵盤時，可在點擊按鈕上按 Tab 前往插座。",
+    buttonAchievementError: "無法儲存按鈕成就。請重試該操作。",
     ping: "延遲",
     simPing: "模擬延遲",
     pingHint: "上次成功的點擊請求所花的往返時間。狀態圓點會顯示是否有待處理的請求或儲存錯誤。",
@@ -413,6 +428,11 @@ export const translations = {
     refresh: "কাউন্টার রিফ্রেশ করুন",
     share: "শেয়ার",
     shareHint: "শেয়ার করার আগে পরিসংখ্যান দেখুন",
+    reconnectPlugGoal: "প্লাগ খুলে না যাওয়া পর্যন্ত বোতামটি বিভিন্ন দিকে টানুন, তারপর প্লাগটি আবার সকেটে ঢোকান।",
+    slackCordGoal: "প্লাগ খুলে গেলে সেটিতে ট্যাপ করে তারটি ঢিলা করুন, তারপর একটি ক্লিক সেভ করুন।",
+    resetOutletGoal:
+      "সকেটে প্রথমে TEST, তারপর RESET ব্যবহার করুন। কীবোর্ডে ক্লিক বোতাম থেকে Tab চেপে সকেটে যান।",
+    buttonAchievementError: "বোতামের অর্জনটি সেভ করা যায়নি। কাজটি আবার করুন।",
     ping: "পিং",
     simPing: "সিমুলেটেড পিং",
     pingHint:
@@ -532,6 +552,13 @@ export const translations = {
     refresh: "Actualizar contador",
     share: "Compartir",
     shareHint: "Previsualizar estadísticas para compartir",
+    reconnectPlugGoal:
+      "Tira del botón en distintas direcciones hasta soltar el enchufe y luego vuelve a conectarlo a una toma.",
+    slackCordGoal:
+      "Con el enchufe desconectado, tócalo para aflojar el cable y luego guarda un clic.",
+    resetOutletGoal:
+      "Pulsa TEST en la toma y después RESET. Con el teclado, pulsa Tab desde el botón de clic para llegar a la toma.",
+    buttonAchievementError: "No se pudo guardar el logro del botón. Repite la acción.",
     ping: "Latencia",
     simPing: "Latencia simulada",
     pingHint:
@@ -655,6 +682,11 @@ export const translations = {
     refresh: "تحديث العداد",
     share: "مشاركة",
     shareHint: "معاينة الإحصاءات قبل المشاركة",
+    reconnectPlugGoal: "اسحب الزر في اتجاهات مختلفة حتى ينفصل القابس، ثم أعد توصيله بمقبس.",
+    slackCordGoal: "بعد فصل القابس، اضغط عليه لإرخاء السلك ثم احفظ نقرة.",
+    resetOutletGoal:
+      "استخدم TEST على المقبس ثم RESET. للانتقال من زر النقر إلى المقبس بلوحة المفاتيح، اضغط Tab.",
+    buttonAchievementError: "تعذّر حفظ إنجاز الزر. جرّب تنفيذ الحركة مجددًا.",
     ping: "زمن الاستجابة",
     simPing: "زمن استجابة محاكى",
     pingHint:
@@ -772,6 +804,11 @@ export const translations = {
     refresh: "काउंटर रीफ़्रेश करें",
     share: "साझा करें",
     shareHint: "साझा करने से पहले आँकड़ों का पूर्वावलोकन करें",
+    reconnectPlugGoal: "बटन को अलग-अलग दिशाओं में खींचकर प्लग निकालें, फिर उसे वापस सॉकेट में लगाएँ।",
+    slackCordGoal: "प्लग निकल जाने पर तार ढीला करने के लिए उस पर टैप करें, फिर एक क्लिक सेव करें।",
+    resetOutletGoal:
+      "सॉकेट पर पहले TEST, फिर RESET दबाएँ। कीबोर्ड से क्लिक बटन पर Tab दबाकर सॉकेट तक जाएँ।",
+    buttonAchievementError: "बटन की उपलब्धि सेव नहीं हो सकी। क्रिया फिर से करें।",
     ping: "पिंग",
     simPing: "सिम्युलेटेड पिंग",
     pingHint:
@@ -890,6 +927,13 @@ export const translations = {
     refresh: "Muat ulang penghitung",
     share: "Bagikan",
     shareHint: "Pratinjau statistik untuk dibagikan",
+    reconnectPlugGoal:
+      "Tarik tombol ke berbagai arah sampai stekernya terlepas, lalu pasang kembali ke stopkontak.",
+    slackCordGoal:
+      "Saat steker terlepas, ketuk steker untuk mengendurkan kabel, lalu simpan satu klik.",
+    resetOutletGoal:
+      "Gunakan TEST pada stopkontak, lalu gunakan RESET. Dengan papan ketik, tekan Tab dari tombol klik untuk menuju stopkontak.",
+    buttonAchievementError: "Pencapaian tombol gagal disimpan. Ulangi tindakan tersebut.",
     ping: "Ping",
     simPing: "Ping simulasi",
     pingHint:
@@ -1012,6 +1056,13 @@ export const translations = {
     refresh: "Atualizar contador",
     share: "Compartilhar",
     shareHint: "Pré-visualizar estatísticas para compartilhar",
+    reconnectPlugGoal:
+      "Puxe o botão em várias direções até soltar o plugue e depois encaixe-o novamente em uma tomada.",
+    slackCordGoal:
+      "Com o plugue desconectado, toque nele para afrouxar o cabo e depois salve um clique.",
+    resetOutletGoal:
+      "Use TEST na tomada e depois RESET. No teclado, pressione Tab a partir do botão de clique para chegar à tomada.",
+    buttonAchievementError: "Não foi possível salvar a conquista do botão. Repita a ação.",
     ping: "Ping",
     simPing: "Ping simulado",
     pingHint:
@@ -1135,6 +1186,13 @@ export const translations = {
     refresh: "Actualiser le compteur",
     share: "Partager",
     shareHint: "Prévisualiser les statistiques à partager",
+    reconnectPlugGoal:
+      "Tirez le bouton dans plusieurs directions pour débrancher la fiche, puis rebranchez-la dans une prise.",
+    slackCordGoal:
+      "Une fois la fiche débranchée, touchez-la pour détendre le câble, puis enregistrez un clic.",
+    resetOutletGoal:
+      "Utilisez TEST sur la prise, puis RESET. Au clavier, appuyez sur Tab depuis le bouton de jeu pour atteindre la prise.",
+    buttonAchievementError: "Impossible d’enregistrer le succès du bouton. Réessayez l’action.",
     ping: "Latence",
     simPing: "Latence simulée",
     pingHint:
@@ -1259,6 +1317,13 @@ export const translations = {
     refresh: "カウンターを更新",
     share: "共有",
     shareHint: "共有する記録をプレビュー",
+    reconnectPlugGoal:
+      "ボタンをいろいろな方向に引いてプラグを抜き、もう一度コンセントに差し込んでください。",
+    slackCordGoal:
+      "プラグが抜けた状態でプラグをタップしてコードを緩め、その状態でクリックを1回保存してください。",
+    resetOutletGoal:
+      "コンセントの TEST を押してから RESET を押してください。キーボードではクリックボタンから Tab キーで移動できます。",
+    buttonAchievementError: "ボタンの実績を保存できませんでした。もう一度操作してください。",
     ping: "応答時間",
     simPing: "模擬応答時間",
     pingHint:
@@ -1383,6 +1448,12 @@ export const translations = {
     refresh: "Обновить счётчик",
     share: "Поделиться",
     shareHint: "Предпросмотр статистики для публикации",
+    reconnectPlugGoal:
+      "Потяните кнопку в разные стороны, пока вилка не выскочит, затем вставьте её обратно в розетку.",
+    slackCordGoal: "Когда вилка вынута, нажмите на неё, чтобы ослабить шнур, и сохраните щелчок.",
+    resetOutletGoal:
+      "Нажмите TEST на розетке, затем RESET. Чтобы перейти от кнопки к розетке с клавиатуры, нажмите Tab.",
+    buttonAchievementError: "Не удалось сохранить достижение кнопки. Повторите действие.",
     ping: "Пинг",
     simPing: "Имитация пинга",
     pingHint:
@@ -1505,6 +1576,13 @@ export const translations = {
     refresh: "Zähler aktualisieren",
     share: "Teilen",
     shareHint: "Statistik zum Teilen ansehen",
+    reconnectPlugGoal:
+      "Ziehe den Knopf in verschiedene Richtungen, bis sich der Stecker löst, und stecke ihn wieder in eine Buchse.",
+    slackCordGoal:
+      "Tippe auf den ausgesteckten Stecker, um das Kabel zu lockern, und speichere dann einen Klick.",
+    resetOutletGoal:
+      "Drücke an der Steckdose zuerst TEST und dann RESET. Mit Tab gelangst du vom Klickknopf zur Steckdose.",
+    buttonAchievementError: "Der Erfolg konnte nicht gespeichert werden. Wiederhole die Aktion.",
     ping: "Ping",
     simPing: "Simulierter Ping",
     pingHint:

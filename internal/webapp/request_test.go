@@ -170,3 +170,40 @@ func TestSigningInRotatesPreviousSession(t *testing.T) {
 		t.Fatalf("new session status = %d, want 200", response.StatusCode)
 	}
 }
+
+func TestButtonAchievementsRequireTheDisplayedAccount(t *testing.T) {
+	_, db, client, id := adminTestApp(t)
+	accountID := strconv.FormatInt(id, 10)
+	const base = "http://goclick.test/api"
+	for _, test := range []struct {
+		expected, interaction string
+		status                int
+	}{
+		{"", "reconnect", http.StatusBadRequest},
+		{strconv.FormatInt(id+1, 10), "reconnect", http.StatusConflict},
+		{accountID, "unknown", http.StatusBadRequest},
+		{accountID, "reconnect", http.StatusOK},
+		{accountID, "reset", http.StatusOK},
+	} {
+		response := jsonRequest(t, client, "POST", base+"/button-achievements",
+			map[string]string{"interaction": test.interaction}, map[string]string{"X-GoClick-User-ID": test.expected})
+		if response.StatusCode != test.status {
+			t.Fatalf("record %q with expected ID %q: %d: %s", test.interaction, test.expected, response.StatusCode, readBody(t, response))
+		}
+		response.Body.Close()
+	}
+	state, err := db.CurrentCounters(context.Background(), id)
+	if err != nil || state.Exists || state.ButtonAchievements != 5 {
+		t.Fatalf("hardware-only progress = %+v, %v", state, err)
+	}
+	response := jsonRequest(t, client, "POST", base+"/clicks", nil,
+		map[string]string{"X-GoClick-User-ID": accountID, "X-GoClick-Cord-Slack": "1"})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("slack-cord click = %d: %s", response.StatusCode, readBody(t, response))
+	}
+	var clicked entitiesResponse
+	decodeResponse(t, response, &clicked)
+	if clicked.ButtonAchievements != 7 || clicked.ClickCount == nil || clicked.ClickCount.Count != 1 {
+		t.Fatalf("saved slack-cord click = %+v", clicked)
+	}
+}

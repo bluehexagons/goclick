@@ -1318,7 +1318,7 @@ footer a {
     padding: 36px 0 24px;
   }
   .game {
-    padding: 22px 0;
+    padding: 16px 0;
   }
   .connection {
     padding: 8px 2px;
@@ -1334,7 +1334,8 @@ footer a {
     max-width: 83%;
   }
   .game .button-stage {
-    height: clamp(205px, 32svh, 260px);
+    height: clamp(195px, 30svh, 260px);
+    margin-bottom: 6px;
   }
   .streak-panel {
     gap: 8px;

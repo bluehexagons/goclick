@@ -29,6 +29,9 @@ func allSchemaTables(version int) []schemaTable {
 	if version >= 7 {
 		tables = append(tables, achievementSchemaTable)
 	}
+	if version >= 8 {
+		tables = append(tables, buttonAchievementSchemaTable)
+	}
 	return tables
 }
 

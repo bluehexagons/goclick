@@ -27,7 +27,8 @@ import {
 import type { Language } from "./i18n.js";
 import type { MessageKey } from "./messages.js";
 import { parseStoredTimestamp } from "./timestamp.js";
-import type { Activation, User, Counters, GameState } from "./types.js";
+import { buttonAchievementBits, buttonAchievementMask } from "./types.js";
+import type { Activation, ButtonInteraction, User, Counters, GameState } from "./types.js";
 import {
   clearAchievementNotice,
   hideAchievementNotice,
@@ -92,6 +93,8 @@ const offlineStartNotice = $("#offline-start-notice");
 let offlineStartTimer = 0;
 let gameReady = false;
 let pendingClicks = 0;
+let pendingButtonAchievements = 0;
+const hasPendingProgress = () => pendingClicks > 0 || pendingButtonAchievements !== 0;
 let localSaveReplacing = false;
 let localRefreshQueued = false;
 let localAcknowledgement = 0;
@@ -383,6 +386,7 @@ function resetClickState() {
   counterLoadOwner = null;
   counterCard.setAttribute("aria-busy", "false");
   pendingClicks = 0;
+  pendingButtonAchievements = 0;
   localRefreshQueued = false;
   updatePendingIndicator();
   clickBatchFailed = false;
@@ -427,12 +431,12 @@ function updateGameControls() {
   $(".connection-label").textContent = t(localMode ? "simPing" : "ping");
   document.querySelectorAll<HTMLButtonElement>("[data-play-local]").forEach((button) => {
     button.hidden = localMode;
-    button.disabled = pendingClicks > 0 || signingOut || localSaveReplacing;
+    button.disabled = hasPendingProgress() || signingOut || localSaveReplacing;
   });
   $<HTMLButtonElement>("#leave-local").disabled =
-    pendingClicks > 0 || localSaveReplacing || authenticating;
+    hasPendingProgress() || localSaveReplacing || authenticating;
   $<HTMLButtonElement>("#copy-online-local").disabled =
-    !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
+    !lastOnlineCounters || hasPendingProgress() || localSaveReplacing;
   for (const id of ["#restart-local", "#import-local", "#download-local", "#replace-local"])
     $<HTMLButtonElement | HTMLInputElement>(id).disabled = localSaveReplacing;
 }
@@ -469,6 +473,12 @@ function animateNumber(element: HTMLElement) {
   );
 }
 
+function mergeButtonAchievements(data: Counters, earned = 0): Counters {
+  const previous = data.button_achievements ?? 0;
+  const combined = previous | earned;
+  return combined === previous ? data : { ...data, button_achievements: combined };
+}
+
 function renderCounters(data: Counters, allowDecrease = false, announce = false) {
   const clicks = data.click_count;
   const displayedClicks = displayedCounters.click_count?.count ?? 0;
@@ -479,8 +489,10 @@ function renderCounters(data: Counters, allowDecrease = false, announce = false)
     clicks.count < displayedClicks
   )
     return;
-  displayedCounters = data;
-  const progress = renderProgress(data, localMode, announce);
+  displayedCounters = allowDecrease
+    ? data
+    : mergeButtonAchievements(data, displayedCounters.button_achievements);
+  const progress = renderProgress(displayedCounters, localMode, announce);
   for (const [id, count, unit] of [
     ["click-count", clicks?.count ?? 0],
     ["day-streak", data.streak_counter_day?.count ?? 0, "day"],
@@ -533,7 +545,7 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
     return Promise.resolve();
   }
   if (counterLoad) return counterLoad;
-  if (pendingClicks > 0) {
+  if (hasPendingProgress()) {
     refreshQueued = true;
     return Promise.resolve();
   }
@@ -559,8 +571,11 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
       counterLoad = activeLoad;
       generation = clickGeneration;
       counterLoadOwner = owner;
-      lastOnlineCounters = state.counters;
-      applyLoadedCounters(state.counters);
+      lastOnlineCounters = mergeButtonAchievements(
+        state.counters,
+        lastOnlineCounters?.button_achievements,
+      );
+      applyLoadedCounters(lastOnlineCounters);
       if (optionsDialog.open) updateOptions();
       updateGameControls();
       if (focusButton && currentView === "game" && !clickButton.disabled) clickButton.focus();
@@ -593,7 +608,7 @@ function refreshGame() {
   if (isGuestAchievements()) return renderGuestAchievements();
   if (localMode) {
     if (!isPlayerView()) return;
-    if (pendingClicks > 0 || localSaveReplacing) localRefreshQueued = true;
+    if (hasPendingProgress() || localSaveReplacing) localRefreshQueued = true;
     else openLocalGame();
     return;
   }
@@ -764,11 +779,81 @@ logoutButton.addEventListener("click", async () => {
   }
 });
 
+clickButton.addEventListener("button-interaction", (event) => {
+  const interaction: unknown = (event as CustomEvent).detail;
+  if (interaction === "reconnect" || interaction === "reset")
+    return recordButtonAchievement(interaction);
+});
+
+async function recordButtonAchievement(interaction: ButtonInteraction) {
+  if (
+    !gameReady ||
+    currentView !== "game" ||
+    signingOut ||
+    authenticating ||
+    localSaveReplacing ||
+    (!localMode && (!user || offline))
+  )
+    return;
+  const bit = buttonAchievementBits[interaction];
+  if (((displayedCounters.button_achievements ?? 0) | pendingButtonAchievements) & bit) return;
+
+  const generation = clickGeneration;
+  const accountID = localMode ? undefined : user?.id;
+  pendingButtonAchievements |= bit;
+  updateGameControls();
+  try {
+    let earned: number;
+    if (accountID) {
+      const data = await api<{ button_achievements: number }>("/api/button-achievements", {
+        method: "POST",
+        headers: { "X-GoClick-User-ID": accountID },
+        body: JSON.stringify({ interaction }),
+      });
+      earned = data.button_achievements;
+      if (
+        !Number.isInteger(earned) ||
+        earned < 0 ||
+        earned > buttonAchievementMask ||
+        !(earned & bit)
+      )
+        throw new Error("The response did not confirm the button achievement.");
+    } else {
+      earned = await localGame.change(() =>
+        generation === clickGeneration ? localGame.recordButtonAchievement(interaction) : 0,
+      );
+    }
+    if (generation !== clickGeneration) return;
+    renderCounters(mergeButtonAchievements(displayedCounters, earned), false, true);
+    if (lastOnlineCounters && accountID)
+      lastOnlineCounters = mergeButtonAchievements(lastOnlineCounters, earned);
+  } catch (caught) {
+    if (generation !== clickGeneration) return;
+    const error = requestError(caught);
+    if (error.status === 401) {
+      if (!signingOut) handleExpiredSession();
+    } else if (error.code === "account_changed") {
+      gameReady = false;
+      refreshQueued = true;
+    } else showGameError("buttonAchievementError");
+  } finally {
+    if (generation === clickGeneration) {
+      pendingButtonAchievements &= ~bit;
+      updateGameControls();
+      if (!hasPendingProgress()) {
+        if (localMode && localRefreshQueued) synchronizeLocalSave();
+        else if (!localMode && refreshQueued) refreshGame();
+      }
+    }
+  }
+}
+
 clickButton.addEventListener("click", async (event) => {
   if (currentView !== "game" || clickButton.disabled) return;
   paintButtonLanguage(buttonLanguage.click(performance.now(), currentLanguage()));
+  const slack = tactileButtons.get(clickButton)?.cordSlack ?? false;
   if (localMode) {
-    await clickLocal(event);
+    await clickLocal(event, slack);
     return;
   }
   if (
@@ -800,7 +885,10 @@ clickButton.addEventListener("click", async (event) => {
   try {
     const data = await api<Counters>("/api/clicks", {
       method: "POST",
-      headers: { "X-GoClick-User-ID": user.id },
+      headers: {
+        "X-GoClick-User-ID": user.id,
+        ...(slack ? { "X-GoClick-Cord-Slack": "1" } : {}),
+      },
     });
     if (generation !== clickGeneration) return;
     const count = data.click_count?.count;
@@ -811,7 +899,8 @@ clickButton.addEventListener("click", async (event) => {
     }
     paintLastClick(true);
     renderCounters(data, false, true);
-    if (count >= (lastOnlineCounters?.click_count?.count ?? 0)) lastOnlineCounters = data;
+    if (count >= (lastOnlineCounters?.click_count?.count ?? 0))
+      lastOnlineCounters = displayedCounters;
     feedback.success(performance.now() - started);
     saved = true;
   } catch (caught) {
@@ -923,7 +1012,7 @@ function optionsNotice(key?: MessageKey, error = false, detail?: string) {
 }
 function updateOptions() {
   $<HTMLButtonElement>("#copy-online-local").disabled =
-    !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
+    !lastOnlineCounters || hasPendingProgress() || localSaveReplacing;
   const name = user?.username;
   $("#copy-online-note").textContent =
     lastOnlineCounters && name
@@ -989,7 +1078,7 @@ function resetLocalSaveFeedback() {
   resetClickState();
 }
 function startLocalGame(scoreFirstClick = false) {
-  if (pendingClicks > 0 || signingOut || localSaveReplacing) return;
+  if (hasPendingProgress() || signingOut || localSaveReplacing) return;
   try {
     const data = localGame.read();
     gameSettings.setMode("local");
@@ -1020,7 +1109,7 @@ document
   .querySelectorAll<HTMLButtonElement>("[data-play-local]")
   .forEach((button) => button.addEventListener("click", () => startLocalGame()));
 $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
-  if (offlineOnly || pendingClicks > 0 || localSaveReplacing || authenticating) return;
+  if (offlineOnly || hasPendingProgress() || localSaveReplacing || authenticating) return;
   let remembered = true;
   try {
     gameSettings.setMode("online");
@@ -1039,7 +1128,10 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
     optionsDialog.showModal();
   }
 });
-async function clickLocal(event: Activation = { detail: 0, clientX: 0, clientY: 0 }) {
+async function clickLocal(
+  event: Activation = { detail: 0, clientX: 0, clientY: 0 },
+  slack = false,
+) {
   if (!gameReady || localSaveReplacing || pendingClicks >= maxPendingClicks) return;
   const feedback = clickFeedback.start(clickButton, event, true),
     generation = clickGeneration,
@@ -1052,7 +1144,7 @@ async function clickLocal(event: Activation = { detail: 0, clientX: 0, clientY: 
   setConnection(null, "loading");
   try {
     // Save immediately; simulated ping affects only the visual acknowledgement.
-    const data = await localGame.change(() => localGame.increment());
+    const data = await localGame.change(() => localGame.increment(undefined, slack));
     if (generation !== clickGeneration) return;
     paintLastClick(true);
     renderCounters(data, false, true);
@@ -1083,7 +1175,7 @@ function canReplaceLocalSave() {
     replaceLocalConsent.focus();
     return false;
   }
-  if (pendingClicks > 0) {
+  if (hasPendingProgress()) {
     optionsNotice("waitPending", true);
     return false;
   }
@@ -1160,7 +1252,7 @@ $<HTMLButtonElement>("#download-local").addEventListener("click", async () => {
 function synchronizeLocalSave() {
   if (isGuestAchievements()) renderGuestAchievements();
   else if (localMode) {
-    if (pendingClicks > 0 || localSaveReplacing) {
+    if (hasPendingProgress() || localSaveReplacing) {
       localRefreshQueued = true;
       return;
     }

@@ -93,7 +93,7 @@ rows, achievement progress, player activity, and audit history. Store this
 recovery artifact privately.
 
 **Restore a database** accepts a full Go Click SQLite snapshot from schema
-versions 2 through 7, up to 128 MiB. Enter the current administrator's password
+versions 2 through 8, up to 128 MiB. Enter the current administrator's password
 and type `RESTORE` to confirm. Password attempts are
 rate limited. JSON endpoints retain their 8 KiB body limit; restore uses a
 separately bounded multipart upload. Rails databases and JSON exports are no

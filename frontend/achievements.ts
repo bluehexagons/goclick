@@ -1,5 +1,6 @@
 import { currentLanguage, formatNumber, formatUnit, message as t } from "./i18n.js";
 import type { Language } from "./i18n.js";
+import { buttonAchievementBits } from "./types.js";
 import type { ClickProgress, Counters } from "./types.js";
 
 import {
@@ -16,7 +17,7 @@ import {
   utcWeek,
 } from "./progress.js";
 
-export type BadgeIcon = "medal" | "clicks" | "calendar" | "pace";
+export type BadgeIcon = "medal" | "clicks" | "calendar" | "pace" | "hardware";
 
 export interface Badge {
   id: string;
@@ -39,7 +40,10 @@ type Goal =
   | "distinctHoursGoal"
   | "distinctDaysGoal"
   | "distinctMonthsGoal"
-  | "otherAchievementsGoal";
+  | "otherAchievementsGoal"
+  | "reconnectPlugGoal"
+  | "slackCordGoal"
+  | "resetOutletGoal";
 
 const translatedRequirements = new Map<string, string>();
 function requirement(goal: Goal, target: number, language: Language) {
@@ -84,8 +88,9 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
     current: number,
     target: number,
     earnedOffline = current >= target,
+    earnedOnline = accountBadges.has(id),
   ): Badge {
-    const earned = local ? earnedOffline : accountBadges.has(id);
+    const earned = local ? earnedOffline : earnedOnline;
     return {
       id,
       icon,
@@ -196,6 +201,32 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       targets.active_months,
     ),
   ];
+  for (const [bit, id, name, hint, goal] of [
+    [
+      buttonAchievementBits.reconnect,
+      "live-wire",
+      "Live Wire",
+      "There’s a way to reconnect the plug.",
+      "reconnectPlugGoal",
+    ],
+    [
+      buttonAchievementBits.slackClick,
+      "hanging-loose",
+      "Hanging Loose",
+      "Try the cord with a little more give.",
+      "slackCordGoal",
+    ],
+    [
+      buttonAchievementBits.reset,
+      "circuit-breaker",
+      "Circuit Breaker",
+      "The outlet has switches of its own.",
+      "resetOutletGoal",
+    ],
+  ] as const) {
+    const earned = Boolean((data.button_achievements ?? 0) & bit);
+    badges.push(badge(id, "hardware", name, hint, goal, Number(earned), 1, earned, earned));
+  }
   const earned = badges.filter((entry) => entry.earned).length;
   badges.push(
     badge(
@@ -206,6 +237,8 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "otherAchievementsGoal",
       earned,
       10,
+      earned >= 10,
+      earned >= 10 || accountBadges.has("recursion"),
     ),
   );
   return badges;

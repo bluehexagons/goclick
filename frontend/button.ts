@@ -292,6 +292,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
     if (!reducedMotion.matches) paint();
     if (restoreFocus) button.focus({ preventScroll: true });
+    button.dispatchEvent(new CustomEvent("button-interaction", { detail: "reconnect" }));
   }
 
   function activatePlug() {
@@ -874,6 +875,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     });
     if (!reducedMotion.matches) paint();
     animate();
+    if (!outletTripped)
+      button.dispatchEvent(new CustomEvent("button-interaction", { detail: "reset" }));
   }
   if (outletControl) {
     outletControl.addEventListener("click", (event) => {
@@ -1230,7 +1233,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
     stageWasVisible = visible;
   }).observe(stage);
-  tactileButtons.set(button, { reset, respond });
+  tactileButtons.set(button, {
+    get cordSlack() {
+      return cordSlack;
+    },
+    reset,
+    respond,
+  });
 }
 
 export { tactileButtons };

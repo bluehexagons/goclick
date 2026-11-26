@@ -138,6 +138,9 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 	if version < 7 {
 		delete(expected, "click_achievements")
 	}
+	if version < 8 {
+		delete(expected, "button_achievements")
+	}
 	if len(expected) != len(actual) {
 		return 0, errors.New("unexpected schema objects")
 	}
@@ -203,6 +206,9 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 			WHERE typeof(day_clicks)!='integer' OR typeof(week_clicks)!='integer' OR typeof(month_clicks)!='integer'
 				OR typeof(hours)!='integer' OR typeof(active_days)!='integer' OR typeof(active_months)!='integer'
 				OR typeof(earned)!='integer' OR last_clicked_at IS NULL`)
+	}
+	if version >= 8 {
+		checks = append(checks, `SELECT COUNT(*) FROM button_achievements WHERE typeof(earned)!='integer'`)
 	}
 	for _, query := range checks {
 		if err := db.QueryRowContext(ctx, query).Scan(&invalid); err != nil {
@@ -436,6 +442,12 @@ func (s *Store) Restore(ctx context.Context, path, recoveryDirectory string, act
 		columns := strings.Join(achievementSchemaTable.columns, ",")
 		if _, err := tx.ExecContext(ctx, `INSERT INTO main.click_achievements (`+columns+`) SELECT `+columns+` FROM restore_source.click_achievements`); err != nil {
 			return result, fmt.Errorf("restore click achievements: %w", err)
+		}
+	}
+	if version >= 8 {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO main.button_achievements (user_id,earned)
+			SELECT user_id,earned FROM restore_source.button_achievements`); err != nil {
+			return result, fmt.Errorf("restore button achievements: %w", err)
 		}
 	}
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&result.Users); err != nil {

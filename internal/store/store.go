@@ -37,17 +37,18 @@ type User struct {
 }
 
 type Counters struct {
-	Exists        bool
-	Clicks        int64
-	DayStreak     int64
-	MonthStreak   int64
-	YearStreak    int64
-	LastClickedAt *time.Time
-	Progress      ClickProgress
-	Achievements  ClickAchievements
+	Exists             bool
+	Clicks             int64
+	DayStreak          int64
+	MonthStreak        int64
+	YearStreak         int64
+	LastClickedAt      *time.Time
+	Progress           ClickProgress
+	Achievements       ClickAchievements
+	ButtonAchievements ButtonAchievements
 }
 
-const schemaVersion = 7
+const schemaVersion = 8
 
 type schemaTable struct {
 	name    string
@@ -100,6 +101,10 @@ CREATE TABLE IF NOT EXISTS click_achievements (
 	active_days INTEGER NOT NULL CHECK (active_days BETWEEN 1 AND 10),
 	active_months INTEGER NOT NULL CHECK (active_months BETWEEN 1 AND 3),
 	earned INTEGER NOT NULL CHECK (earned BETWEEN 0 AND 15)
+);
+CREATE TABLE IF NOT EXISTS button_achievements (
+	user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	earned INTEGER NOT NULL CHECK (earned BETWEEN 1 AND 7)
 );
 CREATE TABLE IF NOT EXISTS rails_entities (
 	id INTEGER PRIMARY KEY,
@@ -647,6 +652,11 @@ func (s *Store) CurrentCounters(ctx context.Context, userID int64) (Counters, er
 }
 
 func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Counters, error) {
+	return s.IncrementWithCordMode(ctx, userID, now, false)
+}
+
+// IncrementWithCordMode awards a slack-cord badge only if its click commits.
+func (s *Store) IncrementWithCordMode(ctx context.Context, userID int64, now time.Time, slack bool) (Counters, error) {
 	now = now.UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -710,6 +720,12 @@ func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Cou
 	}
 	if !achievementsSaved || counters.Achievements != previousAchievements {
 		if err := counters.Achievements.save(ctx, tx, userID); err != nil {
+			return Counters{}, err
+		}
+	}
+	if slack && counters.ButtonAchievements&SlackCordClick == 0 {
+		counters.ButtonAchievements, err = saveButtonAchievement(ctx, tx, userID, SlackCordClick)
+		if err != nil {
 			return Counters{}, err
 		}
 	}

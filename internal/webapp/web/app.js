@@ -743,6 +743,12 @@
     "streak_counter_month",
     "streak_counter_year"
   ];
+  var buttonAchievementBits = {
+    reconnect: 1,
+    slackClick: 2,
+    reset: 4
+  };
+  var buttonAchievementMask = buttonAchievementBits.reconnect | buttonAchievementBits.slackClick | buttonAchievementBits.reset;
 
   // frontend/local-game.ts
   var localGame = (() => {
@@ -772,6 +778,12 @@
       const daily = result.streak_counter_day?.count ?? 0;
       result.progress = counters.progress == null ? seedProgress(last, daily) : validateProgress(counters.progress, last, daily);
       result.achievements = counters.achievements == null ? seedAchievements(last, daily, result.streak_counter_month?.count ?? 0) : validateAchievements(counters.achievements, Boolean(last));
+      const hardware = counters.button_achievements;
+      if (hardware !== void 0) {
+        if (!nonnegativeInteger(hardware) || hardware > buttonAchievementMask)
+          throw new Error("Invalid local button achievements.");
+        if (hardware) result.button_achievements = hardware;
+      }
       return result;
     }
     function validateProgress(value, last, daily) {
@@ -860,7 +872,7 @@
       const date = new Date(time);
       return index === 1 ? utcDay(date.getTime()) : index === 2 ? date.getUTCFullYear() * 12 + date.getUTCMonth() : date.getUTCFullYear();
     }
-    function increment(now = /* @__PURE__ */ new Date()) {
+    function increment(now = /* @__PURE__ */ new Date(), slack = false) {
       const counters = read();
       const previous = counters.click_count?.modified_time;
       const time = previous && Date.parse(previous) > now.getTime() ? previous : now.toISOString();
@@ -880,7 +892,16 @@
         counters.streak_counter_day.count
       );
       counters.achievements = advanceAchievements(counters.achievements, previous, time);
+      if (slack)
+        counters.button_achievements = (counters.button_achievements ?? 0) | buttonAchievementBits.slackClick;
       return write(counters);
+    }
+    function recordButtonAchievement2(interaction) {
+      const counters = read();
+      const previous = counters.button_achievements ?? 0;
+      const earned = previous | buttonAchievementBits[interaction];
+      if (earned !== previous) write({ ...counters, button_achievements: earned });
+      return earned;
     }
     async function change(operation) {
       const controller = new AbortController();
@@ -947,7 +968,17 @@
         };
       });
     }
-    return { key, read, encode, decode, validate, change, increment, replace: write };
+    return {
+      key,
+      read,
+      encode,
+      decode,
+      validate,
+      change,
+      increment,
+      recordButtonAchievement: recordButtonAchievement2,
+      replace: write
+    };
   })();
 
   // frontend/button-geometry.ts
@@ -2964,6 +2995,10 @@
     refresh: "Refresh counter",
     share: "Share",
     shareHint: "Preview stats for sharing",
+    reconnectPlugGoal: "Pull the button away in different directions until the plug comes free, then guide it back into a socket.",
+    slackCordGoal: "With the plug disconnected, tap it to slacken the cord, then save a click.",
+    resetOutletGoal: "Use TEST on the outlet, then use RESET. Keyboard players can Tab from Click to the outlet.",
+    buttonAchievementError: "Couldn\u2019t save the button achievement. Try the interaction again.",
     ping: "Ping",
     simPing: "Sim ping",
     pingHint: "Round-trip time of the last successful click request. The status dot indicates pending requests or a save error.",
@@ -3079,6 +3114,10 @@
       refresh: "\u5237\u65B0\u8BA1\u6570",
       share: "\u5206\u4EAB",
       shareHint: "\u9884\u89C8\u8981\u5206\u4EAB\u7684\u7EDF\u8BA1",
+      reconnectPlugGoal: "\u5411\u4E0D\u540C\u65B9\u5411\u62C9\u52A8\u6309\u94AE\uFF0C\u76F4\u5230\u63D2\u5934\u8131\u843D\uFF0C\u518D\u5C06\u5B83\u63D2\u56DE\u63D2\u5EA7\u3002",
+      slackCordGoal: "\u62D4\u4E0B\u63D2\u5934\u540E\uFF0C\u70B9\u6309\u63D2\u5934\u8BA9\u7535\u7EBF\u653E\u677E\uFF0C\u7136\u540E\u5B8C\u6210\u4E00\u6B21\u6709\u6548\u70B9\u51FB\u3002",
+      resetOutletGoal: "\u5148\u4F7F\u7528\u63D2\u5EA7\u4E0A\u7684 TEST\uFF0C\u518D\u4F7F\u7528 RESET\u3002\u952E\u76D8\u73A9\u5BB6\u53EF\u5728\u70B9\u51FB\u6309\u94AE\u4E0A\u6309 Tab \u524D\u5F80\u63D2\u5EA7\u3002",
+      buttonAchievementError: "\u65E0\u6CD5\u4FDD\u5B58\u6309\u94AE\u6210\u5C31\u3002\u8BF7\u91CD\u8BD5\u8BE5\u64CD\u4F5C\u3002",
       ping: "\u5EF6\u8FDF",
       simPing: "\u6A21\u62DF\u5EF6\u8FDF",
       pingHint: "\u4E0A\u6B21\u6210\u529F\u70B9\u51FB\u8BF7\u6C42\u7684\u5F80\u8FD4\u65F6\u95F4\u3002\u72B6\u6001\u5706\u70B9\u8868\u793A\u5F85\u5904\u7406\u8BF7\u6C42\u6216\u4FDD\u5B58\u9519\u8BEF\u3002",
@@ -3193,6 +3232,10 @@
       refresh: "\u91CD\u65B0\u6574\u7406\u8A08\u6578",
       share: "\u5206\u4EAB",
       shareHint: "\u9810\u89BD\u8981\u5206\u4EAB\u7684\u7D71\u8A08\u8CC7\u6599",
+      reconnectPlugGoal: "\u5411\u4E0D\u540C\u65B9\u5411\u62C9\u52D5\u6309\u9215\uFF0C\u76F4\u5230\u63D2\u982D\u812B\u843D\uFF0C\u518D\u5C07\u5B83\u63D2\u56DE\u63D2\u5EA7\u3002",
+      slackCordGoal: "\u62D4\u4E0B\u63D2\u982D\u5F8C\uFF0C\u9EDE\u6309\u63D2\u982D\u8B93\u96FB\u7DDA\u653E\u9B06\uFF0C\u7136\u5F8C\u5132\u5B58\u4E00\u6B21\u9EDE\u64CA\u3002",
+      resetOutletGoal: "\u5148\u4F7F\u7528\u63D2\u5EA7\u4E0A\u7684 TEST\uFF0C\u518D\u4F7F\u7528 RESET\u3002\u4F7F\u7528\u9375\u76E4\u6642\uFF0C\u53EF\u5728\u9EDE\u64CA\u6309\u9215\u4E0A\u6309 Tab \u524D\u5F80\u63D2\u5EA7\u3002",
+      buttonAchievementError: "\u7121\u6CD5\u5132\u5B58\u6309\u9215\u6210\u5C31\u3002\u8ACB\u91CD\u8A66\u8A72\u64CD\u4F5C\u3002",
       ping: "\u5EF6\u9072",
       simPing: "\u6A21\u64EC\u5EF6\u9072",
       pingHint: "\u4E0A\u6B21\u6210\u529F\u7684\u9EDE\u64CA\u8ACB\u6C42\u6240\u82B1\u7684\u5F80\u8FD4\u6642\u9593\u3002\u72C0\u614B\u5713\u9EDE\u6703\u986F\u793A\u662F\u5426\u6709\u5F85\u8655\u7406\u7684\u8ACB\u6C42\u6216\u5132\u5B58\u932F\u8AA4\u3002",
@@ -3307,6 +3350,10 @@
       refresh: "\u0995\u09BE\u0989\u09A8\u09CD\u099F\u09BE\u09B0 \u09B0\u09BF\u09AB\u09CD\u09B0\u09C7\u09B6 \u0995\u09B0\u09C1\u09A8",
       share: "\u09B6\u09C7\u09AF\u09BC\u09BE\u09B0",
       shareHint: "\u09B6\u09C7\u09AF\u09BC\u09BE\u09B0 \u0995\u09B0\u09BE\u09B0 \u0986\u0997\u09C7 \u09AA\u09B0\u09BF\u09B8\u0982\u0996\u09CD\u09AF\u09BE\u09A8 \u09A6\u09C7\u0996\u09C1\u09A8",
+      reconnectPlugGoal: "\u09AA\u09CD\u09B2\u09BE\u0997 \u0996\u09C1\u09B2\u09C7 \u09A8\u09BE \u09AF\u09BE\u0993\u09AF\u09BC\u09BE \u09AA\u09B0\u09CD\u09AF\u09A8\u09CD\u09A4 \u09AC\u09CB\u09A4\u09BE\u09AE\u099F\u09BF \u09AC\u09BF\u09AD\u09BF\u09A8\u09CD\u09A8 \u09A6\u09BF\u0995\u09C7 \u099F\u09BE\u09A8\u09C1\u09A8, \u09A4\u09BE\u09B0\u09AA\u09B0 \u09AA\u09CD\u09B2\u09BE\u0997\u099F\u09BF \u0986\u09AC\u09BE\u09B0 \u09B8\u0995\u09C7\u099F\u09C7 \u09A2\u09CB\u0995\u09BE\u09A8\u0964",
+      slackCordGoal: "\u09AA\u09CD\u09B2\u09BE\u0997 \u0996\u09C1\u09B2\u09C7 \u0997\u09C7\u09B2\u09C7 \u09B8\u09C7\u099F\u09BF\u09A4\u09C7 \u099F\u09CD\u09AF\u09BE\u09AA \u0995\u09B0\u09C7 \u09A4\u09BE\u09B0\u099F\u09BF \u09A2\u09BF\u09B2\u09BE \u0995\u09B0\u09C1\u09A8, \u09A4\u09BE\u09B0\u09AA\u09B0 \u098F\u0995\u099F\u09BF \u0995\u09CD\u09B2\u09BF\u0995 \u09B8\u09C7\u09AD \u0995\u09B0\u09C1\u09A8\u0964",
+      resetOutletGoal: "\u09B8\u0995\u09C7\u099F\u09C7 \u09AA\u09CD\u09B0\u09A5\u09AE\u09C7 TEST, \u09A4\u09BE\u09B0\u09AA\u09B0 RESET \u09AC\u09CD\u09AF\u09AC\u09B9\u09BE\u09B0 \u0995\u09B0\u09C1\u09A8\u0964 \u0995\u09C0\u09AC\u09CB\u09B0\u09CD\u09A1\u09C7 \u0995\u09CD\u09B2\u09BF\u0995 \u09AC\u09CB\u09A4\u09BE\u09AE \u09A5\u09C7\u0995\u09C7 Tab \u099A\u09C7\u09AA\u09C7 \u09B8\u0995\u09C7\u099F\u09C7 \u09AF\u09BE\u09A8\u0964",
+      buttonAchievementError: "\u09AC\u09CB\u09A4\u09BE\u09AE\u09C7\u09B0 \u0985\u09B0\u09CD\u099C\u09A8\u099F\u09BF \u09B8\u09C7\u09AD \u0995\u09B0\u09BE \u09AF\u09BE\u09AF\u09BC\u09A8\u09BF\u0964 \u0995\u09BE\u099C\u099F\u09BF \u0986\u09AC\u09BE\u09B0 \u0995\u09B0\u09C1\u09A8\u0964",
       ping: "\u09AA\u09BF\u0982",
       simPing: "\u09B8\u09BF\u09AE\u09C1\u09B2\u09C7\u099F\u09C7\u09A1 \u09AA\u09BF\u0982",
       pingHint: "\u09B6\u09C7\u09B7 \u09B8\u09AB\u09B2 \u0995\u09CD\u09B2\u09BF\u0995\u09C7\u09B0 \u0985\u09A8\u09C1\u09B0\u09CB\u09A7 \u09AA\u09BE\u09A0\u09BF\u09AF\u09BC\u09C7 \u09B8\u09BE\u09A1\u09BC\u09BE \u09AA\u09C7\u09A4\u09C7 \u09AF\u09A4 \u09B8\u09AE\u09AF\u09BC \u09B2\u09C7\u0997\u09C7\u099B\u09C7\u0964 \u09AC\u09BF\u09A8\u09CD\u09A6\u09C1\u099F\u09BF \u0985\u09AA\u09C7\u0995\u09CD\u09B7\u09AE\u09BE\u09A3 \u0985\u09A8\u09C1\u09B0\u09CB\u09A7 \u09AC\u09BE \u09B8\u09C7\u09AD\u09C7\u09B0 \u09A4\u09CD\u09B0\u09C1\u099F\u09BF \u09A6\u09C7\u0996\u09BE\u09AF\u09BC\u0964",
@@ -3421,6 +3468,10 @@
       refresh: "Actualizar contador",
       share: "Compartir",
       shareHint: "Previsualizar estad\xEDsticas para compartir",
+      reconnectPlugGoal: "Tira del bot\xF3n en distintas direcciones hasta soltar el enchufe y luego vuelve a conectarlo a una toma.",
+      slackCordGoal: "Con el enchufe desconectado, t\xF3calo para aflojar el cable y luego guarda un clic.",
+      resetOutletGoal: "Pulsa TEST en la toma y despu\xE9s RESET. Con el teclado, pulsa Tab desde el bot\xF3n de clic para llegar a la toma.",
+      buttonAchievementError: "No se pudo guardar el logro del bot\xF3n. Repite la acci\xF3n.",
       ping: "Latencia",
       simPing: "Latencia simulada",
       pingHint: "Tiempo de ida y vuelta del \xFAltimo clic guardado. El punto de estado indica solicitudes pendientes o un error al guardar.",
@@ -3535,6 +3586,10 @@
       refresh: "\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0639\u062F\u0627\u062F",
       share: "\u0645\u0634\u0627\u0631\u0643\u0629",
       shareHint: "\u0645\u0639\u0627\u064A\u0646\u0629 \u0627\u0644\u0625\u062D\u0635\u0627\u0621\u0627\u062A \u0642\u0628\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u0643\u0629",
+      reconnectPlugGoal: "\u0627\u0633\u062D\u0628 \u0627\u0644\u0632\u0631 \u0641\u064A \u0627\u062A\u062C\u0627\u0647\u0627\u062A \u0645\u062E\u062A\u0644\u0641\u0629 \u062D\u062A\u0649 \u064A\u0646\u0641\u0635\u0644 \u0627\u0644\u0642\u0627\u0628\u0633\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0648\u0635\u064A\u0644\u0647 \u0628\u0645\u0642\u0628\u0633.",
+      slackCordGoal: "\u0628\u0639\u062F \u0641\u0635\u0644 \u0627\u0644\u0642\u0627\u0628\u0633\u060C \u0627\u0636\u063A\u0637 \u0639\u0644\u064A\u0647 \u0644\u0625\u0631\u062E\u0627\u0621 \u0627\u0644\u0633\u0644\u0643 \u062B\u0645 \u0627\u062D\u0641\u0638 \u0646\u0642\u0631\u0629.",
+      resetOutletGoal: "\u0627\u0633\u062A\u062E\u062F\u0645 TEST \u0639\u0644\u0649 \u0627\u0644\u0645\u0642\u0628\u0633 \u062B\u0645 RESET. \u0644\u0644\u0627\u0646\u062A\u0642\u0627\u0644 \u0645\u0646 \u0632\u0631 \u0627\u0644\u0646\u0642\u0631 \u0625\u0644\u0649 \u0627\u0644\u0645\u0642\u0628\u0633 \u0628\u0644\u0648\u062D\u0629 \u0627\u0644\u0645\u0641\u0627\u062A\u064A\u062D\u060C \u0627\u0636\u063A\u0637 Tab.",
+      buttonAchievementError: "\u062A\u0639\u0630\u0651\u0631 \u062D\u0641\u0638 \u0625\u0646\u062C\u0627\u0632 \u0627\u0644\u0632\u0631. \u062C\u0631\u0651\u0628 \u062A\u0646\u0641\u064A\u0630 \u0627\u0644\u062D\u0631\u0643\u0629 \u0645\u062C\u062F\u062F\u064B\u0627.",
       ping: "\u0632\u0645\u0646 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629",
       simPing: "\u0632\u0645\u0646 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0649",
       pingHint: "\u0645\u062F\u0629 \u0622\u062E\u0631 \u0637\u0644\u0628 \u0646\u0642\u0631\u0629 \u0646\u0627\u062C\u062D \u0630\u0647\u0627\u0628\u064B\u0627 \u0648\u0625\u064A\u0627\u0628\u064B\u0627. \u062A\u0634\u064A\u0631 \u0646\u0642\u0637\u0629 \u0627\u0644\u062D\u0627\u0644\u0629 \u0625\u0644\u0649 \u0637\u0644\u0628\u0627\u062A \u0645\u0639\u0644\u0651\u0642\u0629 \u0623\u0648 \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062D\u0641\u0638.",
@@ -3649,6 +3704,10 @@
       refresh: "\u0915\u093E\u0909\u0902\u091F\u0930 \u0930\u0940\u092B\u093C\u094D\u0930\u0947\u0936 \u0915\u0930\u0947\u0902",
       share: "\u0938\u093E\u091D\u093E \u0915\u0930\u0947\u0902",
       shareHint: "\u0938\u093E\u091D\u093E \u0915\u0930\u0928\u0947 \u0938\u0947 \u092A\u0939\u0932\u0947 \u0906\u0901\u0915\u0921\u093C\u094B\u0902 \u0915\u093E \u092A\u0942\u0930\u094D\u0935\u093E\u0935\u0932\u094B\u0915\u0928 \u0915\u0930\u0947\u0902",
+      reconnectPlugGoal: "\u092C\u091F\u0928 \u0915\u094B \u0905\u0932\u0917-\u0905\u0932\u0917 \u0926\u093F\u0936\u093E\u0913\u0902 \u092E\u0947\u0902 \u0916\u0940\u0902\u091A\u0915\u0930 \u092A\u094D\u0932\u0917 \u0928\u093F\u0915\u093E\u0932\u0947\u0902, \u092B\u093F\u0930 \u0909\u0938\u0947 \u0935\u093E\u092A\u0938 \u0938\u0949\u0915\u0947\u091F \u092E\u0947\u0902 \u0932\u0917\u093E\u090F\u0901\u0964",
+      slackCordGoal: "\u092A\u094D\u0932\u0917 \u0928\u093F\u0915\u0932 \u091C\u093E\u0928\u0947 \u092A\u0930 \u0924\u093E\u0930 \u0922\u0940\u0932\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0909\u0938 \u092A\u0930 \u091F\u0948\u092A \u0915\u0930\u0947\u0902, \u092B\u093F\u0930 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902\u0964",
+      resetOutletGoal: "\u0938\u0949\u0915\u0947\u091F \u092A\u0930 \u092A\u0939\u0932\u0947 TEST, \u092B\u093F\u0930 RESET \u0926\u092C\u093E\u090F\u0901\u0964 \u0915\u0940\u092C\u094B\u0930\u094D\u0921 \u0938\u0947 \u0915\u094D\u0932\u093F\u0915 \u092C\u091F\u0928 \u092A\u0930 Tab \u0926\u092C\u093E\u0915\u0930 \u0938\u0949\u0915\u0947\u091F \u0924\u0915 \u091C\u093E\u090F\u0901\u0964",
+      buttonAchievementError: "\u092C\u091F\u0928 \u0915\u0940 \u0909\u092A\u0932\u092C\u094D\u0927\u093F \u0938\u0947\u0935 \u0928\u0939\u0940\u0902 \u0939\u094B \u0938\u0915\u0940\u0964 \u0915\u094D\u0930\u093F\u092F\u093E \u092B\u093F\u0930 \u0938\u0947 \u0915\u0930\u0947\u0902\u0964",
       ping: "\u092A\u093F\u0902\u0917",
       simPing: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u093F\u0902\u0917",
       pingHint: "\u092A\u093F\u091B\u0932\u0947 \u0938\u092B\u0932 \u0915\u094D\u0932\u093F\u0915 \u0905\u0928\u0941\u0930\u094B\u0927 \u0915\u093E \u0906\u0928\u0947-\u091C\u093E\u0928\u0947 \u0915\u093E \u0938\u092E\u092F\u0964 \u0938\u094D\u0925\u093F\u0924\u093F \u092C\u093F\u0902\u0926\u0941 \u0932\u0902\u092C\u093F\u0924 \u0905\u0928\u0941\u0930\u094B\u0927 \u092F\u093E \u0938\u0939\u0947\u091C\u0928\u0947 \u0915\u0940 \u0924\u094D\u0930\u0941\u091F\u093F \u0926\u093F\u0916\u093E\u0924\u093E \u0939\u0948\u0964",
@@ -3763,6 +3822,10 @@
       refresh: "Muat ulang penghitung",
       share: "Bagikan",
       shareHint: "Pratinjau statistik untuk dibagikan",
+      reconnectPlugGoal: "Tarik tombol ke berbagai arah sampai stekernya terlepas, lalu pasang kembali ke stopkontak.",
+      slackCordGoal: "Saat steker terlepas, ketuk steker untuk mengendurkan kabel, lalu simpan satu klik.",
+      resetOutletGoal: "Gunakan TEST pada stopkontak, lalu gunakan RESET. Dengan papan ketik, tekan Tab dari tombol klik untuk menuju stopkontak.",
+      buttonAchievementError: "Pencapaian tombol gagal disimpan. Ulangi tindakan tersebut.",
       ping: "Ping",
       simPing: "Ping simulasi",
       pingHint: "Waktu dari pengiriman permintaan klik terakhir yang berhasil hingga balasannya diterima. Titik status menunjukkan permintaan tertunda atau kesalahan penyimpanan.",
@@ -3877,6 +3940,10 @@
       refresh: "Atualizar contador",
       share: "Compartilhar",
       shareHint: "Pr\xE9-visualizar estat\xEDsticas para compartilhar",
+      reconnectPlugGoal: "Puxe o bot\xE3o em v\xE1rias dire\xE7\xF5es at\xE9 soltar o plugue e depois encaixe-o novamente em uma tomada.",
+      slackCordGoal: "Com o plugue desconectado, toque nele para afrouxar o cabo e depois salve um clique.",
+      resetOutletGoal: "Use TEST na tomada e depois RESET. No teclado, pressione Tab a partir do bot\xE3o de clique para chegar \xE0 tomada.",
+      buttonAchievementError: "N\xE3o foi poss\xEDvel salvar a conquista do bot\xE3o. Repita a a\xE7\xE3o.",
       ping: "Ping",
       simPing: "Ping simulado",
       pingHint: "Tempo de ida e volta da \xFAltima solicita\xE7\xE3o de clique bem-sucedida. O ponto de status indica solicita\xE7\xF5es pendentes ou erro ao salvar.",
@@ -3991,6 +4058,10 @@
       refresh: "Actualiser le compteur",
       share: "Partager",
       shareHint: "Pr\xE9visualiser les statistiques \xE0 partager",
+      reconnectPlugGoal: "Tirez le bouton dans plusieurs directions pour d\xE9brancher la fiche, puis rebranchez-la dans une prise.",
+      slackCordGoal: "Une fois la fiche d\xE9branch\xE9e, touchez-la pour d\xE9tendre le c\xE2ble, puis enregistrez un clic.",
+      resetOutletGoal: "Utilisez TEST sur la prise, puis RESET. Au clavier, appuyez sur Tab depuis le bouton de jeu pour atteindre la prise.",
+      buttonAchievementError: "Impossible d\u2019enregistrer le succ\xE8s du bouton. R\xE9essayez l\u2019action.",
       ping: "Latence",
       simPing: "Latence simul\xE9e",
       pingHint: "Dur\xE9e aller-retour de la derni\xE8re requ\xEAte de clic r\xE9ussie. Le point de statut indique les requ\xEAtes en attente ou une erreur de sauvegarde.",
@@ -4105,6 +4176,10 @@
       refresh: "\u30AB\u30A6\u30F3\u30BF\u30FC\u3092\u66F4\u65B0",
       share: "\u5171\u6709",
       shareHint: "\u5171\u6709\u3059\u308B\u8A18\u9332\u3092\u30D7\u30EC\u30D3\u30E5\u30FC",
+      reconnectPlugGoal: "\u30DC\u30BF\u30F3\u3092\u3044\u308D\u3044\u308D\u306A\u65B9\u5411\u306B\u5F15\u3044\u3066\u30D7\u30E9\u30B0\u3092\u629C\u304D\u3001\u3082\u3046\u4E00\u5EA6\u30B3\u30F3\u30BB\u30F3\u30C8\u306B\u5DEE\u3057\u8FBC\u3093\u3067\u304F\u3060\u3055\u3044\u3002",
+      slackCordGoal: "\u30D7\u30E9\u30B0\u304C\u629C\u3051\u305F\u72B6\u614B\u3067\u30D7\u30E9\u30B0\u3092\u30BF\u30C3\u30D7\u3057\u3066\u30B3\u30FC\u30C9\u3092\u7DE9\u3081\u3001\u305D\u306E\u72B6\u614B\u3067\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      resetOutletGoal: "\u30B3\u30F3\u30BB\u30F3\u30C8\u306E TEST \u3092\u62BC\u3057\u3066\u304B\u3089 RESET \u3092\u62BC\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u30AD\u30FC\u30DC\u30FC\u30C9\u3067\u306F\u30AF\u30EA\u30C3\u30AF\u30DC\u30BF\u30F3\u304B\u3089 Tab \u30AD\u30FC\u3067\u79FB\u52D5\u3067\u304D\u307E\u3059\u3002",
+      buttonAchievementError: "\u30DC\u30BF\u30F3\u306E\u5B9F\u7E3E\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       ping: "\u5FDC\u7B54\u6642\u9593",
       simPing: "\u6A21\u64EC\u5FDC\u7B54\u6642\u9593",
       pingHint: "\u6700\u5F8C\u306B\u6210\u529F\u3057\u305F\u30AF\u30EA\u30C3\u30AF\u8981\u6C42\u306E\u5F80\u5FA9\u6642\u9593\u3002\u72B6\u614B\u3092\u793A\u3059\u70B9\u306F\u51E6\u7406\u4E2D\u306E\u8981\u6C42\u3084\u4FDD\u5B58\u30A8\u30E9\u30FC\u3092\u793A\u3057\u307E\u3059\u3002",
@@ -4219,6 +4294,10 @@
       refresh: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A",
       share: "\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F",
       shareHint: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0438 \u0434\u043B\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
+      reconnectPlugGoal: "\u041F\u043E\u0442\u044F\u043D\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u0432 \u0440\u0430\u0437\u043D\u044B\u0435 \u0441\u0442\u043E\u0440\u043E\u043D\u044B, \u043F\u043E\u043A\u0430 \u0432\u0438\u043B\u043A\u0430 \u043D\u0435 \u0432\u044B\u0441\u043A\u043E\u0447\u0438\u0442, \u0437\u0430\u0442\u0435\u043C \u0432\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u0435\u0451 \u043E\u0431\u0440\u0430\u0442\u043D\u043E \u0432 \u0440\u043E\u0437\u0435\u0442\u043A\u0443.",
+      slackCordGoal: "\u041A\u043E\u0433\u0434\u0430 \u0432\u0438\u043B\u043A\u0430 \u0432\u044B\u043D\u0443\u0442\u0430, \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u043D\u0430 \u043D\u0435\u0451, \u0447\u0442\u043E\u0431\u044B \u043E\u0441\u043B\u0430\u0431\u0438\u0442\u044C \u0448\u043D\u0443\u0440, \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0449\u0435\u043B\u0447\u043E\u043A.",
+      resetOutletGoal: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 TEST \u043D\u0430 \u0440\u043E\u0437\u0435\u0442\u043A\u0435, \u0437\u0430\u0442\u0435\u043C RESET. \u0427\u0442\u043E\u0431\u044B \u043F\u0435\u0440\u0435\u0439\u0442\u0438 \u043E\u0442 \u043A\u043D\u043E\u043F\u043A\u0438 \u043A \u0440\u043E\u0437\u0435\u0442\u043A\u0435 \u0441 \u043A\u043B\u0430\u0432\u0438\u0430\u0442\u0443\u0440\u044B, \u043D\u0430\u0436\u043C\u0438\u0442\u0435 Tab.",
+      buttonAchievementError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0435 \u043A\u043D\u043E\u043F\u043A\u0438. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435.",
       ping: "\u041F\u0438\u043D\u0433",
       simPing: "\u0418\u043C\u0438\u0442\u0430\u0446\u0438\u044F \u043F\u0438\u043D\u0433\u0430",
       pingHint: "\u0412\u0440\u0435\u043C\u044F \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0433\u043E \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u043A\u043B\u0438\u043A\u0430. \u0418\u043D\u0434\u0438\u043A\u0430\u0442\u043E\u0440 \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u044F \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442 \u043E\u0436\u0438\u0434\u0430\u044E\u0449\u0438\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0438\u043B\u0438 \u043E\u0448\u0438\u0431\u043A\u0443 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F.",
@@ -4333,6 +4412,10 @@
       refresh: "Z\xE4hler aktualisieren",
       share: "Teilen",
       shareHint: "Statistik zum Teilen ansehen",
+      reconnectPlugGoal: "Ziehe den Knopf in verschiedene Richtungen, bis sich der Stecker l\xF6st, und stecke ihn wieder in eine Buchse.",
+      slackCordGoal: "Tippe auf den ausgesteckten Stecker, um das Kabel zu lockern, und speichere dann einen Klick.",
+      resetOutletGoal: "Dr\xFCcke an der Steckdose zuerst TEST und dann RESET. Mit Tab gelangst du vom Klickknopf zur Steckdose.",
+      buttonAchievementError: "Der Erfolg konnte nicht gespeichert werden. Wiederhole die Aktion.",
       ping: "Ping",
       simPing: "Simulierter Ping",
       pingHint: "Zeit zwischen der letzten erfolgreichen Klickanfrage und der Antwort des Servers. Der Statuspunkt zeigt ausstehende Anfragen oder einen Speicherfehler an.",
@@ -4677,6 +4760,7 @@
       }
       if (!reducedMotion.matches) paint2();
       if (restoreFocus) button.focus({ preventScroll: true });
+      button.dispatchEvent(new CustomEvent("button-interaction", { detail: "reconnect" }));
     }, activatePlug2 = function() {
       if (plugState !== "unplugged" || !plugControl || plugControl.hidden || button.disabled || document.hidden)
         return;
@@ -5138,6 +5222,8 @@
       });
       if (!reducedMotion.matches) paint2();
       animate2();
+      if (!outletTripped)
+        button.dispatchEvent(new CustomEvent("button-interaction", { detail: "reset" }));
     }, endPointer2 = function(event, cancelled = false) {
       if (!pointers.has(event.pointerId)) return;
       const rect = button.getBoundingClientRect();
@@ -5530,7 +5616,13 @@
       }
       stageWasVisible = visible2;
     }).observe(stage);
-    tactileButtons.set(button, { reset: reset2, respond: respond2 });
+    tactileButtons.set(button, {
+      get cordSlack() {
+        return cordSlack;
+      },
+      reset: reset2,
+      respond: respond2
+    });
   }
   var movedOffPlug;
   var readyTarget;
@@ -6132,8 +6224,8 @@
     const sameWeek = utcWeek(utcDay(last)) === utcWeek(utcDay(now));
     const sameMonth = sameUtcMonth(new Date(last), new Date(now));
     const hours = sameDay ? countSetBits(calendar.hours) : 0;
-    function badge(id, icon, name, hint, goal, current, target, earnedOffline = current >= target) {
-      const earned2 = local ? earnedOffline : accountBadges.has(id);
+    function badge(id, icon, name, hint, goal, current, target, earnedOffline = current >= target, earnedOnline = accountBadges.has(id)) {
+      const earned2 = local ? earnedOffline : earnedOnline;
       return {
         id,
         icon,
@@ -6244,6 +6336,32 @@
         calendarBadgeTargets.active_months
       )
     ];
+    for (const [bit, id, name, hint, goal] of [
+      [
+        buttonAchievementBits.reconnect,
+        "live-wire",
+        "Live Wire",
+        "There\u2019s a way to reconnect the plug.",
+        "reconnectPlugGoal"
+      ],
+      [
+        buttonAchievementBits.slackClick,
+        "hanging-loose",
+        "Hanging Loose",
+        "Try the cord with a little more give.",
+        "slackCordGoal"
+      ],
+      [
+        buttonAchievementBits.reset,
+        "circuit-breaker",
+        "Circuit Breaker",
+        "The outlet has switches of its own.",
+        "resetOutletGoal"
+      ]
+    ]) {
+      const earned2 = Boolean((data.button_achievements ?? 0) & bit);
+      badges2.push(badge(id, "hardware", name, hint, goal, Number(earned2), 1, earned2, earned2));
+    }
     const earned = badges2.filter((entry) => entry.earned).length;
     badges2.push(
       badge(
@@ -6253,7 +6371,9 @@
         "Achievements count toward this one.",
         "otherAchievementsGoal",
         earned,
-        10
+        10,
+        earned >= 10,
+        earned >= 10 || accountBadges.has("recursion")
       )
     );
     return badges2;
@@ -6594,6 +6714,8 @@
   var offlineStartTimer = 0;
   var gameReady = false;
   var pendingClicks = 0;
+  var pendingButtonAchievements = 0;
+  var hasPendingProgress = () => pendingClicks > 0 || pendingButtonAchievements !== 0;
   var localSaveReplacing = false;
   var localRefreshQueued = false;
   var localAcknowledgement = 0;
@@ -6836,6 +6958,7 @@
     counterLoadOwner = null;
     counterCard.setAttribute("aria-busy", "false");
     pendingClicks = 0;
+    pendingButtonAchievements = 0;
     localRefreshQueued = false;
     updatePendingIndicator();
     clickBatchFailed = false;
@@ -6867,10 +6990,10 @@
     required(".connection-label").textContent = message2(localMode ? "simPing" : "ping");
     document.querySelectorAll("[data-play-local]").forEach((button) => {
       button.hidden = localMode;
-      button.disabled = pendingClicks > 0 || signingOut || localSaveReplacing;
+      button.disabled = hasPendingProgress() || signingOut || localSaveReplacing;
     });
-    required("#leave-local").disabled = pendingClicks > 0 || localSaveReplacing || authenticating;
-    required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
+    required("#leave-local").disabled = hasPendingProgress() || localSaveReplacing || authenticating;
+    required("#copy-online-local").disabled = !lastOnlineCounters || hasPendingProgress() || localSaveReplacing;
     for (const id of ["#restart-local", "#import-local", "#download-local", "#replace-local"])
       required(id).disabled = localSaveReplacing;
   }
@@ -6904,13 +7027,18 @@
       )
     );
   }
+  function mergeButtonAchievements(data, earned = 0) {
+    const previous = data.button_achievements ?? 0;
+    const combined = previous | earned;
+    return combined === previous ? data : { ...data, button_achievements: combined };
+  }
   function renderCounters(data, allowDecrease = false, announce = false) {
     const clicks = data.click_count;
     const displayedClicks = displayedCounters.click_count?.count ?? 0;
     if (!allowDecrease && clicks && Number.isFinite(displayedClicks) && clicks.count < displayedClicks)
       return;
-    displayedCounters = data;
-    const progress = renderProgress(data, localMode, announce);
+    displayedCounters = allowDecrease ? data : mergeButtonAchievements(data, displayedCounters.button_achievements);
+    const progress = renderProgress(displayedCounters, localMode, announce);
     for (const [id, count, unit] of [
       ["click-count", clicks?.count ?? 0],
       ["day-streak", data.streak_counter_day?.count ?? 0, "day"],
@@ -6959,7 +7087,7 @@
       return Promise.resolve();
     }
     if (counterLoad) return counterLoad;
-    if (pendingClicks > 0) {
+    if (hasPendingProgress()) {
       refreshQueued = true;
       return Promise.resolve();
     }
@@ -6983,8 +7111,11 @@
         counterLoad = activeLoad;
         generation = clickGeneration;
         counterLoadOwner = owner;
-        lastOnlineCounters = state.counters;
-        applyLoadedCounters(state.counters);
+        lastOnlineCounters = mergeButtonAchievements(
+          state.counters,
+          lastOnlineCounters?.button_achievements
+        );
+        applyLoadedCounters(lastOnlineCounters);
         if (optionsDialog.open) updateOptions();
         updateGameControls();
         if (focusButton && currentView === "game" && !clickButton.disabled) clickButton.focus();
@@ -7016,7 +7147,7 @@
     if (isGuestAchievements()) return renderGuestAchievements();
     if (localMode) {
       if (!isPlayerView()) return;
-      if (pendingClicks > 0 || localSaveReplacing) localRefreshQueued = true;
+      if (hasPendingProgress() || localSaveReplacing) localRefreshQueued = true;
       else openLocalGame();
       return;
     }
@@ -7176,11 +7307,66 @@
       updateGameControls();
     }
   });
+  clickButton.addEventListener("button-interaction", (event) => {
+    const interaction = event.detail;
+    if (interaction === "reconnect" || interaction === "reset")
+      return recordButtonAchievement(interaction);
+  });
+  async function recordButtonAchievement(interaction) {
+    if (!gameReady || currentView !== "game" || signingOut || authenticating || localSaveReplacing || !localMode && (!user || offline))
+      return;
+    const bit = buttonAchievementBits[interaction];
+    if (((displayedCounters.button_achievements ?? 0) | pendingButtonAchievements) & bit) return;
+    const generation = clickGeneration;
+    const accountID = localMode ? void 0 : user?.id;
+    pendingButtonAchievements |= bit;
+    updateGameControls();
+    try {
+      let earned;
+      if (accountID) {
+        const data = await api("/api/button-achievements", {
+          method: "POST",
+          headers: { "X-GoClick-User-ID": accountID },
+          body: JSON.stringify({ interaction })
+        });
+        earned = data.button_achievements;
+        if (!Number.isInteger(earned) || earned < 0 || earned > buttonAchievementMask || !(earned & bit))
+          throw new Error("The response did not confirm the button achievement.");
+      } else {
+        earned = await localGame.change(
+          () => generation === clickGeneration ? localGame.recordButtonAchievement(interaction) : 0
+        );
+      }
+      if (generation !== clickGeneration) return;
+      renderCounters(mergeButtonAchievements(displayedCounters, earned), false, true);
+      if (lastOnlineCounters && accountID)
+        lastOnlineCounters = mergeButtonAchievements(lastOnlineCounters, earned);
+    } catch (caught) {
+      if (generation !== clickGeneration) return;
+      const error = requestError(caught);
+      if (error.status === 401) {
+        if (!signingOut) handleExpiredSession();
+      } else if (error.code === "account_changed") {
+        gameReady = false;
+        refreshQueued = true;
+      } else showGameError("buttonAchievementError");
+    } finally {
+      if (generation === clickGeneration) {
+        pendingButtonAchievements &= ~bit;
+        updateGameControls();
+        if (!hasPendingProgress()) {
+          if (localMode && localRefreshQueued) synchronizeLocalSave();
+          else if (!localMode && refreshQueued) refreshGame();
+        }
+      }
+    }
+  }
   clickButton.addEventListener("click", async (event) => {
     if (currentView !== "game" || clickButton.disabled) return;
     paintButtonLanguage(buttonLanguage.click(performance.now(), currentLanguage()));
+    const slack = tactileButtons.get(clickButton)?.cordSlack ?? false;
     if (localMode) {
-      await clickLocal(event);
+      await clickLocal(event, slack);
       return;
     }
     if (!user || !gameReady || offline && !localMode || signingOut || authenticating || pendingClicks >= maxPendingClicks)
@@ -7205,7 +7391,10 @@
     try {
       const data = await api("/api/clicks", {
         method: "POST",
-        headers: { "X-GoClick-User-ID": user.id }
+        headers: {
+          "X-GoClick-User-ID": user.id,
+          ...slack ? { "X-GoClick-Cord-Slack": "1" } : {}
+        }
       });
       if (generation !== clickGeneration) return;
       const count = data.click_count?.count;
@@ -7216,7 +7405,8 @@
       }
       paintLastClick(true);
       renderCounters(data, false, true);
-      if (count >= (lastOnlineCounters?.click_count?.count ?? 0)) lastOnlineCounters = data;
+      if (count >= (lastOnlineCounters?.click_count?.count ?? 0))
+        lastOnlineCounters = displayedCounters;
       feedback.success(performance.now() - started);
       saved = true;
     } catch (caught) {
@@ -7324,7 +7514,7 @@
     paintOptionsNotice();
   }
   function updateOptions() {
-    required("#copy-online-local").disabled = !lastOnlineCounters || pendingClicks > 0 || localSaveReplacing;
+    required("#copy-online-local").disabled = !lastOnlineCounters || hasPendingProgress() || localSaveReplacing;
     const name = user?.username;
     required("#copy-online-note").textContent = lastOnlineCounters && name ? message2("copyAccountNote", { name: languageDirection() === "rtl" ? `\u2068${name}\u2069` : name }) : message2("copyAccountHint");
     const summary = required("#local-save-summary");
@@ -7386,7 +7576,7 @@
     resetClickState();
   }
   function startLocalGame(scoreFirstClick = false) {
-    if (pendingClicks > 0 || signingOut || localSaveReplacing) return;
+    if (hasPendingProgress() || signingOut || localSaveReplacing) return;
     try {
       const data = localGame.read();
       gameSettings.setMode("local");
@@ -7415,7 +7605,7 @@
   });
   document.querySelectorAll("[data-play-local]").forEach((button) => button.addEventListener("click", () => startLocalGame()));
   required("#leave-local").addEventListener("click", async () => {
-    if (offlineOnly || pendingClicks > 0 || localSaveReplacing || authenticating) return;
+    if (offlineOnly || hasPendingProgress() || localSaveReplacing || authenticating) return;
     let remembered = true;
     try {
       gameSettings.setMode("online");
@@ -7434,7 +7624,7 @@
       optionsDialog.showModal();
     }
   });
-  async function clickLocal(event = { detail: 0, clientX: 0, clientY: 0 }) {
+  async function clickLocal(event = { detail: 0, clientX: 0, clientY: 0 }, slack = false) {
     if (!gameReady || localSaveReplacing || pendingClicks >= maxPendingClicks) return;
     const feedback = clickFeedback.start(clickButton, event, true), generation = clickGeneration, acknowledgement = ++localAcknowledgement;
     const base = gameSettings.value.simulatedPing;
@@ -7444,7 +7634,7 @@
     updateGameControls();
     setConnection(null, "loading");
     try {
-      const data = await localGame.change(() => localGame.increment());
+      const data = await localGame.change(() => localGame.increment(void 0, slack));
       if (generation !== clickGeneration) return;
       paintLastClick(true);
       renderCounters(data, false, true);
@@ -7475,7 +7665,7 @@
       replaceLocalConsent.focus();
       return false;
     }
-    if (pendingClicks > 0) {
+    if (hasPendingProgress()) {
       optionsNotice("waitPending", true);
       return false;
     }
@@ -7549,7 +7739,7 @@
   function synchronizeLocalSave() {
     if (isGuestAchievements()) renderGuestAchievements();
     else if (localMode) {
-      if (pendingClicks > 0 || localSaveReplacing) {
+      if (hasPendingProgress() || localSaveReplacing) {
         localRefreshQueued = true;
         return;
       }

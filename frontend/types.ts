@@ -33,10 +33,20 @@ export interface ClickAchievements {
   active_months: number;
   earned: number;
 }
+export const buttonAchievementBits = {
+  reconnect: 1,
+  slackClick: 2,
+  reset: 4,
+} as const;
+export const buttonAchievementMask =
+  buttonAchievementBits.reconnect | buttonAchievementBits.slackClick | buttonAchievementBits.reset;
+export type ButtonInteraction = "reconnect" | "reset";
+
 export type Counters = Partial<Record<CounterKind, Counter | null>> & {
   progress?: ClickProgress;
   achievements?: ClickAchievements;
   earned_badges?: string[];
+  button_achievements?: number;
 };
 export interface GameState {
   user: User;
@@ -71,6 +81,7 @@ export interface ButtonState {
   responseColor: [number, number, number];
 }
 export interface ButtonController {
+  readonly cordSlack: boolean;
   reset(cancelled?: boolean): void;
   respond(state: ResponseState, milliseconds?: number): void;
 }

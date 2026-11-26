@@ -59,6 +59,7 @@ and aggregate statistics remain JSON numbers.
 | `GET` | `/api/game` | Read `{ "user": ..., "counters": ... }` for one authenticated account |
 | `GET` | `/api/clicks` | Read click and streak counters |
 | `POST` | `/api/clicks` | Add one click and update streaks |
+| `POST` | `/api/button-achievements` | Record a plug reconnect or outlet reset |
 | `GET` | `/up` | Health check |
 
 The `/api/clicks` and `/api/game` counters include a `progress` object with `week_streak`,
@@ -68,7 +69,8 @@ and earlier dates in increasing bit positions. The `achievements` object contain
 capped period click totals, a mask of UTC hours played that day, capped total
 active days and months, and a mask of earned period badges.
 The `earned_badges` array lists the IDs of all achievements earned by the
-authenticated account.
+authenticated account. The `button_achievements` mask contains bits 1 for a
+reconnect, 2 for a saved slack-cord click, and 4 for an outlet reset.
 
 The browser rechecks the game snapshot when it regains focus. A later return
 supersedes an older read still in flight. Changing accounts also updates an open
@@ -78,6 +80,10 @@ shared session changed in another tab, the server returns HTTP 409 with code
 `account_changed` without adding a click. The browser then refreshes the account
 without replaying the rejected click. API clients may send this header for the
 same protection; clients that omit it use the current session's account.
+Button achievement requests require `X-GoClick-User-ID` and accept
+`{"interaction":"reconnect"}` or `{"interaction":"reset"}`. A click with
+`X-GoClick-Cord-Slack: 1` earns its button badge when the click saves.
+These client-reported interactions award cosmetic badges.
 Returning online with an expired session clears cached account progress while
 preserving the independent local save.
 
@@ -194,7 +200,7 @@ streak records. For older accounts, Go Click uses recorded clicks and saved
 streaks as evidence of past activity. Older offline saves have only their last
 click and streak counters for reconstructing this progress. Upgrades preserve
 accounts, sessions, counters, and archives. The panel accepts schema-2 through
-schema-7 backups.
+schema-8 backups. Schema 8 adds persisted button interaction achievements.
 
 See [`backups.md`](backups.md) for full SQLite backups, data checks,
 restore rehearsal, and session revocation during recovery. Deployment backups

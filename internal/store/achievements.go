@@ -50,7 +50,7 @@ func (a *ClickAchievements) unlock() {
 // The IDs are part of the game API and are independent of display names.
 func (c Counters) EarnedBadgeIDs() []string {
 	p, a := c.Progress, c.Achievements
-	earned := make([]string, 0, 15)
+	earned := make([]string, 0, 18)
 	for _, badge := range [...]struct {
 		id  string
 		won bool
@@ -69,6 +69,9 @@ func (c Counters) EarnedBadgeIDs() []string {
 		{"three-visits", a.Earned&threeVisits != 0},
 		{"returning-clicker", a.ActiveDays >= 10},
 		{"welcome-back", a.ActiveMonths >= 3},
+		{"live-wire", c.ButtonAchievements&ReconnectedPlug != 0},
+		{"hanging-loose", c.ButtonAchievements&SlackCordClick != 0},
+		{"circuit-breaker", c.ButtonAchievements&ResetOutlet != 0},
 	} {
 		if badge.won {
 			earned = append(earned, badge.id)

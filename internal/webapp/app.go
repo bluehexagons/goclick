@@ -175,6 +175,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("GET /api/game", a.requireUser(a.game))
 	mux.HandleFunc("GET /api/clicks", a.requireUser(a.current))
 	mux.HandleFunc("POST /api/clicks", a.requireUser(a.increment))
+	mux.HandleFunc("POST /api/button-achievements", a.requireUser(a.recordButtonAchievement))
 	mux.HandleFunc("GET /admin", a.requireAdmin(a.adminPage))
 	mux.HandleFunc("GET /admin.html", a.requireAdmin(a.adminPage))
 	mux.HandleFunc("GET /api/admin/overview", a.requireAdmin(a.adminOverview))
@@ -421,19 +422,13 @@ func (a *App) game(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
-	// A browser tab may still display an account whose cookie was replaced in
-	// another tab. Bind its write to the displayed identity before consuming
-	// per-account budgets or changing counters. Older clients may omit this.
-	if expected := r.Header.Get("X-GoClick-User-ID"); expected != "" {
-		id, err := strconv.ParseInt(expected, 10, 64)
-		if err != nil || id <= 0 || expected != strconv.FormatInt(id, 10) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid expected account ID"})
-			return
-		}
-		if id != user.ID {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "Your account changed in another tab. Refresh before clicking.", "code": "account_changed"})
-			return
-		}
+	if !matchesExpectedAccount(w, r, user.ID, false) {
+		return
+	}
+	slack := r.Header.Get("X-GoClick-Cord-Slack")
+	if slack != "" && slack != "1" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid cord mode"})
+		return
 	}
 	if ok, retry := a.limiter.allow("click:"+strconv.FormatInt(user.ID, 10), a.clicksPerMinute, time.Minute); !ok {
 		rateLimited(w, retry)
@@ -446,7 +441,7 @@ func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 		rateLimitedReason(w, retry, "activity_cooldown", "Brief pause after sustained activity; try again shortly")
 		return
 	}
-	counters, err := a.store.Increment(r.Context(), user.ID, a.now())
+	counters, err := a.store.IncrementWithCordMode(r.Context(), user.ID, a.now(), slack == "1")
 	if err != nil {
 		a.internalError(w, r, "increment counters", err)
 		return
@@ -457,6 +452,54 @@ func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, response)
+}
+
+// A browser tab may still display an account whose cookie was replaced in
+// another tab. Bind its write to the displayed identity before it can mutate.
+func matchesExpectedAccount(w http.ResponseWriter, r *http.Request, userID int64, required bool) bool {
+	expected := r.Header.Get("X-GoClick-User-ID")
+	if expected == "" && !required {
+		return true
+	}
+	id, err := strconv.ParseInt(expected, 10, 64)
+	if err != nil || id <= 0 || expected != strconv.FormatInt(id, 10) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid expected account ID"})
+		return false
+	}
+	if id != userID {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "Your account changed in another tab. Refresh before playing.", "code": "account_changed"})
+		return false
+	}
+	return true
+}
+
+func (a *App) recordButtonAchievement(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	if !matchesExpectedAccount(w, r, user.ID, true) {
+		return
+	}
+	var input struct {
+		Interaction string `json:"interaction"`
+	}
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+	var badge store.ButtonAchievements
+	switch input.Interaction {
+	case "reconnect":
+		badge = store.ReconnectedPlug
+	case "reset":
+		badge = store.ResetOutlet
+	default:
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Unknown button interaction"})
+		return
+	}
+	earned, err := a.store.RecordButtonAchievement(r.Context(), user.ID, badge)
+	if err != nil {
+		a.internalError(w, r, "save button achievement", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]store.ButtonAchievements{"button_achievements": earned})
 }
 
 type publicUserResponse struct {
@@ -490,16 +533,18 @@ type counterEntities struct {
 
 type entitiesResponse struct {
 	counterEntities
-	Progress     *store.ClickProgress     `json:"progress,omitempty"`
-	Achievements *store.ClickAchievements `json:"achievements,omitempty"`
-	EarnedBadges []string                 `json:"earned_badges"`
+	Progress           *store.ClickProgress     `json:"progress,omitempty"`
+	Achievements       *store.ClickAchievements `json:"achievements,omitempty"`
+	EarnedBadges       []string                 `json:"earned_badges"`
+	ButtonAchievements store.ButtonAchievements `json:"button_achievements"`
 }
 
 func entityResponse(counters store.Counters) entitiesResponse {
 	response := entitiesResponse{
-		Progress:     &counters.Progress,
-		Achievements: &counters.Achievements,
-		EarnedBadges: counters.EarnedBadgeIDs(),
+		Progress:           &counters.Progress,
+		Achievements:       &counters.Achievements,
+		EarnedBadges:       counters.EarnedBadgeIDs(),
+		ButtonAchievements: counters.ButtonAchievements,
 	}
 	if !counters.Exists {
 		return response

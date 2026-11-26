@@ -59,23 +59,31 @@ func readCounters(ctx context.Context, tx *sql.Tx, userID int64) (Counters, bool
 	var last sql.NullString
 	var recent, hours sql.NullInt64
 	err := tx.QueryRowContext(ctx, `
-		SELECT click_count, day_streak, month_streak, year_streak, last_clicked_at,
+		SELECT counters.user_id IS NOT NULL, coalesce(click_count,0), coalesce(day_streak,0),
+		       coalesce(month_streak,0), coalesce(year_streak,0), last_clicked_at,
 		       recent_days, coalesce(week_streak,0), coalesce(best_day_streak,0), coalesce(best_week_streak,0),
 		       coalesce(day_clicks,0), coalesce(week_clicks,0), coalesce(month_clicks,0),
-		       hours, coalesce(active_days,0), coalesce(active_months,0), coalesce(earned,0)
-		FROM counters LEFT JOIN click_progress USING (user_id)
-			LEFT JOIN click_achievements USING (user_id) WHERE counters.user_id = ?`, userID).
-		Scan(&counters.Clicks, &counters.DayStreak, &counters.MonthStreak, &counters.YearStreak, &last,
+		       hours, coalesce(active_days,0), coalesce(active_months,0), coalesce(click_achievements.earned,0),
+		       coalesce(button_achievements.earned,0)
+		FROM users LEFT JOIN counters ON counters.user_id=users.id
+			LEFT JOIN click_progress ON click_progress.user_id=counters.user_id
+			LEFT JOIN click_achievements ON click_achievements.user_id=counters.user_id
+			LEFT JOIN button_achievements ON button_achievements.user_id=users.id
+		WHERE users.id = ?`, userID).
+		Scan(&counters.Exists, &counters.Clicks, &counters.DayStreak, &counters.MonthStreak, &counters.YearStreak, &last,
 			&recent, &counters.Progress.WeekStreak, &counters.Progress.BestDayStreak, &counters.Progress.BestWeekStreak,
 			&counters.Achievements.DayClicks, &counters.Achievements.WeekClicks, &counters.Achievements.MonthClicks,
-			&hours, &counters.Achievements.ActiveDays, &counters.Achievements.ActiveMonths, &counters.Achievements.Earned)
+			&hours, &counters.Achievements.ActiveDays, &counters.Achievements.ActiveMonths, &counters.Achievements.Earned,
+			&counters.ButtonAchievements)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Counters{}, false, false, nil
 	}
 	if err != nil {
 		return Counters{}, false, false, fmt.Errorf("read counters: %w", err)
 	}
-	counters.Exists = true
+	if !counters.Exists {
+		return counters, false, false, nil
+	}
 	counters.Progress.RecentDays = int(recent.Int64)
 	if last.Valid {
 		parsed, err := parseTime(last.String)

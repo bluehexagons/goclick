@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   width="192"
+   width="240"
    height="48"
-   viewBox="0 0 192 48"
+   viewBox="0 0 240 48"
    version="1.1"
    id="svg26"
    xmlns="http://www.w3.org/2000/svg"
@@ -223,6 +223,21 @@
            stroke="none"
            id="circle22" />
       </g>
+    </g>
+  </g>
+  <g transform="translate(192,0)">
+    <g id="hardware">
+      <path d="M24 4 39 11 43 19v13L35 41 24 46 13 41 5 32V19l4-8Z" fill="#0e111a" />
+      <path d="M24 3 39 10 42 17v13l-8 9-10 4-10-4-8-9V17l3-7Z"
+            fill="#9386c8" stroke="#493c73" stroke-width="1.4" />
+      <path d="M24 7 36 13l3 6v10l-7 7-8 4-8-4-7-7V19l3-6Z"
+            fill="#493c73" stroke="#d9ccff" stroke-opacity=".64" stroke-width="1.2" />
+      <path d="M14 12 24 7l10 5M9 20v7m30-7v7m-22 9 7 4 7-4"
+            fill="none" stroke="#d9ccff" stroke-opacity=".35" stroke-linecap="round" />
+      <circle cx="11.1" cy="17" r=".9" fill="#d9ccff" />
+      <circle cx="36.9" cy="17" r=".9" fill="#d9ccff" />
+      <path d="M21 13v5m6-5v5m-10 0h14v3a7 7 0 0 1-14 0Zm7 10v3a3 3 0 0 1-3 3h-3"
+            fill="none" stroke="#d9ccff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
     </g>
   </g>
 </svg>

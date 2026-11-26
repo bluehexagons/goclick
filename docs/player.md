@@ -54,8 +54,9 @@ local slot with a snapshot of your account after you open its counter.
 
 ## Streaks and achievements
 
-One saved click keeps a streak going for the current period. Days, weeks,
-months, and years use UTC, with weeks starting Monday. Hover over or activate
+Your next click milestone appears below the total. One saved click keeps a
+streak going for the current period. Days, weeks, months, and years use UTC,
+with weeks starting Monday. Hover over or activate
 the ring beside the day streak to see when the next day starts in your time
 zone.
 
@@ -64,6 +65,11 @@ Open **Achievements** to see your activity and filter badges by **Earned** or
 at different hours of the day. Earned badges survive breaks. Choose
 **Reveal locked requirements** if you want exact targets alongside the hints.
 
+The button hardware also has badges. Drag the button to explore the cord,
+and try the outlet’s TEST and RESET controls. Press Tab from the Click
+button to reach the outlet with a keyboard. Hardware badges save with your
+current local game or account.
+
 **Fortnight activity** scores the 14 UTC days ending on your most recent
 saved click. Each active day earns 5 points and each adjacent pair adds 2
 points. The game scales the result to 100. A click on a new UTC day moves
@@ -71,7 +77,7 @@ the window forward.
 
 ## Share your progress
 
-Select **Share** to copy a plain-text summary with your click total, streaks,
-and a link to the game. The dialog lets you choose which details to include
-and copy the updated text. If your browser blocks clipboard access, you can
+Select **Share** to preview a plain-text summary with your click total,
+daily, weekly, monthly, and yearly streaks, and a link to the game. Choose
+which details to include, then select **Copy text**. If your browser blocks clipboard access, you can
 copy the preview manually.

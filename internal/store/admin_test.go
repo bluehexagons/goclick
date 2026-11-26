@@ -326,7 +326,7 @@ func TestVersionTwoBackupCanBeRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(`DROP TABLE click_achievements; DROP TABLE click_progress; DROP TABLE player_activity; DROP TABLE admin_audit; DROP TABLE rails_json_users; PRAGMA user_version=2`); err != nil {
+	if _, err := raw.Exec(`DROP TABLE button_achievements; DROP TABLE click_achievements; DROP TABLE click_progress; DROP TABLE player_activity; DROP TABLE admin_audit; DROP TABLE rails_json_users; PRAGMA user_version=2`); err != nil {
 		t.Fatal(err)
 	}
 	raw.Close()
@@ -349,7 +349,7 @@ func TestVersionThreeBackupCanBeRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(`DROP TABLE click_achievements; DROP TABLE click_progress; DROP TABLE rails_json_users; DROP INDEX player_activity_sign_in; PRAGMA user_version=3`); err != nil {
+	if _, err := raw.Exec(`DROP TABLE button_achievements; DROP TABLE click_achievements; DROP TABLE click_progress; DROP TABLE rails_json_users; DROP INDEX player_activity_sign_in; PRAGMA user_version=3`); err != nil {
 		t.Fatal(err)
 	}
 	raw.Close()
@@ -377,7 +377,7 @@ func TestVersionFourBackupCanBeRestored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(`DROP TABLE click_achievements; DROP TABLE click_progress; DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
+	if _, err := raw.Exec(`DROP TABLE button_achievements; DROP TABLE click_achievements; DROP TABLE click_progress; DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
 		t.Fatal(err)
 	}
 	raw.Close()
@@ -422,7 +422,7 @@ func TestActivityFilteringAndSignInSurviveVersionFourUpgrade(t *testing.T) {
 		}
 	}
 	path := dbPath(t, db)
-	if _, err := db.db.Exec(`DROP TABLE click_achievements; DROP TABLE click_progress; DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
+	if _, err := db.db.Exec(`DROP TABLE button_achievements; DROP TABLE click_achievements; DROP TABLE click_progress; DROP INDEX player_activity_sign_in; PRAGMA user_version=4`); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
