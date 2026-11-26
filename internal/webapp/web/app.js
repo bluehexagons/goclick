@@ -6437,15 +6437,15 @@
       };
     }
     const badges2 = [
-      badge("gone-click", "medal", "Gone Click", "An early milestone.", "firstClick", clicks, 1),
-      badge("sentence", "clicks", "Sentence", "A few clicks in.", "clickMilestone", clicks, 25),
-      badge("paragraph", "clicks", "Paragraph", "The clicks add up.", "clickMilestone", clicks, 100),
-      badge("essay", "clicks", "Essay", "No time limit.", "clickMilestone", clicks, 500),
+      badge("gone-click", "medal", "Gone Click", "Early progress.", "firstClick", clicks, 1),
+      badge("sentence", "clicks", "Sentence", "Click total.", "clickMilestone", clicks, 25),
+      badge("paragraph", "clicks", "Paragraph", "Click total.", "clickMilestone", clicks, 100),
+      badge("essay", "clicks", "Essay", "Click total.", "clickMilestone", clicks, 500),
       badge(
         "clicks-for-days",
         "calendar",
         "Clicks for Days",
-        "Keep it going.",
+        "Daily activity.",
         "dayStreak",
         progress.best_day_streak,
         3
@@ -6454,7 +6454,7 @@
         "one-week-streak",
         "calendar",
         "One-Week Streak",
-        "A longer daily streak.",
+        "Daily activity.",
         "dayStreak",
         progress.best_day_streak,
         7
@@ -6463,7 +6463,7 @@
         "good-to-see-you-again",
         "calendar",
         "Good to See You Again",
-        "Make a habit of coming back.",
+        "Weekly activity.",
         "weekStreak",
         progress.best_week_streak,
         2
@@ -6472,7 +6472,7 @@
         "double-fortnight",
         "calendar",
         "Double Fortnight",
-        "Settle in for the long run.",
+        "Weekly activity.",
         "weekStreak",
         progress.best_week_streak,
         4
@@ -6481,7 +6481,7 @@
         "busy-day",
         "pace",
         "Busy Day",
-        "Make today count.",
+        "Click volume.",
         "dayClickGoal",
         sameDay ? calendar.day_clicks : 0,
         calendarBadgeTargets.day_clicks,
@@ -6491,7 +6491,7 @@
         "brisk-pace",
         "pace",
         "Brisk Pace",
-        "Find a rhythm you can keep.",
+        "Click volume.",
         "weekClickGoal",
         sameWeek ? calendar.week_clicks : 0,
         calendarBadgeTargets.week_clicks,
@@ -6501,7 +6501,7 @@
         "high-score",
         "pace",
         "High Score",
-        "Build up to a big total.",
+        "Click volume.",
         "monthClickGoal",
         sameMonth ? calendar.month_clicks : 0,
         calendarBadgeTargets.month_clicks,
@@ -6511,7 +6511,7 @@
         "three-visits",
         "pace",
         "Three Visits",
-        "Leave a little time between visits.",
+        "Play timing.",
         "distinctHoursGoal",
         hours,
         distinctHoursTarget,
@@ -6521,7 +6521,7 @@
         "returning-clicker",
         "calendar",
         "Returning Clicker",
-        "The days can be spread out.",
+        "Play history.",
         "distinctDaysGoal",
         calendar.active_days,
         calendarBadgeTargets.active_days
@@ -6530,7 +6530,7 @@
         "welcome-back",
         "calendar",
         "Welcome Back",
-        "An occasional visit is enough.",
+        "Long-term activity.",
         "distinctMonthsGoal",
         calendar.active_months,
         calendarBadgeTargets.active_months
@@ -6539,7 +6539,7 @@
         "chicken-dinner",
         "calendar",
         "Chicken Dinner",
-        "A run worth celebrating.",
+        "Fortnight activity.",
         "chickenDinnerGoal",
         fortnightActivity(progress.recent_days).score,
         100,
@@ -6551,44 +6551,32 @@
         buttonAchievementBits.reconnect,
         "live-wire",
         "Reconnected",
-        "Some interruptions are temporary.",
+        "Plug behavior.",
         "reconnectPlugGoal"
       ],
       [
         buttonAchievementBits.slackClick,
         "hanging-loose",
         "Slacking Off",
-        "Take the pressure off.",
+        "Cord behavior.",
         "slackCordGoal"
       ],
       [
         buttonAchievementBits.reset,
         "circuit-breaker",
         "Circuit Breaker",
-        "The button isn\u2019t the whole circuit.",
+        "Outlet controls.",
         "resetOutletGoal"
       ],
-      [
-        buttonAchievementBits.rebound,
-        "rebound",
-        "Rebound",
-        "The button can find its way home.",
-        "reboundGoal"
-      ],
+      [buttonAchievementBits.rebound, "rebound", "Rebound", "Button movement.", "reboundGoal"],
       [
         buttonAchievementBits.holdThatThought,
         "hold-that-thought",
         "Hold that Thought",
-        "Something different catches your eye.",
+        "Button appearance.",
         "holdThatThoughtGoal"
       ],
-      [
-        buttonAchievementBits.offGrid,
-        "off-grid",
-        "Off-Grid",
-        "The lights aren\u2019t everything.",
-        "offGridGoal"
-      ]
+      [buttonAchievementBits.offGrid, "off-grid", "Off-Grid", "Power state.", "offGridGoal"]
     ]) {
       const earned2 = Boolean((data.button_achievements ?? 0) & bit);
       badges2.push(badge(id, "hardware", name, hint, goal, Number(earned2), 1, earned2, earned2));
@@ -6601,7 +6589,7 @@
         "parallel-outlet",
         "hardware",
         "Parallel Outlet",
-        "There\u2019s more than one way back.",
+        "Outlet setup.",
         "parallelOutletGoal",
         sockets,
         2,
@@ -6615,7 +6603,7 @@
         "recursion",
         "medal",
         "Recursion",
-        "Progress can build on itself.",
+        "Achievement progress.",
         "otherAchievementsGoal",
         earned,
         10,
