@@ -6340,14 +6340,14 @@
       [
         buttonAchievementBits.reconnect,
         "live-wire",
-        "Live Wire",
+        "Reconnected",
         "There\u2019s a way to reconnect the plug.",
         "reconnectPlugGoal"
       ],
       [
         buttonAchievementBits.slackClick,
         "hanging-loose",
-        "Hanging Loose",
+        "Slacking Off",
         "Try the cord with a little more give.",
         "slackCordGoal"
       ],

@@ -1982,9 +1982,10 @@ test("local button achievements record interactions without clicks and persist w
   assert.equal(h.element("#click-count").textContent, "0");
   assert.equal(h.element("#achievement-notice-names").textContent, "Circuit Breaker");
   await button.fire("button-interaction", { detail: "reconnect" });
+  assert.match(h.element("#achievement-notice-names").textContent, /Reconnected/);
   await button.fire("click");
   assert.equal(h.element("#achievement-count").textContent, "4 / 18");
-  assert.match(h.element("#achievement-notice-names").textContent, /Hanging Loose/);
+  assert.match(h.element("#achievement-notice-names").textContent, /Slacking Off/);
   assert.equal(h.element("#next-click-milestone-name").textContent, "Sentence");
   await h.context.refreshGame();
   const saved = JSON.parse(h.storage.get("goclick.local.v1")).counters;
