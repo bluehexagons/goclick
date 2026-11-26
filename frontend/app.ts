@@ -571,10 +571,12 @@ function openGame(initialGame?: GameState, backgroundRefresh = false): Promise<v
       counterLoad = activeLoad;
       generation = clickGeneration;
       counterLoadOwner = owner;
-      lastOnlineCounters = mergeButtonAchievements(
-        state.counters,
-        lastOnlineCounters?.button_achievements,
-      );
+      // This read runs after pending writes settle and may reflect a restore.
+      if (
+        (lastOnlineCounters?.button_achievements ?? 0) & ~(state.counters.button_achievements ?? 0)
+      )
+        clearAchievementNotice();
+      lastOnlineCounters = state.counters;
       applyLoadedCounters(lastOnlineCounters);
       if (optionsDialog.open) updateOptions();
       updateGameControls();

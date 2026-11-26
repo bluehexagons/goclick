@@ -71,7 +71,8 @@ button to reach the outlet with a keyboard. Hardware badges save with your
 current local game or account. For **Rebound**, pull the button at least
 a quarter of its width (and at least 48 pixels) and release it so it springs
 back with the plug still seated. For **Hold that Thought**, press a surprise
-translation and release when the two-second meter fills.
+translation and release when the two-second meter fills. Screen readers
+announce the surprise and signal when to release.
 
 **Fortnight activity** scores the 14 UTC days ending on your most recent
 saved click. Each active day earns 5 points and each adjacent pair adds 2

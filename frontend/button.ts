@@ -54,6 +54,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   const outletControl = stage.querySelector<HTMLButtonElement>(".outlet-control");
   const plugEdge = stage.querySelector<SVGRectElement>(".plug-edge");
   const gameButton = button.id === "click-button";
+  const thoughtStatus = gameButton ? stage.querySelector<HTMLElement>(".thought-status") : null;
   const plugPulls = createPlugPullTracker();
   const plugSwing = createPlugSwing();
   let plugState: PlugState = "seated";
@@ -591,6 +592,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     return gameButton && Boolean(label.lang) && label.lang !== currentLanguage();
   }
 
+  function announceThought(ready = false) {
+    if (!thoughtStatus) return;
+    const text = isSurpriseLabel() ? message(ready ? "thoughtReady" : "thoughtAvailable") : "";
+    if (thoughtStatus.textContent !== text) thoughtStatus.textContent = text;
+  }
+
   function startThoughtHold() {
     if (!isSurpriseLabel()) return;
     const meter = document.createElement("span");
@@ -598,7 +605,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     meter.setAttribute("aria-hidden", "true");
     meter.style.setProperty("--thought-duration", `${THOUGHT_HOLD_MS}ms`);
     button.append(meter);
-    const timer = window.setTimeout(() => (meter.dataset.ready = "true"), THOUGHT_HOLD_MS);
+    const timer = window.setTimeout(() => {
+      meter.dataset.ready = "true";
+      announceThought(true);
+    }, THOUGHT_HOLD_MS);
     thoughtHold = { meter, language: label.lang, timer };
   }
 
@@ -607,6 +617,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     window.clearTimeout(thoughtHold.timer);
     thoughtHold.meter.remove();
     thoughtHold = null;
+    announceThought();
   }
 
   function thoughtAchievement() {
@@ -624,20 +635,29 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     thoughtEcho = null;
   }
 
-  function echoSurpriseLabel() {
+  function echoSurpriseLabel(releaseBounds?: DOMRect) {
     if (!isSurpriseLabel()) return;
     clearThoughtEcho();
-    const anchor = button.getBoundingClientRect();
-    const bounds = effects.getBoundingClientRect();
+    const anchor = releaseBounds ?? button.getBoundingClientRect();
+    const bounds = stage.getBoundingClientRect();
     const echo = document.createElement("span");
     echo.className = "thought-echo";
+    echo.setAttribute("aria-hidden", "true");
     echo.lang = label.lang;
     echo.dir = label.dir;
     echo.textContent = label.textContent;
-    echo.style.setProperty("left", `${anchor.left + anchor.width / 2 - bounds.left}px`);
-    echo.style.setProperty("top", `${anchor.top + anchor.height * 0.2 - bounds.top}px`);
     echo.style.setProperty("--thought-duration", `${THOUGHT_ECHO_MS}ms`);
-    effects.append(echo);
+    stage.append(echo);
+    const edge = echo.offsetWidth / 2 + 8;
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const x = clamp(anchor.left + anchor.width / 2, edge, viewportWidth - edge);
+    const y = clamp(
+      anchor.top + anchor.height * 0.2,
+      echo.offsetHeight + 32,
+      window.innerHeight - 8,
+    );
+    echo.style.setProperty("left", `${x - bounds.left}px`);
+    echo.style.setProperty("top", `${y - bounds.top}px`);
     thoughtEcho = echo;
     thoughtEchoTimer = window.setTimeout(clearThoughtEcho, THOUGHT_ECHO_MS);
   }
@@ -907,12 +927,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
   }
 
-  function activateRelease(earned: number, event?: PointerEvent) {
+  function activateRelease(earned: number, pointer?: { event: PointerEvent; bounds: DOMRect }) {
     releaseAchievements = earned;
     activatingRelease = true;
     try {
+      echoSurpriseLabel(pointer?.bounds);
       // Preserve the releasing pointer's coordinates, even for non-primary
       // fingers. One controlled activation per release; native clicks are suppressed.
+      const event = pointer?.event;
       if (event)
         button.dispatchEvent(
           new MouseEvent("click", {
@@ -1125,10 +1147,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const point = pointers.get(event.pointerId)!;
     const lastPointer = pointers.size === 1;
     let earned = lastPointer ? thoughtAchievement() : 0;
-    if (lastPointer && plugState === "seated" && !buttonStaysPut()) {
+    if (gameButton && lastPointer && plugState === "seated" && !buttonStaysPut()) {
       const pull = Math.max(48, button.offsetWidth * 0.25);
-      const moved = Math.hypot(point.x - point.startX, point.y - point.startY);
-      const released = Math.hypot(event.clientX - point.startX, event.clientY - point.startY);
+      // The drag origin follows changes in finger count, just like the face.
+      const moved = Math.hypot(target.x - dragFromX, target.y - dragFromY);
+      const released = Math.hypot(event.clientX - dragOriginX, event.clientY - dragOriginY);
       if (moved >= pull && released >= pull) earned |= buttonAchievementBits.rebound;
     }
     // A cancelled finger can be independent of another one still holding the
@@ -1145,7 +1168,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       }
       release(cancelled || !inside);
     } else aimPointers();
-    if (!cancelled && inside && !button.disabled) activateRelease(earned, event);
+    if (!cancelled && inside && !button.disabled) activateRelease(earned, { event, bounds: rect });
     if (pointers.size) return;
     if (buttonStaysPut()) {
       refreshHover();
@@ -1210,7 +1233,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       release();
     }
     if (gameButton) clickSound.play("release");
-    echoSurpriseLabel();
+    if (!activatingRelease) echoSurpriseLabel();
     burst();
   });
   new MutationObserver(() => {
@@ -1227,6 +1250,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   new MutationObserver(() => {
     if (thoughtHold && (!isSurpriseLabel() || thoughtHold.language !== label.lang))
       clearThoughtHold();
+    announceThought(thoughtHold?.meter.dataset.ready === "true");
     if (label.textContent !== labelText || label.dir !== labelDirection) {
       labelText = label.textContent;
       labelDirection = label.dir;

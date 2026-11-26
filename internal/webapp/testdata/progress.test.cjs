@@ -9,12 +9,13 @@ const { load } = frontend();
 const { badgesFor } = load("achievements");
 const { emptyClickAchievements, emptyProgress, fortnightActivity, utcReset } = load("progress");
 
-for (const { name, clicks, progress, achievements, earned } of badgeFixtures) {
+for (const { name, clicks, progress, achievements, buttonAchievements, earned } of badgeFixtures) {
   test(`offline badge unlocks: ${name}`, () => {
     const badges = badgesFor(
       {
         click_count: { count: clicks ?? 0 },
         achievements: { ...emptyClickAchievements, ...achievements },
+        button_achievements: buttonAchievements,
       },
       { ...emptyProgress, ...progress },
       true,

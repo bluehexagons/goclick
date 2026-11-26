@@ -2019,3 +2019,17 @@ test("an earlier online click response keeps the hardware badge that arrived fir
   assert.equal(h.element("#achievement-count").textContent, "5 / 20");
   assert.equal(h.element("#click-count").textContent, "11");
 });
+
+test("an authoritative account refresh can roll back earned hardware badges", async () => {
+  const h = await harness({ clickAchievements: 24 });
+  const initial = h.element("#achievement-count").textContent;
+  h.fetch(async () => response({ ...counters(11), button_achievements: 24 }));
+  await h.element("#click-button").fire("click");
+  assert.equal(h.element("#achievement-count").textContent, "3 / 20");
+  assert.match(h.element("#achievement-notice-names").textContent, /Rebound/);
+  h.fetch(async () => response(game(10)));
+  await h.context.refreshGame();
+  assert.equal(h.element("#click-count").textContent, "10");
+  assert.equal(h.element("#achievement-count").textContent, initial);
+  assert.equal(h.element("#achievement-notice").hidden, true);
+});

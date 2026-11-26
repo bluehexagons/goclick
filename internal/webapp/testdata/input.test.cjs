@@ -112,7 +112,10 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
   plugControl.setAttribute("aria-pressed", "false");
   stage.clientWidth = 680;
   stage.clientHeight = 290;
+  const thoughtStatus = new Element();
+  thoughtStatus.textContent = "";
   stage.querySelector = (selector) => {
+    if (selector === ".thought-status") return thoughtStatus;
     if (selector === ".button-rig") return rig;
     if (selector === ".button-power" && withPower) return power;
     if (selector === ".plug-control" && withPower) return plugControl;
@@ -251,6 +254,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     plug,
     outletControl,
     plugControl,
+    thoughtStatus,
     resizeStage: () => onStageResize(),
     changeLabel(text, language = label.lang) {
       label.textContent = text;
@@ -326,18 +330,38 @@ test("Rebound requires a substantial pointer pull that stays extended through re
   assert.equal(h.controller.clickAchievements, 0);
 });
 
+test("Rebound uses the button's combined drag distance when fingers come and go", () => {
+  const h = harness();
+  const { buttonAchievementBits: bits } = frontend().load("types");
+  const earned = [];
+  h.button.addEventListener("click", () => earned.push(h.controller.clickAchievements));
+  const move = (pointerId, clientX) =>
+    h.stage.fire("pointermove", { pointerId, pointerType: "touch", clientX, clientY: 150 });
+  h.pointer("pointerdown", 1);
+  h.pointer("pointerdown", 2, { clientX: 250 });
+  move(1, 250);
+  h.pointer("pointerup", 2, { clientX: 250 });
+  h.pointer("pointerup", 1, { clientX: 250 });
+  h.pointer("pointerdown", 1);
+  h.pointer("pointerdown", 2, { clientX: 250 });
+  move(1, 250);
+  move(2, 330);
+  h.pointer("pointerup", 2, { clientX: 330 });
+  h.pointer("pointerup", 1, { clientX: 250 });
+  assert.deepEqual(earned, [0, 0, 0, bits.rebound]);
+});
+
 test("Hold that Thought saves on a translated release after two seconds", () => {
   const h = harness();
   const { buttonAchievementBits: bits } = frontend().load("types");
   const earned = [];
   h.button.addEventListener("click", () => earned.push(h.controller.clickAchievements));
   const meter = () => h.button.children.find((child) => child.className === "thought-hold");
-  const echo = () =>
-    h.stage.children
-      .find((child) => child.className === "button-effects")
-      .children.find((child) => child.className === "thought-echo");
+  const echo = () => h.stage.children.find((child) => child.className === "thought-echo");
+  const prompt = "Surprise translation. Hold the button for two seconds.";
 
   h.changeLabel("Clique !", "fr");
+  assert.equal(h.thoughtStatus.textContent, prompt);
   h.pointer("pointerdown", 1);
   assert.equal(meter().props.get("--thought-duration"), "2000ms");
   h.setTime(1999);
@@ -353,6 +377,7 @@ test("Hold that Thought saves on a translated release after two seconds", () => 
   h.setTime(3999);
   h.runTimer(2000);
   assert.equal(meter().dataset.ready, "true");
+  assert.equal(h.thoughtStatus.textContent, "Release the button now.");
   assert.deepEqual(earned, [0]);
   h.button.fire("keyup", { key: " " });
   assert.deepEqual(earned, [0, bits.holdThatThought]);
@@ -366,6 +391,7 @@ test("Hold that Thought saves on a translated release after two seconds", () => 
 
   h.pointer("pointerdown", 1);
   h.changeLabel("Click!", "en");
+  assert.equal(h.thoughtStatus.textContent, "");
   h.setTime(8001);
   h.pointer("pointerup", 1);
   assert.equal(meter(), undefined);

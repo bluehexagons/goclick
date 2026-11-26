@@ -67,6 +67,7 @@
     "clicks": 5000,
     "progress": { "best_day_streak": 7, "best_week_streak": 4 },
     "achievements": { "active_days": 10, "active_months": 3, "earned": 15 },
+    "buttonAchievements": 31,
     "earned": [
       "gone-click",
       "sentence",
@@ -82,6 +83,11 @@
       "three-visits",
       "returning-clicker",
       "welcome-back",
+      "live-wire",
+      "hanging-loose",
+      "circuit-breaker",
+      "rebound",
+      "hold-that-thought",
       "recursion"
     ]
   }

@@ -1029,8 +1029,9 @@ select:focus,
 }
 .thought-echo {
   position: absolute;
-  z-index: 1;
-  max-width: min(75vw, 25rem);
+  z-index: 3;
+  inline-size: max-content;
+  max-inline-size: min(calc(100vw - 16px), 25rem);
   padding: 4px 10px;
   translate: -50% -100%;
   border: 1px solid #b591e9;
@@ -1040,7 +1041,8 @@ select:focus,
   box-shadow: 0 3px 12px #12091c9c;
   font-size: clamp(16px, 3.8vw, 24px);
   font-weight: 700;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-align: center;
   pointer-events: none;
   animation: thought-echo var(--thought-duration) ease-out forwards;
 }
@@ -1061,6 +1063,15 @@ select:focus,
   outline: none;
 }
 @media (forced-colors: active) {
+  .thought-hold {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background: Canvas;
+  }
+  .thought-hold::before,
+  .thought-hold[data-ready="true"]::before {
+    background: Highlight;
+  }
   .click-button:is(
     :root:not([data-focus-input="pointer"]) :focus-visible,
     :root[data-focus-input="keyboard"] :focus

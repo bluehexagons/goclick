@@ -70,6 +70,8 @@ export const english = {
     "Pull the button at least a quarter of its width (and at least 48 px), then release to save a click with the plug still seated. The button must spring back.",
   holdThatThoughtGoal:
     "When the button shows a surprise translation, hold it for two seconds, then release to save a click.",
+  thoughtAvailable: "Surprise translation. Hold the button for two seconds.",
+  thoughtReady: "Release the button now.",
   buttonAchievementError: "Couldn’t save the button achievement. Try the interaction again.",
   ping: "Ping",
   simPing: "Sim ping",
@@ -198,6 +200,8 @@ export const translations = {
     reboundGoal:
       "将按钮至少拉动其宽度的四分之一（且至少 48 像素），然后在插头仍插着时松开，保存一次点击。按钮必须弹回原位。",
     holdThatThoughtGoal: "当按钮显示意外的翻译时，按住两秒后松开，保存一次点击。",
+    thoughtAvailable: "出现了惊喜翻译。按住按钮两秒。",
+    thoughtReady: "现在松开按钮。",
     buttonAchievementError: "无法保存按钮成就。请重试该操作。",
     ping: "延迟",
     simPing: "模拟延迟",
@@ -321,6 +325,8 @@ export const translations = {
     reboundGoal:
       "將按鈕至少拉動其寬度的四分之一（且至少 48 像素），然後在插頭仍插著時放開，儲存一次點擊。按鈕必須彈回原位。",
     holdThatThoughtGoal: "當按鈕顯示驚喜翻譯時，按住兩秒後放開，儲存一次點擊。",
+    thoughtAvailable: "出現了驚喜翻譯。按住按鈕兩秒。",
+    thoughtReady: "現在放開按鈕。",
     buttonAchievementError: "無法儲存按鈕成就。請重試該操作。",
     ping: "延遲",
     simPing: "模擬延遲",
@@ -446,6 +452,8 @@ export const translations = {
       "বোতামটিকে তার প্রস্থের অন্তত এক-চতুর্থাংশ (এবং অন্তত ৪৮ পিক্সেল) টানুন, তারপর প্লাগ লাগানো অবস্থায় ছেড়ে একটি ক্লিক সেভ করুন। বোতামটিকে আগের জায়গায় ফিরে আসতে হবে।",
     holdThatThoughtGoal:
       "বোতামে আকস্মিক অনুবাদ দেখা গেলে দুই সেকেন্ড ধরে রাখুন, তারপর ছেড়ে একটি ক্লিক সেভ করুন।",
+    thoughtAvailable: "চমক হিসেবে অনুবাদ দেখা যাচ্ছে। বোতামটি দুই সেকেন্ড চেপে ধরুন।",
+    thoughtReady: "এখন বোতামটি ছেড়ে দিন।",
     buttonAchievementError: "বোতামের অর্জনটি সেভ করা যায়নি। কাজটি আবার করুন।",
     ping: "পিং",
     simPing: "সিমুলেটেড পিং",
@@ -576,6 +584,8 @@ export const translations = {
       "Tira del botón al menos un cuarto de su anchura (como mínimo 48 px) y suéltalo para guardar un clic con el enchufe aún conectado. El botón debe volver a su sitio.",
     holdThatThoughtGoal:
       "Cuando el botón muestre una traducción sorpresa, mantenlo pulsado dos segundos y suéltalo para guardar un clic.",
+    thoughtAvailable: "Traducción sorpresa. Mantén pulsado el botón durante dos segundos.",
+    thoughtReady: "Suelta el botón ahora.",
     buttonAchievementError: "No se pudo guardar el logro del botón. Repite la acción.",
     ping: "Latencia",
     simPing: "Latencia simulada",
@@ -708,6 +718,8 @@ export const translations = {
       "اسحب الزر مسافة تعادل ربع عرضه على الأقل (وبحد أدنى 48 بكسل)، ثم أفلت الزر لحفظ نقرة بينما القابس ما زال موصولًا. يجب أن يرتد الزر إلى موضعه.",
     holdThatThoughtGoal:
       "عندما تظهر ترجمة مفاجئة على الزر، اضغط عليه لمدة ثانيتين ثم أفلته لحفظ نقرة.",
+    thoughtAvailable: "ترجمة مفاجئة. اضغط مطولًا على الزر لمدة ثانيتين.",
+    thoughtReady: "أفلت الزر الآن.",
     buttonAchievementError: "تعذّر حفظ إنجاز الزر. جرّب تنفيذ الحركة مجددًا.",
     ping: "زمن الاستجابة",
     simPing: "زمن استجابة محاكى",
@@ -834,6 +846,8 @@ export const translations = {
       "बटन को उसकी चौड़ाई का कम से कम एक चौथाई (और कम से कम 48 पिक्सेल) खींचें। प्लग लगा रहते हुए उसे छोड़कर एक क्लिक सेव करें। बटन का वापस अपनी जगह लौटना ज़रूरी है।",
     holdThatThoughtGoal:
       "जब बटन पर अचानक किसी और भाषा का अनुवाद दिखे, उसे दो सेकंड दबाए रखें और एक क्लिक सेव करने के लिए छोड़ दें।",
+    thoughtAvailable: "एक अनपेक्षित अनुवाद दिख रहा है। बटन को दो सेकंड तक दबाए रखें।",
+    thoughtReady: "अब बटन छोड़ दें।",
     buttonAchievementError: "बटन की उपलब्धि सेव नहीं हो सकी। क्रिया फिर से करें।",
     ping: "पिंग",
     simPing: "सिम्युलेटेड पिंग",
@@ -963,6 +977,8 @@ export const translations = {
       "Tarik tombol setidaknya seperempat lebarnya (minimal 48 piksel), lalu lepas untuk menyimpan satu klik selagi steker masih terpasang. Tombol harus kembali ke posisi semula.",
     holdThatThoughtGoal:
       "Saat tombol menampilkan terjemahan kejutan, tahan dua detik lalu lepas untuk menyimpan satu klik.",
+    thoughtAvailable: "Ada terjemahan kejutan. Tahan tombol selama dua detik.",
+    thoughtReady: "Lepas tombol sekarang.",
     buttonAchievementError: "Pencapaian tombol gagal disimpan. Ulangi tindakan tersebut.",
     ping: "Ping",
     simPing: "Ping simulasi",
@@ -1096,6 +1112,8 @@ export const translations = {
       "Puxe o botão por pelo menos um quarto da largura dele (no mínimo 48 px) e solte para salvar um clique com o plugue ainda encaixado. O botão precisa voltar à posição original.",
     holdThatThoughtGoal:
       "Quando o botão mostrar uma tradução surpresa, segure-o por dois segundos e solte para salvar um clique.",
+    thoughtAvailable: "Tradução surpresa. Segure o botão por dois segundos.",
+    thoughtReady: "Solte o botão agora.",
     buttonAchievementError: "Não foi possível salvar a conquista do botão. Repita a ação.",
     ping: "Ping",
     simPing: "Ping simulado",
@@ -1230,6 +1248,8 @@ export const translations = {
       "Tirez le bouton sur au moins un quart de sa largeur (au minimum 48 px), puis relâchez-le pour enregistrer un clic avec la fiche encore branchée. Le bouton doit revenir à sa place.",
     holdThatThoughtGoal:
       "Quand le bouton affiche une traduction surprise, maintenez-le deux secondes puis relâchez-le pour enregistrer un clic.",
+    thoughtAvailable: "Traduction surprise. Maintenez le bouton enfoncé pendant deux secondes.",
+    thoughtReady: "Relâchez le bouton maintenant.",
     buttonAchievementError: "Impossible d’enregistrer le succès du bouton. Réessayez l’action.",
     ping: "Latence",
     simPing: "Latence simulée",
@@ -1365,6 +1385,8 @@ export const translations = {
       "ボタンを幅の4分の1以上（最低48ピクセル）引っ張り、プラグが差さったまま離してクリックを1回保存してください。 ボタンが元の位置に戻る必要があります。",
     holdThatThoughtGoal:
       "ボタンの表示が突然別の言語になったら、2秒間押し続けてから離し、クリックを1回保存してください。",
+    thoughtAvailable: "別の言語が表示されました。ボタンを2秒間押し続けてください。",
+    thoughtReady: "ボタンを離してください。",
     buttonAchievementError: "ボタンの実績を保存できませんでした。もう一度操作してください。",
     ping: "応答時間",
     simPing: "模擬応答時間",
@@ -1499,6 +1521,8 @@ export const translations = {
       "Потяните кнопку хотя бы на четверть её ширины (минимум на 48 пикселей) и отпустите, чтобы сохранить щелчок, пока вилка ещё в розетке. Кнопка должна отскочить обратно.",
     holdThatThoughtGoal:
       "Когда на кнопке появится неожиданный перевод, удерживайте её две секунды, затем отпустите, чтобы сохранить щелчок.",
+    thoughtAvailable: "Неожиданный перевод. Удерживайте кнопку две секунды.",
+    thoughtReady: "Теперь отпустите кнопку.",
     buttonAchievementError: "Не удалось сохранить достижение кнопки. Повторите действие.",
     ping: "Пинг",
     simPing: "Имитация пинга",
@@ -1632,6 +1656,8 @@ export const translations = {
       "Ziehe den Knopf mindestens ein Viertel seiner Breite weit (mindestens 48 px) und lass ihn los, um bei eingestecktem Stecker einen Klick zu speichern. Der Knopf muss zurückfedern.",
     holdThatThoughtGoal:
       "Wenn auf dem Knopf eine überraschende Übersetzung erscheint, halte ihn zwei Sekunden lang gedrückt und lass ihn dann los, um einen Klick zu speichern.",
+    thoughtAvailable: "Überraschungsübersetzung. Halte den Knopf zwei Sekunden lang gedrückt.",
+    thoughtReady: "Lass den Knopf jetzt los.",
     buttonAchievementError: "Der Erfolg konnte nicht gespeichert werden. Wiederhole die Aktion.",
     ping: "Ping",
     simPing: "Simulierter Ping",
