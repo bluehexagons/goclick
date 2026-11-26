@@ -2948,6 +2948,7 @@
   var english = {
     ...englishOptions,
     fortnightActivity: "Fortnight activity",
+    chickenDinnerGoal: "Score {count} in Fortnight activity by saving a click on each of 14 consecutive UTC days.",
     outOf: "{count} / {total}",
     daysActive: "Active days: {count}",
     activityNote: "Counts the 14 days through your last saved click. Clicking on consecutive days earns bonus points.",
@@ -3073,6 +3074,7 @@
     "zh-Hans": {
       ...optionsTranslations["zh-Hans"],
       fortnightActivity: "\u4E24\u5468\u6D3B\u8DC3\u5EA6",
+      chickenDinnerGoal: "\u6309 UTC \u65E5\u671F\u8FDE\u7EED 14 \u5929\u6BCF\u5929\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\uFF0C\u4F7F\u4E24\u5468\u6D3B\u8DC3\u5EA6\u8FBE\u5230 {count}\u3002",
       outOf: "{count} / {total}",
       daysActive: "\u6D3B\u8DC3\u5929\u6570\uFF1A{count}",
       activityNote: "\u7EDF\u8BA1\u6700\u8FD1\u4E00\u6B21\u6210\u529F\u8BB0\u5F55\u70B9\u51FB\u5F53\u5929\u53CA\u4E4B\u524D 13 \u5929\u7684\u6D3B\u52A8\u3002\u8FDE\u7EED\u591A\u5929\u70B9\u51FB\u53EF\u83B7\u5F97\u989D\u5916\u5206\u6570\u3002",
@@ -3197,6 +3199,7 @@
     "zh-Hant": {
       ...optionsTranslations["zh-Hant"],
       fortnightActivity: "\u5169\u9031\u6D3B\u8E8D\u5EA6",
+      chickenDinnerGoal: "\u6309 UTC \u65E5\u671F\u9023\u7E8C 14 \u5929\u6BCF\u5929\u5132\u5B58\u4E00\u6B21\u9EDE\u64CA\uFF0C\u4F7F\u5169\u9031\u6D3B\u8E8D\u5EA6\u9054\u5230 {count}\u3002",
       outOf: "{count} / {total}",
       daysActive: "\u6D3B\u8E8D\u5929\u6578\uFF1A{count}",
       activityNote: "\u7D71\u8A08\u6700\u8FD1\u4E00\u6B21\u6210\u529F\u8A18\u9304\u9EDE\u64CA\u7576\u5929\u53CA\u524D 13 \u5929\u7684\u6D3B\u52D5\u3002\u9023\u7E8C\u5E7E\u5929\u90FD\u6709\u9EDE\u64CA\u53EF\u7372\u5F97\u984D\u5916\u5206\u6578\u3002",
@@ -3321,6 +3324,7 @@
     bn: {
       ...optionsTranslations["bn"],
       fortnightActivity: "\u09A6\u09C1\u0987 \u09B8\u09AA\u09CD\u09A4\u09BE\u09B9\u09C7\u09B0 \u09B8\u0995\u09CD\u09B0\u09BF\u09AF\u09BC\u09A4\u09BE",
+      chickenDinnerGoal: "\u099F\u09BE\u09A8\u09BE \u09E7\u09EA\u099F\u09BF UTC \u09A6\u09BF\u09A8\u09C7\u09B0 \u09AA\u09CD\u09B0\u09A4\u09BF\u099F\u09BF\u09A4\u09C7 \u098F\u0995\u099F\u09BF \u0995\u09CD\u09B2\u09BF\u0995 \u09B8\u09C7\u09AD \u0995\u09B0\u09C7 \u09A6\u09C1\u0987 \u09B8\u09AA\u09CD\u09A4\u09BE\u09B9\u09C7\u09B0 \u09B8\u0995\u09CD\u09B0\u09BF\u09AF\u09BC\u09A4\u09BE\u09AF\u09BC {count} \u09AA\u09AF\u09BC\u09C7\u09A8\u09CD\u099F \u09AA\u09BE\u09A8\u0964",
       outOf: "{count} / {total}",
       daysActive: "\u09B8\u0995\u09CD\u09B0\u09BF\u09AF\u09BC \u09A6\u09BF\u09A8: {count}",
       activityNote: "\u09B6\u09C7\u09B7 \u09B8\u09C7\u09AD \u09B9\u0993\u09AF\u09BC\u09BE \u0995\u09CD\u09B2\u09BF\u0995\u09C7\u09B0 \u09A6\u09BF\u09A8\u09B8\u09B9 \u0986\u0997\u09C7\u09B0 \u09E7\u09E9 \u09A6\u09BF\u09A8\u09C7\u09B0 \u09B9\u09BF\u09B8\u09BE\u09AC\u0964 \u099F\u09BE\u09A8\u09BE \u0995\u09AF\u09BC\u09C7\u0995 \u09A6\u09BF\u09A8 \u0995\u09CD\u09B2\u09BF\u0995 \u0995\u09B0\u09B2\u09C7 \u09AC\u09BE\u09A1\u09BC\u09A4\u09BF \u09AA\u09AF\u09BC\u09C7\u09A8\u09CD\u099F \u09AA\u09BE\u0993\u09AF\u09BC\u09BE \u09AF\u09BE\u09AF\u09BC\u0964",
@@ -3445,6 +3449,7 @@
     es: {
       ...optionsTranslations["es"],
       fortnightActivity: "Actividad de 14 d\xEDas",
+      chickenDinnerGoal: "Alcanza {count} en Actividad de 14 d\xEDas guardando un clic al d\xEDa durante 14 d\xEDas consecutivos (UTC).",
       outOf: "{count} / {total}",
       daysActive: "D\xEDas activos: {count}",
       activityNote: "Cuenta los 14 d\xEDas hasta el \xFAltimo clic guardado. Haz clic en d\xEDas consecutivos para ganar puntos extra.",
@@ -3569,6 +3574,7 @@
     ar: {
       ...optionsTranslations["ar"],
       fortnightActivity: "\u0646\u0634\u0627\u0637 \u0622\u062E\u0631 \u0623\u0633\u0628\u0648\u0639\u064A\u0646",
+      chickenDinnerGoal: "\u062D\u0642\u0642 {count} \u0641\u064A \u0646\u0634\u0627\u0637 \u0622\u062E\u0631 \u0623\u0633\u0628\u0648\u0639\u064A\u0646 \u0628\u062D\u0641\u0638 \u0646\u0642\u0631\u0629 \u0643\u0644 \u064A\u0648\u0645 \u0644\u0645\u062F\u0629 \u0661\u0664 \u064A\u0648\u0645\u064B\u0627 \u0645\u062A\u062A\u0627\u0644\u064A\u064B\u0627 \u0628\u062A\u0648\u0642\u064A\u062A UTC.",
       outOf: "{count} \u0645\u0646 {total}",
       daysActive: "\u0623\u064A\u0627\u0645 \u0627\u0644\u0646\u0634\u0627\u0637: {count}",
       activityNote: "\u064A\u0634\u0645\u0644 \u0622\u062E\u0631 \u0661\u0664 \u064A\u0648\u0645\u064B\u0627 \u062D\u062A\u0649 \u064A\u0648\u0645 \u0622\u062E\u0631 \u0646\u0642\u0631\u0629 \u0645\u062D\u0641\u0648\u0638\u0629. \u0627\u0646\u0642\u0631 \u0641\u064A \u0623\u064A\u0627\u0645 \u0645\u062A\u062A\u0627\u0644\u064A\u0629 \u0644\u062A\u062D\u0635\u0644 \u0639\u0644\u0649 \u0646\u0642\u0627\u0637 \u0625\u0636\u0627\u0641\u064A\u0629.",
@@ -3693,6 +3699,7 @@
     hi: {
       ...optionsTranslations["hi"],
       fortnightActivity: "14 \u0926\u093F\u0928\u094B\u0902 \u0915\u0940 \u0917\u0924\u093F\u0935\u093F\u0927\u093F",
+      chickenDinnerGoal: "\u0932\u0917\u093E\u0924\u093E\u0930 14 UTC \u0926\u093F\u0928\u094B\u0902 \u092E\u0947\u0902 \u0939\u0930 \u0926\u093F\u0928 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0938\u0947\u0935 \u0915\u0930\u0915\u0947 14 \u0926\u093F\u0928\u094B\u0902 \u0915\u0940 \u0917\u0924\u093F\u0935\u093F\u0927\u093F \u092E\u0947\u0902 {count} \u0915\u093E \u0938\u094D\u0915\u094B\u0930 \u092A\u093E\u090F\u0901\u0964",
       outOf: "{count} / {total}",
       daysActive: "\u0938\u0915\u094D\u0930\u093F\u092F \u0926\u093F\u0928: {count}",
       activityNote: "\u092A\u093F\u091B\u0932\u0947 \u0938\u0947\u0935 \u0915\u093F\u090F \u0917\u090F \u0915\u094D\u0932\u093F\u0915 \u0915\u0947 \u0926\u093F\u0928 \u0924\u0915 \u0915\u0947 14 \u0926\u093F\u0928\u094B\u0902 \u0915\u093E \u0939\u093F\u0938\u093E\u092C\u0964 \u0932\u0917\u093E\u0924\u093E\u0930 \u0915\u0908 \u0926\u093F\u0928\u094B\u0902 \u0924\u0915 \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0928\u0947 \u092A\u0930 \u092C\u094B\u0928\u0938 \u0905\u0902\u0915 \u092E\u093F\u0932\u0924\u0947 \u0939\u0948\u0902\u0964",
@@ -3817,6 +3824,7 @@
     id: {
       ...optionsTranslations["id"],
       fortnightActivity: "Aktivitas dua pekan",
+      chickenDinnerGoal: "Raih skor {count} di Aktivitas dua pekan dengan menyimpan satu klik setiap hari selama 14 hari berturut-turut (UTC).",
       outOf: "{count} / {total}",
       daysActive: "Hari aktif: {count}",
       activityNote: "Menghitung 14 hari hingga hari terakhir klik tersimpan. Klik pada hari-hari berturut-turut untuk mendapat poin bonus.",
@@ -3941,6 +3949,7 @@
     "pt-BR": {
       ...optionsTranslations["pt-BR"],
       fortnightActivity: "Atividade de 14 dias",
+      chickenDinnerGoal: "Fa\xE7a {count} pontos na Atividade de 14 dias salvando um clique por dia por 14 dias consecutivos (UTC).",
       outOf: "{count} / {total}",
       daysActive: "Dias ativos: {count}",
       activityNote: "Conta os 14 dias at\xE9 o \xFAltimo clique salvo. Clicar em dias consecutivos rende pontos extras.",
@@ -4065,6 +4074,7 @@
     fr: {
       ...optionsTranslations["fr"],
       fortnightActivity: "Activit\xE9 sur deux semaines",
+      chickenDinnerGoal: "Atteignez {count} dans l\u2019Activit\xE9 sur deux semaines en enregistrant un clic chaque jour pendant 14 jours cons\xE9cutifs (UTC).",
       outOf: "{count} / {total}",
       daysActive: "Jours actifs : {count}",
       activityNote: "Compte les 14 jours jusqu\u2019au dernier clic enregistr\xE9. Cliquer plusieurs jours de suite rapporte des points bonus.",
@@ -4189,6 +4199,7 @@
     ja: {
       ...optionsTranslations["ja"],
       fortnightActivity: "2\u9031\u9593\u306E\u30A2\u30AF\u30C6\u30A3\u30D3\u30C6\u30A3",
+      chickenDinnerGoal: "UTC\u306714\u65E5\u9593\u9023\u7D9A\u3057\u3066\u6BCE\u65E5\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u4FDD\u5B58\u3057\u30012\u9031\u9593\u306E\u30A2\u30AF\u30C6\u30A3\u30D3\u30C6\u30A3\u3067{count}\u70B9\u3092\u7372\u5F97\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       outOf: "{count} / {total}",
       daysActive: "\u30A2\u30AF\u30C6\u30A3\u30D6\u65E5\u6570\uFF1A{count}",
       activityNote: "\u6700\u5F8C\u306B\u30AF\u30EA\u30C3\u30AF\u3092\u4FDD\u5B58\u3057\u305F\u65E5\u307E\u3067\u306E14\u65E5\u9593\u3092\u96C6\u8A08\u3057\u307E\u3059\u3002\u6BCE\u65E5\u7D9A\u3051\u3066\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3068\u30DC\u30FC\u30CA\u30B9\u30DD\u30A4\u30F3\u30C8\u304C\u52A0\u7B97\u3055\u308C\u307E\u3059\u3002",
@@ -4313,6 +4324,7 @@
     ru: {
       ...optionsTranslations["ru"],
       fortnightActivity: "\u0410\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C \u0437\u0430 \u0434\u0432\u0435 \u043D\u0435\u0434\u0435\u043B\u0438",
+      chickenDinnerGoal: "\u041D\u0430\u0431\u0435\u0440\u0438\u0442\u0435 {count} \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u0410\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C \u0437\u0430 \u0434\u0432\u0435 \u043D\u0435\u0434\u0435\u043B\u0438\xBB, \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044F \u043F\u043E \u043E\u0434\u043D\u043E\u043C\u0443 \u0449\u0435\u043B\u0447\u043A\u0443 \u0432 \u0434\u0435\u043D\u044C 14 \u0434\u043D\u0435\u0439 \u043F\u043E\u0434\u0440\u044F\u0434 (UTC).",
       outOf: "{count} / {total}",
       daysActive: "\u0410\u043A\u0442\u0438\u0432\u043D\u044B\u0445 \u0434\u043D\u0435\u0439: {count}",
       activityNote: "\u0423\u0447\u0438\u0442\u044B\u0432\u0430\u044E\u0442\u0441\u044F 14 \u0434\u043D\u0435\u0439 \u043F\u043E \u0434\u0435\u043D\u044C \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u0433\u043E \u043A\u043B\u0438\u043A\u0430 \u0432\u043A\u043B\u044E\u0447\u0438\u0442\u0435\u043B\u044C\u043D\u043E. \u041A\u043B\u0438\u043A\u0438 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0434\u043D\u0435\u0439 \u043F\u043E\u0434\u0440\u044F\u0434 \u043F\u0440\u0438\u043D\u043E\u0441\u044F\u0442 \u0431\u043E\u043D\u0443\u0441\u043D\u044B\u0435 \u043E\u0447\u043A\u0438.",
@@ -4437,6 +4449,7 @@
     de: {
       ...optionsTranslations["de"],
       fortnightActivity: "Aktivit\xE4t in zwei Wochen",
+      chickenDinnerGoal: "Erreiche {count} bei der Aktivit\xE4t in zwei Wochen, indem du an 14 aufeinanderfolgenden UTC-Tagen je einen Klick speicherst.",
       outOf: "{count} / {total}",
       daysActive: "Aktive Tage: {count}",
       activityNote: "Z\xE4hlt die 14 Tage bis einschlie\xDFlich zum letzten gespeicherten Klick. Klicks an aufeinanderfolgenden Tagen bringen Bonuspunkte.",
@@ -6521,6 +6534,16 @@
         "distinctMonthsGoal",
         calendar.active_months,
         calendarBadgeTargets.active_months
+      ),
+      badge(
+        "chicken-dinner",
+        "calendar",
+        "Chicken Dinner",
+        "Fill the Fortnight activity calendar.",
+        "chickenDinnerGoal",
+        fortnightActivity(progress.recent_days).score,
+        100,
+        progress.best_day_streak >= fortnight
       )
     ];
     for (const [bit, id, name, hint, goal] of [

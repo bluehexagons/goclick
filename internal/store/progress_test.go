@@ -2,9 +2,34 @@ package store
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 )
+
+func TestChickenDinnerSurvivesFortnightRollover(t *testing.T) {
+	db := openTestStore(t)
+	user := createTestUser(t, db, "fortnight")
+	ctx := context.Background()
+	start := time.Date(2026, 1, 25, 23, 59, 0, 0, time.UTC)
+	for day := range fortnight {
+		clicked, err := db.Increment(ctx, user.ID, start.AddDate(0, 0, day))
+		if err != nil {
+			t.Fatal(err)
+		}
+		earned := slices.Contains(clicked.EarnedBadgeIDs(), "chicken-dinner")
+		if earned != (day == fortnight-1) {
+			t.Fatalf("Chicken Dinner after %d consecutive days = %v", day+1, earned)
+		}
+	}
+	if _, err := db.Increment(ctx, user.ID, start.AddDate(0, 0, 2*fortnight)); err != nil {
+		t.Fatal(err)
+	}
+	read, err := db.CurrentCounters(ctx, user.ID)
+	if err != nil || read.Progress.RecentDays != 1 || !slices.Contains(read.EarnedBadgeIDs(), "chicken-dinner") {
+		t.Fatalf("Chicken Dinner after rollover: %+v, %v", read, err)
+	}
+}
 
 func TestClickProgressFollowsUTCDaysAndWeeks(t *testing.T) {
 	db := openTestStore(t)

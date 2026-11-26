@@ -7,7 +7,14 @@ const badgeFixtures = require("../../store/testdata/achievement-badges.json");
 
 const { load } = frontend();
 const { badgesFor } = load("achievements");
-const { emptyClickAchievements, emptyProgress, fortnightActivity, utcReset } = load("progress");
+const {
+  emptyClickAchievements,
+  emptyProgress,
+  fortnight,
+  fortnightActivity,
+  fortnightMask,
+  utcReset,
+} = load("progress");
 
 for (const { name, clicks, progress, achievements, buttonAchievements, earned } of badgeFixtures) {
   test(`offline badge unlocks: ${name}`, () => {
@@ -38,6 +45,24 @@ test("the activity score rewards adjacent days even with gaps and reserves 100 f
   assert.equal(fortnightActivity(0b111).score, 20);
   assert.equal(fortnightActivity(0b1111111111111).score, 93);
   assert.equal(fortnightActivity(0b11111111111111).score, 100);
+});
+
+test("Chicken Dinner tracks the activity score until a perfect run is saved", () => {
+  const dinner = (recent_days, best_day_streak) =>
+    badgesFor({}, { ...emptyProgress, recent_days, best_day_streak }, true).find(
+      (badge) => badge.id === "chicken-dinner",
+    );
+  const thirteen = dinner(fortnightMask >> 1, fortnight - 1);
+  assert.equal(thirteen.earned, false);
+  assert.equal(thirteen.meter.count, 93);
+  const gap = dinner(fortnightMask ^ (1 << 6), fortnight - 1);
+  assert.equal(gap.earned, false);
+  assert.equal(gap.meter.count, 91);
+  for (const days of [fortnightMask, 1]) {
+    const badge = dinner(days, fortnight);
+    assert.equal(badge.earned, true);
+    assert.equal(badge.meter.count, 100);
+  }
 });
 
 test("the reset switches at UTC midnight even when the input time has a local offset", () => {

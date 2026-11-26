@@ -4,6 +4,8 @@ import { englishOptions, optionsTranslations } from "./option-messages.js";
 export const english = {
   ...englishOptions,
   fortnightActivity: "Fortnight activity",
+  chickenDinnerGoal:
+    "Score {count} in Fortnight activity by saving a click on each of 14 consecutive UTC days.",
   outOf: "{count} / {total}",
   daysActive: "Active days: {count}",
   activityNote:
@@ -140,6 +142,7 @@ export const translations = {
   "zh-Hans": {
     ...optionsTranslations["zh-Hans"],
     fortnightActivity: "两周活跃度",
+    chickenDinnerGoal: "按 UTC 日期连续 14 天每天保存一次点击，使两周活跃度达到 {count}。",
     outOf: "{count} / {total}",
     daysActive: "活跃天数：{count}",
     activityNote: "统计最近一次成功记录点击当天及之前 13 天的活动。连续多天点击可获得额外分数。",
@@ -266,6 +269,7 @@ export const translations = {
   "zh-Hant": {
     ...optionsTranslations["zh-Hant"],
     fortnightActivity: "兩週活躍度",
+    chickenDinnerGoal: "按 UTC 日期連續 14 天每天儲存一次點擊，使兩週活躍度達到 {count}。",
     outOf: "{count} / {total}",
     daysActive: "活躍天數：{count}",
     activityNote: "統計最近一次成功記錄點擊當天及前 13 天的活動。連續幾天都有點擊可獲得額外分數。",
@@ -393,6 +397,8 @@ export const translations = {
   bn: {
     ...optionsTranslations["bn"],
     fortnightActivity: "দুই সপ্তাহের সক্রিয়তা",
+    chickenDinnerGoal:
+      "টানা ১৪টি UTC দিনের প্রতিটিতে একটি ক্লিক সেভ করে দুই সপ্তাহের সক্রিয়তায় {count} পয়েন্ট পান।",
     outOf: "{count} / {total}",
     daysActive: "সক্রিয় দিন: {count}",
     activityNote:
@@ -524,6 +530,8 @@ export const translations = {
   es: {
     ...optionsTranslations["es"],
     fortnightActivity: "Actividad de 14 días",
+    chickenDinnerGoal:
+      "Alcanza {count} en Actividad de 14 días guardando un clic al día durante 14 días consecutivos (UTC).",
     outOf: "{count} / {total}",
     daysActive: "Días activos: {count}",
     activityNote:
@@ -663,6 +671,8 @@ export const translations = {
   ar: {
     ...optionsTranslations["ar"],
     fortnightActivity: "نشاط آخر أسبوعين",
+    chickenDinnerGoal:
+      "حقق {count} في نشاط آخر أسبوعين بحفظ نقرة كل يوم لمدة ١٤ يومًا متتاليًا بتوقيت UTC.",
     outOf: "{count} من {total}",
     daysActive: "أيام النشاط: {count}",
     activityNote:
@@ -793,6 +803,8 @@ export const translations = {
   hi: {
     ...optionsTranslations["hi"],
     fortnightActivity: "14 दिनों की गतिविधि",
+    chickenDinnerGoal:
+      "लगातार 14 UTC दिनों में हर दिन एक क्लिक सेव करके 14 दिनों की गतिविधि में {count} का स्कोर पाएँ।",
     outOf: "{count} / {total}",
     daysActive: "सक्रिय दिन: {count}",
     activityNote:
@@ -923,6 +935,8 @@ export const translations = {
   id: {
     ...optionsTranslations["id"],
     fortnightActivity: "Aktivitas dua pekan",
+    chickenDinnerGoal:
+      "Raih skor {count} di Aktivitas dua pekan dengan menyimpan satu klik setiap hari selama 14 hari berturut-turut (UTC).",
     outOf: "{count} / {total}",
     daysActive: "Hari aktif: {count}",
     activityNote:
@@ -1060,6 +1074,8 @@ export const translations = {
   "pt-BR": {
     ...optionsTranslations["pt-BR"],
     fortnightActivity: "Atividade de 14 dias",
+    chickenDinnerGoal:
+      "Faça {count} pontos na Atividade de 14 dias salvando um clique por dia por 14 dias consecutivos (UTC).",
     outOf: "{count} / {total}",
     daysActive: "Dias ativos: {count}",
     activityNote:
@@ -1198,6 +1214,8 @@ export const translations = {
   fr: {
     ...optionsTranslations["fr"],
     fortnightActivity: "Activité sur deux semaines",
+    chickenDinnerGoal:
+      "Atteignez {count} dans l’Activité sur deux semaines en enregistrant un clic chaque jour pendant 14 jours consécutifs (UTC).",
     outOf: "{count} / {total}",
     daysActive: "Jours actifs : {count}",
     activityNote:
@@ -1337,6 +1355,8 @@ export const translations = {
   ja: {
     ...optionsTranslations["ja"],
     fortnightActivity: "2週間のアクティビティ",
+    chickenDinnerGoal:
+      "UTCで14日間連続して毎日クリックを1回保存し、2週間のアクティビティで{count}点を獲得してください。",
     outOf: "{count} / {total}",
     daysActive: "アクティブ日数：{count}",
     activityNote:
@@ -1476,6 +1496,8 @@ export const translations = {
   ru: {
     ...optionsTranslations["ru"],
     fortnightActivity: "Активность за две недели",
+    chickenDinnerGoal:
+      "Наберите {count} в разделе «Активность за две недели», сохраняя по одному щелчку в день 14 дней подряд (UTC).",
     outOf: "{count} / {total}",
     daysActive: "Активных дней: {count}",
     activityNote:
@@ -1612,6 +1634,8 @@ export const translations = {
   de: {
     ...optionsTranslations["de"],
     fortnightActivity: "Aktivität in zwei Wochen",
+    chickenDinnerGoal:
+      "Erreiche {count} bei der Aktivität in zwei Wochen, indem du an 14 aufeinanderfolgenden UTC-Tagen je einen Klick speicherst.",
     outOf: "{count} / {total}",
     daysActive: "Aktive Tage: {count}",
     activityNote:

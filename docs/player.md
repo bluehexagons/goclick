@@ -84,6 +84,10 @@ saved click. Each active day earns 5 points and each adjacent pair adds 2
 points. The game scales the result to 100. A click on a new UTC day moves
 the window forward.
 
+Earn **Chicken Dinner** by reaching 100 in Fortnight activity with a
+saved click on each of 14 consecutive UTC days. The badge stays earned
+after the activity window moves on.
+
 ## Share your progress
 
 Select **Share** to preview a plain-text summary with your click total,

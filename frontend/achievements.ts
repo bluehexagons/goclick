@@ -11,6 +11,8 @@ import {
   emptyClickAchievements,
   fiveGrand,
   fourDigits,
+  fortnight,
+  fortnightActivity,
   sameUtcMonth,
   threeVisits,
   utcDay,
@@ -40,6 +42,7 @@ type Goal =
   | "distinctHoursGoal"
   | "distinctDaysGoal"
   | "distinctMonthsGoal"
+  | "chickenDinnerGoal"
   | "otherAchievementsGoal"
   | "reconnectPlugGoal"
   | "slackCordGoal"
@@ -203,6 +206,16 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "distinctMonthsGoal",
       calendar.active_months,
       targets.active_months,
+    ),
+    badge(
+      "chicken-dinner",
+      "calendar",
+      "Chicken Dinner",
+      "Fill the Fortnight activity calendar.",
+      "chickenDinnerGoal",
+      fortnightActivity(progress.recent_days).score,
+      100,
+      progress.best_day_streak >= fortnight,
     ),
   ];
   for (const [bit, id, name, hint, goal] of [
