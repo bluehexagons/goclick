@@ -6445,7 +6445,7 @@
         "clicks-for-days",
         "calendar",
         "Clicks for Days",
-        "A short run of consecutive days.",
+        "Keep it going.",
         "dayStreak",
         progress.best_day_streak,
         3
@@ -6463,7 +6463,7 @@
         "good-to-see-you-again",
         "calendar",
         "Good to See You Again",
-        "Check in again next week.",
+        "Make a habit of coming back.",
         "weekStreak",
         progress.best_week_streak,
         2
@@ -6472,7 +6472,7 @@
         "double-fortnight",
         "calendar",
         "Double Fortnight",
-        "A longer weekly streak.",
+        "Settle in for the long run.",
         "weekStreak",
         progress.best_week_streak,
         4
@@ -6481,7 +6481,7 @@
         "busy-day",
         "pace",
         "Busy Day",
-        "Clicks within one UTC day.",
+        "Make today count.",
         "dayClickGoal",
         sameDay ? calendar.day_clicks : 0,
         calendarBadgeTargets.day_clicks,
@@ -6491,7 +6491,7 @@
         "brisk-pace",
         "pace",
         "Brisk Pace",
-        "Clicks within one UTC week.",
+        "Find a rhythm you can keep.",
         "weekClickGoal",
         sameWeek ? calendar.week_clicks : 0,
         calendarBadgeTargets.week_clicks,
@@ -6501,7 +6501,7 @@
         "high-score",
         "pace",
         "High Score",
-        "Clicks within one UTC month.",
+        "Build up to a big total.",
         "monthClickGoal",
         sameMonth ? calendar.month_clicks : 0,
         calendarBadgeTargets.month_clicks,
@@ -6511,7 +6511,7 @@
         "three-visits",
         "pace",
         "Three Visits",
-        "Different times on the same day.",
+        "Leave a little time between visits.",
         "distinctHoursGoal",
         hours,
         distinctHoursTarget,
@@ -6539,7 +6539,7 @@
         "chicken-dinner",
         "calendar",
         "Chicken Dinner",
-        "Fill the Fortnight activity calendar.",
+        "A run worth celebrating.",
         "chickenDinnerGoal",
         fortnightActivity(progress.recent_days).score,
         100,
@@ -6551,28 +6551,28 @@
         buttonAchievementBits.reconnect,
         "live-wire",
         "Reconnected",
-        "There\u2019s a way to reconnect the plug.",
+        "Some interruptions are temporary.",
         "reconnectPlugGoal"
       ],
       [
         buttonAchievementBits.slackClick,
         "hanging-loose",
         "Slacking Off",
-        "Try the cord with a little more give.",
+        "Take the pressure off.",
         "slackCordGoal"
       ],
       [
         buttonAchievementBits.reset,
         "circuit-breaker",
         "Circuit Breaker",
-        "The outlet has switches of its own.",
+        "The button isn\u2019t the whole circuit.",
         "resetOutletGoal"
       ],
       [
         buttonAchievementBits.rebound,
         "rebound",
         "Rebound",
-        "Give it a good pull and let go.",
+        "The button can find its way home.",
         "reboundGoal"
       ],
       [
@@ -6586,7 +6586,7 @@
         buttonAchievementBits.offGrid,
         "off-grid",
         "Off-Grid",
-        "Try a click without a power connection.",
+        "The lights aren\u2019t everything.",
         "offGridGoal"
       ]
     ]) {
@@ -6601,7 +6601,7 @@
         "parallel-outlet",
         "hardware",
         "Parallel Outlet",
-        "The outlet has a second socket.",
+        "There\u2019s more than one way back.",
         "parallelOutletGoal",
         sockets,
         2,
@@ -6615,7 +6615,7 @@
         "recursion",
         "medal",
         "Recursion",
-        "Achievements count toward this one.",
+        "Progress can build on itself.",
         "otherAchievementsGoal",
         earned,
         10,

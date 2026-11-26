@@ -252,15 +252,37 @@ async function checkLanguage(page, baseURL) {
     await achievements.getByRole("checkbox", { name: "إظهار شروط الإنجازات المقفلة" }).isVisible(),
     "Achievement checkbox is missing its translated name",
   );
-  await achievements.getByRole("checkbox", { name: "إظهار شروط الإنجازات المقفلة" }).check();
+  const reveal = achievements.getByRole("checkbox", { name: "إظهار شروط الإنجازات المقفلة" });
+  const locked = achievements.locator(".achievement-card:not(.earned)");
+  const descriptions = locked.locator(".achievement-description");
+  const hints = await descriptions.allTextContents();
+  ensure(hints.length > 0, "Expected locked achievements to check");
+  ensure(
+    (await locked.locator(".achievement-card-progress").count()) === 0,
+    "Locked targets leaked",
+  );
+  await reveal.check();
   ensure(
     await achievements
       .locator(".achievement-description")
       .evaluateAll(
         (requirements) =>
-          requirements.length === 15 && requirements.every((rule) => rule.lang === "ar"),
+          requirements.length === document.querySelector("#achievement-meter").max &&
+          requirements.every((rule) => rule.lang === "ar"),
       ),
     "One or more exact requirements reverted to English",
+  );
+  ensure(
+    (await locked.locator(".achievement-card-progress").count()) === hints.length,
+    "Reveal did not show the targets",
+  );
+  await reveal.uncheck();
+  const restored = await descriptions.allTextContents();
+  ensure(
+    restored.length === hints.length &&
+      restored.every((hint, index) => hint === hints[index]) &&
+      (await locked.locator(".achievement-card-progress").count()) === 0,
+    "Hiding requirements did not restore the hints",
   );
   ensure(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
