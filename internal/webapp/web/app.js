@@ -746,9 +746,11 @@
   var buttonAchievementBits = {
     reconnect: 1,
     slackClick: 2,
-    reset: 4
+    reset: 4,
+    rebound: 8,
+    holdThatThought: 16
   };
-  var buttonAchievementMask = buttonAchievementBits.reconnect | buttonAchievementBits.slackClick | buttonAchievementBits.reset;
+  var buttonAchievementMask = buttonAchievementBits.reconnect | buttonAchievementBits.slackClick | buttonAchievementBits.reset | buttonAchievementBits.rebound | buttonAchievementBits.holdThatThought;
 
   // frontend/local-game.ts
   var localGame = (() => {
@@ -872,7 +874,7 @@
       const date = new Date(time);
       return index === 1 ? utcDay(date.getTime()) : index === 2 ? date.getUTCFullYear() * 12 + date.getUTCMonth() : date.getUTCFullYear();
     }
-    function increment(now = /* @__PURE__ */ new Date(), slack = false) {
+    function increment(now = /* @__PURE__ */ new Date(), earned = 0) {
       const counters = read();
       const previous = counters.click_count?.modified_time;
       const time = previous && Date.parse(previous) > now.getTime() ? previous : now.toISOString();
@@ -892,8 +894,7 @@
         counters.streak_counter_day.count
       );
       counters.achievements = advanceAchievements(counters.achievements, previous, time);
-      if (slack)
-        counters.button_achievements = (counters.button_achievements ?? 0) | buttonAchievementBits.slackClick;
+      if (earned) counters.button_achievements = (counters.button_achievements ?? 0) | earned;
       return write(counters);
     }
     function recordButtonAchievement2(interaction) {
@@ -2998,6 +2999,8 @@
     reconnectPlugGoal: "Pull the button away in different directions until the plug comes free, then guide it back into a socket.",
     slackCordGoal: "With the plug disconnected, tap it to slacken the cord, then save a click.",
     resetOutletGoal: "Use TEST on the outlet, then use RESET. Keyboard players can Tab from Click to the outlet.",
+    reboundGoal: "Pull the button at least a quarter of its width (and at least 48 px), then release to save a click with the plug still seated. The button must spring back.",
+    holdThatThoughtGoal: "When the button shows a surprise translation, hold it for two seconds, then release to save a click.",
     buttonAchievementError: "Couldn\u2019t save the button achievement. Try the interaction again.",
     ping: "Ping",
     simPing: "Sim ping",
@@ -3117,6 +3120,8 @@
       reconnectPlugGoal: "\u5411\u4E0D\u540C\u65B9\u5411\u62C9\u52A8\u6309\u94AE\uFF0C\u76F4\u5230\u63D2\u5934\u8131\u843D\uFF0C\u518D\u5C06\u5B83\u63D2\u56DE\u63D2\u5EA7\u3002",
       slackCordGoal: "\u62D4\u4E0B\u63D2\u5934\u540E\uFF0C\u70B9\u6309\u63D2\u5934\u8BA9\u7535\u7EBF\u653E\u677E\uFF0C\u7136\u540E\u5B8C\u6210\u4E00\u6B21\u6709\u6548\u70B9\u51FB\u3002",
       resetOutletGoal: "\u5148\u4F7F\u7528\u63D2\u5EA7\u4E0A\u7684 TEST\uFF0C\u518D\u4F7F\u7528 RESET\u3002\u952E\u76D8\u73A9\u5BB6\u53EF\u5728\u70B9\u51FB\u6309\u94AE\u4E0A\u6309 Tab \u524D\u5F80\u63D2\u5EA7\u3002",
+      reboundGoal: "\u5C06\u6309\u94AE\u81F3\u5C11\u62C9\u52A8\u5176\u5BBD\u5EA6\u7684\u56DB\u5206\u4E4B\u4E00\uFF08\u4E14\u81F3\u5C11 48 \u50CF\u7D20\uFF09\uFF0C\u7136\u540E\u5728\u63D2\u5934\u4ECD\u63D2\u7740\u65F6\u677E\u5F00\uFF0C\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\u3002\u6309\u94AE\u5FC5\u987B\u5F39\u56DE\u539F\u4F4D\u3002",
+      holdThatThoughtGoal: "\u5F53\u6309\u94AE\u663E\u793A\u610F\u5916\u7684\u7FFB\u8BD1\u65F6\uFF0C\u6309\u4F4F\u4E24\u79D2\u540E\u677E\u5F00\uFF0C\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\u3002",
       buttonAchievementError: "\u65E0\u6CD5\u4FDD\u5B58\u6309\u94AE\u6210\u5C31\u3002\u8BF7\u91CD\u8BD5\u8BE5\u64CD\u4F5C\u3002",
       ping: "\u5EF6\u8FDF",
       simPing: "\u6A21\u62DF\u5EF6\u8FDF",
@@ -3235,6 +3240,8 @@
       reconnectPlugGoal: "\u5411\u4E0D\u540C\u65B9\u5411\u62C9\u52D5\u6309\u9215\uFF0C\u76F4\u5230\u63D2\u982D\u812B\u843D\uFF0C\u518D\u5C07\u5B83\u63D2\u56DE\u63D2\u5EA7\u3002",
       slackCordGoal: "\u62D4\u4E0B\u63D2\u982D\u5F8C\uFF0C\u9EDE\u6309\u63D2\u982D\u8B93\u96FB\u7DDA\u653E\u9B06\uFF0C\u7136\u5F8C\u5132\u5B58\u4E00\u6B21\u9EDE\u64CA\u3002",
       resetOutletGoal: "\u5148\u4F7F\u7528\u63D2\u5EA7\u4E0A\u7684 TEST\uFF0C\u518D\u4F7F\u7528 RESET\u3002\u4F7F\u7528\u9375\u76E4\u6642\uFF0C\u53EF\u5728\u9EDE\u64CA\u6309\u9215\u4E0A\u6309 Tab \u524D\u5F80\u63D2\u5EA7\u3002",
+      reboundGoal: "\u5C07\u6309\u9215\u81F3\u5C11\u62C9\u52D5\u5176\u5BEC\u5EA6\u7684\u56DB\u5206\u4E4B\u4E00\uFF08\u4E14\u81F3\u5C11 48 \u50CF\u7D20\uFF09\uFF0C\u7136\u5F8C\u5728\u63D2\u982D\u4ECD\u63D2\u8457\u6642\u653E\u958B\uFF0C\u5132\u5B58\u4E00\u6B21\u9EDE\u64CA\u3002\u6309\u9215\u5FC5\u9808\u5F48\u56DE\u539F\u4F4D\u3002",
+      holdThatThoughtGoal: "\u7576\u6309\u9215\u986F\u793A\u9A5A\u559C\u7FFB\u8B6F\u6642\uFF0C\u6309\u4F4F\u5169\u79D2\u5F8C\u653E\u958B\uFF0C\u5132\u5B58\u4E00\u6B21\u9EDE\u64CA\u3002",
       buttonAchievementError: "\u7121\u6CD5\u5132\u5B58\u6309\u9215\u6210\u5C31\u3002\u8ACB\u91CD\u8A66\u8A72\u64CD\u4F5C\u3002",
       ping: "\u5EF6\u9072",
       simPing: "\u6A21\u64EC\u5EF6\u9072",
@@ -3353,6 +3360,8 @@
       reconnectPlugGoal: "\u09AA\u09CD\u09B2\u09BE\u0997 \u0996\u09C1\u09B2\u09C7 \u09A8\u09BE \u09AF\u09BE\u0993\u09AF\u09BC\u09BE \u09AA\u09B0\u09CD\u09AF\u09A8\u09CD\u09A4 \u09AC\u09CB\u09A4\u09BE\u09AE\u099F\u09BF \u09AC\u09BF\u09AD\u09BF\u09A8\u09CD\u09A8 \u09A6\u09BF\u0995\u09C7 \u099F\u09BE\u09A8\u09C1\u09A8, \u09A4\u09BE\u09B0\u09AA\u09B0 \u09AA\u09CD\u09B2\u09BE\u0997\u099F\u09BF \u0986\u09AC\u09BE\u09B0 \u09B8\u0995\u09C7\u099F\u09C7 \u09A2\u09CB\u0995\u09BE\u09A8\u0964",
       slackCordGoal: "\u09AA\u09CD\u09B2\u09BE\u0997 \u0996\u09C1\u09B2\u09C7 \u0997\u09C7\u09B2\u09C7 \u09B8\u09C7\u099F\u09BF\u09A4\u09C7 \u099F\u09CD\u09AF\u09BE\u09AA \u0995\u09B0\u09C7 \u09A4\u09BE\u09B0\u099F\u09BF \u09A2\u09BF\u09B2\u09BE \u0995\u09B0\u09C1\u09A8, \u09A4\u09BE\u09B0\u09AA\u09B0 \u098F\u0995\u099F\u09BF \u0995\u09CD\u09B2\u09BF\u0995 \u09B8\u09C7\u09AD \u0995\u09B0\u09C1\u09A8\u0964",
       resetOutletGoal: "\u09B8\u0995\u09C7\u099F\u09C7 \u09AA\u09CD\u09B0\u09A5\u09AE\u09C7 TEST, \u09A4\u09BE\u09B0\u09AA\u09B0 RESET \u09AC\u09CD\u09AF\u09AC\u09B9\u09BE\u09B0 \u0995\u09B0\u09C1\u09A8\u0964 \u0995\u09C0\u09AC\u09CB\u09B0\u09CD\u09A1\u09C7 \u0995\u09CD\u09B2\u09BF\u0995 \u09AC\u09CB\u09A4\u09BE\u09AE \u09A5\u09C7\u0995\u09C7 Tab \u099A\u09C7\u09AA\u09C7 \u09B8\u0995\u09C7\u099F\u09C7 \u09AF\u09BE\u09A8\u0964",
+      reboundGoal: "\u09AC\u09CB\u09A4\u09BE\u09AE\u099F\u09BF\u0995\u09C7 \u09A4\u09BE\u09B0 \u09AA\u09CD\u09B0\u09B8\u09CD\u09A5\u09C7\u09B0 \u0985\u09A8\u09CD\u09A4\u09A4 \u098F\u0995-\u099A\u09A4\u09C1\u09B0\u09CD\u09A5\u09BE\u0982\u09B6 (\u098F\u09AC\u0982 \u0985\u09A8\u09CD\u09A4\u09A4 \u09EA\u09EE \u09AA\u09BF\u0995\u09CD\u09B8\u09C7\u09B2) \u099F\u09BE\u09A8\u09C1\u09A8, \u09A4\u09BE\u09B0\u09AA\u09B0 \u09AA\u09CD\u09B2\u09BE\u0997 \u09B2\u09BE\u0997\u09BE\u09A8\u09CB \u0985\u09AC\u09B8\u09CD\u09A5\u09BE\u09AF\u09BC \u099B\u09C7\u09A1\u09BC\u09C7 \u098F\u0995\u099F\u09BF \u0995\u09CD\u09B2\u09BF\u0995 \u09B8\u09C7\u09AD \u0995\u09B0\u09C1\u09A8\u0964 \u09AC\u09CB\u09A4\u09BE\u09AE\u099F\u09BF\u0995\u09C7 \u0986\u0997\u09C7\u09B0 \u099C\u09BE\u09AF\u09BC\u0997\u09BE\u09AF\u09BC \u09AB\u09BF\u09B0\u09C7 \u0986\u09B8\u09A4\u09C7 \u09B9\u09AC\u09C7\u0964",
+      holdThatThoughtGoal: "\u09AC\u09CB\u09A4\u09BE\u09AE\u09C7 \u0986\u0995\u09B8\u09CD\u09AE\u09BF\u0995 \u0985\u09A8\u09C1\u09AC\u09BE\u09A6 \u09A6\u09C7\u0996\u09BE \u0997\u09C7\u09B2\u09C7 \u09A6\u09C1\u0987 \u09B8\u09C7\u0995\u09C7\u09A8\u09CD\u09A1 \u09A7\u09B0\u09C7 \u09B0\u09BE\u0996\u09C1\u09A8, \u09A4\u09BE\u09B0\u09AA\u09B0 \u099B\u09C7\u09A1\u09BC\u09C7 \u098F\u0995\u099F\u09BF \u0995\u09CD\u09B2\u09BF\u0995 \u09B8\u09C7\u09AD \u0995\u09B0\u09C1\u09A8\u0964",
       buttonAchievementError: "\u09AC\u09CB\u09A4\u09BE\u09AE\u09C7\u09B0 \u0985\u09B0\u09CD\u099C\u09A8\u099F\u09BF \u09B8\u09C7\u09AD \u0995\u09B0\u09BE \u09AF\u09BE\u09AF\u09BC\u09A8\u09BF\u0964 \u0995\u09BE\u099C\u099F\u09BF \u0986\u09AC\u09BE\u09B0 \u0995\u09B0\u09C1\u09A8\u0964",
       ping: "\u09AA\u09BF\u0982",
       simPing: "\u09B8\u09BF\u09AE\u09C1\u09B2\u09C7\u099F\u09C7\u09A1 \u09AA\u09BF\u0982",
@@ -3471,6 +3480,8 @@
       reconnectPlugGoal: "Tira del bot\xF3n en distintas direcciones hasta soltar el enchufe y luego vuelve a conectarlo a una toma.",
       slackCordGoal: "Con el enchufe desconectado, t\xF3calo para aflojar el cable y luego guarda un clic.",
       resetOutletGoal: "Pulsa TEST en la toma y despu\xE9s RESET. Con el teclado, pulsa Tab desde el bot\xF3n de clic para llegar a la toma.",
+      reboundGoal: "Tira del bot\xF3n al menos un cuarto de su anchura (como m\xEDnimo 48 px) y su\xE9ltalo para guardar un clic con el enchufe a\xFAn conectado. El bot\xF3n debe volver a su sitio.",
+      holdThatThoughtGoal: "Cuando el bot\xF3n muestre una traducci\xF3n sorpresa, mantenlo pulsado dos segundos y su\xE9ltalo para guardar un clic.",
       buttonAchievementError: "No se pudo guardar el logro del bot\xF3n. Repite la acci\xF3n.",
       ping: "Latencia",
       simPing: "Latencia simulada",
@@ -3589,6 +3600,8 @@
       reconnectPlugGoal: "\u0627\u0633\u062D\u0628 \u0627\u0644\u0632\u0631 \u0641\u064A \u0627\u062A\u062C\u0627\u0647\u0627\u062A \u0645\u062E\u062A\u0644\u0641\u0629 \u062D\u062A\u0649 \u064A\u0646\u0641\u0635\u0644 \u0627\u0644\u0642\u0627\u0628\u0633\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0648\u0635\u064A\u0644\u0647 \u0628\u0645\u0642\u0628\u0633.",
       slackCordGoal: "\u0628\u0639\u062F \u0641\u0635\u0644 \u0627\u0644\u0642\u0627\u0628\u0633\u060C \u0627\u0636\u063A\u0637 \u0639\u0644\u064A\u0647 \u0644\u0625\u0631\u062E\u0627\u0621 \u0627\u0644\u0633\u0644\u0643 \u062B\u0645 \u0627\u062D\u0641\u0638 \u0646\u0642\u0631\u0629.",
       resetOutletGoal: "\u0627\u0633\u062A\u062E\u062F\u0645 TEST \u0639\u0644\u0649 \u0627\u0644\u0645\u0642\u0628\u0633 \u062B\u0645 RESET. \u0644\u0644\u0627\u0646\u062A\u0642\u0627\u0644 \u0645\u0646 \u0632\u0631 \u0627\u0644\u0646\u0642\u0631 \u0625\u0644\u0649 \u0627\u0644\u0645\u0642\u0628\u0633 \u0628\u0644\u0648\u062D\u0629 \u0627\u0644\u0645\u0641\u0627\u062A\u064A\u062D\u060C \u0627\u0636\u063A\u0637 Tab.",
+      reboundGoal: "\u0627\u0633\u062D\u0628 \u0627\u0644\u0632\u0631 \u0645\u0633\u0627\u0641\u0629 \u062A\u0639\u0627\u062F\u0644 \u0631\u0628\u0639 \u0639\u0631\u0636\u0647 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644 (\u0648\u0628\u062D\u062F \u0623\u062F\u0646\u0649 48 \u0628\u0643\u0633\u0644)\u060C \u062B\u0645 \u0623\u0641\u0644\u062A \u0627\u0644\u0632\u0631 \u0644\u062D\u0641\u0638 \u0646\u0642\u0631\u0629 \u0628\u064A\u0646\u0645\u0627 \u0627\u0644\u0642\u0627\u0628\u0633 \u0645\u0627 \u0632\u0627\u0644 \u0645\u0648\u0635\u0648\u0644\u064B\u0627. \u064A\u062C\u0628 \u0623\u0646 \u064A\u0631\u062A\u062F \u0627\u0644\u0632\u0631 \u0625\u0644\u0649 \u0645\u0648\u0636\u0639\u0647.",
+      holdThatThoughtGoal: "\u0639\u0646\u062F\u0645\u0627 \u062A\u0638\u0647\u0631 \u062A\u0631\u062C\u0645\u0629 \u0645\u0641\u0627\u062C\u0626\u0629 \u0639\u0644\u0649 \u0627\u0644\u0632\u0631\u060C \u0627\u0636\u063A\u0637 \u0639\u0644\u064A\u0647 \u0644\u0645\u062F\u0629 \u062B\u0627\u0646\u064A\u062A\u064A\u0646 \u062B\u0645 \u0623\u0641\u0644\u062A\u0647 \u0644\u062D\u0641\u0638 \u0646\u0642\u0631\u0629.",
       buttonAchievementError: "\u062A\u0639\u0630\u0651\u0631 \u062D\u0641\u0638 \u0625\u0646\u062C\u0627\u0632 \u0627\u0644\u0632\u0631. \u062C\u0631\u0651\u0628 \u062A\u0646\u0641\u064A\u0630 \u0627\u0644\u062D\u0631\u0643\u0629 \u0645\u062C\u062F\u062F\u064B\u0627.",
       ping: "\u0632\u0645\u0646 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629",
       simPing: "\u0632\u0645\u0646 \u0627\u0633\u062A\u062C\u0627\u0628\u0629 \u0645\u062D\u0627\u0643\u0649",
@@ -3707,6 +3720,8 @@
       reconnectPlugGoal: "\u092C\u091F\u0928 \u0915\u094B \u0905\u0932\u0917-\u0905\u0932\u0917 \u0926\u093F\u0936\u093E\u0913\u0902 \u092E\u0947\u0902 \u0916\u0940\u0902\u091A\u0915\u0930 \u092A\u094D\u0932\u0917 \u0928\u093F\u0915\u093E\u0932\u0947\u0902, \u092B\u093F\u0930 \u0909\u0938\u0947 \u0935\u093E\u092A\u0938 \u0938\u0949\u0915\u0947\u091F \u092E\u0947\u0902 \u0932\u0917\u093E\u090F\u0901\u0964",
       slackCordGoal: "\u092A\u094D\u0932\u0917 \u0928\u093F\u0915\u0932 \u091C\u093E\u0928\u0947 \u092A\u0930 \u0924\u093E\u0930 \u0922\u0940\u0932\u093E \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0909\u0938 \u092A\u0930 \u091F\u0948\u092A \u0915\u0930\u0947\u0902, \u092B\u093F\u0930 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902\u0964",
       resetOutletGoal: "\u0938\u0949\u0915\u0947\u091F \u092A\u0930 \u092A\u0939\u0932\u0947 TEST, \u092B\u093F\u0930 RESET \u0926\u092C\u093E\u090F\u0901\u0964 \u0915\u0940\u092C\u094B\u0930\u094D\u0921 \u0938\u0947 \u0915\u094D\u0932\u093F\u0915 \u092C\u091F\u0928 \u092A\u0930 Tab \u0926\u092C\u093E\u0915\u0930 \u0938\u0949\u0915\u0947\u091F \u0924\u0915 \u091C\u093E\u090F\u0901\u0964",
+      reboundGoal: "\u092C\u091F\u0928 \u0915\u094B \u0909\u0938\u0915\u0940 \u091A\u094C\u0921\u093C\u093E\u0908 \u0915\u093E \u0915\u092E \u0938\u0947 \u0915\u092E \u090F\u0915 \u091A\u094C\u0925\u093E\u0908 (\u0914\u0930 \u0915\u092E \u0938\u0947 \u0915\u092E 48 \u092A\u093F\u0915\u094D\u0938\u0947\u0932) \u0916\u0940\u0902\u091A\u0947\u0902\u0964 \u092A\u094D\u0932\u0917 \u0932\u0917\u093E \u0930\u0939\u0924\u0947 \u0939\u0941\u090F \u0909\u0938\u0947 \u091B\u094B\u0921\u093C\u0915\u0930 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902\u0964 \u092C\u091F\u0928 \u0915\u093E \u0935\u093E\u092A\u0938 \u0905\u092A\u0928\u0940 \u091C\u0917\u0939 \u0932\u094C\u091F\u0928\u093E \u091C\u093C\u0930\u0942\u0930\u0940 \u0939\u0948\u0964",
+      holdThatThoughtGoal: "\u091C\u092C \u092C\u091F\u0928 \u092A\u0930 \u0905\u091A\u093E\u0928\u0915 \u0915\u093F\u0938\u0940 \u0914\u0930 \u092D\u093E\u0937\u093E \u0915\u093E \u0905\u0928\u0941\u0935\u093E\u0926 \u0926\u093F\u0916\u0947, \u0909\u0938\u0947 \u0926\u094B \u0938\u0947\u0915\u0902\u0921 \u0926\u092C\u093E\u090F \u0930\u0916\u0947\u0902 \u0914\u0930 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0938\u0947\u0935 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u091B\u094B\u0921\u093C \u0926\u0947\u0902\u0964",
       buttonAchievementError: "\u092C\u091F\u0928 \u0915\u0940 \u0909\u092A\u0932\u092C\u094D\u0927\u093F \u0938\u0947\u0935 \u0928\u0939\u0940\u0902 \u0939\u094B \u0938\u0915\u0940\u0964 \u0915\u094D\u0930\u093F\u092F\u093E \u092B\u093F\u0930 \u0938\u0947 \u0915\u0930\u0947\u0902\u0964",
       ping: "\u092A\u093F\u0902\u0917",
       simPing: "\u0938\u093F\u092E\u094D\u092F\u0941\u0932\u0947\u091F\u0947\u0921 \u092A\u093F\u0902\u0917",
@@ -3825,6 +3840,8 @@
       reconnectPlugGoal: "Tarik tombol ke berbagai arah sampai stekernya terlepas, lalu pasang kembali ke stopkontak.",
       slackCordGoal: "Saat steker terlepas, ketuk steker untuk mengendurkan kabel, lalu simpan satu klik.",
       resetOutletGoal: "Gunakan TEST pada stopkontak, lalu gunakan RESET. Dengan papan ketik, tekan Tab dari tombol klik untuk menuju stopkontak.",
+      reboundGoal: "Tarik tombol setidaknya seperempat lebarnya (minimal 48 piksel), lalu lepas untuk menyimpan satu klik selagi steker masih terpasang. Tombol harus kembali ke posisi semula.",
+      holdThatThoughtGoal: "Saat tombol menampilkan terjemahan kejutan, tahan dua detik lalu lepas untuk menyimpan satu klik.",
       buttonAchievementError: "Pencapaian tombol gagal disimpan. Ulangi tindakan tersebut.",
       ping: "Ping",
       simPing: "Ping simulasi",
@@ -3943,6 +3960,8 @@
       reconnectPlugGoal: "Puxe o bot\xE3o em v\xE1rias dire\xE7\xF5es at\xE9 soltar o plugue e depois encaixe-o novamente em uma tomada.",
       slackCordGoal: "Com o plugue desconectado, toque nele para afrouxar o cabo e depois salve um clique.",
       resetOutletGoal: "Use TEST na tomada e depois RESET. No teclado, pressione Tab a partir do bot\xE3o de clique para chegar \xE0 tomada.",
+      reboundGoal: "Puxe o bot\xE3o por pelo menos um quarto da largura dele (no m\xEDnimo 48 px) e solte para salvar um clique com o plugue ainda encaixado. O bot\xE3o precisa voltar \xE0 posi\xE7\xE3o original.",
+      holdThatThoughtGoal: "Quando o bot\xE3o mostrar uma tradu\xE7\xE3o surpresa, segure-o por dois segundos e solte para salvar um clique.",
       buttonAchievementError: "N\xE3o foi poss\xEDvel salvar a conquista do bot\xE3o. Repita a a\xE7\xE3o.",
       ping: "Ping",
       simPing: "Ping simulado",
@@ -4061,6 +4080,8 @@
       reconnectPlugGoal: "Tirez le bouton dans plusieurs directions pour d\xE9brancher la fiche, puis rebranchez-la dans une prise.",
       slackCordGoal: "Une fois la fiche d\xE9branch\xE9e, touchez-la pour d\xE9tendre le c\xE2ble, puis enregistrez un clic.",
       resetOutletGoal: "Utilisez TEST sur la prise, puis RESET. Au clavier, appuyez sur Tab depuis le bouton de jeu pour atteindre la prise.",
+      reboundGoal: "Tirez le bouton sur au moins un quart de sa largeur (au minimum 48 px), puis rel\xE2chez-le pour enregistrer un clic avec la fiche encore branch\xE9e. Le bouton doit revenir \xE0 sa place.",
+      holdThatThoughtGoal: "Quand le bouton affiche une traduction surprise, maintenez-le deux secondes puis rel\xE2chez-le pour enregistrer un clic.",
       buttonAchievementError: "Impossible d\u2019enregistrer le succ\xE8s du bouton. R\xE9essayez l\u2019action.",
       ping: "Latence",
       simPing: "Latence simul\xE9e",
@@ -4179,6 +4200,8 @@
       reconnectPlugGoal: "\u30DC\u30BF\u30F3\u3092\u3044\u308D\u3044\u308D\u306A\u65B9\u5411\u306B\u5F15\u3044\u3066\u30D7\u30E9\u30B0\u3092\u629C\u304D\u3001\u3082\u3046\u4E00\u5EA6\u30B3\u30F3\u30BB\u30F3\u30C8\u306B\u5DEE\u3057\u8FBC\u3093\u3067\u304F\u3060\u3055\u3044\u3002",
       slackCordGoal: "\u30D7\u30E9\u30B0\u304C\u629C\u3051\u305F\u72B6\u614B\u3067\u30D7\u30E9\u30B0\u3092\u30BF\u30C3\u30D7\u3057\u3066\u30B3\u30FC\u30C9\u3092\u7DE9\u3081\u3001\u305D\u306E\u72B6\u614B\u3067\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       resetOutletGoal: "\u30B3\u30F3\u30BB\u30F3\u30C8\u306E TEST \u3092\u62BC\u3057\u3066\u304B\u3089 RESET \u3092\u62BC\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u30AD\u30FC\u30DC\u30FC\u30C9\u3067\u306F\u30AF\u30EA\u30C3\u30AF\u30DC\u30BF\u30F3\u304B\u3089 Tab \u30AD\u30FC\u3067\u79FB\u52D5\u3067\u304D\u307E\u3059\u3002",
+      reboundGoal: "\u30DC\u30BF\u30F3\u3092\u5E45\u306E4\u5206\u306E1\u4EE5\u4E0A\uFF08\u6700\u4F4E48\u30D4\u30AF\u30BB\u30EB\uFF09\u5F15\u3063\u5F35\u308A\u3001\u30D7\u30E9\u30B0\u304C\u5DEE\u3055\u3063\u305F\u307E\u307E\u96E2\u3057\u3066\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002 \u30DC\u30BF\u30F3\u304C\u5143\u306E\u4F4D\u7F6E\u306B\u623B\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002",
+      holdThatThoughtGoal: "\u30DC\u30BF\u30F3\u306E\u8868\u793A\u304C\u7A81\u7136\u5225\u306E\u8A00\u8A9E\u306B\u306A\u3063\u305F\u3089\u30012\u79D2\u9593\u62BC\u3057\u7D9A\u3051\u3066\u304B\u3089\u96E2\u3057\u3001\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       buttonAchievementError: "\u30DC\u30BF\u30F3\u306E\u5B9F\u7E3E\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       ping: "\u5FDC\u7B54\u6642\u9593",
       simPing: "\u6A21\u64EC\u5FDC\u7B54\u6642\u9593",
@@ -4297,6 +4320,8 @@
       reconnectPlugGoal: "\u041F\u043E\u0442\u044F\u043D\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u0432 \u0440\u0430\u0437\u043D\u044B\u0435 \u0441\u0442\u043E\u0440\u043E\u043D\u044B, \u043F\u043E\u043A\u0430 \u0432\u0438\u043B\u043A\u0430 \u043D\u0435 \u0432\u044B\u0441\u043A\u043E\u0447\u0438\u0442, \u0437\u0430\u0442\u0435\u043C \u0432\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u0435\u0451 \u043E\u0431\u0440\u0430\u0442\u043D\u043E \u0432 \u0440\u043E\u0437\u0435\u0442\u043A\u0443.",
       slackCordGoal: "\u041A\u043E\u0433\u0434\u0430 \u0432\u0438\u043B\u043A\u0430 \u0432\u044B\u043D\u0443\u0442\u0430, \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u043D\u0430 \u043D\u0435\u0451, \u0447\u0442\u043E\u0431\u044B \u043E\u0441\u043B\u0430\u0431\u0438\u0442\u044C \u0448\u043D\u0443\u0440, \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0449\u0435\u043B\u0447\u043E\u043A.",
       resetOutletGoal: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 TEST \u043D\u0430 \u0440\u043E\u0437\u0435\u0442\u043A\u0435, \u0437\u0430\u0442\u0435\u043C RESET. \u0427\u0442\u043E\u0431\u044B \u043F\u0435\u0440\u0435\u0439\u0442\u0438 \u043E\u0442 \u043A\u043D\u043E\u043F\u043A\u0438 \u043A \u0440\u043E\u0437\u0435\u0442\u043A\u0435 \u0441 \u043A\u043B\u0430\u0432\u0438\u0430\u0442\u0443\u0440\u044B, \u043D\u0430\u0436\u043C\u0438\u0442\u0435 Tab.",
+      reboundGoal: "\u041F\u043E\u0442\u044F\u043D\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u0445\u043E\u0442\u044F \u0431\u044B \u043D\u0430 \u0447\u0435\u0442\u0432\u0435\u0440\u0442\u044C \u0435\u0451 \u0448\u0438\u0440\u0438\u043D\u044B (\u043C\u0438\u043D\u0438\u043C\u0443\u043C \u043D\u0430 48 \u043F\u0438\u043A\u0441\u0435\u043B\u0435\u0439) \u0438 \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0449\u0435\u043B\u0447\u043E\u043A, \u043F\u043E\u043A\u0430 \u0432\u0438\u043B\u043A\u0430 \u0435\u0449\u0451 \u0432 \u0440\u043E\u0437\u0435\u0442\u043A\u0435. \u041A\u043D\u043E\u043F\u043A\u0430 \u0434\u043E\u043B\u0436\u043D\u0430 \u043E\u0442\u0441\u043A\u043E\u0447\u0438\u0442\u044C \u043E\u0431\u0440\u0430\u0442\u043D\u043E.",
+      holdThatThoughtGoal: "\u041A\u043E\u0433\u0434\u0430 \u043D\u0430 \u043A\u043D\u043E\u043F\u043A\u0435 \u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u043D\u0435\u043E\u0436\u0438\u0434\u0430\u043D\u043D\u044B\u0439 \u043F\u0435\u0440\u0435\u0432\u043E\u0434, \u0443\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0439\u0442\u0435 \u0435\u0451 \u0434\u0432\u0435 \u0441\u0435\u043A\u0443\u043D\u0434\u044B, \u0437\u0430\u0442\u0435\u043C \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0449\u0435\u043B\u0447\u043E\u043A.",
       buttonAchievementError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0435 \u043A\u043D\u043E\u043F\u043A\u0438. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435.",
       ping: "\u041F\u0438\u043D\u0433",
       simPing: "\u0418\u043C\u0438\u0442\u0430\u0446\u0438\u044F \u043F\u0438\u043D\u0433\u0430",
@@ -4415,6 +4440,8 @@
       reconnectPlugGoal: "Ziehe den Knopf in verschiedene Richtungen, bis sich der Stecker l\xF6st, und stecke ihn wieder in eine Buchse.",
       slackCordGoal: "Tippe auf den ausgesteckten Stecker, um das Kabel zu lockern, und speichere dann einen Klick.",
       resetOutletGoal: "Dr\xFCcke an der Steckdose zuerst TEST und dann RESET. Mit Tab gelangst du vom Klickknopf zur Steckdose.",
+      reboundGoal: "Ziehe den Knopf mindestens ein Viertel seiner Breite weit (mindestens 48 px) und lass ihn los, um bei eingestecktem Stecker einen Klick zu speichern. Der Knopf muss zur\xFCckfedern.",
+      holdThatThoughtGoal: "Wenn auf dem Knopf eine \xFCberraschende \xDCbersetzung erscheint, halte ihn zwei Sekunden lang gedr\xFCckt und lass ihn dann los, um einen Klick zu speichern.",
       buttonAchievementError: "Der Erfolg konnte nicht gespeichert werden. Wiederhole die Aktion.",
       ping: "Ping",
       simPing: "Simulierter Ping",
@@ -4643,6 +4670,8 @@
   var PLUG_BOOT_DELAY_MS = 145;
   var RESET_BOOT_DELAY_MS = 46;
   var CORD_MODE_MS = 260;
+  var THOUGHT_HOLD_MS = 2e3;
+  var THOUGHT_ECHO_MS = 550;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
     let readyTarget2 = function() {
@@ -4986,12 +5015,51 @@
         beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed2));
       };
       beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
+    }, isSurpriseLabel2 = function() {
+      return gameButton && Boolean(label.lang) && label.lang !== currentLanguage();
+    }, startThoughtHold2 = function() {
+      if (!isSurpriseLabel2()) return;
+      const meter = document.createElement("span");
+      meter.className = "thought-hold";
+      meter.setAttribute("aria-hidden", "true");
+      meter.style.setProperty("--thought-duration", `${THOUGHT_HOLD_MS}ms`);
+      button.append(meter);
+      const timer = window.setTimeout(() => meter.dataset.ready = "true", THOUGHT_HOLD_MS);
+      thoughtHold = { meter, language: label.lang, timer };
+    }, clearThoughtHold2 = function() {
+      if (!thoughtHold) return;
+      window.clearTimeout(thoughtHold.timer);
+      thoughtHold.meter.remove();
+      thoughtHold = null;
+    }, thoughtAchievement2 = function() {
+      return thoughtHold && thoughtHold.language === label.lang && isSurpriseLabel2() && performance.now() - pressedAt >= THOUGHT_HOLD_MS ? buttonAchievementBits.holdThatThought : 0;
+    }, clearThoughtEcho2 = function() {
+      window.clearTimeout(thoughtEchoTimer);
+      thoughtEcho?.remove();
+      thoughtEcho = null;
+    }, echoSurpriseLabel2 = function() {
+      if (!isSurpriseLabel2()) return;
+      clearThoughtEcho2();
+      const anchor = button.getBoundingClientRect();
+      const bounds = effects.getBoundingClientRect();
+      const echo = document.createElement("span");
+      echo.className = "thought-echo";
+      echo.lang = label.lang;
+      echo.dir = label.dir;
+      echo.textContent = label.textContent;
+      echo.style.setProperty("left", `${anchor.left + anchor.width / 2 - bounds.left}px`);
+      echo.style.setProperty("top", `${anchor.top + anchor.height * 0.2 - bounds.top}px`);
+      echo.style.setProperty("--thought-duration", `${THOUGHT_ECHO_MS}ms`);
+      effects.append(echo);
+      thoughtEcho = echo;
+      thoughtEchoTimer = window.setTimeout(clearThoughtEcho2, THOUGHT_ECHO_MS);
     }, begin2 = function() {
       if (gameButton) clickSound.play("press");
       window.clearTimeout(holdTimer);
       clearResponse2();
       coastUntil = 0;
       pressedAt = performance.now();
+      startThoughtHold2();
       releasedAt = null;
       pressFrom = Math.max(PRESS_START_DEPTH, current.press);
       current.press = reducedMotion.matches ? 1 : pressFrom;
@@ -5046,6 +5114,7 @@
       target.rx = -clamp(y / halfHeight, -1, 1) * 16 * tilt;
       target.ry = clamp(x / halfWidth, -1, 1) * 22 * tilt;
     }, release2 = function(cancelled = false) {
+      clearThoughtHold2();
       plugPulls.endPull();
       if (cancelled && gameButton) clickSound.cancelPending();
       activeKey = null;
@@ -5080,6 +5149,7 @@
       target.y = nextY;
       return true;
     }, reset2 = function(cancelled = true) {
+      if (cancelled) clearThoughtEcho2();
       dockWhileParked = false;
       outletTouch = null;
       plugTap = null;
@@ -5192,7 +5262,8 @@
           () => particle.remove()
         );
       }
-    }, activateRelease2 = function(event) {
+    }, activateRelease2 = function(earned, event) {
+      releaseAchievements = earned;
       activatingRelease = true;
       try {
         if (event)
@@ -5208,6 +5279,7 @@
         else button.click();
       } finally {
         activatingRelease = false;
+        releaseAchievements = 0;
       }
     }, pressOutlet2 = function() {
       if (!outletControl || plugState === "unplugged" || document.hidden) return;
@@ -5237,6 +5309,14 @@
         if (!hoverPoint) mouseOver = false;
       }
       const point = pointers.get(event.pointerId);
+      const lastPointer = pointers.size === 1;
+      let earned = lastPointer ? thoughtAchievement2() : 0;
+      if (lastPointer && plugState === "seated" && !buttonStaysPut2()) {
+        const pull = Math.max(48, button.offsetWidth * 0.25);
+        const moved = Math.hypot(point.x - point.startX, point.y - point.startY);
+        const released = Math.hypot(event.clientX - point.startX, event.clientY - point.startY);
+        if (moved >= pull && released >= pull) earned |= buttonAchievementBits.rebound;
+      }
       if ((cancelled || !inside) && pointers.size > 1 && gameButton) clickSound.cancelPending();
       pointers.delete(event.pointerId);
       if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
@@ -5248,7 +5328,7 @@
         }
         release2(cancelled || !inside);
       } else aimPointers2();
-      if (!cancelled && inside && !button.disabled) activateRelease2(event);
+      if (!cancelled && inside && !button.disabled) activateRelease2(earned, event);
       if (pointers.size) return;
       if (buttonStaysPut2()) {
         refreshHover2();
@@ -5274,7 +5354,7 @@
         paint2();
       });
     };
-    readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, isOverParkedButton = isOverParkedButton2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, begin = begin2, aimHover = aimHover2, refreshHover = refreshHover2, aimTilt = aimTilt2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2, scheduleRenderer = scheduleRenderer2;
+    readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, isOverParkedButton = isOverParkedButton2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, isSurpriseLabel = isSurpriseLabel2, startThoughtHold = startThoughtHold2, clearThoughtHold = clearThoughtHold2, thoughtAchievement = thoughtAchievement2, clearThoughtEcho = clearThoughtEcho2, echoSurpriseLabel = echoSurpriseLabel2, begin = begin2, aimHover = aimHover2, refreshHover = refreshHover2, aimTilt = aimTilt2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2, scheduleRenderer = scheduleRenderer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -5347,6 +5427,10 @@
     let hoverPoint = null;
     let readiness = 0;
     let activatingRelease = false;
+    let releaseAchievements = 0;
+    let thoughtHold = null;
+    let thoughtEcho = null;
+    let thoughtEchoTimer = 0;
     let pressedAt = 0, pressFrom = 0, releasedAt = null, releaseDepth = 0, releaseCopper = 0, releaseDuration = TAP_RELEASE_MS, holdTimer = 0, beatTimer = 0, phase = "idle";
     let responseStarted = null;
     let responseDuration = 500;
@@ -5487,7 +5571,10 @@
         dragFromY = target.y = current.y;
         velocity.x = velocity.y = 0;
         begin2();
-      } else if (gameButton) clickSound.play("press");
+      } else {
+        clearThoughtHold2();
+        if (gameButton) clickSound.play("press");
+      }
       button.setPointerCapture(event.pointerId);
       aimPointers2();
     });
@@ -5512,8 +5599,9 @@
       if (event.key !== " " && event.key !== "Enter") return;
       event.preventDefault();
       if (event.key !== activeKey) return;
+      const earned = thoughtAchievement2();
       release2();
-      if (!button.disabled) activateRelease2();
+      if (!button.disabled) activateRelease2(earned);
     });
     button.addEventListener("focus", animate2);
     button.addEventListener("blur", () => {
@@ -5532,6 +5620,7 @@
         release2();
       }
       if (gameButton) clickSound.play("release");
+      echoSurpriseLabel2();
       burst2();
     });
     new MutationObserver(() => {
@@ -5545,6 +5634,8 @@
       if (document.activeElement === button) animate2();
     }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-focus-input"] });
     new MutationObserver(() => {
+      if (thoughtHold && (!isSurpriseLabel2() || thoughtHold.language !== label.lang))
+        clearThoughtHold2();
       if (label.textContent !== labelText || label.dir !== labelDirection) {
         labelText = label.textContent;
         labelDirection = label.dir;
@@ -5617,8 +5708,8 @@
       stageWasVisible = visible2;
     }).observe(stage);
     tactileButtons.set(button, {
-      get cordSlack() {
-        return cordSlack;
+      get clickAchievements() {
+        return releaseAchievements | (cordSlack ? buttonAchievementBits.slackClick : 0);
       },
       reset: reset2,
       respond: respond2
@@ -5641,6 +5732,12 @@
   var animate;
   var setPhase;
   var scheduleHoldBeat;
+  var isSurpriseLabel;
+  var startThoughtHold;
+  var clearThoughtHold;
+  var thoughtAchievement;
+  var clearThoughtEcho;
+  var echoSurpriseLabel;
   var begin;
   var aimHover;
   var refreshHover;
@@ -6357,6 +6454,20 @@
         "Circuit Breaker",
         "The outlet has switches of its own.",
         "resetOutletGoal"
+      ],
+      [
+        buttonAchievementBits.rebound,
+        "rebound",
+        "Rebound",
+        "Give it a good pull and let go.",
+        "reboundGoal"
+      ],
+      [
+        buttonAchievementBits.holdThatThought,
+        "hold-that-thought",
+        "Hold that Thought",
+        "Something different catches your eye.",
+        "holdThatThoughtGoal"
       ]
     ]) {
       const earned2 = Boolean((data.button_achievements ?? 0) & bit);
@@ -7364,9 +7475,9 @@
   clickButton.addEventListener("click", async (event) => {
     if (currentView !== "game" || clickButton.disabled) return;
     paintButtonLanguage(buttonLanguage.click(performance.now(), currentLanguage()));
-    const slack = tactileButtons.get(clickButton)?.cordSlack ?? false;
+    const earned = tactileButtons.get(clickButton)?.clickAchievements ?? 0;
     if (localMode) {
-      await clickLocal(event, slack);
+      await clickLocal(event, earned);
       return;
     }
     if (!user || !gameReady || offline && !localMode || signingOut || authenticating || pendingClicks >= maxPendingClicks)
@@ -7393,7 +7504,7 @@
         method: "POST",
         headers: {
           "X-GoClick-User-ID": user.id,
-          ...slack ? { "X-GoClick-Cord-Slack": "1" } : {}
+          ...earned ? { "X-GoClick-Button-Achievements": String(earned) } : {}
         }
       });
       if (generation !== clickGeneration) return;
@@ -7624,7 +7735,7 @@
       optionsDialog.showModal();
     }
   });
-  async function clickLocal(event = { detail: 0, clientX: 0, clientY: 0 }, slack = false) {
+  async function clickLocal(event = { detail: 0, clientX: 0, clientY: 0 }, earned = 0) {
     if (!gameReady || localSaveReplacing || pendingClicks >= maxPendingClicks) return;
     const feedback = clickFeedback.start(clickButton, event, true), generation = clickGeneration, acknowledgement = ++localAcknowledgement;
     const base = gameSettings.value.simulatedPing;
@@ -7634,7 +7745,7 @@
     updateGameControls();
     setConnection(null, "loading");
     try {
-      const data = await localGame.change(() => localGame.increment(void 0, slack));
+      const data = await localGame.change(() => localGame.increment(void 0, earned));
       if (generation !== clickGeneration) return;
       paintLastClick(true);
       renderCounters(data, false, true);

@@ -17,7 +17,8 @@ import { createButtonRenderer } from "./button-3d.js";
 import { required } from "./dom.js";
 import { clickSound } from "./sound.js";
 import { powerBootDuration, powerBootLighting } from "./power-sequence.js";
-import { message } from "./i18n.js";
+import { currentLanguage, message } from "./i18n.js";
+import { buttonAchievementBits } from "./types.js";
 import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
 
 // Holds never auto-score; cancelled/outside releases never activate the button.
@@ -34,6 +35,8 @@ const PLUG_SEAT_MS = 200;
 const PLUG_BOOT_DELAY_MS = 145;
 const RESET_BOOT_DELAY_MS = 46;
 const CORD_MODE_MS = 260;
+const THOUGHT_HOLD_MS = 2000;
+const THOUGHT_ECHO_MS = 550;
 const tactileButtons = new Map<HTMLButtonElement, ButtonController>();
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile-button]")) {
   const maybeStage = button.closest<HTMLElement>(".button-stage");
@@ -125,6 +128,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let hoverPoint: { x: number; y: number } | null = null;
   let readiness = 0;
   let activatingRelease = false;
+  let releaseAchievements = 0;
+  let thoughtHold: { meter: HTMLElement; language: string; timer: number } | null = null;
+  let thoughtEcho: HTMLElement | null = null;
+  let thoughtEchoTimer = 0;
   let pressedAt = 0,
     pressFrom = 0,
     releasedAt: number | null = null,
@@ -580,12 +587,68 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     };
     beatTimer = window.setTimeout(onBeat, nextBeat - elapsed);
   }
+  function isSurpriseLabel() {
+    return gameButton && Boolean(label.lang) && label.lang !== currentLanguage();
+  }
+
+  function startThoughtHold() {
+    if (!isSurpriseLabel()) return;
+    const meter = document.createElement("span");
+    meter.className = "thought-hold";
+    meter.setAttribute("aria-hidden", "true");
+    meter.style.setProperty("--thought-duration", `${THOUGHT_HOLD_MS}ms`);
+    button.append(meter);
+    const timer = window.setTimeout(() => (meter.dataset.ready = "true"), THOUGHT_HOLD_MS);
+    thoughtHold = { meter, language: label.lang, timer };
+  }
+
+  function clearThoughtHold() {
+    if (!thoughtHold) return;
+    window.clearTimeout(thoughtHold.timer);
+    thoughtHold.meter.remove();
+    thoughtHold = null;
+  }
+
+  function thoughtAchievement() {
+    return thoughtHold &&
+      thoughtHold.language === label.lang &&
+      isSurpriseLabel() &&
+      performance.now() - pressedAt >= THOUGHT_HOLD_MS
+      ? buttonAchievementBits.holdThatThought
+      : 0;
+  }
+
+  function clearThoughtEcho() {
+    window.clearTimeout(thoughtEchoTimer);
+    thoughtEcho?.remove();
+    thoughtEcho = null;
+  }
+
+  function echoSurpriseLabel() {
+    if (!isSurpriseLabel()) return;
+    clearThoughtEcho();
+    const anchor = button.getBoundingClientRect();
+    const bounds = effects.getBoundingClientRect();
+    const echo = document.createElement("span");
+    echo.className = "thought-echo";
+    echo.lang = label.lang;
+    echo.dir = label.dir;
+    echo.textContent = label.textContent;
+    echo.style.setProperty("left", `${anchor.left + anchor.width / 2 - bounds.left}px`);
+    echo.style.setProperty("top", `${anchor.top + anchor.height * 0.2 - bounds.top}px`);
+    echo.style.setProperty("--thought-duration", `${THOUGHT_ECHO_MS}ms`);
+    effects.append(echo);
+    thoughtEcho = echo;
+    thoughtEchoTimer = window.setTimeout(clearThoughtEcho, THOUGHT_ECHO_MS);
+  }
+
   function begin() {
     if (gameButton) clickSound.play("press");
     window.clearTimeout(holdTimer);
     clearResponse();
     coastUntil = 0;
     pressedAt = performance.now();
+    startThoughtHold();
     releasedAt = null;
     pressFrom = Math.max(PRESS_START_DEPTH, current.press);
     current.press = reducedMotion.matches ? 1 : pressFrom;
@@ -657,6 +720,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     target.ry = clamp(x / halfWidth, -1, 1) * 22 * tilt;
   }
   function release(cancelled = false) {
+    clearThoughtHold();
     plugPulls.endPull();
     if (cancelled && gameButton) clickSound.cancelPending();
     activeKey = null;
@@ -701,6 +765,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     return true;
   }
   function reset(cancelled = true) {
+    if (cancelled) clearThoughtEcho();
     dockWhileParked = false;
     outletTouch = null;
     plugTap = null;
@@ -842,7 +907,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
   }
 
-  function activateRelease(event?: PointerEvent) {
+  function activateRelease(earned: number, event?: PointerEvent) {
+    releaseAchievements = earned;
     activatingRelease = true;
     try {
       // Preserve the releasing pointer's coordinates, even for non-primary
@@ -860,6 +926,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       else button.click();
     } finally {
       activatingRelease = false;
+      releaseAchievements = 0;
     }
   }
   function pressOutlet() {
@@ -1025,7 +1092,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       dragFromY = target.y = current.y;
       velocity.x = velocity.y = 0;
       begin();
-    } else if (gameButton) clickSound.play("press");
+    } else {
+      // A translated hold belongs to one continuous pointer or key gesture.
+      clearThoughtHold();
+      if (gameButton) clickSound.play("press");
+    }
     button.setPointerCapture(event.pointerId);
     aimPointers();
   });
@@ -1052,6 +1123,14 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       if (!hoverPoint) mouseOver = false;
     }
     const point = pointers.get(event.pointerId)!;
+    const lastPointer = pointers.size === 1;
+    let earned = lastPointer ? thoughtAchievement() : 0;
+    if (lastPointer && plugState === "seated" && !buttonStaysPut()) {
+      const pull = Math.max(48, button.offsetWidth * 0.25);
+      const moved = Math.hypot(point.x - point.startX, point.y - point.startY);
+      const released = Math.hypot(event.clientX - point.startX, event.clientY - point.startY);
+      if (moved >= pull && released >= pull) earned |= buttonAchievementBits.rebound;
+    }
     // A cancelled finger can be independent of another one still holding the
     // button. Neither cancellation nor an outside release may replay its press
     // after a delayed audio unlock.
@@ -1066,7 +1145,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       }
       release(cancelled || !inside);
     } else aimPointers();
-    if (!cancelled && inside && !button.disabled) activateRelease(event);
+    if (!cancelled && inside && !button.disabled) activateRelease(earned, event);
     if (pointers.size) return;
     if (buttonStaysPut()) {
       refreshHover();
@@ -1110,8 +1189,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (event.key !== " " && event.key !== "Enter") return;
     event.preventDefault();
     if (event.key !== activeKey) return;
+    const earned = thoughtAchievement();
     release();
-    if (!button.disabled) activateRelease();
+    if (!button.disabled) activateRelease(earned);
   });
   button.addEventListener("focus", animate);
   button.addEventListener("blur", () => {
@@ -1130,6 +1210,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       release();
     }
     if (gameButton) clickSound.play("release");
+    echoSurpriseLabel();
     burst();
   });
   new MutationObserver(() => {
@@ -1144,6 +1225,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (document.activeElement === button) animate();
   }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-focus-input"] });
   new MutationObserver(() => {
+    if (thoughtHold && (!isSurpriseLabel() || thoughtHold.language !== label.lang))
+      clearThoughtHold();
     if (label.textContent !== labelText || label.dir !== labelDirection) {
       labelText = label.textContent;
       labelDirection = label.dir;
@@ -1234,8 +1317,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     stageWasVisible = visible;
   }).observe(stage);
   tactileButtons.set(button, {
-    get cordSlack() {
-      return cordSlack;
+    get clickAchievements() {
+      return releaseAchievements | (cordSlack ? buttonAchievementBits.slackClick : 0);
     },
     reset,
     respond,

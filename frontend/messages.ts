@@ -66,6 +66,10 @@ export const english = {
   slackCordGoal: "With the plug disconnected, tap it to slacken the cord, then save a click.",
   resetOutletGoal:
     "Use TEST on the outlet, then use RESET. Keyboard players can Tab from Click to the outlet.",
+  reboundGoal:
+    "Pull the button at least a quarter of its width (and at least 48 px), then release to save a click with the plug still seated. The button must spring back.",
+  holdThatThoughtGoal:
+    "When the button shows a surprise translation, hold it for two seconds, then release to save a click.",
   buttonAchievementError: "Couldn’t save the button achievement. Try the interaction again.",
   ping: "Ping",
   simPing: "Sim ping",
@@ -191,6 +195,9 @@ export const translations = {
     reconnectPlugGoal: "向不同方向拉动按钮，直到插头脱落，再将它插回插座。",
     slackCordGoal: "拔下插头后，点按插头让电线放松，然后完成一次有效点击。",
     resetOutletGoal: "先使用插座上的 TEST，再使用 RESET。键盘玩家可在点击按钮上按 Tab 前往插座。",
+    reboundGoal:
+      "将按钮至少拉动其宽度的四分之一（且至少 48 像素），然后在插头仍插着时松开，保存一次点击。按钮必须弹回原位。",
+    holdThatThoughtGoal: "当按钮显示意外的翻译时，按住两秒后松开，保存一次点击。",
     buttonAchievementError: "无法保存按钮成就。请重试该操作。",
     ping: "延迟",
     simPing: "模拟延迟",
@@ -311,6 +318,9 @@ export const translations = {
     slackCordGoal: "拔下插頭後，點按插頭讓電線放鬆，然後儲存一次點擊。",
     resetOutletGoal:
       "先使用插座上的 TEST，再使用 RESET。使用鍵盤時，可在點擊按鈕上按 Tab 前往插座。",
+    reboundGoal:
+      "將按鈕至少拉動其寬度的四分之一（且至少 48 像素），然後在插頭仍插著時放開，儲存一次點擊。按鈕必須彈回原位。",
+    holdThatThoughtGoal: "當按鈕顯示驚喜翻譯時，按住兩秒後放開，儲存一次點擊。",
     buttonAchievementError: "無法儲存按鈕成就。請重試該操作。",
     ping: "延遲",
     simPing: "模擬延遲",
@@ -432,6 +442,10 @@ export const translations = {
     slackCordGoal: "প্লাগ খুলে গেলে সেটিতে ট্যাপ করে তারটি ঢিলা করুন, তারপর একটি ক্লিক সেভ করুন।",
     resetOutletGoal:
       "সকেটে প্রথমে TEST, তারপর RESET ব্যবহার করুন। কীবোর্ডে ক্লিক বোতাম থেকে Tab চেপে সকেটে যান।",
+    reboundGoal:
+      "বোতামটিকে তার প্রস্থের অন্তত এক-চতুর্থাংশ (এবং অন্তত ৪৮ পিক্সেল) টানুন, তারপর প্লাগ লাগানো অবস্থায় ছেড়ে একটি ক্লিক সেভ করুন। বোতামটিকে আগের জায়গায় ফিরে আসতে হবে।",
+    holdThatThoughtGoal:
+      "বোতামে আকস্মিক অনুবাদ দেখা গেলে দুই সেকেন্ড ধরে রাখুন, তারপর ছেড়ে একটি ক্লিক সেভ করুন।",
     buttonAchievementError: "বোতামের অর্জনটি সেভ করা যায়নি। কাজটি আবার করুন।",
     ping: "পিং",
     simPing: "সিমুলেটেড পিং",
@@ -558,6 +572,10 @@ export const translations = {
       "Con el enchufe desconectado, tócalo para aflojar el cable y luego guarda un clic.",
     resetOutletGoal:
       "Pulsa TEST en la toma y después RESET. Con el teclado, pulsa Tab desde el botón de clic para llegar a la toma.",
+    reboundGoal:
+      "Tira del botón al menos un cuarto de su anchura (como mínimo 48 px) y suéltalo para guardar un clic con el enchufe aún conectado. El botón debe volver a su sitio.",
+    holdThatThoughtGoal:
+      "Cuando el botón muestre una traducción sorpresa, mantenlo pulsado dos segundos y suéltalo para guardar un clic.",
     buttonAchievementError: "No se pudo guardar el logro del botón. Repite la acción.",
     ping: "Latencia",
     simPing: "Latencia simulada",
@@ -686,6 +704,10 @@ export const translations = {
     slackCordGoal: "بعد فصل القابس، اضغط عليه لإرخاء السلك ثم احفظ نقرة.",
     resetOutletGoal:
       "استخدم TEST على المقبس ثم RESET. للانتقال من زر النقر إلى المقبس بلوحة المفاتيح، اضغط Tab.",
+    reboundGoal:
+      "اسحب الزر مسافة تعادل ربع عرضه على الأقل (وبحد أدنى 48 بكسل)، ثم أفلت الزر لحفظ نقرة بينما القابس ما زال موصولًا. يجب أن يرتد الزر إلى موضعه.",
+    holdThatThoughtGoal:
+      "عندما تظهر ترجمة مفاجئة على الزر، اضغط عليه لمدة ثانيتين ثم أفلته لحفظ نقرة.",
     buttonAchievementError: "تعذّر حفظ إنجاز الزر. جرّب تنفيذ الحركة مجددًا.",
     ping: "زمن الاستجابة",
     simPing: "زمن استجابة محاكى",
@@ -808,6 +830,10 @@ export const translations = {
     slackCordGoal: "प्लग निकल जाने पर तार ढीला करने के लिए उस पर टैप करें, फिर एक क्लिक सेव करें।",
     resetOutletGoal:
       "सॉकेट पर पहले TEST, फिर RESET दबाएँ। कीबोर्ड से क्लिक बटन पर Tab दबाकर सॉकेट तक जाएँ।",
+    reboundGoal:
+      "बटन को उसकी चौड़ाई का कम से कम एक चौथाई (और कम से कम 48 पिक्सेल) खींचें। प्लग लगा रहते हुए उसे छोड़कर एक क्लिक सेव करें। बटन का वापस अपनी जगह लौटना ज़रूरी है।",
+    holdThatThoughtGoal:
+      "जब बटन पर अचानक किसी और भाषा का अनुवाद दिखे, उसे दो सेकंड दबाए रखें और एक क्लिक सेव करने के लिए छोड़ दें।",
     buttonAchievementError: "बटन की उपलब्धि सेव नहीं हो सकी। क्रिया फिर से करें।",
     ping: "पिंग",
     simPing: "सिम्युलेटेड पिंग",
@@ -933,6 +959,10 @@ export const translations = {
       "Saat steker terlepas, ketuk steker untuk mengendurkan kabel, lalu simpan satu klik.",
     resetOutletGoal:
       "Gunakan TEST pada stopkontak, lalu gunakan RESET. Dengan papan ketik, tekan Tab dari tombol klik untuk menuju stopkontak.",
+    reboundGoal:
+      "Tarik tombol setidaknya seperempat lebarnya (minimal 48 piksel), lalu lepas untuk menyimpan satu klik selagi steker masih terpasang. Tombol harus kembali ke posisi semula.",
+    holdThatThoughtGoal:
+      "Saat tombol menampilkan terjemahan kejutan, tahan dua detik lalu lepas untuk menyimpan satu klik.",
     buttonAchievementError: "Pencapaian tombol gagal disimpan. Ulangi tindakan tersebut.",
     ping: "Ping",
     simPing: "Ping simulasi",
@@ -1062,6 +1092,10 @@ export const translations = {
       "Com o plugue desconectado, toque nele para afrouxar o cabo e depois salve um clique.",
     resetOutletGoal:
       "Use TEST na tomada e depois RESET. No teclado, pressione Tab a partir do botão de clique para chegar à tomada.",
+    reboundGoal:
+      "Puxe o botão por pelo menos um quarto da largura dele (no mínimo 48 px) e solte para salvar um clique com o plugue ainda encaixado. O botão precisa voltar à posição original.",
+    holdThatThoughtGoal:
+      "Quando o botão mostrar uma tradução surpresa, segure-o por dois segundos e solte para salvar um clique.",
     buttonAchievementError: "Não foi possível salvar a conquista do botão. Repita a ação.",
     ping: "Ping",
     simPing: "Ping simulado",
@@ -1192,6 +1226,10 @@ export const translations = {
       "Une fois la fiche débranchée, touchez-la pour détendre le câble, puis enregistrez un clic.",
     resetOutletGoal:
       "Utilisez TEST sur la prise, puis RESET. Au clavier, appuyez sur Tab depuis le bouton de jeu pour atteindre la prise.",
+    reboundGoal:
+      "Tirez le bouton sur au moins un quart de sa largeur (au minimum 48 px), puis relâchez-le pour enregistrer un clic avec la fiche encore branchée. Le bouton doit revenir à sa place.",
+    holdThatThoughtGoal:
+      "Quand le bouton affiche une traduction surprise, maintenez-le deux secondes puis relâchez-le pour enregistrer un clic.",
     buttonAchievementError: "Impossible d’enregistrer le succès du bouton. Réessayez l’action.",
     ping: "Latence",
     simPing: "Latence simulée",
@@ -1323,6 +1361,10 @@ export const translations = {
       "プラグが抜けた状態でプラグをタップしてコードを緩め、その状態でクリックを1回保存してください。",
     resetOutletGoal:
       "コンセントの TEST を押してから RESET を押してください。キーボードではクリックボタンから Tab キーで移動できます。",
+    reboundGoal:
+      "ボタンを幅の4分の1以上（最低48ピクセル）引っ張り、プラグが差さったまま離してクリックを1回保存してください。 ボタンが元の位置に戻る必要があります。",
+    holdThatThoughtGoal:
+      "ボタンの表示が突然別の言語になったら、2秒間押し続けてから離し、クリックを1回保存してください。",
     buttonAchievementError: "ボタンの実績を保存できませんでした。もう一度操作してください。",
     ping: "応答時間",
     simPing: "模擬応答時間",
@@ -1453,6 +1495,10 @@ export const translations = {
     slackCordGoal: "Когда вилка вынута, нажмите на неё, чтобы ослабить шнур, и сохраните щелчок.",
     resetOutletGoal:
       "Нажмите TEST на розетке, затем RESET. Чтобы перейти от кнопки к розетке с клавиатуры, нажмите Tab.",
+    reboundGoal:
+      "Потяните кнопку хотя бы на четверть её ширины (минимум на 48 пикселей) и отпустите, чтобы сохранить щелчок, пока вилка ещё в розетке. Кнопка должна отскочить обратно.",
+    holdThatThoughtGoal:
+      "Когда на кнопке появится неожиданный перевод, удерживайте её две секунды, затем отпустите, чтобы сохранить щелчок.",
     buttonAchievementError: "Не удалось сохранить достижение кнопки. Повторите действие.",
     ping: "Пинг",
     simPing: "Имитация пинга",
@@ -1582,6 +1628,10 @@ export const translations = {
       "Tippe auf den ausgesteckten Stecker, um das Kabel zu lockern, und speichere dann einen Klick.",
     resetOutletGoal:
       "Drücke an der Steckdose zuerst TEST und dann RESET. Mit Tab gelangst du vom Klickknopf zur Steckdose.",
+    reboundGoal:
+      "Ziehe den Knopf mindestens ein Viertel seiner Breite weit (mindestens 48 px) und lass ihn los, um bei eingestecktem Stecker einen Klick zu speichern. Der Knopf muss zurückfedern.",
+    holdThatThoughtGoal:
+      "Wenn auf dem Knopf eine überraschende Übersetzung erscheint, halte ihn zwei Sekunden lang gedrückt und lass ihn dann los, um einen Klick zu speichern.",
     buttonAchievementError: "Der Erfolg konnte nicht gespeichert werden. Wiederhole die Aktion.",
     ping: "Ping",
     simPing: "Simulierter Ping",

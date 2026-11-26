@@ -851,9 +851,9 @@ async function recordButtonAchievement(interaction: ButtonInteraction) {
 clickButton.addEventListener("click", async (event) => {
   if (currentView !== "game" || clickButton.disabled) return;
   paintButtonLanguage(buttonLanguage.click(performance.now(), currentLanguage()));
-  const slack = tactileButtons.get(clickButton)?.cordSlack ?? false;
+  const earned = tactileButtons.get(clickButton)?.clickAchievements ?? 0;
   if (localMode) {
-    await clickLocal(event, slack);
+    await clickLocal(event, earned);
     return;
   }
   if (
@@ -887,7 +887,7 @@ clickButton.addEventListener("click", async (event) => {
       method: "POST",
       headers: {
         "X-GoClick-User-ID": user.id,
-        ...(slack ? { "X-GoClick-Cord-Slack": "1" } : {}),
+        ...(earned ? { "X-GoClick-Button-Achievements": String(earned) } : {}),
       },
     });
     if (generation !== clickGeneration) return;
@@ -1128,10 +1128,7 @@ $<HTMLButtonElement>("#leave-local").addEventListener("click", async () => {
     optionsDialog.showModal();
   }
 });
-async function clickLocal(
-  event: Activation = { detail: 0, clientX: 0, clientY: 0 },
-  slack = false,
-) {
+async function clickLocal(event: Activation = { detail: 0, clientX: 0, clientY: 0 }, earned = 0) {
   if (!gameReady || localSaveReplacing || pendingClicks >= maxPendingClicks) return;
   const feedback = clickFeedback.start(clickButton, event, true),
     generation = clickGeneration,
@@ -1144,7 +1141,7 @@ async function clickLocal(
   setConnection(null, "loading");
   try {
     // Save immediately; simulated ping affects only the visual acknowledgement.
-    const data = await localGame.change(() => localGame.increment(undefined, slack));
+    const data = await localGame.change(() => localGame.increment(undefined, earned));
     if (generation !== clickGeneration) return;
     paintLastClick(true);
     renderCounters(data, false, true);

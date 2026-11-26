@@ -212,7 +212,7 @@ async function harness(options = {}) {
     },
     tactileButtons: {
       values: () => [],
-      get: () => ({ cordSlack: options.cordSlack, reset() {}, respond() {} }),
+      get: () => ({ clickAchievements: options.clickAchievements, reset() {}, respond() {} }),
     },
     fetch: (url, options) => {
       requests.push({ url, method: options.method || "GET" });
@@ -1301,11 +1301,11 @@ test("regaining focus during a local write waits for its achievement announcemen
   });
   const click = h.element("#click-button").fire("click");
   h.window.fire("focus");
-  assert.equal(h.element("#achievement-count").textContent, "0 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "0 / 20");
   assert.equal(h.element("#achievement-announcement").textContent, "");
   gate.resolve();
   await click;
-  assert.equal(h.element("#achievement-count").textContent, "1 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "1 / 20");
   assert.equal(h.element("#achievement-notice").hidden, false);
   assert.equal(h.element("#achievement-notice-names").textContent, "Gone Click");
   assert.deepEqual(h.requests, []);
@@ -1318,13 +1318,13 @@ test("an unreadable local save clears stale achievements and can recover from st
   const saved = h.storage.get(key);
   h.storage.set(key, "{");
   h.window.fire("storage", { key });
-  assert.equal(h.element("#achievement-count").textContent, "0 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "0 / 20");
   assert.equal(h.element("#achievement-notice").hidden, true);
   assert.equal(h.element("#click-button").disabled, true);
   assert.equal(h.element("#game-error").hidden, false);
   h.storage.set(key, saved);
   h.window.fire("storage", { key });
-  assert.equal(h.element("#achievement-count").textContent, "1 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "1 / 20");
   assert.equal(h.element("#achievement-notice").hidden, true);
   assert.equal(h.element("#click-button").disabled, false);
   assert.equal(h.element("#game-error").hidden, true);
@@ -1718,13 +1718,13 @@ test("older click replies cannot roll back a more recent score or earned badges"
   await second;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
   assert.equal(h.element("#week-streak").textContent, "2");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 20");
   slower.resolve(
     response({ ...counters(24), progress: { ...progress, recent_days: 63, best_day_streak: 6 } }),
   );
   await first;
   assert.equal(h.element("#fortnight-score").textContent, "49 / 100");
-  assert.equal(h.element("#achievement-count").textContent, "5 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 20");
 });
 
 test("achievements use their own view and a pending unlock waits for gameplay", async () => {
@@ -1744,7 +1744,7 @@ test("achievements use their own view and a pending unlock waits for gameplay", 
 
   pending.resolve(response(counters(25)));
   await click;
-  assert.equal(h.element("#achievement-count").textContent, "2 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "2 / 20");
   assert.equal(toast.hidden, true);
   h.fetch(async () => response(game(25)));
   await h.context.refreshGame();
@@ -1804,7 +1804,7 @@ test("signed-out players can browse saved badges without changing play mode or a
   assert.equal(h.element("#local-nav").hidden, true);
   assert.equal(h.document.activeElement, title);
   assert.equal(title.textContent, "Offline achievements");
-  assert.equal(h.element("#achievement-count").textContent, "2 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "2 / 20");
   h.chooseLanguage("es");
   assert.equal(title.textContent, "Logros sin conexión");
   assert.deepEqual(h.requests, []);
@@ -1826,12 +1826,12 @@ test("signing in from a signed-out achievements deep link shows account badges",
     expectedCount: 0,
     storage: [[key, save]],
   });
-  assert.equal(h.element("#achievement-count").textContent, "3 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "3 / 20");
   h.context.show("login");
   h.fetch(async (url) => response(url === "/api/auth/login" ? { user: player } : game(1)));
   await h.element("#login-form").fire("submit");
   assert.equal(h.element("#achievement-title").textContent, "Achievements");
-  assert.equal(h.element("#achievement-count").textContent, "1 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "1 / 20");
   assert.equal(h.element("#user-nav").hidden, false);
   assert.equal(h.storage.get(key), save);
 });
@@ -1873,19 +1873,19 @@ test("account badge status comes from the server and offline badges stay with th
     expectedCount: 25,
   });
   const count = h.element("#achievement-count");
-  assert.equal(count.textContent, "1 / 18");
+  assert.equal(count.textContent, "1 / 20");
   h.context.startLocalGame();
-  assert.equal(count.textContent, "0 / 18");
+  assert.equal(count.textContent, "0 / 20");
   h.element("#back-to-game").fire("click", { button: 0 });
   for (let i = 0; i < 25; i++) await h.element("#click-button").fire("click");
-  assert.equal(count.textContent, "2 / 18");
+  assert.equal(count.textContent, "2 / 20");
   assert.deepEqual(h.requests, []);
   h.fetch(async () => response(game(1, { ...player, id: "2" })));
   await h.element("#leave-local").fire("click");
-  assert.equal(count.textContent, "1 / 18");
+  assert.equal(count.textContent, "1 / 20");
   assert.equal(h.element("#achievement-notice").hidden, true);
   h.context.startLocalGame();
-  assert.equal(count.textContent, "2 / 18");
+  assert.equal(count.textContent, "2 / 20");
 });
 
 test("the guest button saves its first click offline and briefly tells the player", async () => {
@@ -1976,7 +1976,7 @@ test("a save confirmed in a hidden tab announces its badge after returning", asy
 });
 
 test("local button achievements record interactions without clicks and persist with the save", async () => {
-  const h = await harness({ storage: [["goclick.mode", "local"]], cordSlack: true });
+  const h = await harness({ storage: [["goclick.mode", "local"]], clickAchievements: 26 });
   const button = h.element("#click-button");
   await button.fire("button-interaction", { detail: "reset" });
   assert.equal(h.element("#click-count").textContent, "0");
@@ -1984,23 +1984,25 @@ test("local button achievements record interactions without clicks and persist w
   await button.fire("button-interaction", { detail: "reconnect" });
   assert.match(h.element("#achievement-notice-names").textContent, /Reconnected/);
   await button.fire("click");
-  assert.equal(h.element("#achievement-count").textContent, "4 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "6 / 20");
   assert.match(h.element("#achievement-notice-names").textContent, /Slacking Off/);
+  assert.match(h.element("#achievement-notice-names").textContent, /Rebound/);
+  assert.match(h.element("#achievement-notice-names").textContent, /Hold that Thought/);
   assert.equal(h.element("#next-click-milestone-name").textContent, "Sentence");
   await h.context.refreshGame();
   const saved = JSON.parse(h.storage.get("goclick.local.v1")).counters;
-  assert.equal(saved.button_achievements, 7);
+  assert.equal(saved.button_achievements, 31);
   assert.equal(saved.click_count.count, 1);
   assert.deepEqual(h.requests, []);
 });
 
 test("an earlier online click response keeps the hardware badge that arrived first", async () => {
-  const h = await harness({ cordSlack: true });
+  const h = await harness({ clickAchievements: 26 });
   const pendingClick = deferred();
   const button = h.element("#click-button");
   h.fetch((url, options) => {
     if (url.endsWith("/api/clicks")) {
-      assert.equal(options.headers.get("X-GoClick-Cord-Slack"), "1");
+      assert.equal(options.headers.get("X-GoClick-Button-Achievements"), "26");
       return pendingClick.promise;
     }
     assert.equal(url, "/api/button-achievements");
@@ -2012,8 +2014,8 @@ test("an earlier online click response keeps the hardware badge that arrived fir
   await button.fire("button-interaction", { detail: "reset" });
   await button.fire("button-interaction", { detail: "reset" });
   assert.equal(h.requests.length, 2);
-  pendingClick.resolve(response({ ...counters(11), button_achievements: 2 }));
+  pendingClick.resolve(response({ ...counters(11), button_achievements: 26 }));
   await clicking;
-  assert.equal(h.element("#achievement-count").textContent, "3 / 18");
+  assert.equal(h.element("#achievement-count").textContent, "5 / 20");
   assert.equal(h.element("#click-count").textContent, "11");
 });

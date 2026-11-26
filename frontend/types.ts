@@ -37,9 +37,15 @@ export const buttonAchievementBits = {
   reconnect: 1,
   slackClick: 2,
   reset: 4,
+  rebound: 8,
+  holdThatThought: 16,
 } as const;
 export const buttonAchievementMask =
-  buttonAchievementBits.reconnect | buttonAchievementBits.slackClick | buttonAchievementBits.reset;
+  buttonAchievementBits.reconnect |
+  buttonAchievementBits.slackClick |
+  buttonAchievementBits.reset |
+  buttonAchievementBits.rebound |
+  buttonAchievementBits.holdThatThought;
 export type ButtonInteraction = "reconnect" | "reset";
 
 export type Counters = Partial<Record<CounterKind, Counter | null>> & {
@@ -81,7 +87,7 @@ export interface ButtonState {
   responseColor: [number, number, number];
 }
 export interface ButtonController {
-  readonly cordSlack: boolean;
+  readonly clickAchievements: number;
   reset(cancelled?: boolean): void;
   respond(state: ResponseState, milliseconds?: number): void;
 }

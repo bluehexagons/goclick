@@ -994,6 +994,69 @@ select:focus,
 .button-stage.is-rendered .button-label {
   opacity: 0;
 }
+/* Render above both the metal canvas and the fallback face. */
+.thought-hold {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 30%;
+  inset-block-end: 16%;
+  overflow: hidden;
+  height: clamp(4px, 1.2vw, 7px);
+  border: 1px solid #f0dfffbb;
+  border-radius: 99px;
+  background: #2e2142;
+  pointer-events: none;
+}
+.thought-hold::before {
+  content: "";
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #d9bcff;
+  animation: thought-fill var(--thought-duration) linear forwards;
+}
+.thought-hold[data-ready="true"]::before {
+  width: 100%;
+  background: #f1e6ff;
+}
+@keyframes thought-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+.thought-echo {
+  position: absolute;
+  z-index: 1;
+  max-width: min(75vw, 25rem);
+  padding: 4px 10px;
+  translate: -50% -100%;
+  border: 1px solid #b591e9;
+  border-radius: 8px;
+  background: #282038;
+  color: #f1e6ff;
+  box-shadow: 0 3px 12px #12091c9c;
+  font-size: clamp(16px, 3.8vw, 24px);
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: thought-echo var(--thought-duration) ease-out forwards;
+}
+@keyframes thought-echo {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+:root[data-reduced-motion="true"] .thought-hold::before,
+:root[data-reduced-motion="true"] .thought-echo {
+  animation: none;
+}
 .click-button:focus {
   outline: none;
 }

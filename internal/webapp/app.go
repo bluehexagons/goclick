@@ -430,6 +430,18 @@ func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid cord mode"})
 		return
 	}
+	var earned store.ButtonAchievements
+	if value := r.Header.Get("X-GoClick-Button-Achievements"); value != "" {
+		mask, err := strconv.ParseUint(value, 10, 8)
+		earned = store.ButtonAchievements(mask)
+		if err != nil || value != strconv.FormatUint(mask, 10) || earned & ^store.ClickButtonAchievementMask != 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid click achievement mask"})
+			return
+		}
+	}
+	if slack == "1" {
+		earned |= store.SlackCordClick
+	}
 	if ok, retry := a.limiter.allow("click:"+strconv.FormatInt(user.ID, 10), a.clicksPerMinute, time.Minute); !ok {
 		rateLimited(w, retry)
 		return
@@ -441,7 +453,7 @@ func (a *App) increment(w http.ResponseWriter, r *http.Request) {
 		rateLimitedReason(w, retry, "activity_cooldown", "Brief pause after sustained activity; try again shortly")
 		return
 	}
-	counters, err := a.store.IncrementWithCordMode(r.Context(), user.ID, a.now(), slack == "1")
+	counters, err := a.store.IncrementWithButtonAchievements(r.Context(), user.ID, a.now(), earned)
 	if err != nil {
 		a.internalError(w, r, "increment counters", err)
 		return

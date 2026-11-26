@@ -180,7 +180,7 @@ const localGame = (() => {
         ? date.getUTCFullYear() * 12 + date.getUTCMonth()
         : date.getUTCFullYear();
   }
-  function increment(now = new Date(), slack = false) {
+  function increment(now = new Date(), earned = 0) {
     const counters = read();
     const previous = counters.click_count?.modified_time;
     const time = previous && Date.parse(previous) > now.getTime() ? previous : now.toISOString();
@@ -203,9 +203,7 @@ const localGame = (() => {
       counters.streak_counter_day!.count,
     );
     counters.achievements = advanceAchievements(counters.achievements!, previous, time);
-    if (slack)
-      counters.button_achievements =
-        (counters.button_achievements ?? 0) | buttonAchievementBits.slackClick;
+    if (earned) counters.button_achievements = (counters.button_achievements ?? 0) | earned;
     return write(counters);
   }
   function recordButtonAchievement(interaction: ButtonInteraction) {

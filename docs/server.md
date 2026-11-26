@@ -70,7 +70,8 @@ capped period click totals, a mask of UTC hours played that day, capped total
 active days and months, and a mask of earned period badges.
 The `earned_badges` array lists the IDs of all achievements earned by the
 authenticated account. The `button_achievements` mask contains bits 1 for a
-reconnect, 2 for a saved slack-cord click, and 4 for an outlet reset.
+reconnect, 2 for a saved slack-cord click, 4 for an outlet reset, 8 for Rebound,
+and 16 for Hold that Thought.
 
 The browser rechecks the game snapshot when it regains focus. A later return
 supersedes an older read still in flight. Changing accounts also updates an open
@@ -81,8 +82,10 @@ shared session changed in another tab, the server returns HTTP 409 with code
 without replaying the rejected click. API clients may send this header for the
 same protection; clients that omit it use the current session's account.
 Button achievement requests require `X-GoClick-User-ID` and accept
-`{"interaction":"reconnect"}` or `{"interaction":"reset"}`. A click with
-`X-GoClick-Cord-Slack: 1` earns its button badge when the click saves.
+`{"interaction":"reconnect"}` or `{"interaction":"reset"}`. Successful clicks can
+award gesture badges through
+`X-GoClick-Button-Achievements` (a decimal mask of bits 2, 8, and 16).
+Older clients can still use `X-GoClick-Cord-Slack: 1` for the slack badge.
 These client-reported interactions award cosmetic badges.
 Returning online with an expired session clears cached account progress while
 preserving the independent local save.
@@ -200,7 +203,8 @@ streak records. For older accounts, Go Click uses recorded clicks and saved
 streaks as evidence of past activity. Older offline saves have only their last
 click and streak counters for reconstructing this progress. Upgrades preserve
 accounts, sessions, counters, and archives. The panel accepts schema-2 through
-schema-8 backups. Schema 8 adds persisted button interaction achievements.
+schema-9 backups. Schema 8 added persisted button interaction achievements.
+Schema 9 expands their mask for click gestures.
 
 See [`backups.md`](backups.md) for full SQLite backups, data checks,
 restore rehearsal, and session revocation during recovery. Deployment backups

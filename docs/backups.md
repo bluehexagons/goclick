@@ -45,7 +45,7 @@ printf 'Verified backup: %s\n' "$backup"
 The checks require `integrity_check` to return exactly `ok` and
 `foreign_key_check` to return no rows. [Integrity checks do not check foreign
 keys](https://www.sqlite.org/pragma.html#pragma_integrity_check), so both matter.
-The current schema version is 8. Row counts and integrity checks do not prove
+The current schema version is 9. Row counts and integrity checks do not prove
 every application's value is correct; inspect representative accounts as well.
 On any failure, keep the error and distinguish the failed snapshot from verified
 backups. Do not apply retention deletion until the new snapshot is verified.
@@ -132,7 +132,7 @@ It pauses this server's HTTP requests, validates the staged upload, saves a
 pre-restore snapshot, and copies known data columns into the trusted schema in
 one transaction. Existing audit history is retained, and all sessions are
 revoked. A failed transaction leaves live data intact. Snapshots from schema
-versions 2 through 8 are supported and must contain an administrator. Other
+versions 2 through 9 are supported and must contain an administrator. Other
 service instances and other database writers must be stopped before panel recovery.
 See [administration](administration.md) for password verification, upload limits,
 and recovery-snapshot locations. The stopped-service procedure above remains

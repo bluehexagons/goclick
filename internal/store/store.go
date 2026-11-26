@@ -48,7 +48,7 @@ type Counters struct {
 	ButtonAchievements ButtonAchievements
 }
 
-const schemaVersion = 8
+const schemaVersion = 9
 
 type schemaTable struct {
 	name    string
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS click_achievements (
 );
 CREATE TABLE IF NOT EXISTS button_achievements (
 	user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-	earned INTEGER NOT NULL CHECK (earned BETWEEN 1 AND 7)
+	earned INTEGER NOT NULL CHECK (earned BETWEEN 1 AND 31)
 );
 CREATE TABLE IF NOT EXISTS rails_entities (
 	id INTEGER PRIMARY KEY,
@@ -244,8 +244,20 @@ func initializeSchema(ctx context.Context, db *sql.DB, currentVersion int) error
 		return fmt.Errorf("begin schema upgrade: %w", err)
 	}
 	defer tx.Rollback()
+	if currentVersion == 8 {
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE button_achievements RENAME TO button_achievements_v8`); err != nil {
+			return fmt.Errorf("prepare button achievement upgrade: %w", err)
+		}
+	}
 	if _, err := tx.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("initialize database: %w", err)
+	}
+	if currentVersion == 8 {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO button_achievements (user_id,earned) SELECT user_id,earned FROM button_achievements_v8;
+			DROP TABLE button_achievements_v8;`); err != nil {
+			return fmt.Errorf("upgrade button achievements: %w", err)
+		}
 	}
 	if err := validateSchemaTables(ctx, tx, allSchemaTables(schemaVersion)); err != nil {
 		return fmt.Errorf("validate initialized database: %w", err)
@@ -652,11 +664,14 @@ func (s *Store) CurrentCounters(ctx context.Context, userID int64) (Counters, er
 }
 
 func (s *Store) Increment(ctx context.Context, userID int64, now time.Time) (Counters, error) {
-	return s.IncrementWithCordMode(ctx, userID, now, false)
+	return s.IncrementWithButtonAchievements(ctx, userID, now, 0)
 }
 
-// IncrementWithCordMode awards a slack-cord badge only if its click commits.
-func (s *Store) IncrementWithCordMode(ctx context.Context, userID int64, now time.Time, slack bool) (Counters, error) {
+// IncrementWithButtonAchievements saves the gesture badges and click in one transaction.
+func (s *Store) IncrementWithButtonAchievements(ctx context.Context, userID int64, now time.Time, earned ButtonAchievements) (Counters, error) {
+	if earned & ^ClickButtonAchievementMask != 0 {
+		return Counters{}, fmt.Errorf("invalid click achievement mask %d", earned)
+	}
 	now = now.UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -723,8 +738,8 @@ func (s *Store) IncrementWithCordMode(ctx context.Context, userID int64, now tim
 			return Counters{}, err
 		}
 	}
-	if slack && counters.ButtonAchievements&SlackCordClick == 0 {
-		counters.ButtonAchievements, err = saveButtonAchievement(ctx, tx, userID, SlackCordClick)
+	if earned & ^counters.ButtonAchievements != 0 {
+		counters.ButtonAchievements, err = saveButtonAchievement(ctx, tx, userID, earned)
 		if err != nil {
 			return Counters{}, err
 		}

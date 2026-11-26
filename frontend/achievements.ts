@@ -43,7 +43,9 @@ type Goal =
   | "otherAchievementsGoal"
   | "reconnectPlugGoal"
   | "slackCordGoal"
-  | "resetOutletGoal";
+  | "resetOutletGoal"
+  | "reboundGoal"
+  | "holdThatThoughtGoal";
 
 const translatedRequirements = new Map<string, string>();
 function requirement(goal: Goal, target: number, language: Language) {
@@ -222,6 +224,20 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "Circuit Breaker",
       "The outlet has switches of its own.",
       "resetOutletGoal",
+    ],
+    [
+      buttonAchievementBits.rebound,
+      "rebound",
+      "Rebound",
+      "Give it a good pull and let go.",
+      "reboundGoal",
+    ],
+    [
+      buttonAchievementBits.holdThatThought,
+      "hold-that-thought",
+      "Hold that Thought",
+      "Something different catches your eye.",
+      "holdThatThoughtGoal",
     ],
   ] as const) {
     const earned = Boolean((data.button_achievements ?? 0) & bit);

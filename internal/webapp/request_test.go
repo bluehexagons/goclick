@@ -206,4 +206,21 @@ func TestButtonAchievementsRequireTheDisplayedAccount(t *testing.T) {
 	if clicked.ButtonAchievements != 7 || clicked.ClickCount == nil || clicked.ClickCount.Count != 1 {
 		t.Fatalf("saved slack-cord click = %+v", clicked)
 	}
+	for _, mask := range []string{"1", "4", "32", "invalid"} {
+		response := jsonRequest(t, client, "POST", base+"/clicks", nil,
+			map[string]string{"X-GoClick-User-ID": accountID, "X-GoClick-Button-Achievements": mask})
+		if response.StatusCode != http.StatusBadRequest {
+			t.Fatalf("click with mask %q = %d: %s", mask, response.StatusCode, readBody(t, response))
+		}
+		response.Body.Close()
+	}
+	response = jsonRequest(t, client, "POST", base+"/clicks", nil,
+		map[string]string{"X-GoClick-User-ID": accountID, "X-GoClick-Button-Achievements": "24"})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("click with gestures = %d: %s", response.StatusCode, readBody(t, response))
+	}
+	decodeResponse(t, response, &clicked)
+	if clicked.ButtonAchievements != 31 || clicked.ClickCount == nil || clicked.ClickCount.Count != 2 {
+		t.Fatalf("saved click with gestures = %+v", clicked)
+	}
 }
