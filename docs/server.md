@@ -71,7 +71,8 @@ active days and months, and a mask of earned period badges.
 The `earned_badges` array lists the IDs of all achievements earned by the
 authenticated account. The `button_achievements` mask contains bits 1 for a
 reconnect, 2 for a saved slack-cord click, 4 for an outlet reset, 8 for Rebound,
-and 16 for Hold that Thought.
+16 for Hold that Thought, 32 for Off-Grid, 64 for the top socket, and 128 for
+the bottom socket. The two socket bits together earn Parallel Outlet.
 
 The browser rechecks the game snapshot when it regains focus. A later return
 supersedes an older read still in flight. Changing accounts also updates an open
@@ -82,9 +83,10 @@ shared session changed in another tab, the server returns HTTP 409 with code
 without replaying the rejected click. API clients may send this header for the
 same protection; clients that omit it use the current session's account.
 Button achievement requests require `X-GoClick-User-ID` and accept
-`{"interaction":"reconnect"}` or `{"interaction":"reset"}`. Successful clicks can
-award gesture badges through
-`X-GoClick-Button-Achievements` (a decimal mask of bits 2, 8, and 16).
+`{"interaction":"reconnect","socket":"top"}` (or `"bottom"`) and
+`{"interaction":"reset"}`. A reconnect without a socket still earns
+Reconnected. Successful clicks can award gesture badges through
+`X-GoClick-Button-Achievements` (a decimal mask of bits 2, 8, 16, and 32).
 Older clients can still use `X-GoClick-Cord-Slack: 1` for the slack badge.
 These client-reported interactions award cosmetic badges.
 Returning online with an expired session clears cached account progress while
@@ -203,8 +205,8 @@ streak records. For older accounts, Go Click uses recorded clicks and saved
 streaks as evidence of past activity. Older offline saves have only their last
 click and streak counters for reconstructing this progress. Upgrades preserve
 accounts, sessions, counters, and archives. The panel accepts schema-2 through
-schema-9 backups. Schema 8 added persisted button interaction achievements.
-Schema 9 expands their mask for click gestures.
+schema-10 backups. Schema 8 added persisted button interaction achievements.
+Schemas 9 and 10 expand their mask for click gestures and socket visits.
 
 See [`backups.md`](backups.md) for full SQLite backups, data checks,
 restore rehearsal, and session revocation during recovery. Deployment backups

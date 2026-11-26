@@ -19,7 +19,13 @@ import { clickSound } from "./sound.js";
 import { powerBootDuration, powerBootLighting } from "./power-sequence.js";
 import { currentLanguage, message } from "./i18n.js";
 import { buttonAchievementBits } from "./types.js";
-import type { ButtonController, ButtonState, ResponseState, Renderer } from "./types.js";
+import type {
+  ButtonController,
+  ButtonInteraction,
+  ButtonState,
+  ResponseState,
+  Renderer,
+} from "./types.js";
 
 // Holds never auto-score; cancelled/outside releases never activate the button.
 const PRESS_ATTACK_MS = 24;
@@ -300,7 +306,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
     if (!reducedMotion.matches) paint();
     if (restoreFocus) button.focus({ preventScroll: true });
-    button.dispatchEvent(new CustomEvent("button-interaction", { detail: "reconnect" }));
+    button.dispatchEvent(
+      new CustomEvent<ButtonInteraction>("button-interaction", {
+        detail: { interaction: "reconnect", socket: nextSocket },
+      }),
+    );
   }
 
   function activatePlug() {
@@ -965,7 +975,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (!reducedMotion.matches) paint();
     animate();
     if (!outletTripped)
-      button.dispatchEvent(new CustomEvent("button-interaction", { detail: "reset" }));
+      button.dispatchEvent(
+        new CustomEvent<ButtonInteraction>("button-interaction", {
+          detail: { interaction: "reset" },
+        }),
+      );
   }
   if (outletControl) {
     outletControl.addEventListener("click", (event) => {
@@ -1342,7 +1356,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   }).observe(stage);
   tactileButtons.set(button, {
     get clickAchievements() {
-      return releaseAchievements | (cordSlack ? buttonAchievementBits.slackClick : 0);
+      return (
+        releaseAchievements |
+        (cordSlack ? buttonAchievementBits.slackClick : 0) |
+        (plugState === "unplugged" ? buttonAchievementBits.offGrid : 0)
+      );
     },
     reset,
     respond,

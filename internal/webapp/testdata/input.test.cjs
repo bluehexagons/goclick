@@ -1212,6 +1212,9 @@ test("the unplugged button stays where it is released and remains reachable afte
     ["touch", true],
   ]) {
     const h = harness(reduced, true);
+    const { buttonAchievementBits: bits } = frontend().load("types");
+    const earned = [];
+    h.button.addEventListener("click", () => earned.push(h.controller.clickAchievements));
     const move = (x, y) =>
       h.stage.fire("pointermove", {
         pointerId: 1,
@@ -1247,6 +1250,7 @@ test("the unplugged button stays where it is released and remains reachable afte
     settle();
     assert.deepEqual(position(), [185, 96]);
     assert.equal(h.clicks.length, 1);
+    assert.deepEqual(earned, [bits.offGrid]);
 
     h.stage.fire("pointermove", { pointerId: 1, pointerType: "mouse", clientX: 100, clientY: 150 });
     h.stage.fire("pointerleave");
@@ -1269,6 +1273,10 @@ test("the unplugged button stays where it is released and remains reachable afte
 
 test("the dangling plug can reconnect to either socket by holding or tapping", () => {
   const h = harness(true, true);
+  const sockets = [];
+  h.button.addEventListener("button-interaction", (event) => {
+    if (event.detail.interaction === "reconnect") sockets.push(event.detail.socket);
+  });
   const plug = h.plug;
   const move = (x, y) =>
     h.stage.fire("pointermove", { pointerId: 1, clientX: 170 + x, clientY: 220 + y });
@@ -1310,6 +1318,7 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   assert.ok(h.hardwareSounds.at(-1).bootDelay > 0);
   assert.equal(h.power.dataset.dock, undefined);
   assert.equal(plug.attributes.get("transform"), "translate(0 29)");
+  assert.deepEqual(sockets, ["bottom"]);
   assert.deepEqual(h.position(), drag);
   assert.ok(Number(h.rig.props.get("--glow-intensity")) > 0);
   h.pointer("pointercancel", 1);
@@ -1329,6 +1338,7 @@ test("the dangling plug can reconnect to either socket by holding or tapping", (
   h.plugControl.fire("pointerup", { pointerId: 2, clientX: 228, clientY: 150 });
   assert.equal(h.power.dataset.plug, "seated");
   assert.equal(plug.attributes.get("transform"), "translate(0 -29)");
+  assert.deepEqual(sockets, ["bottom", "top"]);
   assert.equal(h.outletControl.disabled, false);
   assert.equal(h.hardwareSounds.at(-1).kind, "plug-in");
   assert.equal(h.hardwareSounds.at(-1).bootDelay, undefined);

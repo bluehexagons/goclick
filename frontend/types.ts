@@ -1,3 +1,5 @@
+import type { OutletSocket } from "./button-geometry.js";
+
 export interface User {
   id: string;
   username: string;
@@ -39,14 +41,29 @@ export const buttonAchievementBits = {
   reset: 4,
   rebound: 8,
   holdThatThought: 16,
+  offGrid: 32,
+  topSocket: 64,
+  bottomSocket: 128,
 } as const;
 export const buttonAchievementMask =
   buttonAchievementBits.reconnect |
   buttonAchievementBits.slackClick |
   buttonAchievementBits.reset |
   buttonAchievementBits.rebound |
-  buttonAchievementBits.holdThatThought;
-export type ButtonInteraction = "reconnect" | "reset";
+  buttonAchievementBits.holdThatThought |
+  buttonAchievementBits.offGrid |
+  buttonAchievementBits.topSocket |
+  buttonAchievementBits.bottomSocket;
+export type ButtonInteraction =
+  | { interaction: "reconnect"; socket: OutletSocket }
+  | { interaction: "reset" };
+
+export function buttonInteractionBits(detail: ButtonInteraction) {
+  if (detail.interaction === "reset") return buttonAchievementBits.reset;
+  const socketBit =
+    detail.socket === "top" ? buttonAchievementBits.topSocket : buttonAchievementBits.bottomSocket;
+  return buttonAchievementBits.reconnect | socketBit;
+}
 
 export type Counters = Partial<Record<CounterKind, Counter | null>> & {
   progress?: ClickProgress;

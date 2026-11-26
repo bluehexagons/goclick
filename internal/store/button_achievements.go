@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// ButtonAchievements is the persisted mask of earned button badges.
+// ButtonAchievements tracks earned button gestures and individual socket visits.
 type ButtonAchievements uint8
 
 const (
@@ -15,17 +15,23 @@ const (
 	ResetOutlet
 	Rebound
 	HoldThatThought
+	OffGrid
+	TopSocket
+	BottomSocket
 
-	ClickButtonAchievementMask = SlackCordClick | Rebound | HoldThatThought
+	ClickButtonAchievementMask = SlackCordClick | Rebound | HoldThatThought | OffGrid
+	bothSockets                = TopSocket | BottomSocket
 )
 
 var buttonAchievementSchemaTable = schemaTable{"button_achievements", []string{"user_id", "earned"}}
 
 func (s *Store) RecordButtonAchievement(ctx context.Context, userID int64, earned ButtonAchievements) (ButtonAchievements, error) {
-	if earned != ReconnectedPlug && earned != ResetOutlet {
+	switch earned {
+	case ReconnectedPlug, ResetOutlet, ReconnectedPlug | TopSocket, ReconnectedPlug | BottomSocket:
+		return saveButtonAchievement(ctx, s.db, userID, earned)
+	default:
 		return 0, fmt.Errorf("invalid standalone button achievement %d", earned)
 	}
-	return saveButtonAchievement(ctx, s.db, userID, earned)
 }
 
 func saveButtonAchievement(ctx context.Context, db interface {

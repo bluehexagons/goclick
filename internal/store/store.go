@@ -48,7 +48,7 @@ type Counters struct {
 	ButtonAchievements ButtonAchievements
 }
 
-const schemaVersion = 9
+const schemaVersion = 10
 
 type schemaTable struct {
 	name    string
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS click_achievements (
 );
 CREATE TABLE IF NOT EXISTS button_achievements (
 	user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-	earned INTEGER NOT NULL CHECK (earned BETWEEN 1 AND 31)
+	earned INTEGER NOT NULL CHECK (earned BETWEEN 1 AND 255)
 );
 CREATE TABLE IF NOT EXISTS rails_entities (
 	id INTEGER PRIMARY KEY,
@@ -244,18 +244,19 @@ func initializeSchema(ctx context.Context, db *sql.DB, currentVersion int) error
 		return fmt.Errorf("begin schema upgrade: %w", err)
 	}
 	defer tx.Rollback()
-	if currentVersion == 8 {
-		if _, err := tx.ExecContext(ctx, `ALTER TABLE button_achievements RENAME TO button_achievements_v8`); err != nil {
+	upgradeButtonAchievements := currentVersion == 8 || currentVersion == 9
+	if upgradeButtonAchievements {
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE button_achievements RENAME TO previous_button_achievements`); err != nil {
 			return fmt.Errorf("prepare button achievement upgrade: %w", err)
 		}
 	}
 	if _, err := tx.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("initialize database: %w", err)
 	}
-	if currentVersion == 8 {
+	if upgradeButtonAchievements {
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO button_achievements (user_id,earned) SELECT user_id,earned FROM button_achievements_v8;
-			DROP TABLE button_achievements_v8;`); err != nil {
+			INSERT INTO button_achievements (user_id,earned) SELECT user_id,earned FROM previous_button_achievements;
+			DROP TABLE previous_button_achievements;`); err != nil {
 			return fmt.Errorf("upgrade button achievements: %w", err)
 		}
 	}

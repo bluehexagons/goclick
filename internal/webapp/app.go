@@ -492,6 +492,7 @@ func (a *App) recordButtonAchievement(w http.ResponseWriter, r *http.Request) {
 	}
 	var input struct {
 		Interaction string `json:"interaction"`
+		Socket      string `json:"socket"`
 	}
 	if !decodeJSON(w, r, &input) {
 		return
@@ -500,7 +501,22 @@ func (a *App) recordButtonAchievement(w http.ResponseWriter, r *http.Request) {
 	switch input.Interaction {
 	case "reconnect":
 		badge = store.ReconnectedPlug
+		switch input.Socket {
+		case "":
+			// Older clients reported a reconnect without a socket.
+		case "top":
+			badge |= store.TopSocket
+		case "bottom":
+			badge |= store.BottomSocket
+		default:
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Unknown outlet socket"})
+			return
+		}
 	case "reset":
+		if input.Socket != "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Reset does not select an outlet socket"})
+			return
+		}
 		badge = store.ResetOutlet
 	default:
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Unknown button interaction"})

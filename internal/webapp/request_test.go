@@ -206,7 +206,7 @@ func TestButtonAchievementsRequireTheDisplayedAccount(t *testing.T) {
 	if clicked.ButtonAchievements != 7 || clicked.ClickCount == nil || clicked.ClickCount.Count != 1 {
 		t.Fatalf("saved slack-cord click = %+v", clicked)
 	}
-	for _, mask := range []string{"1", "4", "32", "invalid"} {
+	for _, mask := range []string{"1", "4", "64", "128", "256", "invalid"} {
 		response := jsonRequest(t, client, "POST", base+"/clicks", nil,
 			map[string]string{"X-GoClick-User-ID": accountID, "X-GoClick-Button-Achievements": mask})
 		if response.StatusCode != http.StatusBadRequest {
@@ -215,12 +215,29 @@ func TestButtonAchievementsRequireTheDisplayedAccount(t *testing.T) {
 		response.Body.Close()
 	}
 	response = jsonRequest(t, client, "POST", base+"/clicks", nil,
-		map[string]string{"X-GoClick-User-ID": accountID, "X-GoClick-Button-Achievements": "24"})
+		map[string]string{"X-GoClick-User-ID": accountID, "X-GoClick-Button-Achievements": "56"})
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("click with gestures = %d: %s", response.StatusCode, readBody(t, response))
 	}
 	decodeResponse(t, response, &clicked)
-	if clicked.ButtonAchievements != 31 || clicked.ClickCount == nil || clicked.ClickCount.Count != 2 {
+	if clicked.ButtonAchievements != 63 || clicked.ClickCount == nil || clicked.ClickCount.Count != 2 {
 		t.Fatalf("saved click with gestures = %+v", clicked)
+	}
+	for _, socket := range []string{"middle", "top", "top", "bottom"} {
+		response := jsonRequest(t, client, "POST", base+"/button-achievements",
+			map[string]string{"interaction": "reconnect", "socket": socket},
+			map[string]string{"X-GoClick-User-ID": accountID})
+		want := http.StatusOK
+		if socket == "middle" {
+			want = http.StatusBadRequest
+		}
+		if response.StatusCode != want {
+			t.Fatalf("reconnect to %q = %d: %s", socket, response.StatusCode, readBody(t, response))
+		}
+		response.Body.Close()
+	}
+	state, err = db.CurrentCounters(context.Background(), id)
+	if err != nil || state.Clicks != 2 || state.ButtonAchievements != 255 {
+		t.Fatalf("socket visits = %+v, %v", state, err)
 	}
 }

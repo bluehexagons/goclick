@@ -15,7 +15,7 @@ import {
   utcDay,
   utcWeek,
 } from "./progress.js";
-import { buttonAchievementBits, buttonAchievementMask, counterKinds } from "./types.js";
+import { buttonAchievementMask, buttonInteractionBits, counterKinds } from "./types.js";
 import type { ButtonInteraction, ClickAchievements, ClickProgress, Counters } from "./types.js";
 
 // One local slot, intentionally unrelated to authentication or the account API.
@@ -209,7 +209,7 @@ const localGame = (() => {
   function recordButtonAchievement(interaction: ButtonInteraction) {
     const counters = read();
     const previous = counters.button_achievements ?? 0;
-    const earned = previous | buttonAchievementBits[interaction];
+    const earned = previous | buttonInteractionBits(interaction);
     if (earned !== previous) write({ ...counters, button_achievements: earned });
     return earned;
   }

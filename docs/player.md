@@ -74,6 +74,11 @@ back with the plug still seated. For **Hold that Thought**, press a surprise
 translation and release when the two-second meter fills. Screen readers
 announce the surprise and signal when to release.
 
+Save a click while the plug is disconnected to earn **Off-Grid**. Reconnect
+the plug to the top and bottom sockets on separate attempts to earn
+**Parallel Outlet**. The game saves each socket visit, so you can finish
+across sessions.
+
 **Fortnight activity** scores the 14 UTC days ending on your most recent
 saved click. Each active day earns 5 points and each adjacent pair adds 2
 points. The game scales the result to 100. A click on a new UTC day moves

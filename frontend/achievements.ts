@@ -45,7 +45,9 @@ type Goal =
   | "slackCordGoal"
   | "resetOutletGoal"
   | "reboundGoal"
-  | "holdThatThoughtGoal";
+  | "holdThatThoughtGoal"
+  | "offGridGoal"
+  | "parallelOutletGoal";
 
 const translatedRequirements = new Map<string, string>();
 function requirement(goal: Goal, target: number, language: Language) {
@@ -239,10 +241,34 @@ export function badgesFor(data: Counters, progress: ClickProgress, local: boolea
       "Something different catches your eye.",
       "holdThatThoughtGoal",
     ],
+    [
+      buttonAchievementBits.offGrid,
+      "off-grid",
+      "Off-Grid",
+      "Try a click without a power connection.",
+      "offGridGoal",
+    ],
   ] as const) {
     const earned = Boolean((data.button_achievements ?? 0) & bit);
     badges.push(badge(id, "hardware", name, hint, goal, Number(earned), 1, earned, earned));
   }
+  const sockets = countSetBits(
+    (data.button_achievements ?? 0) &
+      (buttonAchievementBits.topSocket | buttonAchievementBits.bottomSocket),
+  );
+  badges.push(
+    badge(
+      "parallel-outlet",
+      "hardware",
+      "Parallel Outlet",
+      "The outlet has a second socket.",
+      "parallelOutletGoal",
+      sockets,
+      2,
+      sockets === 2,
+      sockets === 2,
+    ),
+  );
   const earned = badges.filter((entry) => entry.earned).length;
   badges.push(
     badge(

@@ -748,9 +748,17 @@
     slackClick: 2,
     reset: 4,
     rebound: 8,
-    holdThatThought: 16
+    holdThatThought: 16,
+    offGrid: 32,
+    topSocket: 64,
+    bottomSocket: 128
   };
-  var buttonAchievementMask = buttonAchievementBits.reconnect | buttonAchievementBits.slackClick | buttonAchievementBits.reset | buttonAchievementBits.rebound | buttonAchievementBits.holdThatThought;
+  var buttonAchievementMask = buttonAchievementBits.reconnect | buttonAchievementBits.slackClick | buttonAchievementBits.reset | buttonAchievementBits.rebound | buttonAchievementBits.holdThatThought | buttonAchievementBits.offGrid | buttonAchievementBits.topSocket | buttonAchievementBits.bottomSocket;
+  function buttonInteractionBits(detail) {
+    if (detail.interaction === "reset") return buttonAchievementBits.reset;
+    const socketBit = detail.socket === "top" ? buttonAchievementBits.topSocket : buttonAchievementBits.bottomSocket;
+    return buttonAchievementBits.reconnect | socketBit;
+  }
 
   // frontend/local-game.ts
   var localGame = (() => {
@@ -900,7 +908,7 @@
     function recordButtonAchievement2(interaction) {
       const counters = read();
       const previous = counters.button_achievements ?? 0;
-      const earned = previous | buttonAchievementBits[interaction];
+      const earned = previous | buttonInteractionBits(interaction);
       if (earned !== previous) write({ ...counters, button_achievements: earned });
       return earned;
     }
@@ -3001,6 +3009,8 @@
     resetOutletGoal: "Use TEST on the outlet, then use RESET. Keyboard players can Tab from Click to the outlet.",
     reboundGoal: "Pull the button at least a quarter of its width (and at least 48 px), then release to save a click with the plug still seated. The button must spring back.",
     holdThatThoughtGoal: "When the button shows a surprise translation, hold it for two seconds, then release to save a click.",
+    offGridGoal: "Save a click while the plug is disconnected.",
+    parallelOutletGoal: "Reconnect the plug to each of the outlet\u2019s two sockets.",
     thoughtAvailable: "Surprise translation. Hold the button for two seconds.",
     thoughtReady: "Release the button now.",
     buttonAchievementError: "Couldn\u2019t save the button achievement. Try the interaction again.",
@@ -3124,6 +3134,8 @@
       resetOutletGoal: "\u5148\u4F7F\u7528\u63D2\u5EA7\u4E0A\u7684 TEST\uFF0C\u518D\u4F7F\u7528 RESET\u3002\u952E\u76D8\u73A9\u5BB6\u53EF\u5728\u70B9\u51FB\u6309\u94AE\u4E0A\u6309 Tab \u524D\u5F80\u63D2\u5EA7\u3002",
       reboundGoal: "\u5C06\u6309\u94AE\u81F3\u5C11\u62C9\u52A8\u5176\u5BBD\u5EA6\u7684\u56DB\u5206\u4E4B\u4E00\uFF08\u4E14\u81F3\u5C11 48 \u50CF\u7D20\uFF09\uFF0C\u7136\u540E\u5728\u63D2\u5934\u4ECD\u63D2\u7740\u65F6\u677E\u5F00\uFF0C\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\u3002\u6309\u94AE\u5FC5\u987B\u5F39\u56DE\u539F\u4F4D\u3002",
       holdThatThoughtGoal: "\u5F53\u6309\u94AE\u663E\u793A\u610F\u5916\u7684\u7FFB\u8BD1\u65F6\uFF0C\u6309\u4F4F\u4E24\u79D2\u540E\u677E\u5F00\uFF0C\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\u3002",
+      offGridGoal: "\u5728\u63D2\u5934\u62D4\u51FA\u65F6\u4FDD\u5B58\u4E00\u6B21\u70B9\u51FB\u3002",
+      parallelOutletGoal: "\u5C06\u63D2\u5934\u5206\u522B\u63D2\u56DE\u63D2\u5EA7\u7684\u4E0A\u5B54\u548C\u4E0B\u5B54\u3002",
       thoughtAvailable: "\u51FA\u73B0\u4E86\u60CA\u559C\u7FFB\u8BD1\u3002\u6309\u4F4F\u6309\u94AE\u4E24\u79D2\u3002",
       thoughtReady: "\u73B0\u5728\u677E\u5F00\u6309\u94AE\u3002",
       buttonAchievementError: "\u65E0\u6CD5\u4FDD\u5B58\u6309\u94AE\u6210\u5C31\u3002\u8BF7\u91CD\u8BD5\u8BE5\u64CD\u4F5C\u3002",
@@ -3246,6 +3258,8 @@
       resetOutletGoal: "\u5148\u4F7F\u7528\u63D2\u5EA7\u4E0A\u7684 TEST\uFF0C\u518D\u4F7F\u7528 RESET\u3002\u4F7F\u7528\u9375\u76E4\u6642\uFF0C\u53EF\u5728\u9EDE\u64CA\u6309\u9215\u4E0A\u6309 Tab \u524D\u5F80\u63D2\u5EA7\u3002",
       reboundGoal: "\u5C07\u6309\u9215\u81F3\u5C11\u62C9\u52D5\u5176\u5BEC\u5EA6\u7684\u56DB\u5206\u4E4B\u4E00\uFF08\u4E14\u81F3\u5C11 48 \u50CF\u7D20\uFF09\uFF0C\u7136\u5F8C\u5728\u63D2\u982D\u4ECD\u63D2\u8457\u6642\u653E\u958B\uFF0C\u5132\u5B58\u4E00\u6B21\u9EDE\u64CA\u3002\u6309\u9215\u5FC5\u9808\u5F48\u56DE\u539F\u4F4D\u3002",
       holdThatThoughtGoal: "\u7576\u6309\u9215\u986F\u793A\u9A5A\u559C\u7FFB\u8B6F\u6642\uFF0C\u6309\u4F4F\u5169\u79D2\u5F8C\u653E\u958B\uFF0C\u5132\u5B58\u4E00\u6B21\u9EDE\u64CA\u3002",
+      offGridGoal: "\u5728\u63D2\u982D\u62D4\u51FA\u6642\u5132\u5B58\u4E00\u6B21\u9EDE\u64CA\u3002",
+      parallelOutletGoal: "\u5C07\u63D2\u982D\u5206\u5225\u63D2\u56DE\u63D2\u5EA7\u7684\u4E0A\u5B54\u548C\u4E0B\u5B54\u3002",
       thoughtAvailable: "\u51FA\u73FE\u4E86\u9A5A\u559C\u7FFB\u8B6F\u3002\u6309\u4F4F\u6309\u9215\u5169\u79D2\u3002",
       thoughtReady: "\u73FE\u5728\u653E\u958B\u6309\u9215\u3002",
       buttonAchievementError: "\u7121\u6CD5\u5132\u5B58\u6309\u9215\u6210\u5C31\u3002\u8ACB\u91CD\u8A66\u8A72\u64CD\u4F5C\u3002",
@@ -3368,6 +3382,8 @@
       resetOutletGoal: "\u09B8\u0995\u09C7\u099F\u09C7 \u09AA\u09CD\u09B0\u09A5\u09AE\u09C7 TEST, \u09A4\u09BE\u09B0\u09AA\u09B0 RESET \u09AC\u09CD\u09AF\u09AC\u09B9\u09BE\u09B0 \u0995\u09B0\u09C1\u09A8\u0964 \u0995\u09C0\u09AC\u09CB\u09B0\u09CD\u09A1\u09C7 \u0995\u09CD\u09B2\u09BF\u0995 \u09AC\u09CB\u09A4\u09BE\u09AE \u09A5\u09C7\u0995\u09C7 Tab \u099A\u09C7\u09AA\u09C7 \u09B8\u0995\u09C7\u099F\u09C7 \u09AF\u09BE\u09A8\u0964",
       reboundGoal: "\u09AC\u09CB\u09A4\u09BE\u09AE\u099F\u09BF\u0995\u09C7 \u09A4\u09BE\u09B0 \u09AA\u09CD\u09B0\u09B8\u09CD\u09A5\u09C7\u09B0 \u0985\u09A8\u09CD\u09A4\u09A4 \u098F\u0995-\u099A\u09A4\u09C1\u09B0\u09CD\u09A5\u09BE\u0982\u09B6 (\u098F\u09AC\u0982 \u0985\u09A8\u09CD\u09A4\u09A4 \u09EA\u09EE \u09AA\u09BF\u0995\u09CD\u09B8\u09C7\u09B2) \u099F\u09BE\u09A8\u09C1\u09A8, \u09A4\u09BE\u09B0\u09AA\u09B0 \u09AA\u09CD\u09B2\u09BE\u0997 \u09B2\u09BE\u0997\u09BE\u09A8\u09CB \u0985\u09AC\u09B8\u09CD\u09A5\u09BE\u09AF\u09BC \u099B\u09C7\u09A1\u09BC\u09C7 \u098F\u0995\u099F\u09BF \u0995\u09CD\u09B2\u09BF\u0995 \u09B8\u09C7\u09AD \u0995\u09B0\u09C1\u09A8\u0964 \u09AC\u09CB\u09A4\u09BE\u09AE\u099F\u09BF\u0995\u09C7 \u0986\u0997\u09C7\u09B0 \u099C\u09BE\u09AF\u09BC\u0997\u09BE\u09AF\u09BC \u09AB\u09BF\u09B0\u09C7 \u0986\u09B8\u09A4\u09C7 \u09B9\u09AC\u09C7\u0964",
       holdThatThoughtGoal: "\u09AC\u09CB\u09A4\u09BE\u09AE\u09C7 \u0986\u0995\u09B8\u09CD\u09AE\u09BF\u0995 \u0985\u09A8\u09C1\u09AC\u09BE\u09A6 \u09A6\u09C7\u0996\u09BE \u0997\u09C7\u09B2\u09C7 \u09A6\u09C1\u0987 \u09B8\u09C7\u0995\u09C7\u09A8\u09CD\u09A1 \u09A7\u09B0\u09C7 \u09B0\u09BE\u0996\u09C1\u09A8, \u09A4\u09BE\u09B0\u09AA\u09B0 \u099B\u09C7\u09A1\u09BC\u09C7 \u098F\u0995\u099F\u09BF \u0995\u09CD\u09B2\u09BF\u0995 \u09B8\u09C7\u09AD \u0995\u09B0\u09C1\u09A8\u0964",
+      offGridGoal: "\u09AA\u09CD\u09B2\u09BE\u0997 \u0996\u09CB\u09B2\u09BE \u0985\u09AC\u09B8\u09CD\u09A5\u09BE\u09AF\u09BC \u098F\u0995\u099F\u09BF \u0995\u09CD\u09B2\u09BF\u0995 \u09B8\u09C7\u09AD \u0995\u09B0\u09C1\u09A8\u0964",
+      parallelOutletGoal: "\u0989\u09AA\u09B0\u09C7\u09B0 \u0993 \u09A8\u09BF\u099A\u09C7\u09B0 \u09B8\u0995\u09C7\u099F\u09C7 \u09AA\u09CD\u09B2\u09BE\u0997 \u0986\u09AC\u09BE\u09B0 \u09B2\u09BE\u0997\u09BE\u09A8\u0964",
       thoughtAvailable: "\u099A\u09AE\u0995 \u09B9\u09BF\u09B8\u09C7\u09AC\u09C7 \u0985\u09A8\u09C1\u09AC\u09BE\u09A6 \u09A6\u09C7\u0996\u09BE \u09AF\u09BE\u099A\u09CD\u099B\u09C7\u0964 \u09AC\u09CB\u09A4\u09BE\u09AE\u099F\u09BF \u09A6\u09C1\u0987 \u09B8\u09C7\u0995\u09C7\u09A8\u09CD\u09A1 \u099A\u09C7\u09AA\u09C7 \u09A7\u09B0\u09C1\u09A8\u0964",
       thoughtReady: "\u098F\u0996\u09A8 \u09AC\u09CB\u09A4\u09BE\u09AE\u099F\u09BF \u099B\u09C7\u09A1\u09BC\u09C7 \u09A6\u09BF\u09A8\u0964",
       buttonAchievementError: "\u09AC\u09CB\u09A4\u09BE\u09AE\u09C7\u09B0 \u0985\u09B0\u09CD\u099C\u09A8\u099F\u09BF \u09B8\u09C7\u09AD \u0995\u09B0\u09BE \u09AF\u09BE\u09AF\u09BC\u09A8\u09BF\u0964 \u0995\u09BE\u099C\u099F\u09BF \u0986\u09AC\u09BE\u09B0 \u0995\u09B0\u09C1\u09A8\u0964",
@@ -3490,6 +3506,8 @@
       resetOutletGoal: "Pulsa TEST en la toma y despu\xE9s RESET. Con el teclado, pulsa Tab desde el bot\xF3n de clic para llegar a la toma.",
       reboundGoal: "Tira del bot\xF3n al menos un cuarto de su anchura (como m\xEDnimo 48 px) y su\xE9ltalo para guardar un clic con el enchufe a\xFAn conectado. El bot\xF3n debe volver a su sitio.",
       holdThatThoughtGoal: "Cuando el bot\xF3n muestre una traducci\xF3n sorpresa, mantenlo pulsado dos segundos y su\xE9ltalo para guardar un clic.",
+      offGridGoal: "Guarda un clic con el enchufe desconectado.",
+      parallelOutletGoal: "Vuelve a conectar el enchufe en cada una de las dos tomas.",
       thoughtAvailable: "Traducci\xF3n sorpresa. Mant\xE9n pulsado el bot\xF3n durante dos segundos.",
       thoughtReady: "Suelta el bot\xF3n ahora.",
       buttonAchievementError: "No se pudo guardar el logro del bot\xF3n. Repite la acci\xF3n.",
@@ -3612,6 +3630,8 @@
       resetOutletGoal: "\u0627\u0633\u062A\u062E\u062F\u0645 TEST \u0639\u0644\u0649 \u0627\u0644\u0645\u0642\u0628\u0633 \u062B\u0645 RESET. \u0644\u0644\u0627\u0646\u062A\u0642\u0627\u0644 \u0645\u0646 \u0632\u0631 \u0627\u0644\u0646\u0642\u0631 \u0625\u0644\u0649 \u0627\u0644\u0645\u0642\u0628\u0633 \u0628\u0644\u0648\u062D\u0629 \u0627\u0644\u0645\u0641\u0627\u062A\u064A\u062D\u060C \u0627\u0636\u063A\u0637 Tab.",
       reboundGoal: "\u0627\u0633\u062D\u0628 \u0627\u0644\u0632\u0631 \u0645\u0633\u0627\u0641\u0629 \u062A\u0639\u0627\u062F\u0644 \u0631\u0628\u0639 \u0639\u0631\u0636\u0647 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644 (\u0648\u0628\u062D\u062F \u0623\u062F\u0646\u0649 48 \u0628\u0643\u0633\u0644)\u060C \u062B\u0645 \u0623\u0641\u0644\u062A \u0627\u0644\u0632\u0631 \u0644\u062D\u0641\u0638 \u0646\u0642\u0631\u0629 \u0628\u064A\u0646\u0645\u0627 \u0627\u0644\u0642\u0627\u0628\u0633 \u0645\u0627 \u0632\u0627\u0644 \u0645\u0648\u0635\u0648\u0644\u064B\u0627. \u064A\u062C\u0628 \u0623\u0646 \u064A\u0631\u062A\u062F \u0627\u0644\u0632\u0631 \u0625\u0644\u0649 \u0645\u0648\u0636\u0639\u0647.",
       holdThatThoughtGoal: "\u0639\u0646\u062F\u0645\u0627 \u062A\u0638\u0647\u0631 \u062A\u0631\u062C\u0645\u0629 \u0645\u0641\u0627\u062C\u0626\u0629 \u0639\u0644\u0649 \u0627\u0644\u0632\u0631\u060C \u0627\u0636\u063A\u0637 \u0639\u0644\u064A\u0647 \u0644\u0645\u062F\u0629 \u062B\u0627\u0646\u064A\u062A\u064A\u0646 \u062B\u0645 \u0623\u0641\u0644\u062A\u0647 \u0644\u062D\u0641\u0638 \u0646\u0642\u0631\u0629.",
+      offGridGoal: "\u0627\u062D\u0641\u0638 \u0646\u0642\u0631\u0629 \u0628\u064A\u0646\u0645\u0627 \u0627\u0644\u0642\u0627\u0628\u0633 \u0645\u0641\u0635\u0648\u0644.",
+      parallelOutletGoal: "\u0623\u0639\u062F \u062A\u0648\u0635\u064A\u0644 \u0627\u0644\u0642\u0627\u0628\u0633 \u0628\u0643\u0644 \u0648\u0627\u062D\u062F \u0645\u0646 \u0645\u0642\u0628\u0633\u064A \u0627\u0644\u0645\u0623\u062E\u0630.",
       thoughtAvailable: "\u062A\u0631\u062C\u0645\u0629 \u0645\u0641\u0627\u062C\u0626\u0629. \u0627\u0636\u063A\u0637 \u0645\u0637\u0648\u0644\u064B\u0627 \u0639\u0644\u0649 \u0627\u0644\u0632\u0631 \u0644\u0645\u062F\u0629 \u062B\u0627\u0646\u064A\u062A\u064A\u0646.",
       thoughtReady: "\u0623\u0641\u0644\u062A \u0627\u0644\u0632\u0631 \u0627\u0644\u0622\u0646.",
       buttonAchievementError: "\u062A\u0639\u0630\u0651\u0631 \u062D\u0641\u0638 \u0625\u0646\u062C\u0627\u0632 \u0627\u0644\u0632\u0631. \u062C\u0631\u0651\u0628 \u062A\u0646\u0641\u064A\u0630 \u0627\u0644\u062D\u0631\u0643\u0629 \u0645\u062C\u062F\u062F\u064B\u0627.",
@@ -3734,6 +3754,8 @@
       resetOutletGoal: "\u0938\u0949\u0915\u0947\u091F \u092A\u0930 \u092A\u0939\u0932\u0947 TEST, \u092B\u093F\u0930 RESET \u0926\u092C\u093E\u090F\u0901\u0964 \u0915\u0940\u092C\u094B\u0930\u094D\u0921 \u0938\u0947 \u0915\u094D\u0932\u093F\u0915 \u092C\u091F\u0928 \u092A\u0930 Tab \u0926\u092C\u093E\u0915\u0930 \u0938\u0949\u0915\u0947\u091F \u0924\u0915 \u091C\u093E\u090F\u0901\u0964",
       reboundGoal: "\u092C\u091F\u0928 \u0915\u094B \u0909\u0938\u0915\u0940 \u091A\u094C\u0921\u093C\u093E\u0908 \u0915\u093E \u0915\u092E \u0938\u0947 \u0915\u092E \u090F\u0915 \u091A\u094C\u0925\u093E\u0908 (\u0914\u0930 \u0915\u092E \u0938\u0947 \u0915\u092E 48 \u092A\u093F\u0915\u094D\u0938\u0947\u0932) \u0916\u0940\u0902\u091A\u0947\u0902\u0964 \u092A\u094D\u0932\u0917 \u0932\u0917\u093E \u0930\u0939\u0924\u0947 \u0939\u0941\u090F \u0909\u0938\u0947 \u091B\u094B\u0921\u093C\u0915\u0930 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902\u0964 \u092C\u091F\u0928 \u0915\u093E \u0935\u093E\u092A\u0938 \u0905\u092A\u0928\u0940 \u091C\u0917\u0939 \u0932\u094C\u091F\u0928\u093E \u091C\u093C\u0930\u0942\u0930\u0940 \u0939\u0948\u0964",
       holdThatThoughtGoal: "\u091C\u092C \u092C\u091F\u0928 \u092A\u0930 \u0905\u091A\u093E\u0928\u0915 \u0915\u093F\u0938\u0940 \u0914\u0930 \u092D\u093E\u0937\u093E \u0915\u093E \u0905\u0928\u0941\u0935\u093E\u0926 \u0926\u093F\u0916\u0947, \u0909\u0938\u0947 \u0926\u094B \u0938\u0947\u0915\u0902\u0921 \u0926\u092C\u093E\u090F \u0930\u0916\u0947\u0902 \u0914\u0930 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0938\u0947\u0935 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u091B\u094B\u0921\u093C \u0926\u0947\u0902\u0964",
+      offGridGoal: "\u092A\u094D\u0932\u0917 \u0928\u093F\u0915\u0932\u093E \u0939\u094B\u0928\u0947 \u092A\u0930 \u090F\u0915 \u0915\u094D\u0932\u093F\u0915 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902\u0964",
+      parallelOutletGoal: "\u092A\u094D\u0932\u0917 \u0915\u094B \u090A\u092A\u0930 \u0914\u0930 \u0928\u0940\u091A\u0947 \u0915\u0947 \u0926\u094B\u0928\u094B\u0902 \u0938\u0949\u0915\u0947\u091F \u092E\u0947\u0902 \u0926\u094B\u092C\u093E\u0930\u093E \u0932\u0917\u093E\u090F\u0901\u0964",
       thoughtAvailable: "\u090F\u0915 \u0905\u0928\u092A\u0947\u0915\u094D\u0937\u093F\u0924 \u0905\u0928\u0941\u0935\u093E\u0926 \u0926\u093F\u0916 \u0930\u0939\u093E \u0939\u0948\u0964 \u092C\u091F\u0928 \u0915\u094B \u0926\u094B \u0938\u0947\u0915\u0902\u0921 \u0924\u0915 \u0926\u092C\u093E\u090F \u0930\u0916\u0947\u0902\u0964",
       thoughtReady: "\u0905\u092C \u092C\u091F\u0928 \u091B\u094B\u0921\u093C \u0926\u0947\u0902\u0964",
       buttonAchievementError: "\u092C\u091F\u0928 \u0915\u0940 \u0909\u092A\u0932\u092C\u094D\u0927\u093F \u0938\u0947\u0935 \u0928\u0939\u0940\u0902 \u0939\u094B \u0938\u0915\u0940\u0964 \u0915\u094D\u0930\u093F\u092F\u093E \u092B\u093F\u0930 \u0938\u0947 \u0915\u0930\u0947\u0902\u0964",
@@ -3856,6 +3878,8 @@
       resetOutletGoal: "Gunakan TEST pada stopkontak, lalu gunakan RESET. Dengan papan ketik, tekan Tab dari tombol klik untuk menuju stopkontak.",
       reboundGoal: "Tarik tombol setidaknya seperempat lebarnya (minimal 48 piksel), lalu lepas untuk menyimpan satu klik selagi steker masih terpasang. Tombol harus kembali ke posisi semula.",
       holdThatThoughtGoal: "Saat tombol menampilkan terjemahan kejutan, tahan dua detik lalu lepas untuk menyimpan satu klik.",
+      offGridGoal: "Simpan satu klik saat steker tercabut.",
+      parallelOutletGoal: "Sambungkan kembali steker ke kedua soket, satu per satu.",
       thoughtAvailable: "Ada terjemahan kejutan. Tahan tombol selama dua detik.",
       thoughtReady: "Lepas tombol sekarang.",
       buttonAchievementError: "Pencapaian tombol gagal disimpan. Ulangi tindakan tersebut.",
@@ -3978,6 +4002,8 @@
       resetOutletGoal: "Use TEST na tomada e depois RESET. No teclado, pressione Tab a partir do bot\xE3o de clique para chegar \xE0 tomada.",
       reboundGoal: "Puxe o bot\xE3o por pelo menos um quarto da largura dele (no m\xEDnimo 48 px) e solte para salvar um clique com o plugue ainda encaixado. O bot\xE3o precisa voltar \xE0 posi\xE7\xE3o original.",
       holdThatThoughtGoal: "Quando o bot\xE3o mostrar uma tradu\xE7\xE3o surpresa, segure-o por dois segundos e solte para salvar um clique.",
+      offGridGoal: "Salve um clique com o plugue desconectado.",
+      parallelOutletGoal: "Reconecte o plugue em cada uma das duas tomadas.",
       thoughtAvailable: "Tradu\xE7\xE3o surpresa. Segure o bot\xE3o por dois segundos.",
       thoughtReady: "Solte o bot\xE3o agora.",
       buttonAchievementError: "N\xE3o foi poss\xEDvel salvar a conquista do bot\xE3o. Repita a a\xE7\xE3o.",
@@ -4100,6 +4126,8 @@
       resetOutletGoal: "Utilisez TEST sur la prise, puis RESET. Au clavier, appuyez sur Tab depuis le bouton de jeu pour atteindre la prise.",
       reboundGoal: "Tirez le bouton sur au moins un quart de sa largeur (au minimum 48 px), puis rel\xE2chez-le pour enregistrer un clic avec la fiche encore branch\xE9e. Le bouton doit revenir \xE0 sa place.",
       holdThatThoughtGoal: "Quand le bouton affiche une traduction surprise, maintenez-le deux secondes puis rel\xE2chez-le pour enregistrer un clic.",
+      offGridGoal: "Enregistrez un clic pendant que la fiche est d\xE9branch\xE9e.",
+      parallelOutletGoal: "Rebranchez la fiche dans chacune des deux prises.",
       thoughtAvailable: "Traduction surprise. Maintenez le bouton enfonc\xE9 pendant deux secondes.",
       thoughtReady: "Rel\xE2chez le bouton maintenant.",
       buttonAchievementError: "Impossible d\u2019enregistrer le succ\xE8s du bouton. R\xE9essayez l\u2019action.",
@@ -4222,6 +4250,8 @@
       resetOutletGoal: "\u30B3\u30F3\u30BB\u30F3\u30C8\u306E TEST \u3092\u62BC\u3057\u3066\u304B\u3089 RESET \u3092\u62BC\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u30AD\u30FC\u30DC\u30FC\u30C9\u3067\u306F\u30AF\u30EA\u30C3\u30AF\u30DC\u30BF\u30F3\u304B\u3089 Tab \u30AD\u30FC\u3067\u79FB\u52D5\u3067\u304D\u307E\u3059\u3002",
       reboundGoal: "\u30DC\u30BF\u30F3\u3092\u5E45\u306E4\u5206\u306E1\u4EE5\u4E0A\uFF08\u6700\u4F4E48\u30D4\u30AF\u30BB\u30EB\uFF09\u5F15\u3063\u5F35\u308A\u3001\u30D7\u30E9\u30B0\u304C\u5DEE\u3055\u3063\u305F\u307E\u307E\u96E2\u3057\u3066\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002 \u30DC\u30BF\u30F3\u304C\u5143\u306E\u4F4D\u7F6E\u306B\u623B\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002",
       holdThatThoughtGoal: "\u30DC\u30BF\u30F3\u306E\u8868\u793A\u304C\u7A81\u7136\u5225\u306E\u8A00\u8A9E\u306B\u306A\u3063\u305F\u3089\u30012\u79D2\u9593\u62BC\u3057\u7D9A\u3051\u3066\u304B\u3089\u96E2\u3057\u3001\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      offGridGoal: "\u30D7\u30E9\u30B0\u3092\u629C\u3044\u305F\u72B6\u614B\u3067\u30AF\u30EA\u30C3\u30AF\u30921\u56DE\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      parallelOutletGoal: "\u30D7\u30E9\u30B0\u3092\u4E0A\u3068\u4E0B\u306E\u4E21\u65B9\u306E\u5DEE\u3057\u8FBC\u307F\u53E3\u306B\u5DEE\u3057\u76F4\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       thoughtAvailable: "\u5225\u306E\u8A00\u8A9E\u304C\u8868\u793A\u3055\u308C\u307E\u3057\u305F\u3002\u30DC\u30BF\u30F3\u30922\u79D2\u9593\u62BC\u3057\u7D9A\u3051\u3066\u304F\u3060\u3055\u3044\u3002",
       thoughtReady: "\u30DC\u30BF\u30F3\u3092\u96E2\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       buttonAchievementError: "\u30DC\u30BF\u30F3\u306E\u5B9F\u7E3E\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
@@ -4344,6 +4374,8 @@
       resetOutletGoal: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 TEST \u043D\u0430 \u0440\u043E\u0437\u0435\u0442\u043A\u0435, \u0437\u0430\u0442\u0435\u043C RESET. \u0427\u0442\u043E\u0431\u044B \u043F\u0435\u0440\u0435\u0439\u0442\u0438 \u043E\u0442 \u043A\u043D\u043E\u043F\u043A\u0438 \u043A \u0440\u043E\u0437\u0435\u0442\u043A\u0435 \u0441 \u043A\u043B\u0430\u0432\u0438\u0430\u0442\u0443\u0440\u044B, \u043D\u0430\u0436\u043C\u0438\u0442\u0435 Tab.",
       reboundGoal: "\u041F\u043E\u0442\u044F\u043D\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u0445\u043E\u0442\u044F \u0431\u044B \u043D\u0430 \u0447\u0435\u0442\u0432\u0435\u0440\u0442\u044C \u0435\u0451 \u0448\u0438\u0440\u0438\u043D\u044B (\u043C\u0438\u043D\u0438\u043C\u0443\u043C \u043D\u0430 48 \u043F\u0438\u043A\u0441\u0435\u043B\u0435\u0439) \u0438 \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0449\u0435\u043B\u0447\u043E\u043A, \u043F\u043E\u043A\u0430 \u0432\u0438\u043B\u043A\u0430 \u0435\u0449\u0451 \u0432 \u0440\u043E\u0437\u0435\u0442\u043A\u0435. \u041A\u043D\u043E\u043F\u043A\u0430 \u0434\u043E\u043B\u0436\u043D\u0430 \u043E\u0442\u0441\u043A\u043E\u0447\u0438\u0442\u044C \u043E\u0431\u0440\u0430\u0442\u043D\u043E.",
       holdThatThoughtGoal: "\u041A\u043E\u0433\u0434\u0430 \u043D\u0430 \u043A\u043D\u043E\u043F\u043A\u0435 \u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u043D\u0435\u043E\u0436\u0438\u0434\u0430\u043D\u043D\u044B\u0439 \u043F\u0435\u0440\u0435\u0432\u043E\u0434, \u0443\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0439\u0442\u0435 \u0435\u0451 \u0434\u0432\u0435 \u0441\u0435\u043A\u0443\u043D\u0434\u044B, \u0437\u0430\u0442\u0435\u043C \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0449\u0435\u043B\u0447\u043E\u043A.",
+      offGridGoal: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0449\u0435\u043B\u0447\u043E\u043A, \u043F\u043E\u043A\u0430 \u0432\u0438\u043B\u043A\u0430 \u0432\u044B\u043D\u0443\u0442\u0430 \u0438\u0437 \u0440\u043E\u0437\u0435\u0442\u043A\u0438.",
+      parallelOutletGoal: "\u0412\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u0432\u0438\u043B\u043A\u0443 \u043E\u0431\u0440\u0430\u0442\u043D\u043E \u0432 \u043A\u0430\u0436\u0434\u043E\u0435 \u0438\u0437 \u0434\u0432\u0443\u0445 \u0433\u043D\u0451\u0437\u0434 \u0440\u043E\u0437\u0435\u0442\u043A\u0438.",
       thoughtAvailable: "\u041D\u0435\u043E\u0436\u0438\u0434\u0430\u043D\u043D\u044B\u0439 \u043F\u0435\u0440\u0435\u0432\u043E\u0434. \u0423\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0439\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u0434\u0432\u0435 \u0441\u0435\u043A\u0443\u043D\u0434\u044B.",
       thoughtReady: "\u0422\u0435\u043F\u0435\u0440\u044C \u043E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443.",
       buttonAchievementError: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0434\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u0435 \u043A\u043D\u043E\u043F\u043A\u0438. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435.",
@@ -4466,6 +4498,8 @@
       resetOutletGoal: "Dr\xFCcke an der Steckdose zuerst TEST und dann RESET. Mit Tab gelangst du vom Klickknopf zur Steckdose.",
       reboundGoal: "Ziehe den Knopf mindestens ein Viertel seiner Breite weit (mindestens 48 px) und lass ihn los, um bei eingestecktem Stecker einen Klick zu speichern. Der Knopf muss zur\xFCckfedern.",
       holdThatThoughtGoal: "Wenn auf dem Knopf eine \xFCberraschende \xDCbersetzung erscheint, halte ihn zwei Sekunden lang gedr\xFCckt und lass ihn dann los, um einen Klick zu speichern.",
+      offGridGoal: "Speichere einen Klick bei gezogenem Stecker.",
+      parallelOutletGoal: "Stecke den Stecker nacheinander wieder in beide Buchsen.",
       thoughtAvailable: "\xDCberraschungs\xFCbersetzung. Halte den Knopf zwei Sekunden lang gedr\xFCckt.",
       thoughtReady: "Lass den Knopf jetzt los.",
       buttonAchievementError: "Der Erfolg konnte nicht gespeichert werden. Wiederhole die Aktion.",
@@ -4815,7 +4849,11 @@
       }
       if (!reducedMotion.matches) paint2();
       if (restoreFocus) button.focus({ preventScroll: true });
-      button.dispatchEvent(new CustomEvent("button-interaction", { detail: "reconnect" }));
+      button.dispatchEvent(
+        new CustomEvent("button-interaction", {
+          detail: { interaction: "reconnect", socket: nextSocket }
+        })
+      );
     }, activatePlug2 = function() {
       if (plugState !== "unplugged" || !plugControl || plugControl.hidden || button.disabled || document.hidden)
         return;
@@ -5340,7 +5378,11 @@
       if (!reducedMotion.matches) paint2();
       animate2();
       if (!outletTripped)
-        button.dispatchEvent(new CustomEvent("button-interaction", { detail: "reset" }));
+        button.dispatchEvent(
+          new CustomEvent("button-interaction", {
+            detail: { interaction: "reset" }
+          })
+        );
     }, endPointer2 = function(event, cancelled = false) {
       if (!pointers.has(event.pointerId)) return;
       const rect = button.getBoundingClientRect();
@@ -5756,7 +5798,7 @@
     }).observe(stage);
     tactileButtons.set(button, {
       get clickAchievements() {
-        return releaseAchievements | (cordSlack ? buttonAchievementBits.slackClick : 0);
+        return releaseAchievements | (cordSlack ? buttonAchievementBits.slackClick : 0) | (plugState === "unplugged" ? buttonAchievementBits.offGrid : 0);
       },
       reset: reset2,
       respond: respond2
@@ -6516,11 +6558,34 @@
         "Hold that Thought",
         "Something different catches your eye.",
         "holdThatThoughtGoal"
+      ],
+      [
+        buttonAchievementBits.offGrid,
+        "off-grid",
+        "Off-Grid",
+        "Try a click without a power connection.",
+        "offGridGoal"
       ]
     ]) {
       const earned2 = Boolean((data.button_achievements ?? 0) & bit);
       badges2.push(badge(id, "hardware", name, hint, goal, Number(earned2), 1, earned2, earned2));
     }
+    const sockets = countSetBits(
+      (data.button_achievements ?? 0) & (buttonAchievementBits.topSocket | buttonAchievementBits.bottomSocket)
+    );
+    badges2.push(
+      badge(
+        "parallel-outlet",
+        "hardware",
+        "Parallel Outlet",
+        "The outlet has a second socket.",
+        "parallelOutletGoal",
+        sockets,
+        2,
+        sockets === 2,
+        sockets === 2
+      )
+    );
     const earned = badges2.filter((entry) => entry.earned).length;
     badges2.push(
       badge(
@@ -7466,18 +7531,21 @@
     }
   });
   clickButton.addEventListener("button-interaction", (event) => {
-    const interaction = event.detail;
-    if (interaction === "reconnect" || interaction === "reset")
-      return recordButtonAchievement(interaction);
+    const detail = event.detail;
+    if (!isRecord(detail)) return;
+    if (detail.interaction === "reset") return recordButtonAchievement({ interaction: "reset" });
+    if (detail.interaction === "reconnect" && (detail.socket === "top" || detail.socket === "bottom"))
+      return recordButtonAchievement({ interaction: "reconnect", socket: detail.socket });
   });
   async function recordButtonAchievement(interaction) {
     if (!gameReady || currentView !== "game" || signingOut || authenticating || localSaveReplacing || !localMode && (!user || offline))
       return;
-    const bit = buttonAchievementBits[interaction];
-    if (((displayedCounters.button_achievements ?? 0) | pendingButtonAchievements) & bit) return;
+    const bits = buttonInteractionBits(interaction);
+    const pending2 = bits & ~((displayedCounters.button_achievements ?? 0) | pendingButtonAchievements);
+    if (!pending2) return;
     const generation = clickGeneration;
     const accountID = localMode ? void 0 : user?.id;
-    pendingButtonAchievements |= bit;
+    pendingButtonAchievements |= pending2;
     updateGameControls();
     try {
       let earned;
@@ -7485,10 +7553,10 @@
         const data = await api("/api/button-achievements", {
           method: "POST",
           headers: { "X-GoClick-User-ID": accountID },
-          body: JSON.stringify({ interaction })
+          body: JSON.stringify(interaction)
         });
         earned = data.button_achievements;
-        if (!Number.isInteger(earned) || earned < 0 || earned > buttonAchievementMask || !(earned & bit))
+        if (!Number.isInteger(earned) || earned < 0 || earned > buttonAchievementMask || (earned & bits) !== bits)
           throw new Error("The response did not confirm the button achievement.");
       } else {
         earned = await localGame.change(
@@ -7510,7 +7578,7 @@
       } else showGameError("buttonAchievementError");
     } finally {
       if (generation === clickGeneration) {
-        pendingButtonAchievements &= ~bit;
+        pendingButtonAchievements &= ~pending2;
         updateGameControls();
         if (!hasPendingProgress()) {
           if (localMode && localRefreshQueued) synchronizeLocalSave();

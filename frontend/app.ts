@@ -1,7 +1,7 @@
 import "./focus.js";
 import "./interaction.js";
 import { request, RequestError, requestError, retryAfterMilliseconds } from "./http.js";
-import { required as $ } from "./dom.js";
+import { isRecord, required as $ } from "./dom.js";
 import { gameSettings, motionPreference } from "./preferences.js";
 import { localGame } from "./local-game.js";
 import { tactileButtons } from "./button.js";
@@ -27,7 +27,7 @@ import {
 import type { Language } from "./i18n.js";
 import type { MessageKey } from "./messages.js";
 import { parseStoredTimestamp } from "./timestamp.js";
-import { buttonAchievementBits, buttonAchievementMask } from "./types.js";
+import { buttonAchievementMask, buttonInteractionBits } from "./types.js";
 import type { Activation, ButtonInteraction, User, Counters, GameState } from "./types.js";
 import {
   clearAchievementNotice,
@@ -782,9 +782,11 @@ logoutButton.addEventListener("click", async () => {
 });
 
 clickButton.addEventListener("button-interaction", (event) => {
-  const interaction: unknown = (event as CustomEvent).detail;
-  if (interaction === "reconnect" || interaction === "reset")
-    return recordButtonAchievement(interaction);
+  const detail: unknown = (event as CustomEvent).detail;
+  if (!isRecord(detail)) return;
+  if (detail.interaction === "reset") return recordButtonAchievement({ interaction: "reset" });
+  if (detail.interaction === "reconnect" && (detail.socket === "top" || detail.socket === "bottom"))
+    return recordButtonAchievement({ interaction: "reconnect", socket: detail.socket });
 });
 
 async function recordButtonAchievement(interaction: ButtonInteraction) {
@@ -797,12 +799,14 @@ async function recordButtonAchievement(interaction: ButtonInteraction) {
     (!localMode && (!user || offline))
   )
     return;
-  const bit = buttonAchievementBits[interaction];
-  if (((displayedCounters.button_achievements ?? 0) | pendingButtonAchievements) & bit) return;
+  const bits = buttonInteractionBits(interaction);
+  const pending =
+    bits & ~((displayedCounters.button_achievements ?? 0) | pendingButtonAchievements);
+  if (!pending) return;
 
   const generation = clickGeneration;
   const accountID = localMode ? undefined : user?.id;
-  pendingButtonAchievements |= bit;
+  pendingButtonAchievements |= pending;
   updateGameControls();
   try {
     let earned: number;
@@ -810,14 +814,14 @@ async function recordButtonAchievement(interaction: ButtonInteraction) {
       const data = await api<{ button_achievements: number }>("/api/button-achievements", {
         method: "POST",
         headers: { "X-GoClick-User-ID": accountID },
-        body: JSON.stringify({ interaction }),
+        body: JSON.stringify(interaction),
       });
       earned = data.button_achievements;
       if (
         !Number.isInteger(earned) ||
         earned < 0 ||
         earned > buttonAchievementMask ||
-        !(earned & bit)
+        (earned & bits) !== bits
       )
         throw new Error("The response did not confirm the button achievement.");
     } else {
@@ -840,7 +844,7 @@ async function recordButtonAchievement(interaction: ButtonInteraction) {
     } else showGameError("buttonAchievementError");
   } finally {
     if (generation === clickGeneration) {
-      pendingButtonAchievements &= ~bit;
+      pendingButtonAchievements &= ~pending;
       updateGameControls();
       if (!hasPendingProgress()) {
         if (localMode && localRefreshQueued) synchronizeLocalSave();

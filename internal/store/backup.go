@@ -138,11 +138,15 @@ func validateBackup(ctx context.Context, db *sql.DB) (int, error) {
 	if version < 7 {
 		delete(expected, "click_achievements")
 	}
-	if version < 8 {
+	switch {
+	case version < 8:
 		delete(expected, "button_achievements")
-	} else if version == 8 {
+	case version == 8:
 		expected["button_achievements"] = strings.Replace(
-			expected["button_achievements"], "earned BETWEEN 1 AND 31", "earned BETWEEN 1 AND 7", 1)
+			expected["button_achievements"], "earned BETWEEN 1 AND 255", "earned BETWEEN 1 AND 7", 1)
+	case version == 9:
+		expected["button_achievements"] = strings.Replace(
+			expected["button_achievements"], "earned BETWEEN 1 AND 255", "earned BETWEEN 1 AND 31", 1)
 	}
 	if len(expected) != len(actual) {
 		return 0, errors.New("unexpected schema objects")

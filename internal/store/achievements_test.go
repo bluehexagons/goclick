@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 	"slices"
 	"testing"
@@ -122,8 +123,13 @@ func TestButtonAchievementsSurviveNativeBackupRestore(t *testing.T) {
 	if err != nil || before.Exists || !slices.Equal(before.EarnedBadgeIDs(), []string{"live-wire"}) {
 		t.Fatalf("badge before playing = %+v, %v", before, err)
 	}
-	clicked, err := db.IncrementWithButtonAchievements(ctx, user.ID, now, SlackCordClick|Rebound|HoldThatThought)
-	if err != nil || clicked.Clicks != 1 || clicked.ButtonAchievements != ReconnectedPlug|SlackCordClick|Rebound|HoldThatThought {
+	for _, socket := range []ButtonAchievements{TopSocket, BottomSocket} {
+		if _, err := db.RecordButtonAchievement(ctx, user.ID, ReconnectedPlug|socket); err != nil {
+			t.Fatal(err)
+		}
+	}
+	clicked, err := db.IncrementWithButtonAchievements(ctx, user.ID, now, ClickButtonAchievementMask)
+	if err != nil || clicked.Clicks != 1 || clicked.ButtonAchievements != ReconnectedPlug|ClickButtonAchievementMask|bothSockets {
 		t.Fatalf("save click with gestures = %+v, %v", clicked, err)
 	}
 	snapshot, err := db.Backup(ctx, t.TempDir(), "hardware")
@@ -138,7 +144,7 @@ func TestButtonAchievementsSurviveNativeBackupRestore(t *testing.T) {
 	}
 	after, err := db.CurrentCounters(ctx, user.ID)
 	if err != nil || after.Clicks != 1 ||
-		!slices.Equal(after.EarnedBadgeIDs(), []string{"gone-click", "live-wire", "hanging-loose", "rebound", "hold-that-thought"}) {
+		!slices.Equal(after.EarnedBadgeIDs(), []string{"gone-click", "live-wire", "hanging-loose", "rebound", "hold-that-thought", "off-grid", "parallel-outlet"}) {
 		t.Fatalf("restored button achievements = %+v, %v", after, err)
 	}
 
@@ -162,55 +168,66 @@ func TestButtonAchievementsSurviveNativeBackupRestore(t *testing.T) {
 	}
 }
 
-func TestVersionEightButtonAchievementsRestoreAndMigrate(t *testing.T) {
-	db, user := adminFixture(t)
-	ctx := context.Background()
-	now := time.Date(2026, 1, 5, 5, 2, 0, 0, time.UTC)
-	if _, err := db.RecordButtonAchievement(ctx, user.ID, ReconnectedPlug); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.IncrementWithButtonAchievements(ctx, user.ID, now, SlackCordClick); err != nil {
-		t.Fatal(err)
-	}
-	snapshot, err := db.Backup(ctx, t.TempDir(), "version-eight")
-	if err != nil {
-		t.Fatal(err)
-	}
-	old, err := sql.Open("sqlite", snapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = old.Exec(`
+func TestOlderButtonAchievementsRestoreAndMigrate(t *testing.T) {
+	for _, test := range []struct {
+		version   int
+		maxMask   int
+		clickBits ButtonAchievements
+	}{
+		{8, 7, SlackCordClick},
+		{9, 31, SlackCordClick | Rebound | HoldThatThought},
+	} {
+		t.Run(fmt.Sprintf("schema-%d", test.version), func(t *testing.T) {
+			db, user := adminFixture(t)
+			ctx := context.Background()
+			now := time.Date(2026, 1, 5, 5, 2, 0, 0, time.UTC)
+			if _, err := db.RecordButtonAchievement(ctx, user.ID, ReconnectedPlug); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.IncrementWithButtonAchievements(ctx, user.ID, now, test.clickBits); err != nil {
+				t.Fatal(err)
+			}
+			snapshot, err := db.Backup(ctx, t.TempDir(), "older-schema")
+			if err != nil {
+				t.Fatal(err)
+			}
+			old, err := sql.Open("sqlite", snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = old.Exec(fmt.Sprintf(`
 ALTER TABLE button_achievements RENAME TO saved_button_achievements;
 CREATE TABLE button_achievements (
   user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  earned INTEGER NOT NULL CHECK (earned BETWEEN 1 AND 7)
+  earned INTEGER NOT NULL CHECK (earned BETWEEN 1 AND %d)
 );
 INSERT INTO button_achievements SELECT user_id, earned FROM saved_button_achievements;
 DROP TABLE saved_button_achievements;
-PRAGMA user_version=8;
-`)
-	if closeErr := old.Close(); closeErr != nil {
-		t.Fatal(closeErr)
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
+PRAGMA user_version=%d;
+`, test.maxMask, test.version))
+			if closeErr := old.Close(); closeErr != nil {
+				t.Fatal(closeErr)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	if _, err := db.Restore(ctx, snapshot, t.TempDir(), user, now); err != nil {
-		t.Fatal(err)
-	}
-	restored, err := db.CurrentCounters(ctx, user.ID)
-	if err != nil || restored.Clicks != 1 || restored.ButtonAchievements != ReconnectedPlug|SlackCordClick {
-		t.Fatalf("restored version 8 progress = %+v, %v", restored, err)
-	}
-	migrated, err := Open(snapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer migrated.Close()
-	clicked, err := migrated.IncrementWithButtonAchievements(ctx, user.ID, now, Rebound|HoldThatThought)
-	if err != nil || clicked.Clicks != 2 || clicked.ButtonAchievements != ReconnectedPlug|SlackCordClick|Rebound|HoldThatThought {
-		t.Fatalf("migrated version 8 progress = %+v, %v", clicked, err)
+			if _, err := db.Restore(ctx, snapshot, t.TempDir(), user, now); err != nil {
+				t.Fatal(err)
+			}
+			restored, err := db.CurrentCounters(ctx, user.ID)
+			if err != nil || restored.Clicks != 1 || restored.ButtonAchievements != ReconnectedPlug|test.clickBits {
+				t.Fatalf("restored progress = %+v, %v", restored, err)
+			}
+			migrated, err := Open(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer migrated.Close()
+			clicked, err := migrated.IncrementWithButtonAchievements(ctx, user.ID, now, OffGrid)
+			if err != nil || clicked.Clicks != 2 || clicked.ButtonAchievements != ReconnectedPlug|test.clickBits|OffGrid {
+				t.Fatalf("migrated progress = %+v, %v", clicked, err)
+			}
+		})
 	}
 }

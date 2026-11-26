@@ -67,7 +67,7 @@
     "clicks": 5000,
     "progress": { "best_day_streak": 7, "best_week_streak": 4 },
     "achievements": { "active_days": 10, "active_months": 3, "earned": 15 },
-    "buttonAchievements": 31,
+    "buttonAchievements": 255,
     "earned": [
       "gone-click",
       "sentence",
@@ -88,6 +88,8 @@
       "circuit-breaker",
       "rebound",
       "hold-that-thought",
+      "off-grid",
+      "parallel-outlet",
       "recursion"
     ]
   }
