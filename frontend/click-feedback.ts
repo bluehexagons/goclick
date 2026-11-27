@@ -13,6 +13,7 @@ import {
 import type { Activation, ResponseState } from "./types.js";
 
 interface Feedback {
+  readonly settled: boolean;
   remove(): void;
   reduce(): void;
   translate(): void;
@@ -46,9 +47,11 @@ function measureImpact(button: HTMLButtonElement, event: Activation) {
 const clickFeedback = (() => {
   const samples: number[] = [],
     live = new Set<Feedback>();
+  let latestImpact = 0;
   const average = () =>
     samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : 150;
   function start(button: HTMLButtonElement, event: Activation, simulated = false) {
+    const impact = ++latestImpact;
     const { stage, hitX, hitY, width, height, origin } = measureImpact(button, event);
     const x = Math.max(40, Math.min(width - 40, hitX));
     const y = Math.max(24, Math.min(height - 16, hitY));
@@ -117,6 +120,9 @@ const clickFeedback = (() => {
       live.delete(handle);
     }
     const handle: Feedback = {
+      get settled() {
+        return settled;
+      },
       remove,
       translate,
       reduce() {
@@ -130,7 +136,11 @@ const clickFeedback = (() => {
         const ms = Math.max(0, milliseconds);
         popup.dataset.state =
           ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
-        tactileButtons.get(button)?.respond(popup.dataset.state as ResponseState, ms, origin);
+        tactileButtons.get(button)?.respond(popup.dataset.state as ResponseState, {
+          milliseconds: ms,
+          origin,
+          affectFace: impact === latestImpact,
+        });
         clickSound.play(popup.dataset.state === "slow" ? "slow" : "saved");
         phase = "saved";
         measured = ms;
@@ -144,7 +154,12 @@ const clickFeedback = (() => {
         settled = true;
         window.clearTimeout(slow);
         popup.dataset.state = limited ? "limited" : "error";
-        tactileButtons.get(button)?.respond(limited ? "limited" : "error", 0, origin);
+        // A cooldown changes what the whole button can do, even if an older request triggered it.
+        if (limited) latestImpact++;
+        tactileButtons.get(button)?.respond(limited ? "limited" : "error", {
+          origin,
+          affectFace: limited || impact === latestImpact,
+        });
         clickSound.play(limited ? "limited" : "error");
         phase = limited ? "limited" : uncertain ? "unconfirmed" : "unsaved";
         translate();
@@ -165,7 +180,10 @@ const clickFeedback = (() => {
     }
     // Pending +1s stay anchored until confirmed, including on a slow connection.
     live.add(handle);
-    while (live.size > 32) live.values().next().value?.remove();
+    if (live.size > 32) {
+      const discard = [...live].find((item) => item.settled) ?? live.values().next().value;
+      discard?.remove();
+    }
     return handle;
   }
   onLanguageChange(() => {
@@ -177,8 +195,9 @@ const clickFeedback = (() => {
   return {
     start,
     showCooldown(button: HTMLButtonElement, event: Activation) {
+      latestImpact++;
       const { origin } = measureImpact(button, event);
-      tactileButtons.get(button)?.respond("limited", 0, origin);
+      tactileButtons.get(button)?.respond("limited", { origin });
       clickSound.play("limited");
     },
     reset() {

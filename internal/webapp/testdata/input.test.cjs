@@ -681,7 +681,7 @@ test("reduced motion and hidden buttons update lettering without a fade", () => 
 test("response glows finish without releasing another held pointer", () => {
   const h = harness(false);
   h.pointer("pointerdown", 1);
-  h.controller.respond("slow", 700);
+  h.controller.respond("slow", { milliseconds: 700 });
   assert.equal(h.stage.dataset.response, "slow");
   assert.equal(h.rig.props.get("--glow-color"), "rgb(163 138 255)");
   assert.equal(h.stage.classes.has("is-pressed"), true);
@@ -707,11 +707,16 @@ test("impact and reply particles keep separate colors and stay within the layer 
   const originalColor = sparks[0].props.get("--particle-color");
   h.controller.respond("pending");
   assert.ok(layer.children.every((particle) => particle.dataset.event !== "pending"));
-  h.controller.respond("slow", 800, { x: 0.25, y: -0.25 });
+  h.controller.respond("slow", {
+    milliseconds: 800,
+    origin: { x: 0.25, y: -0.25 },
+    affectFace: false,
+  });
   const ring = layer.children.find((particle) => particle.dataset.shape === "ring");
   assert.equal(ring.dataset.event, "slow");
   assert.equal(ring.props.get("left"), "calc(50% + 170px)");
   assert.equal(ring.props.get("top"), "calc(50% + -72.5px)");
+  assert.equal(h.stage.dataset.response, "pending");
   assert.equal(sparks[0].props.get("--particle-color"), originalColor);
   for (let i = 0; i < 20; i++) h.button.click();
   assert.ok(layer.childElementCount <= 64);

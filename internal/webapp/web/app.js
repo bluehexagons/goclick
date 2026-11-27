@@ -5452,7 +5452,7 @@
       current.responseProgress = 0;
       current.responseColor = [1, 0.78, 0.32];
       delete stage.dataset.response;
-    }, respond2 = function(state, milliseconds = 0, origin) {
+    }, respond2 = function(state, { milliseconds = 0, origin, affectFace = true } = {}) {
       const powered2 = current.powered !== false;
       const warning = state === "limited" || state === "error";
       if (state !== "pending" && (powered2 || warning)) {
@@ -5462,7 +5462,7 @@
           direction: warning ? Math.PI / 2 : state === "slow" ? void 0 : -Math.PI / 2
         });
       }
-      if (!powered2) return;
+      if (!powered2 || !affectFace) return;
       current.responseColor = state === "error" ? [1, 0.49, 0.47] : state === "slow" ? [0.64, 0.54, 1] : state === "limited" ? [1, 0.58, 0.26] : state === "pending" ? [1, 0.78, 0.32] : state === "fast" ? [0.38, 0.8, 0.65] : [0.35, 0.67, 0.94];
       stage.dataset.response = state;
       responseDuration = clamp(300 + milliseconds * 0.4, 320, 800);
@@ -6054,8 +6054,10 @@
   }
   var clickFeedback = (() => {
     const samples = [], live2 = /* @__PURE__ */ new Set();
+    let latestImpact = 0;
     const average = () => samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : 150;
     function start(button, event, simulated = false) {
+      const impact = ++latestImpact;
       const { stage, hitX, hitY, width, height, origin } = measureImpact(button, event);
       const x = Math.max(40, Math.min(width - 40, hitX));
       const y = Math.max(24, Math.min(height - 16, hitY));
@@ -6110,6 +6112,9 @@
         live2.delete(handle);
       }
       const handle = {
+        get settled() {
+          return settled;
+        },
         remove,
         translate,
         reduce() {
@@ -6122,7 +6127,11 @@
           window.clearTimeout(slow);
           const ms = Math.max(0, milliseconds);
           popup.dataset.state = ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
-          tactileButtons.get(button)?.respond(popup.dataset.state, ms, origin);
+          tactileButtons.get(button)?.respond(popup.dataset.state, {
+            milliseconds: ms,
+            origin,
+            affectFace: impact === latestImpact
+          });
           clickSound.play(popup.dataset.state === "slow" ? "slow" : "saved");
           phase = "saved";
           measured = ms;
@@ -6136,7 +6145,11 @@
           settled = true;
           window.clearTimeout(slow);
           popup.dataset.state = limited ? "limited" : "error";
-          tactileButtons.get(button)?.respond(limited ? "limited" : "error", 0, origin);
+          if (limited) latestImpact++;
+          tactileButtons.get(button)?.respond(limited ? "limited" : "error", {
+            origin,
+            affectFace: limited || impact === latestImpact
+          });
           clickSound.play(limited ? "limited" : "error");
           phase = limited ? "limited" : uncertain ? "unconfirmed" : "unsaved";
           translate();
@@ -6156,7 +6169,10 @@
         removal = window.setTimeout(remove, motionPreference.matches ? 800 : 950);
       }
       live2.add(handle);
-      while (live2.size > 32) live2.values().next().value?.remove();
+      if (live2.size > 32) {
+        const discard = [...live2].find((item) => item.settled) ?? live2.values().next().value;
+        discard?.remove();
+      }
       return handle;
     }
     onLanguageChange(() => {
@@ -6168,8 +6184,9 @@
     return {
       start,
       showCooldown(button, event) {
+        latestImpact++;
         const { origin } = measureImpact(button, event);
-        tactileButtons.get(button)?.respond("limited", 0, origin);
+        tactileButtons.get(button)?.respond("limited", { origin });
         clickSound.play("limited");
       },
       reset() {

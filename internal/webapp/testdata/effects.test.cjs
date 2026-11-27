@@ -137,7 +137,9 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
   assert.equal(popup.children[0].textContent, "?");
   assert.equal(popup.children[1].textContent, "unconfirmed");
   assert.deepEqual(
-    h.responses.map(([state, ms, origin]) => (origin ? [state, ms, origin.x, origin.y] : [state])),
+    h.responses.map(([state, effect]) =>
+      effect ? [state, effect.milliseconds ?? 0, effect.origin.x, effect.origin.y] : [state],
+    ),
     [
       ["pending"],
       ["fast", 50, 90 / 340 - 0.5, 0],
@@ -189,12 +191,46 @@ test("a tap during cooldown anchors its warning without making a pending score p
   const h = effects();
   h.feedback.showCooldown(h.button, { detail: 1, clientX: 290, clientY: 128 });
   assert.equal(h.layer.children.length, 0);
-  const [[state, ms, origin]] = h.responses;
+  const [[state, { origin }]] = h.responses;
   assert.equal(state, "limited");
-  assert.equal(ms, 0);
   assert.equal(origin.x, 270 / 340 - 0.5);
   assert.equal(origin.y, 88 / 240 - 0.5);
   assert.deepEqual(h.sounds, ["limited"]);
+});
+
+test("late replies keep their own popup without replacing a newer button glow", () => {
+  const h = effects();
+  const first = h.feedback.start(h.button, { detail: 0 });
+  const second = h.feedback.start(h.button, { detail: 0 });
+  second.success(50);
+  first.success(900);
+  assert.equal(h.responses[2][1].affectFace, true);
+  assert.equal(h.responses[3][1].affectFace, false);
+  assert.equal(h.layer.children[0].dataset.state, "slow");
+  assert.match(h.layer.children[0].title, /900 ms/);
+});
+
+test("a late rate limit claims the button face and keeps in-flight saves from repainting it", () => {
+  const h = effects();
+  const first = h.feedback.start(h.button, { detail: 0 });
+  const second = h.feedback.start(h.button, { detail: 0 });
+  first.fail(false, true);
+  second.success(45);
+  assert.equal(h.responses[2][0], "limited");
+  assert.equal(h.responses[2][1].affectFace, true);
+  assert.equal(h.responses[3][1].affectFace, false);
+  assert.equal(h.layer.children[1].dataset.state, "fast");
+});
+
+test("the popup limit discards completed feedback before a click still awaiting a reply", () => {
+  const h = effects();
+  const pending = h.feedback.start(h.button, { detail: 0 });
+  for (let i = 0; i < 36; i++) h.feedback.start(h.button, { detail: 0 }).success(40);
+  assert.equal(h.layer.children.filter((popup) => !popup.removed).length, 32);
+  assert.equal(h.layer.children[0].removed, undefined);
+  pending.success(900);
+  assert.equal(h.layer.children[0].dataset.state, "slow");
+  assert.match(h.layer.children[0].title, /900 ms/);
 });
 
 test("click feedback and tooltips follow language changes throughout the save lifecycle", () => {

@@ -24,6 +24,7 @@ import { buttonAchievementBits } from "./types.js";
 import type {
   ButtonController,
   ButtonInteraction,
+  ButtonResponseEffect,
   ButtonState,
   ResponseState,
   Renderer,
@@ -860,7 +861,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     current.responseColor = [1, 0.78, 0.32];
     delete stage.dataset.response;
   }
-  function respond(state: ResponseState, milliseconds = 0, origin?: { x: number; y: number }) {
+  function respond(
+    state: ResponseState,
+    { milliseconds = 0, origin, affectFace = true }: ButtonResponseEffect = {},
+  ) {
     const powered = current.powered !== false;
     const warning = state === "limited" || state === "error";
     if (state !== "pending" && (powered || warning)) {
@@ -872,7 +876,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
         direction: warning ? Math.PI / 2 : state === "slow" ? undefined : -Math.PI / 2,
       });
     }
-    if (!powered) return;
+    if (!powered || !affectFace) return;
     current.responseColor =
       state === "error"
         ? [1, 0.49, 0.47]

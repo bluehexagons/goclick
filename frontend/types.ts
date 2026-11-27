@@ -106,7 +106,12 @@ export interface ButtonState {
 export interface ButtonController {
   readonly clickAchievements: number;
   reset(cancelled?: boolean): void;
-  respond(state: ResponseState, milliseconds?: number, origin?: { x: number; y: number }): void;
+  respond(state: ResponseState, effect?: ButtonResponseEffect): void;
+}
+export interface ButtonResponseEffect {
+  milliseconds?: number;
+  origin?: { x: number; y: number };
+  affectFace?: boolean;
 }
 export interface Renderer {
   draw(state?: ButtonState): void;
