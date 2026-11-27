@@ -59,6 +59,9 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
       this.children.push(child);
     }
     attributes = new Map();
+    getAttribute(name) {
+      return this.attributes.get(name) ?? null;
+    }
     setAttribute(name, value) {
       this.attributes.set(name, value);
     }
@@ -715,6 +718,33 @@ test("impact and reply particles keep separate colors and stay within the layer 
   assert.equal(sparks[0].animationCancelled, true);
   h.controller.reset();
   assert.equal(layer.childElementCount, 0);
+});
+
+test("cooldown uses only warning particles even when the button is unpowered", () => {
+  const h = harness(false, true);
+  const layer = h.stage.children.find((child) => child.className === "button-effects");
+  h.button.setAttribute("aria-disabled", "true");
+  h.pointer("pointerdown", 1);
+  assert.equal(h.stage.classes.has("is-pressed"), true);
+  h.setTime(2000);
+  h.runTimer(2000);
+  h.pointer("pointerup", 1);
+  assert.equal(layer.childElementCount, 0);
+  h.changeLabel("Clique !", "fr");
+  h.button.fire("keydown", { key: " " });
+  h.setTime(4000);
+  h.runTimer(2000);
+  h.button.fire("keyup", { key: " " });
+  assert.equal(layer.childElementCount, 0);
+  h.outletControl.click();
+  const before = layer.childElementCount;
+  h.button.click();
+  assert.equal(layer.childElementCount, before);
+  h.controller.respond("limited");
+  assert.ok(
+    layer.children.some((p) => p.dataset.event === "limited" && p.dataset.shape === "ring"),
+  );
+  assert.equal(h.stage.dataset.response, undefined);
 });
 
 test("reduced motion acknowledges with static color and reset clears stale responses", () => {

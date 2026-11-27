@@ -196,6 +196,7 @@ async function harness(options = {}) {
     },
     clickFeedback: {
       reset() {},
+      showCooldown: () => options.sound?.play("limited"),
       start: () => {
         const item = {
           success(ms) {

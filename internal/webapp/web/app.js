@@ -5261,7 +5261,7 @@
         const elapsed2 = performance.now() - pressedAt;
         if (elapsed2 >= nextBeat) {
           clickSound.play("hold");
-          if (!thoughtHold) emitFace2("hold");
+          if (!thoughtHold && !clickBlocked()) emitFace2("hold");
           nextBeat = (Math.floor(elapsed2 / holdBeat) + 1) * holdBeat;
         }
         beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed2));
@@ -5283,7 +5283,7 @@
       const timer = window.setTimeout(() => {
         meter.dataset.ready = "true";
         announceThought2(true);
-        emitFace2("thoughtReady");
+        if (!clickBlocked()) emitFace2("thoughtReady");
       }, THOUGHT_HOLD_MS);
       thoughtHold = { meter, language: label.lang, timer };
     }, clearThoughtHold2 = function() {
@@ -5321,11 +5321,12 @@
       );
       echo.style.setProperty("left", `${x - bounds.left}px`);
       echo.style.setProperty("top", `${y - bounds.top}px`);
-      particles.emit("thought", {
-        x: x - bounds.left - bounds.width / 2,
-        y: y - bounds.top - bounds.height / 2,
-        direction: -Math.PI / 2
-      });
+      if (!clickBlocked())
+        particles.emit("thought", {
+          x: x - bounds.left - bounds.width / 2,
+          y: y - bounds.top - bounds.height / 2,
+          direction: -Math.PI / 2
+        });
       thoughtEcho = echo;
       thoughtEchoTimer = window.setTimeout(clearThoughtEcho2, THOUGHT_ECHO_MS);
     }, begin2 = function() {
@@ -5452,20 +5453,22 @@
       current.responseColor = [1, 0.78, 0.32];
       delete stage.dataset.response;
     }, respond2 = function(state, milliseconds = 0, origin) {
-      if (current.powered === false) return;
+      const powered2 = current.powered !== false;
+      const warning = state === "limited" || state === "error";
+      if (state !== "pending" && (powered2 || warning)) {
+        const point = origin ? { x: origin.x * stage.clientWidth, y: origin.y * stage.clientHeight } : { x: current.x, y: current.y };
+        particles.emit(state, {
+          ...point,
+          direction: warning ? Math.PI / 2 : state === "slow" ? void 0 : -Math.PI / 2
+        });
+      }
+      if (!powered2) return;
       current.responseColor = state === "error" ? [1, 0.49, 0.47] : state === "slow" ? [0.64, 0.54, 1] : state === "limited" ? [1, 0.58, 0.26] : state === "pending" ? [1, 0.78, 0.32] : state === "fast" ? [0.38, 0.8, 0.65] : [0.35, 0.67, 0.94];
       stage.dataset.response = state;
       responseDuration = clamp(300 + milliseconds * 0.4, 320, 800);
       current.responseProgress = reducedMotion.matches ? 0.5 : 0;
       current.response = state === "pending" ? 0.18 : reducedMotion.matches ? 0.22 : 1;
       responseStarted = state === "pending" || reducedMotion.matches ? null : performance.now();
-      if (state !== "pending") {
-        const point = origin ? { x: origin.x * stage.clientWidth, y: origin.y * stage.clientHeight } : { x: current.x, y: current.y };
-        particles.emit(state, {
-          ...point,
-          direction: state === "fast" || state === "saved" ? -Math.PI / 2 : state === "limited" || state === "error" ? Math.PI / 2 : void 0
-        });
-      }
       paint2();
       animate2();
     }, aimPointers2 = function(trackPull = false) {
@@ -5512,7 +5515,9 @@
       if (!press && phase === "idle") {
         velocity.pop = quick ? 0.05 : 0.022;
       }
-      if (current.powered !== false) {
+      if (clickBlocked()) {
+        if (press) paint2();
+      } else if (current.powered !== false) {
         current.flash = press ? 0.45 : quick ? 0.85 : 0.55;
         paint2();
         const rebound = !press && (releaseAchievements & buttonAchievementBits.rebound) !== 0;
@@ -5705,6 +5710,7 @@
     let responseStarted = null;
     let responseDuration = 500;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const clickBlocked = () => button.getAttribute("aria-disabled") === "true";
     if (outletControl) {
       outletControl.addEventListener("click", (event) => {
         if (event.pointerType !== "touch" || event.isPrimary || event.detail === 0) pressOutlet2();
@@ -6031,26 +6037,34 @@
     unconfirmed: "feedbackUnconfirmed",
     unsaved: "feedbackUnsaved"
   };
+  function measureImpact(button, event) {
+    const stage = button.closest(".button-stage");
+    if (!stage) throw new Error("Click feedback needs a stage");
+    const { left, top, width, height } = stage.getBoundingClientRect();
+    let { clientX, clientY } = event;
+    if (!(event.detail > 0)) {
+      const face = button.getBoundingClientRect();
+      clientX = face.left + face.width / 2;
+      clientY = face.top + face.height / 2;
+    }
+    const hitX = clientX - left;
+    const hitY = clientY - top;
+    const origin = { x: hitX / width - 0.5, y: hitY / height - 0.5 };
+    return { stage, hitX, hitY, width, height, origin };
+  }
   var clickFeedback = (() => {
     const samples = [], live2 = /* @__PURE__ */ new Set();
     const average = () => samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : 150;
     function start(button, event, simulated = false) {
-      const stage = button.closest(".button-stage");
-      if (!stage) throw new Error("Click feedback needs a stage");
-      const rect = stage.getBoundingClientRect();
-      const face = button.getBoundingClientRect();
-      const pointer = event.detail > 0;
-      const hitX = (pointer ? event.clientX : face.left + face.width / 2) - rect.left;
-      const hitY = (pointer ? event.clientY : face.top + face.height / 2) - rect.top;
-      const x = Math.max(40, Math.min(rect.width - 40, hitX));
-      const y = Math.max(24, Math.min(rect.height - 16, hitY));
-      const origin = { x: hitX / rect.width - 0.5, y: hitY / rect.height - 0.5 };
+      const { stage, hitX, hitY, width, height, origin } = measureImpact(button, event);
+      const x = Math.max(40, Math.min(width - 40, hitX));
+      const y = Math.max(24, Math.min(height - 16, hitY));
       const popup = document.createElement("span"), score = document.createElement("strong"), timing = document.createElement("small");
       popup.className = "click-bonus";
       popup.dataset.state = "pending";
       popup.setAttribute("aria-hidden", "true");
-      popup.style.left = `${100 * x / rect.width}%`;
-      popup.style.top = `${100 * y / rect.height}%`;
+      popup.style.left = `${100 * x / width}%`;
+      popup.style.top = `${100 * y / height}%`;
       popup.append(score, timing);
       required(".score-effects", stage).append(popup);
       tactileButtons.get(button)?.respond("pending");
@@ -6153,6 +6167,11 @@
     });
     return {
       start,
+      showCooldown(button, event) {
+        const { origin } = measureImpact(button, event);
+        tactileButtons.get(button)?.respond("limited", 0, origin);
+        clickSound.play("limited");
+      },
       reset() {
         for (const handle of live2) handle.remove();
         samples.length = 0;
@@ -7773,8 +7792,7 @@
     if (!user || !gameReady || offline && !localMode || signingOut || authenticating || pendingClicks >= maxPendingClicks)
       return;
     if (coolingDown()) {
-      tactileButtons.get(clickButton)?.respond("limited");
-      clickSound.play("limited");
+      clickFeedback.showCooldown(clickButton, event);
       return;
     }
     if (pendingClicks === 0) {

@@ -153,6 +153,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let responseDuration = 500;
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
+  // Cooldown keeps the control physically enabled for tactile feedback.
+  const clickBlocked = () => button.getAttribute("aria-disabled") === "true";
+
   function emitFace(event: ParticleEvent, direction?: number) {
     if (reducedMotion.matches) return;
     const scale = 1 + current.pop;
@@ -615,7 +618,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       const elapsed = performance.now() - pressedAt;
       if (elapsed >= nextBeat) {
         clickSound.play("hold");
-        if (!thoughtHold) emitFace("hold");
+        if (!thoughtHold && !clickBlocked()) emitFace("hold");
         nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
       }
       beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed));
@@ -642,7 +645,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const timer = window.setTimeout(() => {
       meter.dataset.ready = "true";
       announceThought(true);
-      emitFace("thoughtReady");
+      if (!clickBlocked()) emitFace("thoughtReady");
     }, THOUGHT_HOLD_MS);
     thoughtHold = { meter, language: label.lang, timer };
   }
@@ -693,11 +696,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     );
     echo.style.setProperty("left", `${x - bounds.left}px`);
     echo.style.setProperty("top", `${y - bounds.top}px`);
-    particles.emit("thought", {
-      x: x - bounds.left - bounds.width / 2,
-      y: y - bounds.top - bounds.height / 2,
-      direction: -Math.PI / 2,
-    });
+    if (!clickBlocked())
+      particles.emit("thought", {
+        x: x - bounds.left - bounds.width / 2,
+        y: y - bounds.top - bounds.height / 2,
+        direction: -Math.PI / 2,
+      });
     thoughtEcho = echo;
     thoughtEchoTimer = window.setTimeout(clearThoughtEcho, THOUGHT_ECHO_MS);
   }
@@ -857,7 +861,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     delete stage.dataset.response;
   }
   function respond(state: ResponseState, milliseconds = 0, origin?: { x: number; y: number }) {
-    if (current.powered === false) return;
+    const powered = current.powered !== false;
+    const warning = state === "limited" || state === "error";
+    if (state !== "pending" && (powered || warning)) {
+      const point = origin
+        ? { x: origin.x * stage.clientWidth, y: origin.y * stage.clientHeight }
+        : { x: current.x, y: current.y };
+      particles.emit(state, {
+        ...point,
+        direction: warning ? Math.PI / 2 : state === "slow" ? undefined : -Math.PI / 2,
+      });
+    }
+    if (!powered) return;
     current.responseColor =
       state === "error"
         ? [1, 0.49, 0.47]
@@ -876,20 +891,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     // With reduced motion, keep a quiet static tint until the next interaction.
     current.response = state === "pending" ? 0.18 : reducedMotion.matches ? 0.22 : 1;
     responseStarted = state === "pending" || reducedMotion.matches ? null : performance.now();
-    if (state !== "pending") {
-      const point = origin
-        ? { x: origin.x * stage.clientWidth, y: origin.y * stage.clientHeight }
-        : { x: current.x, y: current.y };
-      particles.emit(state, {
-        ...point,
-        direction:
-          state === "fast" || state === "saved"
-            ? -Math.PI / 2
-            : state === "limited" || state === "error"
-              ? Math.PI / 2
-              : undefined,
-      });
-    }
     paint();
     animate();
   }
@@ -941,7 +942,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (!press && phase === "idle") {
       velocity.pop = quick ? 0.05 : 0.022;
     }
-    if (current.powered !== false) {
+    if (clickBlocked()) {
+      if (press) paint();
+    } else if (current.powered !== false) {
       current.flash = press ? 0.45 : quick ? 0.85 : 0.55;
       paint();
       const rebound = !press && (releaseAchievements & buttonAchievementBits.rebound) !== 0;

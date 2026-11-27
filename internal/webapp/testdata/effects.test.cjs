@@ -185,6 +185,18 @@ test("a rejected rate-limited click gets a cooldown response rather than a save 
   assert.deepEqual(h.sounds, ["limited"]);
 });
 
+test("a tap during cooldown anchors its warning without making a pending score popup", () => {
+  const h = effects();
+  h.feedback.showCooldown(h.button, { detail: 1, clientX: 290, clientY: 128 });
+  assert.equal(h.layer.children.length, 0);
+  const [[state, ms, origin]] = h.responses;
+  assert.equal(state, "limited");
+  assert.equal(ms, 0);
+  assert.equal(origin.x, 270 / 340 - 0.5);
+  assert.equal(origin.y, 88 / 240 - 0.5);
+  assert.deepEqual(h.sounds, ["limited"]);
+});
+
 test("click feedback and tooltips follow language changes throughout the save lifecycle", () => {
   const h = effects();
   const handle = h.feedback.start(h.button, { detail: 0 });

@@ -25,23 +25,33 @@ const feedbackLabels = {
   unconfirmed: "feedbackUnconfirmed",
   unsaved: "feedbackUnsaved",
 } as const;
+
+function measureImpact(button: HTMLButtonElement, event: Activation) {
+  const stage = button.closest<HTMLElement>(".button-stage");
+  if (!stage) throw new Error("Click feedback needs a stage");
+  const { left, top, width, height } = stage.getBoundingClientRect();
+  let { clientX, clientY } = event;
+  if (!(event.detail > 0)) {
+    const face = button.getBoundingClientRect();
+    clientX = face.left + face.width / 2;
+    clientY = face.top + face.height / 2;
+  }
+  const hitX = clientX - left;
+  const hitY = clientY - top;
+  // A delayed reply belongs to the original impact, even if the face has moved.
+  const origin = { x: hitX / width - 0.5, y: hitY / height - 0.5 };
+  return { stage, hitX, hitY, width, height, origin };
+}
+
 const clickFeedback = (() => {
   const samples: number[] = [],
     live = new Set<Feedback>();
   const average = () =>
     samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : 150;
   function start(button: HTMLButtonElement, event: Activation, simulated = false) {
-    const stage = button.closest<HTMLElement>(".button-stage");
-    if (!stage) throw new Error("Click feedback needs a stage");
-    const rect = stage.getBoundingClientRect();
-    const face = button.getBoundingClientRect();
-    const pointer = event.detail > 0;
-    const hitX = (pointer ? event.clientX : face.left + face.width / 2) - rect.left;
-    const hitY = (pointer ? event.clientY : face.top + face.height / 2) - rect.top;
-    const x = Math.max(40, Math.min(rect.width - 40, hitX));
-    const y = Math.max(24, Math.min(rect.height - 16, hitY));
-    // A delayed reply belongs to the original impact, even if the face has moved.
-    const origin = { x: hitX / rect.width - 0.5, y: hitY / rect.height - 0.5 };
+    const { stage, hitX, hitY, width, height, origin } = measureImpact(button, event);
+    const x = Math.max(40, Math.min(width - 40, hitX));
+    const y = Math.max(24, Math.min(height - 16, hitY));
     const popup = document.createElement("span"),
       score = document.createElement("strong"),
       timing = document.createElement("small");
@@ -49,8 +59,8 @@ const clickFeedback = (() => {
     popup.dataset.state = "pending";
     popup.setAttribute("aria-hidden", "true");
     // Keep the anchor on the stage if the viewport changes while a reply is pending.
-    popup.style.left = `${(100 * x) / rect.width}%`;
-    popup.style.top = `${(100 * y) / rect.height}%`;
+    popup.style.left = `${(100 * x) / width}%`;
+    popup.style.top = `${(100 * y) / height}%`;
     popup.append(score, timing);
     required(".score-effects", stage).append(popup);
     tactileButtons.get(button)?.respond("pending");
@@ -166,6 +176,11 @@ const clickFeedback = (() => {
   });
   return {
     start,
+    showCooldown(button: HTMLButtonElement, event: Activation) {
+      const { origin } = measureImpact(button, event);
+      tactileButtons.get(button)?.respond("limited", 0, origin);
+      clickSound.play("limited");
+    },
     reset() {
       for (const handle of live) handle.remove();
       samples.length = 0;
