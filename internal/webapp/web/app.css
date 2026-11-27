@@ -1089,20 +1089,35 @@ select:focus,
 }
 .button-effects {
   position: absolute;
-  inset: -20px 0;
+  inset: 0;
   z-index: 3;
-  overflow: hidden;
   pointer-events: none;
 }
-.click-particle {
+.button-particle {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 3px;
-  height: 3px;
+  width: var(--particle-size);
+  height: var(--particle-size);
+  translate: -50% -50%;
+  background: var(--particle-color);
+  box-shadow: 0 0 5px var(--particle-color);
+}
+.button-particle[data-shape="spark"] {
+  width: calc(var(--particle-size) * 3.6);
+  height: calc(var(--particle-size) * 0.58);
+  border-radius: 99px;
+}
+.button-particle[data-shape="chip"] {
+  border-radius: 1px;
+}
+.button-particle[data-shape="dust"] {
   border-radius: 50%;
-  background: var(--spark-color, var(--gold));
-  box-shadow: 0 0 5px var(--spark-color, var(--gold));
+  box-shadow: none;
+}
+.button-particle[data-shape="ring"] {
+  border: 1px solid var(--particle-color);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
 }
 .game-readout {
   display: grid;

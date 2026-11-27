@@ -14,6 +14,8 @@ import {
 } from "./button-geometry.js";
 import type { OutletSocket, PlugState } from "./button-geometry.js";
 import { createButtonRenderer } from "./button-3d.js";
+import { createButtonParticles } from "./button-particles.js";
+import type { ParticleEvent } from "./button-particles.js";
 import { required } from "./dom.js";
 import { clickSound } from "./sound.js";
 import { powerBootDuration, powerBootLighting } from "./power-sequence.js";
@@ -71,6 +73,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let outletTripped = false;
   let drainStartedAt: number | null = null;
   let bootStartedAt: number | null = null;
+  let bootParticlesPlayed = false;
   let booted = false;
   let outletTouch: { id: number; x: number; y: number } | null = null;
   let socket: OutletSocket = "bottom";
@@ -79,13 +82,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let dockTimer = 0;
   let plugTap: { id: number; x: number; y: number } | null = null;
   let seating: { x: number; y: number; angle: number; startedAt: number } | null = null;
+  let plugPosition = { x: 0, y: 0 };
   const readout = gameButton ? document.querySelector<HTMLElement>(".game-readout") : null;
   let readoutOffset = 0;
   let readoutOpacity = 1;
-  const effects = document.createElement("div");
-  effects.className = "button-effects";
-  effects.setAttribute("aria-hidden", "true");
-  stage.append(effects);
+  const particles = createButtonParticles(stage);
   const reducedMotion = motionPreference;
   const keys = ["x", "y", "rx", "ry", "pop"] as const;
   const current: ButtonState = {
@@ -152,6 +153,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   let responseDuration = 500;
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
+  function emitFace(event: ParticleEvent, direction?: number) {
+    if (reducedMotion.matches) return;
+    const scale = 1 + current.pop;
+    particles.emit(event, {
+      x: current.x,
+      y: current.y,
+      radiusX: button.offsetWidth * scale * 0.5,
+      radiusY: button.offsetHeight * scale * 0.49,
+      direction,
+    });
+  }
+
   function readyTarget() {
     return Number(
       !button.disabled &&
@@ -217,6 +230,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (next) {
       power.dataset.dock = next.socket;
       if (outletControl) outletControl.dataset.dock = next.socket;
+      particles.emit("dock", { x: 0, y: outletSockets[next.socket] });
       dockTimer = window.setTimeout(reconnectPlug, PLUG_DWELL_MS);
     } else {
       delete power.dataset.dock;
@@ -239,6 +253,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     clickSound.hardware("boot");
     if (!reducedMotion.matches) {
       bootStartedAt = performance.now();
+      bootParticlesPlayed = false;
       animate();
     }
   }
@@ -251,6 +266,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (powered) {
       drainStartedAt = null;
       bootStartedAt = reducedMotion.matches ? null : time + bootDelay;
+      bootParticlesPlayed = false;
       if (phase !== "idle") {
         current.copper = 1;
         current.labelCharge = reducedMotion.matches ? 0 : 1;
@@ -262,7 +278,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       releaseCopper = 0;
       current.copper = current.flash = current.holdLight = current.labelCharge = 0;
       clearResponse();
-      effects.replaceChildren();
+      particles.clear();
+      emitFace("drain");
       window.clearTimeout(beatTimer);
     }
     return powered;
@@ -291,6 +308,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     plugPulls.reseat();
     if (outletControl) outletControl.disabled = false;
     const poweredOn = updatePower(time, PLUG_BOOT_DELAY_MS);
+    particles.emit("reconnect", { x: 0, y: outletSockets[nextSocket] });
     clickSound.hardware("plug-in", {
       gesture,
       bootDelay: poweredOn ? PLUG_BOOT_DELAY_MS : undefined,
@@ -330,6 +348,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const from = cordSlackAmount(startedAt);
     cordSlack = !cordSlack;
     clickSound.hardware(cordSlack ? "cord-slack" : "cord-tension", { gesture: true });
+    particles.emit(cordSlack ? "slack" : "tension", {
+      ...plugPosition,
+      direction: cordSlack ? Math.PI / 2 : -Math.PI / 2,
+    });
     slackChange = reducedMotion.matches ? null : { from, startedAt };
     plugControl.setAttribute("aria-pressed", String(cordSlack));
     animate();
@@ -367,6 +389,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
           })
         : null;
     if (power && cable) {
+      plugPosition = { x: cable.startX, y: cable.startY };
       stage.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
       power.setAttribute(
         "viewBox",
@@ -410,10 +433,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     rig.style.setProperty("--press", String(current.press));
     rig.style.setProperty("--copper", current.copper.toFixed(3));
     rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -0.065, 0.1)).toFixed(3));
-    stage.style.setProperty(
-      "--spark-color",
-      `rgb(${current.responseColor.map((value) => Math.round(value * 255)).join(" ")})`,
-    );
     const glow = Math.min(
       1.4,
       current.copper * 0.38 +
@@ -471,6 +490,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
   function tick(time: number) {
     const dt = lastFrame ? clamp((time - lastFrame) / (1000 / 60), 0.25, 2) : 1;
     lastFrame = time;
+    if (bootStartedAt !== null && time >= bootStartedAt && !bootParticlesPlayed) {
+      bootParticlesPlayed = true;
+      if (time - bootStartedAt < powerBootDuration) emitFace("boot");
+    }
     let moving = false;
     const ready = readyTarget();
     readiness += (ready - readiness) * (1 - Math.exp(-0.28 * dt));
@@ -592,6 +615,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       const elapsed = performance.now() - pressedAt;
       if (elapsed >= nextBeat) {
         clickSound.play("hold");
+        if (!thoughtHold) emitFace("hold");
         nextBeat = (Math.floor(elapsed / holdBeat) + 1) * holdBeat;
       }
       beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed));
@@ -618,6 +642,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     const timer = window.setTimeout(() => {
       meter.dataset.ready = "true";
       announceThought(true);
+      emitFace("thoughtReady");
     }, THOUGHT_HOLD_MS);
     thoughtHold = { meter, language: label.lang, timer };
   }
@@ -668,6 +693,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     );
     echo.style.setProperty("left", `${x - bounds.left}px`);
     echo.style.setProperty("top", `${y - bounds.top}px`);
+    particles.emit("thought", {
+      x: x - bounds.left - bounds.width / 2,
+      y: y - bounds.top - bounds.height / 2,
+      direction: -Math.PI / 2,
+    });
     thoughtEcho = echo;
     thoughtEchoTimer = window.setTimeout(clearThoughtEcho, THOUGHT_ECHO_MS);
   }
@@ -696,7 +726,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     if (reducedMotion.matches) {
       paint();
       animate();
-    } else burst(true);
+    } else showStrike(true);
     holdTimer = window.setTimeout(() => setPhase("held"), 180);
     scheduleHoldBeat();
   }
@@ -795,7 +825,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     return true;
   }
   function reset(cancelled = true) {
-    if (cancelled) clearThoughtEcho();
+    if (cancelled) {
+      clearThoughtEcho();
+      particles.clear();
+    }
     dockWhileParked = false;
     outletTouch = null;
     plugTap = null;
@@ -823,7 +856,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     current.responseColor = [1, 0.78, 0.32];
     delete stage.dataset.response;
   }
-  function respond(state: ResponseState, milliseconds = 0) {
+  function respond(state: ResponseState, milliseconds = 0, origin?: { x: number; y: number }) {
     if (current.powered === false) return;
     current.responseColor =
       state === "error"
@@ -843,6 +876,20 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     // With reduced motion, keep a quiet static tint until the next interaction.
     current.response = state === "pending" ? 0.18 : reducedMotion.matches ? 0.22 : 1;
     responseStarted = state === "pending" || reducedMotion.matches ? null : performance.now();
+    if (state !== "pending") {
+      const point = origin
+        ? { x: origin.x * stage.clientWidth, y: origin.y * stage.clientHeight }
+        : { x: current.x, y: current.y };
+      particles.emit(state, {
+        ...point,
+        direction:
+          state === "fast" || state === "saved"
+            ? -Math.PI / 2
+            : state === "limited" || state === "error"
+              ? Math.PI / 2
+              : undefined,
+      });
+    }
     paint();
     animate();
   }
@@ -879,62 +926,35 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
           updatePower(now);
           clickSound.hardware("unplug");
         }
+        particles.emit(nextPlug === "loose" ? "loose" : "unplug", {
+          ...plugPosition,
+          direction: Math.atan2(pulledY, pulledX),
+        });
       }
     }
     animate();
   }
-  function burst(press = false) {
+  function showStrike(press = false) {
     if (reducedMotion.matches) return;
     const quick = press || releaseDuration === TAP_RELEASE_MS;
 
     if (!press && phase === "idle") {
       velocity.pop = quick ? 0.05 : 0.022;
     }
-    if (current.powered === false) {
+    if (current.powered !== false) {
+      current.flash = press ? 0.45 : quick ? 0.85 : 0.55;
+      paint();
+      const rebound = !press && (releaseAchievements & buttonAchievementBits.rebound) !== 0;
+      if (rebound) {
+        emitFace("rebound", Math.atan2(-target.y, -target.x));
+      } else {
+        emitFace(press ? "press" : quick ? "release" : "heldRelease");
+      }
+    } else {
       if (press) paint();
-      animate();
-      return;
+      else emitFace("unpowered", Math.PI / 2);
     }
-    current.flash = press ? 0.45 : quick ? 0.85 : 0.55;
-    paint();
     animate();
-    // Small round sparks survive successive presses. Recolor the recent cloud
-    // from the latest acknowledgement, without stretching a halo or an ellipse.
-    const count = press ? 8 : quick ? 12 : 8;
-    while (effects.childElementCount > 64 - count) effects.firstElementChild?.remove();
-    const width = button.offsetWidth,
-      height = button.offsetHeight;
-    for (let i = 0; i < count; i++) {
-      const particle = document.createElement("span");
-      particle.className = "click-particle";
-      const side = i % 4,
-        along = (Math.random() - 0.5) * 0.75;
-      const nx = side === 1 ? 1 : side === 3 ? -1 : 0;
-      const ny = side === 0 ? -1 : side === 2 ? 1 : 0;
-      const x = current.x + (nx ? (nx * width) / 2 : along * width);
-      const y = current.y + (ny ? (ny * height) / 2 : along * height);
-      const drift = (press ? 12 : 22) + Math.random() * (press ? 18 : 28);
-      effects.append(particle);
-      particle
-        .animate(
-          [
-            { opacity: 0.95, transform: `translate(${x}px, ${y}px) scale(${quick ? 1.3 : 1})` },
-            { opacity: 0.6, offset: 0.22 },
-            {
-              opacity: 0,
-              transform: `translate(${x + nx * drift + along * 15}px, ${y + ny * drift - (press ? 12 : 22)}px) scale(.35)`,
-            },
-          ],
-          {
-            duration: press ? 520 + Math.random() * 260 : 850 + Math.random() * 650,
-            easing: "cubic-bezier(.1,.5,.3,1)",
-          },
-        )
-        .finished.then(
-          () => particle.remove(),
-          () => particle.remove(),
-        );
-    }
   }
 
   function activateRelease(earned: number, pointer?: { event: PointerEvent; bounds: DOMRect }) {
@@ -1248,7 +1268,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
     }
     if (gameButton) clickSound.play("release");
     if (!activatingRelease) echoSurpriseLabel();
-    burst();
+    showStrike();
   });
   new MutationObserver(() => {
     if (button.disabled) reset();
@@ -1293,10 +1313,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tactile
       slackChange = null;
     }
     reset();
-    if (reducedMotion.matches) {
-      for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
-      effects.replaceChildren();
-    } else refreshHover();
+    if (!reducedMotion.matches) refreshHover();
   });
   window.addEventListener("focus", () => {
     if (document.activeElement === button) animate();

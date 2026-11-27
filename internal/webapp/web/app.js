@@ -1810,6 +1810,160 @@
     return { draw, resume, suspend: suspend2 };
   }
 
+  // frontend/button-particles.ts
+  var gold = ["#fff0b0", "#ffca64", "#ec9560"];
+  var mint = ["#d5fff1", "#7ee9c0", "#43b998"];
+  var violet = ["#f4e4ff", "#d4a7ff", "#a88aee"];
+  var steel = ["#d1c5ad", "#9d9489", "#817f8b"];
+  var bursts = {
+    press: { count: 5, reach: 19, lifetime: 190, colors: gold, style: "spark" },
+    release: { count: 9, reach: 48, lifetime: 350, colors: gold, style: "spark", fall: 13 },
+    heldRelease: { count: 7, reach: 34, lifetime: 440, colors: gold, style: "chip", fall: 22 },
+    rebound: { count: 10, reach: 63, lifetime: 370, colors: gold, style: "spark" },
+    unpowered: { count: 5, reach: 24, lifetime: 350, colors: steel, style: "dust", fall: 17 },
+    hold: { count: 5, reach: 20, lifetime: 390, colors: mint, style: "chip" },
+    thought: { count: 5, reach: 32, lifetime: 430, colors: violet, style: "chip" },
+    thoughtReady: { count: 8, reach: 39, lifetime: 510, colors: violet, style: "chip", ring: true },
+    fast: { count: 5, reach: 32, lifetime: 260, colors: mint, style: "spark" },
+    saved: { count: 5, reach: 33, lifetime: 370, colors: ["#d3edff", "#74bfff"], style: "chip" },
+    slow: { count: 6, reach: 36, lifetime: 530, colors: violet, style: "chip", ring: true },
+    error: {
+      count: 6,
+      reach: 33,
+      lifetime: 400,
+      colors: ["#ffba9f", "#fc797b"],
+      style: "chip",
+      fall: 31
+    },
+    limited: {
+      count: 3,
+      reach: 21,
+      lifetime: 310,
+      colors: ["#ffbf80", "#e5975d"],
+      style: "chip",
+      fall: 13,
+      ring: true
+    },
+    boot: { count: 11, reach: 47, lifetime: 460, colors: mint, style: "spark" },
+    drain: {
+      count: 7,
+      reach: 22,
+      lifetime: 480,
+      colors: ["#f9bb82", "#b96d52"],
+      style: "dust",
+      fall: 37
+    },
+    loose: { count: 5, reach: 33, lifetime: 290, colors: gold, style: "spark" },
+    unplug: { count: 10, reach: 52, lifetime: 420, colors: gold, style: "spark", fall: 24 },
+    dock: { count: 4, reach: 19, lifetime: 330, colors: mint, style: "chip", ring: true },
+    reconnect: { count: 8, reach: 38, lifetime: 340, colors: mint, style: "spark", ring: true },
+    slack: { count: 5, reach: 21, lifetime: 400, colors: steel, style: "dust", fall: 26 },
+    tension: { count: 5, reach: 26, lifetime: 260, colors: steel, style: "chip" }
+  };
+  var maxParticles = 64;
+  function createButtonParticles(stage) {
+    const layer = document.createElement("div");
+    layer.className = "button-effects";
+    layer.setAttribute("aria-hidden", "true");
+    stage.append(layer);
+    const active = /* @__PURE__ */ new Map();
+    function remove(node) {
+      const animation = active.get(node);
+      if (!animation) return;
+      active.delete(node);
+      animation.cancel();
+      node.remove();
+    }
+    function spawn(event, style, color, from, size, frames, lifetime) {
+      const node = document.createElement("span");
+      node.className = "button-particle";
+      node.dataset.event = event;
+      node.dataset.shape = style;
+      node.style.setProperty("--particle-color", color);
+      node.style.setProperty("--particle-size", `${size}px`);
+      node.style.setProperty("left", `calc(50% + ${from.x}px)`);
+      node.style.setProperty("top", `calc(50% + ${from.y}px)`);
+      layer.append(node);
+      const animation = node.animate(frames, { duration: lifetime });
+      active.set(node, animation);
+      const finish = () => remove(node);
+      animation.finished.then(finish, finish);
+    }
+    function emit(event, { x, y, radiusX = 0, radiusY = 0, direction }) {
+      if (motionPreference.matches || document.hidden || !stage.clientWidth || !stage.clientHeight)
+        return;
+      const { count, reach, lifetime, colors, style, ring: ring2, fall = 0 } = bursts[event];
+      const limit = maxParticles - count - Number(Boolean(ring2));
+      while (active.size > limit) {
+        const oldest = active.keys().next().value;
+        if (!oldest) break;
+        remove(oldest);
+      }
+      if (ring2) {
+        spawn(
+          event,
+          "ring",
+          colors[0],
+          { x, y },
+          18,
+          [
+            { opacity: 0.55, transform: "scale(.45)", easing: "cubic-bezier(.12,.6,.35,1)" },
+            { opacity: 0, transform: `scale(${reach / 12})` }
+          ],
+          lifetime * 0.84
+        );
+      }
+      const spread = direction === void 0 ? Math.PI * 2 : Math.PI * 0.8;
+      const start = direction === void 0 ? Math.random() * spread : direction - spread / 2;
+      for (let i = 0; i < count; i++) {
+        const angle = start + spread * (i + 0.2 + Math.random() * 0.6) / count;
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        const distance = reach * (0.55 + Math.random() * 0.55);
+        const travelX = dx * distance;
+        const travelY = dy * distance;
+        const rotation = angle * 180 / Math.PI;
+        const shape = style === "spark" && i % 3 === 0 ? "chip" : style;
+        const turn = shape === "chip" ? (Math.random() - 0.5) * 150 : 0;
+        const size = shape === "spark" ? 2.6 + Math.random() : 2.4 + Math.random() * 2;
+        const from = {
+          x: x + Math.sign(dx) * Math.cbrt(Math.abs(dx)) * radiusX,
+          y: y + Math.sign(dy) * Math.cbrt(Math.abs(dy)) * radiusY
+        };
+        spawn(
+          event,
+          shape,
+          colors[i % colors.length] ?? colors[0],
+          from,
+          size,
+          [
+            {
+              opacity: shape === "dust" ? 0.62 : 0.95,
+              transform: `rotate(${rotation}deg)`,
+              easing: "cubic-bezier(.18,.63,.46,1)"
+            },
+            {
+              offset: 0.45,
+              opacity: 0.62,
+              transform: `translate(${travelX * 0.68}px, ${travelY * 0.68 + fall * 0.2}px) rotate(${rotation + turn * 0.5}deg) scale(.8)`
+            },
+            {
+              opacity: 0,
+              transform: `translate(${travelX}px, ${travelY + fall}px) rotate(${rotation + turn}deg) scale(${shape === "dust" ? 1.35 : 0.32})`
+            }
+          ],
+          lifetime * (0.82 + Math.random() * 0.32)
+        );
+      }
+    }
+    return {
+      emit,
+      clear() {
+        for (const node of active.keys()) remove(node);
+      }
+    };
+  }
+
   // frontend/sound.ts
   var motion = createSoundMotion();
   var profile = "classic";
@@ -4747,7 +4901,17 @@
   var THOUGHT_ECHO_MS = 550;
   var tactileButtons = /* @__PURE__ */ new Map();
   for (const button of document.querySelectorAll("[data-tactile-button]")) {
-    let readyTarget2 = function() {
+    let emitFace2 = function(event, direction) {
+      if (reducedMotion.matches) return;
+      const scale = 1 + current.pop;
+      particles.emit(event, {
+        x: current.x,
+        y: current.y,
+        radiusX: button.offsetWidth * scale * 0.5,
+        radiusY: button.offsetHeight * scale * 0.49,
+        direction
+      });
+    }, readyTarget2 = function() {
       return Number(
         !button.disabled && !document.hidden && ((buttonStaysPut2() ? isOverParkedButton2() : mouseOver) || document.activeElement === button && document.documentElement.dataset.focusInput === "keyboard" && document.hasFocus())
       );
@@ -4795,6 +4959,7 @@
       if (next) {
         power.dataset.dock = next.socket;
         if (outletControl) outletControl.dataset.dock = next.socket;
+        particles.emit("dock", { x: 0, y: outletSockets[next.socket] });
         dockTimer = window.setTimeout(reconnectPlug2, PLUG_DWELL_MS);
       } else {
         delete power.dataset.dock;
@@ -4808,6 +4973,7 @@
       clickSound.hardware("boot");
       if (!reducedMotion.matches) {
         bootStartedAt = performance.now();
+        bootParticlesPlayed = false;
         animate2();
       }
     }, updatePower2 = function(time, bootDelay = 0) {
@@ -4818,6 +4984,7 @@
       if (powered2) {
         drainStartedAt = null;
         bootStartedAt = reducedMotion.matches ? null : time + bootDelay;
+        bootParticlesPlayed = false;
         if (phase !== "idle") {
           current.copper = 1;
           current.labelCharge = reducedMotion.matches ? 0 : 1;
@@ -4829,7 +4996,8 @@
         releaseCopper = 0;
         current.copper = current.flash = current.holdLight = current.labelCharge = 0;
         clearResponse2();
-        effects.replaceChildren();
+        particles.clear();
+        emitFace2("drain");
         window.clearTimeout(beatTimer);
       }
       return powered2;
@@ -4848,6 +5016,7 @@
       plugPulls.reseat();
       if (outletControl) outletControl.disabled = false;
       const poweredOn = updatePower2(time, PLUG_BOOT_DELAY_MS);
+      particles.emit("reconnect", { x: 0, y: outletSockets[nextSocket] });
       clickSound.hardware("plug-in", {
         gesture,
         bootDelay: poweredOn ? PLUG_BOOT_DELAY_MS : void 0
@@ -4878,6 +5047,10 @@
       const from = cordSlackAmount2(startedAt);
       cordSlack = !cordSlack;
       clickSound.hardware(cordSlack ? "cord-slack" : "cord-tension", { gesture: true });
+      particles.emit(cordSlack ? "slack" : "tension", {
+        ...plugPosition,
+        direction: cordSlack ? Math.PI / 2 : -Math.PI / 2
+      });
       slackChange = reducedMotion.matches ? null : { from, startedAt };
       plugControl.setAttribute("aria-pressed", String(cordSlack));
       animate2();
@@ -4906,6 +5079,7 @@
         } : void 0
       }) : null;
       if (power && cable) {
+        plugPosition = { x: cable.startX, y: cable.startY };
         stage.style.setProperty("--cord-scale", cable.thickness.toFixed(3));
         power.setAttribute(
           "viewBox",
@@ -4947,10 +5121,6 @@
       rig.style.setProperty("--press", String(current.press));
       rig.style.setProperty("--copper", current.copper.toFixed(3));
       rig.style.setProperty("--button-pop", (1 + clamp(current.pop, -0.065, 0.1)).toFixed(3));
-      stage.style.setProperty(
-        "--spark-color",
-        `rgb(${current.responseColor.map((value) => Math.round(value * 255)).join(" ")})`
-      );
       const glow = Math.min(
         1.4,
         current.copper * 0.38 + current.flash * 0.65 + current.response * 0.8 + (current.holdLight ?? 0) + current.drainLight + current.bootLight
@@ -4995,6 +5165,10 @@
     }, tick2 = function(time) {
       const dt = lastFrame ? clamp((time - lastFrame) / (1e3 / 60), 0.25, 2) : 1;
       lastFrame = time;
+      if (bootStartedAt !== null && time >= bootStartedAt && !bootParticlesPlayed) {
+        bootParticlesPlayed = true;
+        if (time - bootStartedAt < powerBootDuration) emitFace2("boot");
+      }
       let moving = false;
       const ready = readyTarget2();
       readiness += (ready - readiness) * (1 - Math.exp(-0.28 * dt));
@@ -5087,6 +5261,7 @@
         const elapsed2 = performance.now() - pressedAt;
         if (elapsed2 >= nextBeat) {
           clickSound.play("hold");
+          if (!thoughtHold) emitFace2("hold");
           nextBeat = (Math.floor(elapsed2 / holdBeat) + 1) * holdBeat;
         }
         beatTimer = window.setTimeout(onBeat, Math.max(1, nextBeat - elapsed2));
@@ -5108,6 +5283,7 @@
       const timer = window.setTimeout(() => {
         meter.dataset.ready = "true";
         announceThought2(true);
+        emitFace2("thoughtReady");
       }, THOUGHT_HOLD_MS);
       thoughtHold = { meter, language: label.lang, timer };
     }, clearThoughtHold2 = function() {
@@ -5145,6 +5321,11 @@
       );
       echo.style.setProperty("left", `${x - bounds.left}px`);
       echo.style.setProperty("top", `${y - bounds.top}px`);
+      particles.emit("thought", {
+        x: x - bounds.left - bounds.width / 2,
+        y: y - bounds.top - bounds.height / 2,
+        direction: -Math.PI / 2
+      });
       thoughtEcho = echo;
       thoughtEchoTimer = window.setTimeout(clearThoughtEcho2, THOUGHT_ECHO_MS);
     }, begin2 = function() {
@@ -5169,7 +5350,7 @@
       if (reducedMotion.matches) {
         paint2();
         animate2();
-      } else burst2(true);
+      } else showStrike2(true);
       holdTimer = window.setTimeout(() => setPhase2("held"), 180);
       scheduleHoldBeat2();
     }, aimHover2 = function() {
@@ -5243,7 +5424,10 @@
       target.y = nextY;
       return true;
     }, reset2 = function(cancelled = true) {
-      if (cancelled) clearThoughtEcho2();
+      if (cancelled) {
+        clearThoughtEcho2();
+        particles.clear();
+      }
       dockWhileParked = false;
       outletTouch = null;
       plugTap = null;
@@ -5267,7 +5451,7 @@
       current.responseProgress = 0;
       current.responseColor = [1, 0.78, 0.32];
       delete stage.dataset.response;
-    }, respond2 = function(state, milliseconds = 0) {
+    }, respond2 = function(state, milliseconds = 0, origin) {
       if (current.powered === false) return;
       current.responseColor = state === "error" ? [1, 0.49, 0.47] : state === "slow" ? [0.64, 0.54, 1] : state === "limited" ? [1, 0.58, 0.26] : state === "pending" ? [1, 0.78, 0.32] : state === "fast" ? [0.38, 0.8, 0.65] : [0.35, 0.67, 0.94];
       stage.dataset.response = state;
@@ -5275,6 +5459,13 @@
       current.responseProgress = reducedMotion.matches ? 0.5 : 0;
       current.response = state === "pending" ? 0.18 : reducedMotion.matches ? 0.22 : 1;
       responseStarted = state === "pending" || reducedMotion.matches ? null : performance.now();
+      if (state !== "pending") {
+        const point = origin ? { x: origin.x * stage.clientWidth, y: origin.y * stage.clientHeight } : { x: current.x, y: current.y };
+        particles.emit(state, {
+          ...point,
+          direction: state === "fast" || state === "saved" ? -Math.PI / 2 : state === "limited" || state === "error" ? Math.PI / 2 : void 0
+        });
+      }
       paint2();
       animate2();
     }, aimPointers2 = function(trackPull = false) {
@@ -5308,54 +5499,33 @@
             updatePower2(now);
             clickSound.hardware("unplug");
           }
+          particles.emit(nextPlug === "loose" ? "loose" : "unplug", {
+            ...plugPosition,
+            direction: Math.atan2(pulledY, pulledX)
+          });
         }
       }
       animate2();
-    }, burst2 = function(press = false) {
+    }, showStrike2 = function(press = false) {
       if (reducedMotion.matches) return;
       const quick = press || releaseDuration === TAP_RELEASE_MS;
       if (!press && phase === "idle") {
         velocity.pop = quick ? 0.05 : 0.022;
       }
-      if (current.powered === false) {
+      if (current.powered !== false) {
+        current.flash = press ? 0.45 : quick ? 0.85 : 0.55;
+        paint2();
+        const rebound = !press && (releaseAchievements & buttonAchievementBits.rebound) !== 0;
+        if (rebound) {
+          emitFace2("rebound", Math.atan2(-target.y, -target.x));
+        } else {
+          emitFace2(press ? "press" : quick ? "release" : "heldRelease");
+        }
+      } else {
         if (press) paint2();
-        animate2();
-        return;
+        else emitFace2("unpowered", Math.PI / 2);
       }
-      current.flash = press ? 0.45 : quick ? 0.85 : 0.55;
-      paint2();
       animate2();
-      const count = press ? 8 : quick ? 12 : 8;
-      while (effects.childElementCount > 64 - count) effects.firstElementChild?.remove();
-      const width = button.offsetWidth, height = button.offsetHeight;
-      for (let i = 0; i < count; i++) {
-        const particle = document.createElement("span");
-        particle.className = "click-particle";
-        const side = i % 4, along = (Math.random() - 0.5) * 0.75;
-        const nx = side === 1 ? 1 : side === 3 ? -1 : 0;
-        const ny = side === 0 ? -1 : side === 2 ? 1 : 0;
-        const x = current.x + (nx ? nx * width / 2 : along * width);
-        const y = current.y + (ny ? ny * height / 2 : along * height);
-        const drift = (press ? 12 : 22) + Math.random() * (press ? 18 : 28);
-        effects.append(particle);
-        particle.animate(
-          [
-            { opacity: 0.95, transform: `translate(${x}px, ${y}px) scale(${quick ? 1.3 : 1})` },
-            { opacity: 0.6, offset: 0.22 },
-            {
-              opacity: 0,
-              transform: `translate(${x + nx * drift + along * 15}px, ${y + ny * drift - (press ? 12 : 22)}px) scale(.35)`
-            }
-          ],
-          {
-            duration: press ? 520 + Math.random() * 260 : 850 + Math.random() * 650,
-            easing: "cubic-bezier(.1,.5,.3,1)"
-          }
-        ).finished.then(
-          () => particle.remove(),
-          () => particle.remove()
-        );
-      }
     }, activateRelease2 = function(earned, pointer) {
       releaseAchievements = earned;
       activatingRelease = true;
@@ -5454,7 +5624,7 @@
         paint2();
       });
     };
-    readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, isOverParkedButton = isOverParkedButton2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, isSurpriseLabel = isSurpriseLabel2, announceThought = announceThought2, startThoughtHold = startThoughtHold2, clearThoughtHold = clearThoughtHold2, thoughtAchievement = thoughtAchievement2, clearThoughtEcho = clearThoughtEcho2, echoSurpriseLabel = echoSurpriseLabel2, begin = begin2, aimHover = aimHover2, refreshHover = refreshHover2, aimTilt = aimTilt2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, burst = burst2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2, scheduleRenderer = scheduleRenderer2;
+    emitFace = emitFace2, readyTarget = readyTarget2, plugProgress = plugProgress2, buttonStaysPut = buttonStaysPut2, isOverParkedButton = isOverParkedButton2, cordSlackAmount = cordSlackAmount2, alignPlug = alignPlug2, bootIfVisible = bootIfVisible2, updatePower = updatePower2, reconnectPlug = reconnectPlug2, activatePlug = activatePlug2, paint = paint2, moveReadout = moveReadout2, tick = tick2, animate = animate2, setPhase = setPhase2, scheduleHoldBeat = scheduleHoldBeat2, isSurpriseLabel = isSurpriseLabel2, announceThought = announceThought2, startThoughtHold = startThoughtHold2, clearThoughtHold = clearThoughtHold2, thoughtAchievement = thoughtAchievement2, clearThoughtEcho = clearThoughtEcho2, echoSurpriseLabel = echoSurpriseLabel2, begin = begin2, aimHover = aimHover2, refreshHover = refreshHover2, aimTilt = aimTilt2, release = release2, keepParkedButtonInView = keepParkedButtonInView2, reset = reset2, clearResponse = clearResponse2, respond = respond2, aimPointers = aimPointers2, showStrike = showStrike2, activateRelease = activateRelease2, pressOutlet = pressOutlet2, endPointer = endPointer2, scheduleRenderer = scheduleRenderer2;
     const maybeStage = button.closest(".button-stage");
     if (!maybeStage) throw new Error("Tactile button needs a stage");
     const stage = maybeStage;
@@ -5481,6 +5651,7 @@
     let outletTripped = false;
     let drainStartedAt = null;
     let bootStartedAt = null;
+    let bootParticlesPlayed = false;
     let booted = false;
     let outletTouch = null;
     let socket = "bottom";
@@ -5489,13 +5660,11 @@
     let dockTimer = 0;
     let plugTap = null;
     let seating = null;
+    let plugPosition = { x: 0, y: 0 };
     const readout = gameButton ? document.querySelector(".game-readout") : null;
     let readoutOffset = 0;
     let readoutOpacity = 1;
-    const effects = document.createElement("div");
-    effects.className = "button-effects";
-    effects.setAttribute("aria-hidden", "true");
-    stage.append(effects);
+    const particles = createButtonParticles(stage);
     const reducedMotion = motionPreference;
     const keys = ["x", "y", "rx", "ry", "pop"];
     const current = {
@@ -5722,7 +5891,7 @@
       }
       if (gameButton) clickSound.play("release");
       if (!activatingRelease) echoSurpriseLabel2();
-      burst2();
+      showStrike2();
     });
     new MutationObserver(() => {
       if (button.disabled) reset2();
@@ -5762,10 +5931,7 @@
         slackChange = null;
       }
       reset2();
-      if (reducedMotion.matches) {
-        for (const animation of effects.getAnimations({ subtree: true })) animation.cancel();
-        effects.replaceChildren();
-      } else refreshHover2();
+      if (!reducedMotion.matches) refreshHover2();
     });
     window.addEventListener("focus", () => {
       if (document.activeElement === button) animate2();
@@ -5818,6 +5984,7 @@
     });
   }
   var movedOffPlug;
+  var emitFace;
   var readyTarget;
   var plugProgress;
   var buttonStaysPut;
@@ -5851,7 +6018,7 @@
   var clearResponse;
   var respond;
   var aimPointers;
-  var burst;
+  var showStrike;
   var activateRelease;
   var pressOutlet;
   var endPointer;
@@ -5873,14 +6040,11 @@
       const rect = stage.getBoundingClientRect();
       const face = button.getBoundingClientRect();
       const pointer = event.detail > 0;
-      const x = Math.max(
-        40,
-        Math.min(rect.width - 40, (pointer ? event.clientX : face.left + face.width / 2) - rect.left)
-      );
-      const y = Math.max(
-        24,
-        Math.min(rect.height - 16, (pointer ? event.clientY : face.top + face.height / 2) - rect.top)
-      );
+      const hitX = (pointer ? event.clientX : face.left + face.width / 2) - rect.left;
+      const hitY = (pointer ? event.clientY : face.top + face.height / 2) - rect.top;
+      const x = Math.max(40, Math.min(rect.width - 40, hitX));
+      const y = Math.max(24, Math.min(rect.height - 16, hitY));
+      const origin = { x: hitX / rect.width - 0.5, y: hitY / rect.height - 0.5 };
       const popup = document.createElement("span"), score = document.createElement("strong"), timing = document.createElement("small");
       popup.className = "click-bonus";
       popup.dataset.state = "pending";
@@ -5944,7 +6108,7 @@
           window.clearTimeout(slow);
           const ms = Math.max(0, milliseconds);
           popup.dataset.state = ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
-          tactileButtons.get(button)?.respond(popup.dataset.state, ms);
+          tactileButtons.get(button)?.respond(popup.dataset.state, ms, origin);
           clickSound.play(popup.dataset.state === "slow" ? "slow" : "saved");
           phase = "saved";
           measured = ms;
@@ -5958,7 +6122,7 @@
           settled = true;
           window.clearTimeout(slow);
           popup.dataset.state = limited ? "limited" : "error";
-          tactileButtons.get(button)?.respond(limited ? "limited" : "error");
+          tactileButtons.get(button)?.respond(limited ? "limited" : "error", 0, origin);
           clickSound.play(limited ? "limited" : "error");
           phase = limited ? "limited" : uncertain ? "unconfirmed" : "unsaved";
           translate();

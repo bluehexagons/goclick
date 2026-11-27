@@ -136,14 +136,17 @@ test("+1 anchors to its pointer, stays pending, and shows measured slow or faile
   assert.equal(popup.dataset.state, "error");
   assert.equal(popup.children[0].textContent, "?");
   assert.equal(popup.children[1].textContent, "unconfirmed");
-  assert.deepEqual(h.responses, [
-    ["pending"],
-    ["fast", 50],
-    ["pending"],
-    ["slow", 900],
-    ["pending"],
-    ["error"],
-  ]);
+  assert.deepEqual(
+    h.responses.map(([state, ms, origin]) => (origin ? [state, ms, origin.x, origin.y] : [state])),
+    [
+      ["pending"],
+      ["fast", 50, 90 / 340 - 0.5, 0],
+      ["pending"],
+      ["slow", 900, 0, 112 / 240 - 0.5],
+      ["pending"],
+      ["error", 0, 0, 112 / 240 - 0.5],
+    ],
+  );
   assert.deepEqual(h.sounds, ["saved", "slow", "error"]);
   first.success(50);
   failed.fail();
@@ -175,7 +178,10 @@ test("a rejected rate-limited click gets a cooldown response rather than a save 
   const popup = h.layer.children[0];
   assert.equal(popup.dataset.state, "limited");
   assert.equal(popup.children[1].textContent, "cooldown");
-  assert.deepEqual(h.responses, [["pending"], ["limited"]]);
+  assert.deepEqual(
+    h.responses.map(([state]) => state),
+    ["pending", "limited"],
+  );
   assert.deepEqual(h.sounds, ["limited"]);
 });
 

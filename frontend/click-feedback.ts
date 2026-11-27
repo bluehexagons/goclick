@@ -36,14 +36,12 @@ const clickFeedback = (() => {
     const rect = stage.getBoundingClientRect();
     const face = button.getBoundingClientRect();
     const pointer = event.detail > 0;
-    const x = Math.max(
-      40,
-      Math.min(rect.width - 40, (pointer ? event.clientX : face.left + face.width / 2) - rect.left),
-    );
-    const y = Math.max(
-      24,
-      Math.min(rect.height - 16, (pointer ? event.clientY : face.top + face.height / 2) - rect.top),
-    );
+    const hitX = (pointer ? event.clientX : face.left + face.width / 2) - rect.left;
+    const hitY = (pointer ? event.clientY : face.top + face.height / 2) - rect.top;
+    const x = Math.max(40, Math.min(rect.width - 40, hitX));
+    const y = Math.max(24, Math.min(rect.height - 16, hitY));
+    // A delayed reply belongs to the original impact, even if the face has moved.
+    const origin = { x: hitX / rect.width - 0.5, y: hitY / rect.height - 0.5 };
     const popup = document.createElement("span"),
       score = document.createElement("strong"),
       timing = document.createElement("small");
@@ -122,7 +120,7 @@ const clickFeedback = (() => {
         const ms = Math.max(0, milliseconds);
         popup.dataset.state =
           ms > Math.max(250, baseline * 1.6) ? "slow" : ms < baseline * 0.7 ? "fast" : "saved";
-        tactileButtons.get(button)?.respond(popup.dataset.state as ResponseState, ms);
+        tactileButtons.get(button)?.respond(popup.dataset.state as ResponseState, ms, origin);
         clickSound.play(popup.dataset.state === "slow" ? "slow" : "saved");
         phase = "saved";
         measured = ms;
@@ -136,7 +134,7 @@ const clickFeedback = (() => {
         settled = true;
         window.clearTimeout(slow);
         popup.dataset.state = limited ? "limited" : "error";
-        tactileButtons.get(button)?.respond(limited ? "limited" : "error");
+        tactileButtons.get(button)?.respond(limited ? "limited" : "error", 0, origin);
         clickSound.play(limited ? "limited" : "error");
         phase = limited ? "limited" : uncertain ? "unconfirmed" : "unsaved";
         translate();

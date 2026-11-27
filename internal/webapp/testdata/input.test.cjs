@@ -67,7 +67,7 @@ function harness(reducedMotion = true, withPower = false, withReadout = false) {
     }
     animate(keyframes, options) {
       this.animations.push({ keyframes, options });
-      return { finished: new Promise(() => {}) };
+      return { finished: new Promise(() => {}), cancel: () => (this.animationCancelled = true) };
     }
     getBoundingClientRect() {
       return { left: 100, top: 100, right: 360, bottom: 244, width: 260, height: 144 };
@@ -398,6 +398,29 @@ test("Hold that Thought saves on a translated release after two seconds", () => 
   assert.deepEqual(earned, [0, bits.holdThatThought, 0]);
 });
 
+test("translated holds emit a readiness ring and release particles with the text echo", () => {
+  const h = harness(false);
+  const layer = h.stage.children.find((child) => child.className === "button-effects");
+  const saw = (event, shape) =>
+    layer.children.some(
+      (particle) => particle.dataset.event === event && particle.dataset.shape === shape,
+    );
+  h.changeLabel("Clique !", "fr");
+  h.button.fire("keydown", { key: " " });
+  assert.equal(saw("thoughtReady", "ring"), false);
+  h.setTime(2000);
+  h.runTimer(2000);
+  assert.equal(saw("thoughtReady", "ring"), true);
+  assert.equal(h.clicks.length, 0);
+  h.button.fire("keyup", { key: " " });
+  assert.equal(saw("thought", "chip"), true);
+  assert.equal(
+    h.stage.children.some((child) => child.className === "thought-echo"),
+    true,
+  );
+  assert.equal(h.clicks.length, 1);
+});
+
 test("independent fingers each activate once and preserve their release coordinates", () => {
   const h = harness();
   h.pointer("pointerdown", 1);
@@ -500,8 +523,8 @@ test("press-down delivers most of the strike immediately, then lets the light se
   assert.ok(initialDepth >= 0.7 && initialDepth < 1);
   assert.ok(Number(h.rig.props.get("--button-pop")) < 0.975);
   const cloud = h.stage.children[0];
-  assert.equal(cloud.childElementCount, 8);
-  assert.ok(cloud.children.every((p) => p.animations[0].options.duration >= 520));
+  assert.ok(cloud.childElementCount > 0);
+  assert.ok(cloud.children.every((p) => p.dataset.event === "press"));
   assert.ok(initialGlow > 0.6);
   assert.equal(h.stage.classes.has("is-pressed"), true);
   h.frame(16);
@@ -669,12 +692,41 @@ test("response glows finish without releasing another held pointer", () => {
   assert.equal(h.clicks.length, 0);
 });
 
+test("impact and reply particles keep separate colors and stay within the layer budget", () => {
+  const h = harness(false);
+  const layer = h.stage.children.find((child) => child.className === "button-effects");
+  h.button.click();
+  const sparks = layer.children.filter((particle) => particle.dataset.event === "release");
+  assert.deepEqual(
+    new Set(sparks.map((particle) => particle.dataset.shape)),
+    new Set(["chip", "spark"]),
+  );
+  const originalColor = sparks[0].props.get("--particle-color");
+  h.controller.respond("pending");
+  assert.ok(layer.children.every((particle) => particle.dataset.event !== "pending"));
+  h.controller.respond("slow", 800, { x: 0.25, y: -0.25 });
+  const ring = layer.children.find((particle) => particle.dataset.shape === "ring");
+  assert.equal(ring.dataset.event, "slow");
+  assert.equal(ring.props.get("left"), "calc(50% + 170px)");
+  assert.equal(ring.props.get("top"), "calc(50% + -72.5px)");
+  assert.equal(sparks[0].props.get("--particle-color"), originalColor);
+  for (let i = 0; i < 20; i++) h.button.click();
+  assert.ok(layer.childElementCount <= 64);
+  assert.equal(sparks[0].animationCancelled, true);
+  h.controller.reset();
+  assert.equal(layer.childElementCount, 0);
+});
+
 test("reduced motion acknowledges with static color and reset clears stale responses", () => {
   const h = harness();
   h.controller.respond("error");
   assert.equal(h.hasFrame(), false);
   assert.equal(h.rig.props.get("--glow-intensity"), "0.176");
   assert.equal(h.rig.props.get("--glow-color"), "rgb(255 125 120)");
+  assert.equal(
+    h.stage.children.find((child) => child.className === "button-effects").childElementCount,
+    0,
+  );
   h.controller.reset();
   assert.equal(h.stage.dataset.response, undefined);
   assert.equal(h.rig.props.get("--glow-intensity"), "0.000");
@@ -789,14 +841,15 @@ test("quick taps kick harder and leave bounded sparks alive across presses", () 
   const h = harness(false);
   h.pointer("pointerdown", 1);
   const cloud = h.stage.children[0];
-  assert.equal(cloud.childElementCount, 8);
-  assert.ok(cloud.children.every((p) => p.animations[0].options.duration < 780));
+  const press = [...cloud.children];
+  const pressLifetime = Math.max(...press.map((p) => p.animations[0].options.duration));
   h.pointer("pointerup", 1);
   h.frame(16);
   h.frame(32);
   assert.ok(Number(h.rig.props.get("--button-pop")) > 1.02);
-  assert.equal(cloud.childElementCount, 20);
-  assert.ok(cloud.children.slice(8).every((p) => p.animations[0].options.duration >= 850));
+  const release = cloud.children.filter((p) => p.dataset.event === "release");
+  assert.ok(release.length > press.length);
+  assert.ok(release.every((p) => p.animations[0].options.duration > pressLifetime));
   const first = cloud.children[0];
   h.pointer("pointerdown", 2);
   h.pointer("pointerup", 2);
