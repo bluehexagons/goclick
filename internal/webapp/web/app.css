@@ -1083,8 +1083,9 @@ select:focus,
 .click-button:disabled {
   cursor: wait;
 }
-.button-stage:has(.click-button:disabled) .button-scene {
-  opacity: 0.65;
+.button-stage:has(.click-button:disabled) .button-scene,
+.button-stage:not(.is-rendered) .click-button:disabled {
+  filter: saturate(0.55) brightness(0.85);
 }
 .button-effects {
   position: absolute;

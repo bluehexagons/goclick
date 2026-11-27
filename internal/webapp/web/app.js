@@ -7066,13 +7066,13 @@
     required("#local-nav").hidden = offlineOnly || !player || !localMode;
     if (changed && view !== "loading" && !motionPreference.matches) {
       const incoming = view === "login" ? loginForm : view === "signup" ? signupForm : views[view];
-      viewAnimation = incoming.animate(
-        [
-          { opacity: 0, transform: "translateY(8px)" },
-          { opacity: 1, transform: "translateY(0)" }
-        ],
-        { duration: 170, easing: "cubic-bezier(.2,.8,.2,1)" }
-      );
+      const start = { transform: "translateY(8px)" };
+      const end = { transform: "translateY(0)" };
+      const frames = view === "game" || view === "home" ? [start, end] : [
+        { ...start, opacity: 0 },
+        { ...end, opacity: 1 }
+      ];
+      viewAnimation = incoming.animate(frames, { duration: 170, easing: "cubic-bezier(.2,.8,.2,1)" });
     }
     if (view === "login") {
       showError("#login-error", "");
